@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment variables — never commit real secrets
+.env
+.env.local
+.env.development
+.env.production
+*.local
+!.env.example
+
+# Build output
+dist/
+build/
+
+# User-uploaded content (backend/uploads/ — gitignored at the backend
+# level too; kept here as well since git init is at the repo root)
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

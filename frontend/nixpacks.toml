@@ -1,0 +1,20 @@
+# Vite + npm + Node 22
+
+[node]
+version = "22"
+
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.install]
+cmds = [
+  "npm ci"     # faster & guaranteed clean install
+]
+cacheDirectories = ["node_modules"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+# Serve the built dist/ folder
+cmd = "npx serve -s dist -l 3000"

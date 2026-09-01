@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* tailwind.config.js's `fontFamily.sans` (Inter) was never actually
+   applied anywhere — Preflight doesn't set a body font on its own, so
+   the whole app was rendering in the browser's system-font fallback.
+   This makes the already-configured, now-actually-loaded (see
+   index.html) font the real default everywhere. */
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}

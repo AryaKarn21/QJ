@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">QuickJobs</string>
+    <string name="title_activity_main">QuickJobs</string>
+    <string name="package_name">com.quickjobs.app</string>
+    <string name="custom_url_scheme">com.quickjobs.app</string>
+</resources>

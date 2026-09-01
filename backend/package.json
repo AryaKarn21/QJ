@@ -1,0 +1,45 @@
+{
+  "name": "star-jobs",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --runInBand",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "backfill:follow-counts": "node scripts/backfillFollowCounts.js",
+    "backfill:blog-slugs": "node scripts/backfillBlogSlugs.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "connect-mongo": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.6.1",
+    "express-session": "^1.18.2",
+    "google-auth-library": "^11.0.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.6.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.1",
+    "nodemailer": "^7.0.3",
+    "nodemon": "^3.1.10",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "path": "^0.12.7",
+    "redis": "^4.7.0",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
