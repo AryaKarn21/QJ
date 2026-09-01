@@ -1,13 +1,12 @@
 # Dependencies
 node_modules/
 
-# Environment variables — never commit real secrets
+# Environment variables — never commit these, including the .example
+# templates (per explicit instruction: keep env files out of the repo
+# entirely, not just the ones holding real secrets)
 .env
-.env.local
-.env.development
-.env.production
+.env.*
 *.local
-!.env.example
 
 # Build output
 dist/
