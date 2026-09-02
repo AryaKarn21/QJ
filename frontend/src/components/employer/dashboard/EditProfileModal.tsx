@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { X, Image } from "lucide-react";
+import { TagInput } from "../../common/TagInput";
 
 interface Props {
     show: boolean;
@@ -248,12 +249,22 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
 
                     <div className="md:col-span-2">
                         <label className="font-semibold">Additional Office Locations</label>
-                        <input name="companyLocations" placeholder="Comma-separated, e.g. Kathmandu, Pokhara, Remote" value={formState.companyLocations} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" />
+                        <TagInput
+                            value={formState.companyLocations}
+                            onChange={(csv) => setFormState(prev => ({ ...prev, companyLocations: csv }))}
+                            placeholder="Type a location and press Enter, e.g. Kathmandu"
+                            className="mt-1"
+                        />
                     </div>
 
                     <div className="md:col-span-2">
                         <label className="font-semibold">Company Benefits</label>
-                        <input name="companyBenefits" placeholder="Comma-separated, e.g. Health insurance, Flexible hours, Remote-friendly" value={formState.companyBenefits} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" />
+                        <TagInput
+                            value={formState.companyBenefits}
+                            onChange={(csv) => setFormState(prev => ({ ...prev, companyBenefits: csv }))}
+                            placeholder="Type a benefit and press Enter, e.g. Health insurance"
+                            className="mt-1"
+                        />
                     </div>
                 </div>
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { PlusCircle } from "lucide-react";
 import CompanySearchInput from "./CompanySearchInput";
+import { TagInput } from "../../common/TagInput";
 
 interface Qualification {
     degree: string;
@@ -132,24 +133,13 @@ const EditProfileModal: React.FC<Props> = ({
 
                     {/* Skills */}
                     <div>
-                        <label className="font-semibold">Skills (comma-separated)</label>
-                        <input
-                            type="text"
+                        <label className="font-semibold">Skills</label>
+                        <TagInput
                             value={formState.skills}
-                            onChange={(e) => setFormState({ ...formState, skills: e.target.value })}
-                            placeholder="e.g., React, TypeScript, Node.js"
-                            className="w-full border px-3 py-2 rounded mt-1"
+                            onChange={(csv) => setFormState({ ...formState, skills: csv })}
+                            placeholder="Type a skill and press Enter, e.g. React"
+                            className="mt-1"
                         />
-                        <div className="flex flex-wrap gap-2 mt-2">
-                            {(formState.skills.split(",").map((skill: string) => skill.trim())).filter(Boolean).map((skill: string, idx: number) => (
-                                <span
-                                    key={idx}
-                                    className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full shadow-sm"
-                                >
-                                    {skill}
-                                </span>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Resume */}

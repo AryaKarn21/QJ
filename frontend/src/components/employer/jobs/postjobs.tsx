@@ -6,6 +6,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { TagInput } from "../../common/TagInput";
 import {
   CalendarClock, Check, ChevronLeft, ChevronRight, Building2, Pencil,
   Globe, Linkedin, Target, Heart, MapPin, Gift, Users, Calendar, ExternalLink,
@@ -382,7 +383,7 @@ const PostJob = () => {
             <div className="space-y-5">
               <div>
                 <label className={labelCls}>Job Overview</label>
-                <textarea name="overview" value={formData.overview} onChange={handleChange} rows={2} placeholder="A short summary shown at the top of the job page..." className={inputCls} />
+                <textarea name="overview" value={formData.overview} onChange={handleChange} rows={2} placeholder="e.g. Join our fast-growing engineering team building the next generation of hiring tools for South Asia." className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Job Description *</label>
@@ -392,33 +393,58 @@ const PostJob = () => {
                     onChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
                     theme="snow"
                     className="h-[85%]"
+                    placeholder="e.g. We're looking for a Full Stack Developer to join our growing engineering team. You'll work closely with product and design to ship features end-to-end, own key parts of our codebase, and help mentor junior engineers..."
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
                 <div>
                   <label className={labelCls}>Responsibilities</label>
-                  <textarea name="responsibilities" value={formData.responsibilities} onChange={handleChange} rows={3} placeholder="Comma-separated, e.g. Lead sprint planning, Review pull requests" className={inputCls} />
+                  <TagInput
+                    value={formData.responsibilities}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, responsibilities: csv }))}
+                    placeholder="Type a responsibility and press Enter, e.g. Lead sprint planning"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Requirements</label>
-                  <textarea name="requirements" value={formData.requirements} onChange={handleChange} rows={3} placeholder="Comma-separated, e.g. 3+ years experience, Bachelor's degree" className={inputCls} />
+                  <TagInput
+                    value={formData.requirements}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, requirements: csv }))}
+                    placeholder="Type a requirement and press Enter, e.g. 3+ years experience"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Required Skills</label>
-                  <input name="requiredSkills" value={formData.requiredSkills} onChange={handleChange} placeholder="Comma-separated, e.g. React, Node.js, SQL" className={inputCls} />
+                  <TagInput
+                    value={formData.requiredSkills}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, requiredSkills: csv }))}
+                    placeholder="Type a skill and press Enter, e.g. React"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Preferred Skills</label>
-                  <input name="preferredSkills" value={formData.preferredSkills} onChange={handleChange} placeholder="Comma-separated, e.g. AWS, GraphQL" className={inputCls} />
+                  <TagInput
+                    value={formData.preferredSkills}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, preferredSkills: csv }))}
+                    placeholder="Type a skill and press Enter, e.g. AWS"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Education</label>
-                  <input name="education" value={formData.education} onChange={handleChange} placeholder="e.g. Bachelor's in Computer Science" className={inputCls} />
+                  <TagInput
+                    value={formData.education}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, education: csv }))}
+                    placeholder="Type a qualification and press Enter, e.g. Bachelor's in Computer Science"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Working Hours</label>
-                  <input name="workingHours" value={formData.workingHours} onChange={handleChange} placeholder="e.g. 10 AM - 6 PM, Sun-Fri" className={inputCls} />
+                  <TagInput
+                    value={formData.workingHours}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, workingHours: csv }))}
+                    placeholder="Type and press Enter, e.g. 10 AM - 6 PM"
+                  />
                 </div>
               </div>
             </div>
@@ -621,11 +647,19 @@ const PostJob = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className={labelCls}>Benefits</label>
-                  <input name="benefits" value={formData.benefits} onChange={handleChange} placeholder="Comma-separated, e.g. Health insurance, Paid time off" className={inputCls} />
+                  <TagInput
+                    value={formData.benefits}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, benefits: csv }))}
+                    placeholder="Type a benefit and press Enter, e.g. Health insurance"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Perks</label>
-                  <input name="perks" value={formData.perks} onChange={handleChange} placeholder="Comma-separated, e.g. Free lunch, Gym membership" className={inputCls} />
+                  <TagInput
+                    value={formData.perks}
+                    onChange={(csv) => setFormData((prev) => ({ ...prev, perks: csv }))}
+                    placeholder="Type a perk and press Enter, e.g. Free lunch"
+                  />
                 </div>
               </div>
             </div>

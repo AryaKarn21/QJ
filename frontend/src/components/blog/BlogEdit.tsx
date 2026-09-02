@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Save, Plus, X } from 'lucide-react';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
+import { TagInput } from '../common/TagInput';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -329,18 +330,11 @@ const BlogEdit: React.FC = () => {
           <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
             Tags (Optional)
           </label>
-          <input
-            type="text"
-            id="tags"
-            name="tags"
+          <TagInput
             value={formData.tags}
-            onChange={handleInputChange}
-            placeholder="Enter tags separated by commas (e.g., technology, career, tips)"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(csv) => setFormData(prev => ({ ...prev, tags: csv }))}
+            placeholder="Type a tag and press Enter, e.g. technology"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Separate multiple tags with commas
-          </p>
         </div>
 
         {/* Status */}

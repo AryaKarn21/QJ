@@ -6,6 +6,7 @@ import { generateCaption, correctGrammar, detectHiringIntent } from '../../api/c
 import { useCurrentUser } from '../../utils/currentUser';
 import { MentionTextarea } from './MentionTextarea';
 import { Avatar } from './Avatar';
+import { TagInput } from '../common/TagInput';
 import type { CommunityPost, PostTopic, PostType } from '../../types/community';
 
 const TYPE_OPTIONS: { key: PostType; label: string; icon: typeof Type }[] = [
@@ -337,7 +338,14 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
       {/* Hiring builder */}
       {type === 'hiring' && (
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <input value={hiringRoles} onChange={(e) => setHiringRoles(e.target.value)} placeholder="Roles, comma separated" className="col-span-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm" />
+          <div className="col-span-2">
+            <TagInput
+              value={hiringRoles}
+              onChange={setHiringRoles}
+              placeholder="Type a role and press Enter, e.g. Frontend Engineer"
+              className="text-sm"
+            />
+          </div>
           <input value={hiringOpenings} onChange={(e) => setHiringOpenings(e.target.value)} type="number" min="1" placeholder="Openings" className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm" />
           <input value={hiringLocation} onChange={(e) => setHiringLocation(e.target.value)} placeholder="Location" className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm" />
           <select value={hiringUrgency} onChange={(e) => setHiringUrgency(e.target.value as 'normal' | 'urgent')} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm">

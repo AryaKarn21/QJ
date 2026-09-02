@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Save, Wand2, Plus, X, AlertCircle } from 'lucide-react';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
+import { TagInput } from '../common/TagInput';
 // Matches the backend's actual default port (server.js: PORT || 3000, and
 // every other API file in this app — testimonialApi.ts, advertisementApi.ts,
 // etc.). This previously fell back to :8000, nothing listens there, so any
@@ -349,18 +350,11 @@ const BlogCreate: React.FC = () => {
           <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
             Tags (Optional)
           </label>
-          <input
-            type="text"
-            id="tags"
-            name="tags"
+          <TagInput
             value={formData.tags}
-            onChange={handleInputChange}
-            placeholder="Enter tags separated by commas (e.g., technology, career, tips)"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(csv) => setFormData(prev => ({ ...prev, tags: csv }))}
+            placeholder="Type a tag and press Enter, e.g. technology"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Separate multiple tags with commas
-          </p>
         </div>
 
         {/* Submit Buttons */}
