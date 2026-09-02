@@ -14,6 +14,8 @@ import {
   Sparkles,
   BarChart3,
   Newspaper,
+  MessageSquareQuote,
+  FolderOpen,
   Bell,
   ShieldCheck,
   ScrollText,
@@ -83,6 +85,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Content',
     items: [
       { label: 'CMS', icon: <Newspaper size={22} />, path: '/admin/cms' },
+      { label: 'Blog Categories', icon: <FolderOpen size={22} />, path: '/admin/blog-categories' },
+      { label: 'Testimonials', icon: <MessageSquareQuote size={22} />, path: '/admin/testimonials' },
       { label: 'Notifications', icon: <Bell size={22} />, path: '/admin/notifications' },
     ],
   },

@@ -28,7 +28,7 @@ const getJobStats = async (req, res) => {
     res.status(200).json({ success: true, data: comparisonData });
   } catch (error) {
     console.error("Error in getJobStats:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
@@ -228,7 +228,7 @@ const getAllJobStatsByDate = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in getAllJobStatsByDate:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 

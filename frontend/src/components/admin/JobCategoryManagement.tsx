@@ -33,7 +33,14 @@ const JobCategories = () => {
   const [currentCategory, setCurrentCategory] = useState<JobCategory | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    icon: null as File | null
+    icon: null as File | null,
+    // Defaults to true for new categories: the homepage "Explore
+    // Categories" section only shows isTrending:true categories (see
+    // JobCategories.tsx -> GET /api/jobcategories/trending/all), so a
+    // category created with this left unchecked would silently never
+    // appear there. Editing an existing category still respects its
+    // current value (see handleEdit).
+    isTrending: true,
   });
 
   // Client-side UI Search, Filter & Sort State
@@ -130,6 +137,7 @@ const JobCategories = () => {
     e.preventDefault();
     const formDataToSend = new FormData();
     formDataToSend.append('name', formData.name);
+    formDataToSend.append('isTrending', String(formData.isTrending));
     if (formData.icon) {
       formDataToSend.append('icon', formData.icon);
     }
@@ -143,7 +151,7 @@ const JobCategories = () => {
         toast.success('Category created successfully');
       }
       setIsModalOpen(false);
-      setFormData({ name: '', icon: null });
+      setFormData({ name: '', icon: null, isTrending: true });
       setCurrentCategory(null);
       setImagePreview(null);
       fetchCategories();
@@ -157,7 +165,8 @@ const JobCategories = () => {
     setCurrentCategory(category);
     setFormData({
       name: category.name,
-      icon: null
+      icon: null,
+      isTrending: category.isTrending,
     });
     setIsModalOpen(true);
   };
@@ -208,7 +217,7 @@ const JobCategories = () => {
 
   const openNewCategoryModal = (prefillName?: string) => {
     setCurrentCategory(null);
-    setFormData({ name: prefillName || '', icon: null });
+    setFormData({ name: prefillName || '', icon: null, isTrending: true });
     setImagePreview(null);
     setIsModalOpen(true);
   };
@@ -758,6 +767,25 @@ const JobCategories = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Trending toggle — the homepage "Explore Categories" section
+                    only shows categories with isTrending:true, so this has to
+                    be settable right here at creation time, not just from the
+                    separate star-toggle in the table afterward. */}
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isTrending}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isTrending: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#F97316] focus:ring-orange-500/40"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold text-slate-800">Show on homepage (Trending)</span>
+                    <span className="block text-xs text-slate-500 mt-0.5">
+                      Only trending categories appear in the "Explore Categories" section on the homepage. Leave this checked so this category shows up right away.
+                    </span>
+                  </span>
+                </label>
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

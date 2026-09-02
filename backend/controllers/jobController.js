@@ -3,10 +3,64 @@ const Application = require("../models/Application");
 const User = require("../models/User");
 const Jobseeker = require("../models/Jobseeker");
 const sendNotification = require("../utils/sendNotifications");
+const { COUNTRIES } = require("../data/countries");
+
+// GET /api/jobs/meta/countries — public. The single list the job-posting
+// form's Country <select> reads (see postjobs.tsx) — the same array
+// models/Job.js validates `country` against, so the form can never offer
+// a value the backend would then reject, and adding a country only ever
+// means editing data/countries.js once.
+const getCountryList = (req, res) => {
+  res.json(COUNTRIES);
+};
+
+// List views (getJobs/getTrendingJobs/getRecentJobs below) only ever show
+// a name+logo on a job card, so they deliberately keep populating just
+// "name companyLogo" — no change there. The single Job Detail view is the
+// one place that needs the employer's full company profile "auto-attached"
+// (section 6/7): every public-safe Employer field the About-the-Company
+// section can show, without a second query. Kept as one shared list so
+// getJobById and applyInJob's confirmation email/notification stay in
+// sync with what Employer.js actually has.
+// `telephone` is deliberately excluded — it's account contact info, not
+// something the "About the Company" section on a public job page asked
+// for, and exposing it here would newly let anyone viewing any job page
+// harvest an employer's phone number. `email` stays because getJobById
+// already exposed it before this change (pre-existing behavior, likely
+// for "contact the employer" — left as-is, not this phase's call to
+// remove; flagged for the security-pass phase to reconsider).
+const COMPANY_PROFILE_FIELDS =
+  "name email companyLogo coverPhoto headline description industryType " +
+  "companySize establishedDate address website socialLinks " +
+  "mission culture companyLocations companyBenefits verificationStatus";
+
+// Server-side sort for GET /api/jobs — used to be done client-side AFTER
+// pagination (jobListing.tsx sorted only the current page's ~9 jobs by
+// `parseInt(job.salary)`, which is a free-text string like "NPR 40,000 -
+// 60,000 / Yearly" or "$1000, negotiable" that parseInt can't meaningfully
+// parse, so "Salary" sort silently did nothing, and "Newest"/"Oldest" only
+// ever reordered one page at a time instead of the whole result set).
+// Sorts on the structured salaryMin/salaryMax (Phase 1) instead, at the
+// DB level, before pagination — a job without a structured salary simply
+// sorts as if it had none, rather than crashing or landing randomly.
+const SORT_OPTIONS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  salaryHigh: { salaryMax: -1, salaryMin: -1, createdAt: -1 },
+  salaryLow: { salaryMin: 1, salaryMax: 1, createdAt: -1 },
+  // "Relevance" only really means something alongside a search term; with
+  // no ranking model to score matches, newest-first is the most useful
+  // stand-in — never a fabricated relevance score.
+  relevance: { createdAt: -1 },
+};
 
 // Get All Jobs
 const getJobs = async (req, res) => {
-    const { page = 1, limit = 6, location, jobtype, level, status, search, employer } = req.query;
+    const {
+      page = 1, limit = 6, location, jobtype, level, status, search, employer,
+      workMode, minSalary, maxSalary, skills, datePosted, sortBy,
+      company, industry, education, minExperience, maxExperience,
+    } = req.query;
   const userId = req.user?._id;
 
   try {
@@ -14,11 +68,82 @@ const getJobs = async (req, res) => {
     const skip = (page - 1) * limitNum;
 
     const filters = {};
+    const andConditions = [];
     if (location) { filters.location = { $regex: location, $options: "i" }; }
     if (jobtype) filters.jobtype = jobtype;
         if (level) filters.level = level;
     if (employer) filters.employer = employer; // powers the Company page's Jobs tab
     filters.status = status || "Active"; // public listings only ever show approved jobs
+    if (workMode) filters.workMode = workMode;
+    if (minSalary) {
+      // A job might only have salaryMin, only salaryMax, or both — match
+      // if EITHER structured field clears the bar, so a job posted as
+      // "up to $80k" (salaryMax only) isn't wrongly excluded from a
+      // "$50k+" search just because salaryMin was never filled in.
+      const min = Number(minSalary);
+      if (!Number.isNaN(min)) {
+        andConditions.push({ $or: [{ salaryMin: { $gte: min } }, { salaryMax: { $gte: min } }] });
+      }
+    }
+    if (maxSalary) {
+      // Symmetric to minSalary: a job qualifies for "up to $Xk" if either
+      // structured field is at or under the cap.
+      const max = Number(maxSalary);
+      if (!Number.isNaN(max)) {
+        andConditions.push({ $or: [{ salaryMax: { $lte: max } }, { salaryMin: { $lte: max } }] });
+      }
+    }
+    if (minExperience || maxExperience) {
+      // Naukri-style range-overlap: the jobseeker's given [minExperience,
+      // maxExperience] window must overlap the job's own required
+      // [job.minExperience, job.maxExperience] window. A job that hasn't
+      // set these structured fields yet (pre-Phase-1 postings, or an
+      // employer who only filled in the free-text `experience` field)
+      // isn't excluded outright — only jobs that DO have the field are
+      // actually checked against it, same "don't punish missing
+      // structured data" approach minSalary/maxSalary already use.
+      if (minExperience) {
+        const min = Number(minExperience);
+        if (!Number.isNaN(min)) {
+          andConditions.push({ $or: [{ maxExperience: { $exists: false } }, { maxExperience: { $gte: min } }] });
+        }
+      }
+      if (maxExperience) {
+        const max = Number(maxExperience);
+        if (!Number.isNaN(max)) {
+          andConditions.push({ $or: [{ minExperience: { $exists: false } }, { minExperience: { $lte: max } }] });
+        }
+      }
+    }
+    if (skills) {
+      const skillList = String(skills).split(",").map((s) => s.trim()).filter(Boolean);
+      if (skillList.length) {
+        filters.requiredSkills = {
+          $in: skillList.map((s) => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")),
+        };
+      }
+    }
+    if (education) {
+      filters.education = { $regex: education.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+    }
+    if (datePosted) {
+      const days = { "24h": 1, "7d": 7, "30d": 30 }[datePosted];
+      if (days) filters.createdAt = { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) };
+    }
+    // `company`/`industry` live on the Employer, not the Job — resolve to
+    // a set of employer ids first, same two-step approach as any search
+    // across a reference this schema doesn't denormalize. An empty match
+    // set still needs a real "no results" answer, not "ignore the filter"
+    // — the impossible `_id: null` keeps that honest instead of silently
+    // returning every job with no company filter applied.
+    if ((company || industry) && !employer) {
+      const employerQuery = {};
+      if (company) employerQuery.name = { $regex: company.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+      if (industry) employerQuery.industryType = { $regex: industry.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+      const matchingEmployers = await User.find({ role: "employer", ...employerQuery }).select("_id").lean();
+      filters.employer = { $in: matchingEmployers.length ? matchingEmployers.map((e) => e._id) : [null] };
+    }
+    if (andConditions.length) filters.$and = andConditions;
     if (search) {
       const keywords = search.trim().split(/\s+/).map(word => word.toLowerCase());
       filters.$or = [
@@ -31,6 +156,7 @@ const getJobs = async (req, res) => {
 
     const jobs = await Job.find(filters)
       .populate("employer", "name companyLogo")
+      .sort(SORT_OPTIONS[sortBy] || SORT_OPTIONS.newest)
       .skip(skip)
       .limit(limitNum)
       .lean();
@@ -116,7 +242,7 @@ const getJobById = async (req, res) => {
 
   try {
     const job = await Job.findById(id)
-      .populate("employer", "name email companyLogo");
+      .populate("employer", COMPANY_PROFILE_FIELDS);
 
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
@@ -137,6 +263,17 @@ const getJobById = async (req, res) => {
     jobData.likeCount = job.likes?.length || 0;
     jobData.dislikeCount = job.dislikes?.length || 0;
     jobData.viewCount = job.views?.length || 0;
+    // Same isSaved computation getJobs/getTrendingJobs/getRecentJobs
+    // already do — needs authenticateOptional on this route (see
+    // jobRoutes.js) to ever have a req.user to check.
+    jobData.isSaved = !!req.user?.savedJobs?.includes(job._id.toString());
+    // Powers "Already Applied" on the Job Detail page (Phase 5) instead
+    // of only finding out after submitting — applyInJob already rejects a
+    // second application server-side (see below), this just surfaces that
+    // same fact up front.
+    jobData.isApplied = req.user
+      ? !!(await Application.exists({ job: job._id, applicant: req.user._id }))
+      : false;
 
     res.json(jobData);
   } catch (error) {
@@ -431,6 +568,7 @@ module.exports = {
   getJobs,
   getTrendingJobs,
   getJobCountsByCountry,
+  getCountryList,
   getRecentJobs,
   getJobById,
   getJobViews,

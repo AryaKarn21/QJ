@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, ChevronDown, LogOut, Menu, Search, User as UserIcon } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Search, User as UserIcon } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useAdminUI } from '../../context/AdminUIContext';
 import { getAdminProfile } from '../admin/adminApi/api';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 interface AdminProfile {
   name?: string;
@@ -69,13 +70,7 @@ export const Topbar: React.FC = () => {
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <ThemeToggle />
 
-        <button
-          aria-label="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-        >
-          <Bell size={18} />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-violet-500" />
-        </button>
+        <NotificationBell />
 
         <div className="relative" ref={menuRef}>
           <button

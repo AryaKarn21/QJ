@@ -1,20 +1,34 @@
 import React from 'react';
 import StarFooter from '../../assets/quickjobs.png';
-import { 
-  Home, 
-  User, 
-  BriefcaseIcon, 
-  Linkedin, 
-  Facebook, 
-  Twitter, 
-  Mail, 
+import {
+  Home,
+  User,
+  BriefcaseIcon,
+  Linkedin,
+  Facebook,
+  Mail,
   ArrowRight,
   ShieldCheck,
   FileText,
   HelpCircle
 } from 'lucide-react';
+
+// lucide-react has no WhatsApp glyph, so it's a small inline brand SVG
+// sized/styled to match the other footer social icons.
+const WhatsappIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.79.47 3.47 1.29 4.92L2 22l5.29-1.38a9.9 9.9 0 0 0 4.75 1.21h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2Zm5.8 14.02c-.24.68-1.4 1.3-1.93 1.36-.5.06-1.13.08-1.83-.11-.42-.12-.96-.3-1.65-.6-2.9-1.25-4.79-4.17-4.94-4.36-.15-.2-1.18-1.56-1.18-2.98 0-1.41.74-2.11 1-2.4.26-.28.57-.35.76-.35.19 0 .38 0 .55.01.18.01.41-.07.64.49.24.57.81 1.98.88 2.12.07.15.11.32.02.51-.09.19-.14.31-.28.48-.14.17-.29.37-.42.5-.14.14-.28.29-.12.57.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.61-.07.17-.2.72-.84.91-1.13.19-.28.38-.24.63-.14.26.09 1.65.78 1.94.92.28.14.47.21.53.33.07.12.07.68-.17 1.36Z" />
+  </svg>
+);
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { FooterTestimonials } from './FooterTestimonials';
 
 interface DecodedToken {
   id: string;
@@ -85,7 +99,7 @@ const Footer: React.FC = () => {
             {/* Social Icons */}
             <div className="mt-6 flex items-center space-x-3">
               <a
-                href="#"
+                href="https://www.linkedin.com/company/quickjobsservices/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
@@ -94,7 +108,7 @@ const Footer: React.FC = () => {
                 <Linkedin size={18} />
               </a>
               <a
-                href="#"
+                href="https://www.facebook.com/share/1HvvtE1VLv/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -103,13 +117,13 @@ const Footer: React.FC = () => {
                 <Facebook size={18} />
               </a>
               <a
-                href="#"
+                href="https://web.whatsapp.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Twitter"
+                aria-label="WhatsApp"
                 className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition-all duration-200"
               >
-                <Twitter size={18} />
+                <WhatsappIcon size={18} />
               </a>
             </div>
           </div>
@@ -264,9 +278,14 @@ const Footer: React.FC = () => {
 
         </div>
 
+        {/* Renders nothing until a real testimonial has been published
+            (Admin > Content > Testimonials), same as the homepage's
+            Testimonials.tsx. Sits above the copyright bar, on purpose. */}
+        <FooterTestimonials />
+
         {/* Bottom Bar & Legal Support Links */}
         <div className="mt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
-          
+
           <p>© {new Date().getFullYear()} Star Euro Group. All rights reserved.</p>
 
           <div className="flex flex-wrap items-center gap-6">

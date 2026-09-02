@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-toastify';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import {
@@ -26,7 +27,6 @@ import {
   CareerTip,
   CmsGenericPage,
   Faq,
-  HomepageContentAdmin,
   adminDeleteBlog,
   createCareerTip,
   createCmsGenericPage,
@@ -404,7 +404,12 @@ function PagesTab() {
         await updateCmsGenericPage(editingId, form);
       }
       queryClient.invalidateQueries({ queryKey: ['cmsPages'] });
+      toast.success('Page saved.');
       closeDrawer();
+    } catch (err) {
+      console.error('Error saving CMS page:', err);
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Failed to save page. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -710,7 +715,12 @@ function FaqDrawer({
       } else {
         await createFaq(payload);
       }
+      toast.success('FAQ saved.');
       onSaved();
+    } catch (err) {
+      console.error('Error saving FAQ:', err);
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Failed to save FAQ. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -897,7 +907,12 @@ function CareerTipDrawer({
       } else {
         await createCareerTip(payload);
       }
+      toast.success('Career tip saved.');
       onSaved();
+    } catch (err) {
+      console.error('Error saving career tip:', err);
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Failed to save career tip. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -981,12 +996,21 @@ function LegalTab() {
     try {
       await saveCmsPage(slug, { title, content });
       setSavedAt(new Date());
+      toast.success(`${LEGAL_PAGE_LABELS[slug]} saved.`);
       // Without this, `data` (and its `isDraftPlaceholder: true`) stayed
       // exactly what it was on first load — the "This page hasn't been
       // created yet" banner never went away after a successful save, and
       // a follow-up edit could look like the first one never took, even
       // though the backend had already written it correctly.
       queryClient.invalidateQueries({ queryKey: ['cmsPage', slug] });
+    } catch (err) {
+      // Previously there was no catch at all — a failed save just quietly
+      // re-enabled the button with zero indication anything went wrong,
+      // which is exactly what "I saved it and it's gone" looks like from
+      // the admin's side.
+      console.error('Error saving legal page:', err);
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -1087,7 +1111,16 @@ function HomepageTab() {
 
   useEffect(() => {
     if (!data) return;
-    const next: HomepageContentAdmin = {
+    // No explicit `: HomepageContentAdmin` annotation here on purpose —
+    // that type's hero/cta are optional (`?:`, matching the raw API
+    // response, which may legitimately omit them before anything's ever
+    // been saved), but this spread always fully populates both from
+    // EMPTY_HOMEPAGE_FORM's defaults. Annotating `next` with the looser
+    // optional type re-introduced an `| undefined` that could never
+    // actually occur here, which is exactly what made this a
+    // longstanding tsc error (setForm expects the fully-populated shape
+    // form's own useState default has, not the optional API shape).
+    const next = {
       isPublished: !!data.isPublished,
       hero: { ...EMPTY_HOMEPAGE_FORM.hero, ...data.hero },
       cta: { ...EMPTY_HOMEPAGE_FORM.cta, ...data.cta },
@@ -1106,7 +1139,12 @@ function HomepageTab() {
       };
       await saveHomepageContent({ isPublished: form.isPublished, hero, cta: form.cta });
       setSavedAt(new Date());
+      toast.success('Homepage content saved.');
       queryClient.invalidateQueries({ queryKey: ['homepageContentAdmin'] });
+    } catch (err) {
+      console.error('Error saving homepage content:', err);
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }

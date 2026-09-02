@@ -158,6 +158,15 @@ export interface CompanyAbout {
   address?: string;
   establishedDate?: string;
   companyLogo?: string;
+  // Phase 3 additions — same public snapshot (utils/userDisplay.js's
+  // buildAuthorSnapshot), just newly surfaced fields.
+  coverPhoto?: string;
+  headline?: string; // company tagline
+  mission?: string;
+  culture?: string;
+  companyLocations?: string[];
+  companyBenefits?: string[];
+  socialLinks?: { linkedin?: string; twitter?: string; github?: string; website?: string };
 }
 
 export const fetchCompanyAbout = async (companyId: string): Promise<CompanyAbout> => {

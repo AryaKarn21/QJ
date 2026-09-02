@@ -67,21 +67,26 @@ const UserSavedJobs = () => {
     <div className="min-h-screen overflow-auto bg-gray-50 p-6" style={{ maxHeight: 'calc(100vh - 50px)' }}>
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between items-center mb-6">
+          {/* flex-col below sm — a fixed w-64 search input plus a select
+              plus the heading couldn't fit one non-wrapping row at narrow
+              widths (same class of overflow/clipping bug fixed elsewhere
+              in this pass: BlogList.tsx's header, jobListing.tsx's
+              results bar). */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
             <h1 className="text-2xl font-bold">My Bookmark</h1>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-4">
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search jobs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border rounded-lg w-64"
+                  className="pl-10 pr-4 py-2 border rounded-lg w-full sm:w-64"
                 />
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               </div>
               <select
-                className="px-4 py-2 border rounded-lg"
+                className="px-4 py-2 border rounded-lg w-full sm:w-auto"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
               >

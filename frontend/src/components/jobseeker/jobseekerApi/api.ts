@@ -74,6 +74,25 @@ interface FetchJobsParams {
   location?: string;
   jobType?: string;
   level?: string;
+  // Phase 5 additions — all optional, all backed by real Job fields
+  // (workMode/salaryMin/salaryMax/requiredSkills from Phase 1). Sorting
+  // moved server-side (see jobController.js's SORT_OPTIONS) since sorting
+  // only the current page client-side, after pagination, silently broke
+  // "Newest"/"Salary" across more than one page.
+  workMode?: string;
+  minSalary?: number | string;
+  maxSalary?: number | string;
+  skills?: string;
+  datePosted?: '24h' | '7d' | '30d' | '';
+  sortBy?: 'newest' | 'oldest' | 'salaryHigh' | 'salaryLow' | 'relevance';
+  // Naukri-style filter additions — company/industry resolve against the
+  // Employer, education/experience against the job's own structured
+  // fields (see jobController.js's getJobs for the exact match rules).
+  company?: string;
+  industry?: string;
+  education?: string;
+  minExperience?: number | string;
+  maxExperience?: number | string;
 }
 
 export const getStats = async () => {
@@ -89,6 +108,17 @@ export const fetchJobs = async ({
   location = '',
   jobType = '',
   level = '',
+  workMode = '',
+  minSalary,
+  maxSalary,
+  skills = '',
+  datePosted = '',
+  sortBy = 'newest',
+  company = '',
+  industry = '',
+  education = '',
+  minExperience,
+  maxExperience,
 }: FetchJobsParams) => {
   const response = await api.get('/api/jobs', {
     params: {
@@ -98,6 +128,17 @@ export const fetchJobs = async ({
       location,
       jobtype: jobType,
       level,
+      workMode,
+      minSalary,
+      maxSalary,
+      skills,
+      datePosted,
+      sortBy,
+      company,
+      industry,
+      education,
+      minExperience,
+      maxExperience,
     },
   });
   return response.data;

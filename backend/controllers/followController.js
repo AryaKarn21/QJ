@@ -63,6 +63,11 @@ const PUBLIC_PROFILE_FIELDS = {
   companySize: 1,
   address: 1,
   establishedDate: 1,
+  coverPhoto: 1,
+  mission: 1,
+  culture: 1,
+  companyLocations: 1,
+  companyBenefits: 1,
   // Recruiter/mentor headline-building fields
   designation: 1,
   companyName: 1,

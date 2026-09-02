@@ -94,6 +94,11 @@ export interface AuthorSnapshot {
   companySize?: string;
   address?: string;
   establishedDate?: string | null;
+  // Company Profile page fields (Phase 3) — same endpoint, employer-only.
+  mission?: string;
+  culture?: string;
+  companyLocations?: string[];
+  companyBenefits?: string[];
   // QuickJobs career/hiring status — null when the owner set visibility
   // to "private" and the viewer isn't them, or "network" and the viewer
   // isn't an accepted connection (see followController.js's

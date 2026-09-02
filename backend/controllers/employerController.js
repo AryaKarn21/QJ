@@ -60,6 +60,12 @@ const updateEmployerProfile = async (req, res) => {
   const {
       name, industryType, address, telephone,
       panNumber, companySize, establishedDate, description, website,
+      // `headline` (base User field) doubles as the company tagline shown
+      // on the Company Profile page — reused rather than adding a
+      // duplicate field. `mission`/`culture`/`companyLocations`/
+      // `companyBenefits` are genuinely new (models/Employer.js).
+      headline, mission, culture, companyLocations, companyBenefits,
+      socialLinks,
     } = req.body;
 
     if (name) employer.name = name;
@@ -71,6 +77,34 @@ const updateEmployerProfile = async (req, res) => {
     if (establishedDate) employer.establishedDate = establishedDate;
     if (description) employer.description = description;
     if (website) employer.website = website;
+    if (headline !== undefined) employer.headline = headline;
+    if (mission !== undefined) employer.mission = mission;
+    if (culture !== undefined) employer.culture = culture;
+    // This endpoint is a multipart/form-data submission (it also carries
+    // the logo/cover file uploads below), so array/object fields arrive
+    // as strings, not real arrays/objects — same comma-separated-string
+    // convention BlogCreate.tsx already uses for tags, and a JSON string
+    // for the one nested object (socialLinks), parsed defensively so a
+    // malformed value never 500s the whole request.
+    if (companyLocations !== undefined) {
+      employer.companyLocations = Array.isArray(companyLocations)
+        ? companyLocations
+        : String(companyLocations).split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    if (companyBenefits !== undefined) {
+      employer.companyBenefits = Array.isArray(companyBenefits)
+        ? companyBenefits
+        : String(companyBenefits).split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    if (socialLinks !== undefined) {
+      const parsed = typeof socialLinks === "string" ? (() => { try { return JSON.parse(socialLinks); } catch { return null; } })() : socialLinks;
+      if (parsed && typeof parsed === "object") {
+        // Merge rather than replace so updating just `linkedin` doesn't
+        // wipe out `twitter`/`github`/`website` the employer already had.
+        const current = employer.socialLinks?.toObject?.() ?? employer.socialLinks ?? {};
+        employer.socialLinks = { ...current, ...parsed };
+      }
+    }
 
     // Handle companyLogo upload
     if (req.files?.companyLogo?.[0]) {
@@ -112,6 +146,36 @@ const updateEmployerProfile = async (req, res) => {
 };
 
 
+// Builds the legacy free-text `salary`/`experience` strings from the new
+// structured min/max fields (see models/Job.js) so every existing reader
+// of job.salary/job.experience (dashboard cards, admin table, job cards,
+// etc.) keeps working even when a job is created/edited through the new
+// structured fields instead of an employer typing a free-text string by
+// hand. An explicitly-provided `salary`/`experience` string always wins.
+const deriveSalaryString = ({ salary, salaryMin, salaryMax, currency, salaryPeriod }) => {
+  if (salary) return salary;
+  if (salaryMin === undefined && salaryMax === undefined) return salary;
+  const cur = currency || "NPR";
+  const period = salaryPeriod || "Yearly";
+  const min = salaryMin !== undefined && salaryMin !== "" ? Number(salaryMin) : undefined;
+  const max = salaryMax !== undefined && salaryMax !== "" ? Number(salaryMax) : undefined;
+  if (min === undefined && max === undefined) return salary;
+  const range = min !== undefined && max !== undefined && min !== max
+    ? `${min.toLocaleString()} - ${max.toLocaleString()}`
+    : (min ?? max).toLocaleString();
+  return `${cur} ${range} / ${period}`;
+};
+
+const deriveExperienceString = ({ experience, minExperience, maxExperience }) => {
+  if (experience) return experience;
+  if (minExperience === undefined && maxExperience === undefined) return experience;
+  const min = minExperience !== undefined && minExperience !== "" ? Number(minExperience) : undefined;
+  const max = maxExperience !== undefined && maxExperience !== "" ? Number(maxExperience) : undefined;
+  if (min === undefined && max === undefined) return experience;
+  if (min !== undefined && max !== undefined && min !== max) return `${min}-${max} years`;
+  return `${min ?? max}+ years`;
+};
+
 // Create Job
 const createJob = async (req, res) => {
   const {
@@ -128,6 +192,25 @@ const createJob = async (req, res) => {
     istrending,
     status,
     description,
+    // Structured fields (all optional — see models/Job.js).
+    department,
+    workMode,
+    minExperience,
+    maxExperience,
+    salaryMin,
+    salaryMax,
+    salaryPeriod,
+    currency,
+    overview,
+    responsibilities,
+    requirements,
+    requiredSkills,
+    preferredSkills,
+    education,
+    benefits,
+    perks,
+    workingHours,
+    companyOverride,
   } = req.body;
 
   const employerId = req.user.id;
@@ -156,32 +239,62 @@ const createJob = async (req, res) => {
       }
     }
 
+    // Naukri-style: every real submission is reviewed before going live —
+    // an employer can never self-approve straight to Active. The one
+    // status an employer CAN choose at creation is "Draft" (Phase 4's
+    // posting stepper's "Save Draft" action), which never enters the
+    // admin queue at all; anything else they send is ignored in favor of
+    // "Pending".
+    const initialStatus = status === "Draft" ? "Draft" : "Pending";
+
     const job = new Job({
       title,
       country,
       location,
       jobtype,
-      salary,
-      experience,
+      salary: deriveSalaryString({ salary, salaryMin, salaryMax, currency, salaryPeriod }),
+      experience: deriveExperienceString({ experience, minExperience, maxExperience }),
       jobcategory,
       level,
       deadline,
       openings,
       istrending: istrending || false,
-      status: "Pending", // Naukri-style: all new postings are reviewed before going live
+      status: initialStatus,
       description,
+      department,
+      workMode,
+      minExperience,
+      maxExperience,
+      salaryMin,
+      salaryMax,
+      salaryPeriod,
+      currency,
+      overview,
+      responsibilities,
+      requirements,
+      requiredSkills,
+      preferredSkills,
+      education,
+      benefits,
+      perks,
+      workingHours,
+      companyOverride,
       employer: employerId,
     });
 
     await job.save();
 
-    // Notify admins (and superadmins) about the new job posting.
-    await sendNotification.notifyAllAdmins({
-      type: "job_post",
-      message: `Employer "${employer.name}" posted a new job: "${title}"`,
-      relatedJob: job._id,
-      link: "/admin/jobs",
-    });
+    // A draft was never submitted — admins have nothing to review yet,
+    // so don't page them until it's actually published (editJob's
+    // Draft -> Pending transition below sends this same notification).
+    if (initialStatus !== "Draft") {
+      await sendNotification.notifyAllAdmins({
+        type: "job_post",
+        message: `Employer "${employer.name}" posted a new job: "${title}"`,
+        relatedJob: job._id,
+        link: "/admin/jobs",
+      });
+    }
 
     res.status(201).json(job);
   } catch (error) {
@@ -241,8 +354,11 @@ const editJob = async (req, res) => {
 
     // If the deadline is being changed, it must not be set into the past —
     // same rule as job creation, so an edit can't silently create an
-    // already-expired listing.
-    if (req.body.deadline !== undefined) {
+    // already-expired listing. Checked only when a real value is sent —
+    // a Draft (Phase 4) can legitimately clear/leave this blank, and the
+    // schema's own requiredUnlessDraft validator is what catches a blank
+    // deadline on a non-draft save, with its own clear message.
+    if (req.body.deadline) {
       const deadlineDate = new Date(req.body.deadline);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -269,6 +385,25 @@ const updatableFields = [
   "openings",
   "istrending",
   "description",
+  // Structured fields (all optional — see models/Job.js).
+  "department",
+  "workMode",
+  "minExperience",
+  "maxExperience",
+  "salaryMin",
+  "salaryMax",
+  "salaryPeriod",
+  "currency",
+  "overview",
+  "responsibilities",
+  "requirements",
+  "requiredSkills",
+  "preferredSkills",
+  "education",
+  "benefits",
+  "perks",
+  "workingHours",
+  "companyOverride",
 ];
 
 updatableFields.forEach((field) => {
@@ -277,19 +412,61 @@ updatableFields.forEach((field) => {
   }
 });
 
+// Keep the legacy `salary`/`experience` strings in sync when the
+// structured fields changed but no explicit string was sent — same
+// derivation createJob uses, so a job edited only through the structured
+// fields doesn't leave stale text in job.salary/job.experience.
+if (req.body.salary === undefined && (req.body.salaryMin !== undefined || req.body.salaryMax !== undefined)) {
+  job.salary = deriveSalaryString({
+    salaryMin: job.salaryMin,
+    salaryMax: job.salaryMax,
+    currency: job.currency,
+    salaryPeriod: job.salaryPeriod,
+  });
+}
+if (req.body.experience === undefined && (req.body.minExperience !== undefined || req.body.maxExperience !== undefined)) {
+  job.experience = deriveExperienceString({
+    minExperience: job.minExperience,
+    maxExperience: job.maxExperience,
+  });
+}
+
 // Status is restricted: an employer can pause/close/reopen a job only
 // AFTER it has been approved at least once. They can never self-approve
-// (Pending -> Active) or reverse an admin rejection.
+// (Pending -> Active) or reverse an admin rejection. Two Draft-only
+// (Phase 4) exceptions on top of that existing rule: a draft can be
+// re-saved as "Draft" (still editing) or "Pending" (Publish — submitted
+// for admin review, same as a brand-new job).
+let publishedFromDraft = false;
 if (req.body.status !== undefined) {
   const alreadyApproved = job.status === "Active" || job.status === "Inactive";
+  const isDraft = job.status === "Draft";
   const requested = req.body.status;
   if (alreadyApproved && ["Active", "Inactive", "Closed"].includes(requested)) {
     job.status = requested;
+  } else if (isDraft && requested === "Draft") {
+    // no-op — still a draft
+  } else if (isDraft && requested === "Pending") {
+    job.status = "Pending";
+    publishedFromDraft = true;
   } else {
     return res.status(403).json({ message: "Only an admin can approve or reject a job." });
   }
 }
     await job.save();
+
+    // A draft being published (Draft -> Pending) needs the same admin
+    // notification createJob sends for a brand-new submission — nothing
+    // paged them when it was first saved as a draft.
+    if (publishedFromDraft) {
+      const employer = await User.findById(employerId);
+      await sendNotification.notifyAllAdmins({
+        type: "job_post",
+        message: `Employer "${employer.name}" posted a new job: "${job.title}"`,
+        relatedJob: job._id,
+        link: "/admin/jobs",
+      });
+    }
 
     // Send notifications if status changed
     if (req.body.status && req.body.status !== previousStatus) {

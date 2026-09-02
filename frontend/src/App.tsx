@@ -34,6 +34,8 @@ import ApplicationManagement from "./components/admin/applications/ApplicationMa
 import CmsHub from "./components/admin/cms/CmsHub";
 import AdminNotificationCenter from "./components/admin/AdminNotificationCenter";
 import AdvertisementManagement from "./components/admin/AdvertisementManagement";
+import TestimonialManagement from "./components/admin/TestimonialManagement";
+import BlogCategoryManagement from "./components/admin/BlogCategoryManagement";
 import AdminSubscriptions from "./components/admin/AdminSubscriptions";
 import AdminSubscriptionDetail from "./components/admin/AdminSubscriptionDetail";
 import UserManagement from './components/admin/UserManagement';
@@ -70,7 +72,7 @@ import { CmsPageView } from './components/legal/CmsPageView';
 import FaqPage from './components/content/FaqPage';
 import CareerTips from './components/content/CareerTips';
 import CareerTipDetail from './components/content/CareerTipDetail';
-import { BlogList, BlogDetail, BlogCreate, BlogEdit } from './components/blog';
+import { BlogList, BlogDetail, BlogCreate, BlogEdit, BlogCategoryPage } from './components/blog';
 import OAuthCallback from './components/auth/OAuthCallback';
 import { SocketProvider } from './context/SocketContext';
 import { FollowProvider } from './context/FollowContext';
@@ -174,6 +176,7 @@ function AppWrapper() {
               </ProtectedRoute>
             }
           />
+          <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
           <Route path="/blog/:id" element={<BlogDetail />} />
 
           {/* OAuth Callback */}
@@ -302,6 +305,8 @@ function AppWrapper() {
             <Route path="revenue" element={<RevenueManagement />} />
             <Route path="plans" element={<PlanManagement />} />
             <Route path="advertisements" element={<AdvertisementManagement />} />
+            <Route path="testimonials" element={<TestimonialManagement />} />
+            <Route path="blog-categories" element={<BlogCategoryManagement />} />
             <Route path="subscriptions" element={<AdminSubscriptions />} />
             <Route path="subscriptions/:id" element={<AdminSubscriptionDetail />} />
             <Route
@@ -344,7 +349,18 @@ function AppWrapper() {
 
 function App() {
   return (
-    <Router>
+    <Router
+      // Opts into React Router v7's upcoming behavior early, which is what
+      // the "Future Flag Warning" in the console was asking for. Confirmed
+      // safe for this app: react-router-dom is v6.22 (both flags are
+      // supported here); v7_startTransition just wraps navigation state
+      // updates in React.startTransition, which every route in this app
+      // already tolerates; and v7_relativeSplatPath only changes relative-
+      // path resolution inside splat ("*") routes — this app has none
+      // (every nested route tree, including /admin's, uses plain named
+      // segments, not a "*" catch-all), so it's a no-op here either way.
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <SocketProvider>
         <FollowProvider>
           <AppWrapper />

@@ -1,41 +1,54 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Briefcase, DollarSign, ArrowRight, TrendingUp, SearchX } from 'lucide-react';
-import { fetchTrendingJobs, Job } from '../jobseekerApi/api';
+import { MapPin, Briefcase, DollarSign, ArrowRight, Sparkles } from 'lucide-react';
+import { fetchJobRecommendations } from '../../../api/communityAiApi';
+import { useCurrentUser } from '../../../utils/currentUser';
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
-// A small, deterministic set of accent colors for the logo-fallback
-// square, so cards without a real company logo still look varied and
-// professional instead of every one being the same gray box.
-const LOGO_ACCENTS = [
-  'bg-slate-700', 'bg-violet-500', 'bg-emerald-500', 'bg-blue-500',
-  'bg-rose-500', 'bg-amber-500',
-];
+// Same fallback-accent trick TrendingJobs.tsx uses for cards without a logo.
+const LOGO_ACCENTS = ['bg-slate-700', 'bg-violet-500', 'bg-emerald-500', 'bg-blue-500', 'bg-rose-500', 'bg-amber-500'];
 const accentFor = (id: string) => LOGO_ACCENTS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % LOGO_ACCENTS.length];
 
-const TrendingJobs: React.FC = () => {
+/**
+ * "Recommended For You" — this already existed as a real, working backend
+ * feature (skill-matched candidates, optionally re-ranked by Gemini when
+ * configured — see backend/controllers/communityAiController.js's
+ * getJobRecommendations) with a frontend API client already written
+ * (api/communityAiApi.ts's fetchJobRecommendations), but nothing on the
+ * site ever rendered it. This wires up that existing feature rather than
+ * building a new one. Jobseeker-only (the endpoint reads the caller's own
+ * skills), and renders nothing for anyone else or when there's nothing to
+ * recommend yet — same "no data yet means no section" convention as every
+ * other homepage section here.
+ */
+const RecommendedJobs: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, role } = useCurrentUser();
+  const enabled = isAuthenticated && role === 'jobseeker';
 
-  const { data: jobs = [], isLoading, isError } = useQuery<Job[]>({
-    queryKey: ['trendingJobs'],
-    queryFn: fetchTrendingJobs,
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['jobRecommendations'],
+    queryFn: fetchJobRecommendations,
+    enabled,
   });
 
+  if (!enabled) return null;
+  if (!isLoading && (isError || !data || data.length === 0)) return null;
+
   return (
-    <section className="bg-white py-16 sm:py-20">
+    <section className="bg-slate-50 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
 
-        {/* Section header */}
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
-              <TrendingUp size={14} /> Most In-Demand
+              <Sparkles size={14} /> Just For You
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Trending Jobs</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Recommended Jobs</h2>
             <p className="mt-1.5 text-sm text-slate-500 sm:text-base">
-              Explore the most popular job opportunities right now.
+              Matched to the skills on your profile.
             </p>
           </div>
           <button
@@ -62,45 +75,15 @@ const TrendingJobs: React.FC = () => {
               </div>
             ))}
           </div>
-        ) : isError ? (
-          <div className="bg-white/80 border border-red-100 rounded-[20px] p-12 text-center max-w-lg mx-auto shadow-sm">
-            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
-              <SearchX size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Couldn't load trending jobs</h3>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">Something went wrong on our end. Please try again.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Retry
-            </button>
-          </div>
-        ) : jobs.length === 0 ? (
-          <div className="bg-white/80 border border-slate-200/80 rounded-[20px] p-12 text-center max-w-lg mx-auto shadow-sm backdrop-blur-md">
-            <div className="w-16 h-16 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-orange-100">
-              <TrendingUp size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">No trending jobs yet</h3>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-              Jobs marked as trending by our team will show up here. In the meantime, browse everything that's open right now.
-            </p>
-            <button
-              onClick={() => navigate('/jobs')}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Browse All Jobs
-            </button>
-          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {jobs.map((job: Job) => (
+            {(data || []).slice(0, 8).map(({ job, reason }) => (
               <article
                 key={job._id}
                 className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg"
               >
                 <div>
-                  <div className="mb-4 flex items-start justify-between gap-2">
+                  <div className="mb-3 flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-3">
                       {job.employer?.companyLogo ? (
                         <img
@@ -120,10 +103,17 @@ const TrendingJobs: React.FC = () => {
                     </div>
                   </div>
 
-                  <p className="mb-4 flex items-center gap-1.5 text-sm text-slate-500">
+                  <p className="mb-2 flex items-center gap-1.5 text-sm text-slate-500">
                     <MapPin size={14} className="shrink-0 text-slate-400" />
                     <span className="truncate">{job.location}</span>
                   </p>
+
+                  {reason && (
+                    <p className="mb-2 flex items-start gap-1.5 text-xs text-orange-600">
+                      <Sparkles size={12} className="mt-0.5 shrink-0" />
+                      <span className="line-clamp-2">{reason}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
@@ -156,4 +146,4 @@ const TrendingJobs: React.FC = () => {
   );
 };
 
-export default TrendingJobs;
+export default RecommendedJobs;

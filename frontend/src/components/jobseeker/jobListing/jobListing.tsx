@@ -8,8 +8,10 @@ import {
   DollarSign,
   Bookmark,
   CalendarClock,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
-import { fetchJobs, fetchSavedJobs, toggleSaveJob, fetchJobCountsByCountry } from '../jobseekerApi/api';
+import { fetchJobs, fetchSavedJobs, toggleSaveJob, fetchJobCountsByCountry, type Job } from '../jobseekerApi/api';
 import { AdBanner } from '../../common/AdBanner';
 
 
@@ -44,14 +46,30 @@ const AllJobListing = () => {
   const [pendingSearchQuery, setPendingSearchQuery] = useState(initialQuery);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [pendingLocation, setPendingLocation] = useState('');
+  const [pendingSkills, setPendingSkills] = useState('');
+  const [pendingCompany, setPendingCompany] = useState('');
   const [filters, setFilters] = useState({
     location: '',
     jobType: '',
     datePosted: '',
     level: '',
+    workMode: '',
+    minSalary: '',
+    maxSalary: '',
+    skills: '',
+    company: '',
+    industry: '',
+    education: '',
+    minExperience: '',
+    maxExperience: '',
   });
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'salaryHigh' | 'salaryLow' | 'relevance'>('newest');
   const [page, setPage] = useState(1);
+  // The filter panel used to be `hidden md:block` with no mobile
+  // equivalent at all — every filter (not just the ones added in Phase 5)
+  // was completely unreachable below the md breakpoint. This makes it a
+  // togglable panel on mobile instead of just disappearing.
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [jobCounts, setJobCounts] = useState<Array<{country: string, jobCount: number}>>([]);
   const limit = 9;
 
@@ -83,7 +101,7 @@ const AllJobListing = () => {
   }, []);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['jobs', page, searchQuery, filters],
+    queryKey: ['jobs', page, searchQuery, filters, sortBy],
     queryFn: () =>
       fetchJobs({
         page,
@@ -92,6 +110,17 @@ const AllJobListing = () => {
         location: filters.location,
         jobType: filters.jobType,
         level: filters.level,
+        workMode: filters.workMode,
+        minSalary: filters.minSalary || undefined,
+        maxSalary: filters.maxSalary || undefined,
+        skills: filters.skills,
+        datePosted: filters.datePosted as '24h' | '7d' | '30d' | '',
+        sortBy,
+        company: filters.company,
+        industry: filters.industry,
+        education: filters.education,
+        minExperience: filters.minExperience || undefined,
+        maxExperience: filters.maxExperience || undefined,
       }),
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
@@ -108,19 +137,27 @@ const AllJobListing = () => {
     }
   };
 
-  // Apply both search query and location filters at once
+  // Apply both search query and location/skills/company filters at once
   const applyFilters = () => {
     setFilters((prev) => ({
       ...prev,
       location: pendingLocation.trim(),
+      skills: pendingSkills.trim(),
+      company: pendingCompany.trim(),
     }));
     setSearchQuery(pendingSearchQuery.trim());
     setPage(1);
   };
 
+  const hasActiveFilters = Boolean(
+    searchQuery || filters.location || filters.skills || filters.workMode || filters.minSalary ||
+    filters.maxSalary || filters.datePosted || filters.company || filters.industry || filters.education ||
+    filters.minExperience || filters.maxExperience
+  );
+
   // Clear or apply filters depending on current state
   const handleSearchOrClear = () => {
-    if (searchQuery || filters.location) {
+    if (hasActiveFilters) {
       // Clear all filters
       setSearchQuery('');
       setPendingSearchQuery('');
@@ -129,10 +166,21 @@ const AllJobListing = () => {
         jobType: '',
         datePosted: '',
         level: '',
+        workMode: '',
+        minSalary: '',
+        maxSalary: '',
+        skills: '',
+        company: '',
+        industry: '',
+        education: '',
+        minExperience: '',
+        maxExperience: '',
       });
       setPendingLocation('');
+      setPendingSkills('');
+      setPendingCompany('');
       setPage(1);
-    } else if (pendingSearchQuery.trim() || pendingLocation.trim()) {
+    } else if (pendingSearchQuery.trim() || pendingLocation.trim() || pendingSkills.trim() || pendingCompany.trim()) {
       applyFilters();
     }
   };
@@ -144,19 +192,15 @@ const AllJobListing = () => {
     }
   };
 
-  const jobs = data?.jobs ?? [];
+  // Sorting now happens server-side (jobController.js's SORT_OPTIONS) on
+  // the structured salaryMin/salaryMax fields, across the whole result
+  // set before pagination — sorting only the current page client-side, on
+  // `parseInt(job.salary)` (a free-text string parseInt can't meaningfully
+  // read), used to silently do nothing for "Salary" and only reorder one
+  // page at a time for "Newest"/"Oldest".
+  const sortedJobs: Job[] = data?.jobs ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
-
-  const sortedJobs = [...jobs].sort((a, b) => {
-    if (sortBy === 'newest')
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    if (sortBy === 'oldest')
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    if (sortBy === 'salaryHigh') return parseInt(b.salary) - parseInt(a.salary);
-    if (sortBy === 'salaryLow') return parseInt(a.salary) - parseInt(b.salary);
-    return 0;
-  });
 
   if (isLoading) return <div className="p-8 text-center">Loading jobs...</div>;
   if (isError)
@@ -188,21 +232,41 @@ const AllJobListing = () => {
             </div>
             <button
               onClick={handleSearchOrClear}
-              className={`px-4 py-2 text-sm rounded-md focus:outline-none focus:ring-2 ${searchQuery || filters.location
+              className={`px-4 py-2 text-sm rounded-md focus:outline-none focus:ring-2 ${hasActiveFilters
                   ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                   : 'bg-primary text-white hover:bg-primary/90'
                 }`}
             >
-              {searchQuery || filters.location ? 'Clear' : 'Search'}
+              {hasActiveFilters ? 'Clear' : 'Search'}
+            </button>
+            {/* The filter panel below is `hidden md:block` with no other
+                way to reach it below md — this is the mobile entry point,
+                shown only under md where that panel would otherwise be
+                completely inaccessible. */}
+            <button
+              onClick={() => setShowMobileFilters((s) => !s)}
+              className="md:hidden flex items-center gap-1.5 px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 relative"
+            >
+              <SlidersHorizontal size={16} />
+              Filters
+              {hasActiveFilters && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
 
-        <div className="flex md:gap-8">
-          {/* Filters */}
-          <div className="hidden md:block w-64 rounded-xl bg-gray-100 p-6 space-y-6">
+        {/* flex-col below md: with the filter panel now conditionally
+            visible on mobile (not just hidden), this needs to actually
+            stack the two columns instead of squeezing them into the same
+            row until md — a real desktop-to-mobile layout switch, not a
+            shrunk desktop layout. */}
+        <div className="flex flex-col md:flex-row md:gap-8">
+          {/* Filters — always visible at md+; below md it's a toggled
+              panel (see the "Filters" button above) instead of simply
+              disappearing with no way back in. */}
+          <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block w-full md:w-64 rounded-xl bg-gray-100 p-6 space-y-6 mb-6 md:mb-0`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Filter</h2>
+              <div className="flex items-center gap-3">
               <button
                 onClick={() => {
                   setFilters({
@@ -210,8 +274,19 @@ const AllJobListing = () => {
                     jobType: '',
                     datePosted: '',
                     level: '',
+                    workMode: '',
+                    minSalary: '',
+                    maxSalary: '',
+                    skills: '',
+                    company: '',
+                    industry: '',
+                    education: '',
+                    minExperience: '',
+                    maxExperience: '',
                   });
                   setPendingLocation('');
+                  setPendingSkills('');
+                  setPendingCompany('');
                   setSearchQuery('');
                   setPendingSearchQuery('');
                   setPage(1);
@@ -220,6 +295,14 @@ const AllJobListing = () => {
               >
                 Clear All
               </button>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                aria-label="Close filters"
+                className="md:hidden text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+              </div>
             </div>
 
             <div>
@@ -242,6 +325,58 @@ const AllJobListing = () => {
             </div>
 
             <div>
+              <label className="block text-sm font-medium mb-1">Skills</label>
+              <input
+                type="text"
+                placeholder="e.g. React, SQL"
+                className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pendingSkills}
+                onChange={(e) => setPendingSkills(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Company</label>
+              <input
+                type="text"
+                placeholder="e.g. Acme Inc."
+                className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pendingCompany}
+                onChange={(e) => setPendingCompany(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Industry</label>
+              <input
+                type="text"
+                placeholder="e.g. Information Technology"
+                className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={filters.industry}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, industry: e.target.value }));
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Education</label>
+              <input
+                type="text"
+                placeholder="e.g. Bachelor's degree"
+                className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={filters.education}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, education: e.target.value }));
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium mb-1">Job Type</label>
               <select
                 value={filters.jobType}
@@ -257,6 +392,99 @@ const AllJobListing = () => {
                 <option value="Contract">Contract</option>
                 <option value="Hourly">Hourly</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Work Mode</label>
+              <select
+                value={filters.workMode}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, workMode: e.target.value }));
+                  setPage(1);
+                }}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-gray-700"
+              >
+                <option value="">All Modes</option>
+                <option value="On-site">On-site</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Remote">Remote</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Date Posted</label>
+              <select
+                value={filters.datePosted}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, datePosted: e.target.value }));
+                  setPage(1);
+                }}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-gray-700"
+              >
+                <option value="">Any time</option>
+                <option value="24h">Past 24 hours</option>
+                <option value="7d">Past week</option>
+                <option value="30d">Past month</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Salary Range</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Min"
+                  className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={filters.minSalary}
+                  onChange={(e) => {
+                    setFilters((prev) => ({ ...prev, minSalary: e.target.value }));
+                    setPage(1);
+                  }}
+                />
+                <span className="text-gray-400 text-sm">–</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Max"
+                  className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={filters.maxSalary}
+                  onChange={(e) => {
+                    setFilters((prev) => ({ ...prev, maxSalary: e.target.value }));
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">Only matches jobs with a structured salary range set.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Experience (years)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Min"
+                  className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={filters.minExperience}
+                  onChange={(e) => {
+                    setFilters((prev) => ({ ...prev, minExperience: e.target.value }));
+                    setPage(1);
+                  }}
+                />
+                <span className="text-gray-400 text-sm">–</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Max"
+                  className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={filters.maxExperience}
+                  onChange={(e) => {
+                    setFilters((prev) => ({ ...prev, maxExperience: e.target.value }));
+                    setPage(1);
+                  }}
+                />
+              </div>
             </div>
 
             <div>
@@ -284,8 +512,12 @@ const AllJobListing = () => {
           {/* Job Cards */}
 
           <div className="flex-1 pr-4 md:pr-0">
-            <div className="flex justify-between items-center mb-4">
-              <div className="w-full">
+            {/* flex-col below sm — a fixed-width sort <select> squeezed
+                against a `w-full` results-count block on a single
+                non-wrapping row could overflow/clip at narrow widths,
+                same class of bug as BlogList.tsx's header. */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
+              <div className="w-full sm:min-w-0 sm:flex-1">
                 <p className="text-gray-600 text-lg">Showing {sortedJobs.length} jobs</p>
                 {jobCounts.length > 0 && (
                   <div className="flex flex-wrap gap-2 sm:gap-4 md:gap-6 mt-1 overflow-x-auto pb-2 -mx-2 px-2">
@@ -304,9 +536,10 @@ const AllJobListing = () => {
               </div>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-gray-700"
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="w-full sm:w-auto shrink-0 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-gray-700"
               >
+                {searchQuery && <option value="relevance">Relevance</option>}
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="salaryHigh">Salary: High to Low</option>

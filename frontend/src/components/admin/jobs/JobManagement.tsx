@@ -14,6 +14,7 @@ import {
   Job,
 } from '../adminApi/api';
 import { CheckCircle2, XCircle, Trash2, Briefcase, Clock, Star } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const STATUS_FILTER_CONFIG = [
   {
@@ -73,18 +74,30 @@ const JobManagement: React.FC = () => {
   const activeCount = jobs.filter((j) => j.status === 'Active').length;
 
   const handleApprove = async (job: Job) => {
-    await approveJob(job._id);
-    setSelectedJob(null);
-    load(page);
+    try {
+      await approveJob(job._id);
+      toast.success(`"${job.title}" approved and is now live.`);
+      setSelectedJob(null);
+      load(page);
+    } catch (err) {
+      console.error('Failed to approve job:', err);
+      toast.error('Failed to approve job. Please try again.');
+    }
   };
 
   const handleReject = async (job: Job) => {
     if (!rejectReason.trim()) return;
-    await rejectJob(job._id, rejectReason);
-    setRejecting(false);
-    setRejectReason('');
-    setSelectedJob(null);
-    load(page);
+    try {
+      await rejectJob(job._id, rejectReason);
+      toast.success(`"${job.title}" rejected.`);
+      setRejecting(false);
+      setRejectReason('');
+      setSelectedJob(null);
+      load(page);
+    } catch (err) {
+      console.error('Failed to reject job:', err);
+      toast.error('Failed to reject job. Please try again.');
+    }
   };
 
   const handleToggleTrending = async (job: Job) => {

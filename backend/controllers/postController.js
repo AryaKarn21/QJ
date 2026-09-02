@@ -151,7 +151,12 @@ const createPost = async (req, res) => {
       hashtags,
       mentions: mentionIds,
       topics,
-      visibility: ["public", "followers", "connections"].includes(visibility) ? visibility : "public",
+      // "private" is a real, fully-enforced visibility level (see
+      // utils/postVisibility.js's canViewPost/buildVisibilityFilter,
+      // and models/Post.js's schema enum) — it was just missing from
+      // this allowlist, so selecting "Private" silently created a public
+      // post instead.
+      visibility: ["public", "followers", "connections", "private"].includes(visibility) ? visibility : "public",
       pollData,
       jobData,
       hiringData,

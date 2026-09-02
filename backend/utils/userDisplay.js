@@ -49,6 +49,14 @@ function buildAuthorSnapshot(userDoc) {
           companySize: userDoc.companySize || "",
           address: userDoc.address || "",
           establishedDate: userDoc.establishedDate || null,
+          // Company Profile page fields (Phase 3) — same "already exists
+          // on Employer.js, just wasn't surfaced through the public
+          // snapshot before" as the fields above.
+          coverPhoto: userDoc.coverPhoto || "",
+          mission: userDoc.mission || "",
+          culture: userDoc.culture || "",
+          companyLocations: userDoc.companyLocations || [],
+          companyBenefits: userDoc.companyBenefits || [],
         }
       : {}),
   };

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Layers, ArrowRight } from 'lucide-react';
+import { Layers, ArrowRight, SearchX } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-server.rupeshkumar.com.np';
 
@@ -105,9 +105,35 @@ const JobCategories = () => {
             ))}
           </div>
         ) : error ? (
-          <p className="py-10 text-center text-sm text-red-500">{error}</p>
+          <div className="bg-white border border-red-100 rounded-[20px] p-12 text-center max-w-lg mx-auto shadow-sm">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <SearchX size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Couldn't load categories</h3>
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
         ) : categories.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-400">No trending categories yet.</p>
+          <div className="bg-white border border-slate-200/80 rounded-[20px] p-12 text-center max-w-lg mx-auto shadow-sm">
+            <div className="w-16 h-16 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-orange-100">
+              <Layers size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">No categories yet</h3>
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+              Categories marked as trending by our team will show up here. Browse all open jobs in the meantime.
+            </p>
+            <button
+              onClick={() => navigate('/jobs')}
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Browse All Jobs
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
             {categories.map((category) => {

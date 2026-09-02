@@ -29,7 +29,8 @@ exports.createJobCategory = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'A category with this name already exists' });
     }
-    res.status(400).json({ error: error.message });
+    console.error('Error creating job category:', error);
+    res.status(400).json({ error: 'Failed to create category' });
   }
 };
 
@@ -39,7 +40,8 @@ exports.getJobCategories = async (req, res) => {
     const categories = await JobCategory.find();
     res.json(categories);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error listing job categories:', error);
+    res.status(500).json({ error: 'Failed to load categories' });
   }
 };
 
@@ -50,7 +52,8 @@ exports.getJobCategoryById = async (req, res) => {
     if (!category) return res.status(404).json({ error: 'Not found' });
     res.json(category);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching job category:', error);
+    res.status(500).json({ error: 'Failed to load category' });
   }
 };
 
@@ -88,7 +91,8 @@ exports.updateJobCategory = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'A category with this name already exists' });
     }
-    res.status(400).json({ error: error.message });
+    console.error('Error updating job category:', error);
+    res.status(400).json({ error: 'Failed to update category' });
   }
 };
 
@@ -116,7 +120,8 @@ exports.deleteJobCategory = async (req, res) => {
     await JobCategory.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted successfully', jobsAffected: jobCount });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error deleting job category:', error);
+    res.status(500).json({ error: 'Failed to delete category' });
   }
 };
 
@@ -137,7 +142,8 @@ exports.patchTrending = async (req, res) => {
     if (!category) return res.status(404).json({ error: 'Not found' });
     res.json(category);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error updating trending status:', error);
+    res.status(400).json({ error: 'Failed to update trending status' });
   }
 };
 
@@ -163,6 +169,7 @@ exports.getTrendingCategories = async (req, res) => {
 
     res.json(withCounts);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching trending job categories:', error);
+    res.status(500).json({ error: 'Failed to load trending categories' });
   }
 };

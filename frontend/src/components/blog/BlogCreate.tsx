@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Wand2, Plus, X } from 'lucide-react';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { toast } from 'react-toastify';
+import { Save, Wand2, Plus, X, AlertCircle } from 'lucide-react';
+import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
+// Matches the backend's actual default port (server.js: PORT || 3000, and
+// every other API file in this app — testimonialApi.ts, advertisementApi.ts,
+// etc.). This previously fell back to :8000, nothing listens there, so any
+// environment missing VITE_API_BASE_URL had every blog request silently hit
+// the wrong port instead of the real backend.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 interface BlogImage {
   url: string;
@@ -21,8 +28,26 @@ const BlogCreate: React.FC = () => {
   const [images, setImages] = useState<BlogImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatingContent, setGeneratingContent] = useState(false);
+  // Separate from `generatingContent` (the loading flag) on purpose:
+  // `generatingContent` is always false again by the time the author
+  // clicks Publish — using it at submit made `isAIGenerated` always false
+  // regardless of whether AI was actually used. This flips true once a
+  // generation succeeds and stays true even after content is hand-edited
+  // afterward — "AI was involved" isn't undone by the author polishing
+  // the wording.
+  const [hasGeneratedWithAI, setHasGeneratedWithAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  // Real, admin-managed categories (Phase 6) — this used to be a free-text
+  // input, so a category created in the admin panel could never actually
+  // be picked when writing a blog, same root cause the job posting form
+  // already had for job categories before it became a dropdown.
+  const [categories, setCategories] = useState<PublicBlogCategory[]>([]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    getActiveBlogCategories().then(setCategories).catch(() => setCategories([]));
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -31,14 +56,15 @@ const BlogCreate: React.FC = () => {
 
   const generateContent = async () => {
     if (!formData.title.trim()) {
-      alert('Please enter a title first');
+      toast.error('Please enter a title first.');
       return;
     }
 
+    setAiError(null);
     try {
       setGeneratingContent(true);
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch(`${API_BASE_URL}/api/blogs/generate-content`, {
         method: 'POST',
         headers: {
@@ -48,19 +74,25 @@ const BlogCreate: React.FC = () => {
         body: JSON.stringify({ title: formData.title }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          ...formData,
-          content: data.content,
-        });
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data) {
+        setFormData((prev) => ({ ...prev, content: data.content }));
+        setHasGeneratedWithAI(true);
+        toast.success('Content generated. Feel free to edit it before publishing.');
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to generate content');
+        // AI generation is optional — never blocks the author from writing
+        // the blog by hand. Show a clear reason (backend already sends a
+        // structured, secret-free message for both "not configured" (503)
+        // and "generation failed" (500) cases) and let them continue.
+        setAiError(
+          (data && data.message) ||
+            'AI content generation failed. You can continue editing manually.'
+        );
       }
     } catch (error) {
       console.error('Error generating content:', error);
-      alert('Failed to generate content. Please try again in a moment.');
+      setAiError('AI content generation failed. You can continue editing manually.');
     } finally {
       setGeneratingContent(false);
     }
@@ -88,7 +120,7 @@ const BlogCreate: React.FC = () => {
 
   const submitBlog = async (publish: boolean) => {
     if (!formData.title.trim() || !formData.content.trim()) {
-      alert('Title and content are required');
+      toast.error('Title and content are required.');
       return;
     }
 
@@ -104,7 +136,7 @@ const BlogCreate: React.FC = () => {
         featuredImage: formData.featuredImage.trim(),
         images: images.filter(img => img.url.trim()),
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        isAIGenerated: generatingContent,
+        isAIGenerated: hasGeneratedWithAI,
         isPublished: publish,
       };
 
@@ -119,14 +151,15 @@ const BlogCreate: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
+        toast.success(publish ? 'Blog published.' : 'Draft saved.');
         navigate(`/blog/${data.blog.slug || data.blog._id}`);
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to create blog');
+        const error = await response.json().catch(() => null);
+        toast.error(error?.message || 'Failed to create blog.');
       }
     } catch (error) {
       console.error('Error creating blog:', error);
-      alert('Failed to create blog');
+      toast.error('Failed to create blog. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -163,12 +196,18 @@ const BlogCreate: React.FC = () => {
               className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Wand2 className="h-4 w-4 mr-2" />
-              {generatingContent ? 'Generating...' : 'AI Generate'}
+              {generatingContent ? 'Generating content...' : 'AI Generate'}
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-1">
             Enter a title and click "AI Generate" to automatically create content using AI
           </p>
+          {aiError && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{aiError}</span>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -254,15 +293,24 @@ const BlogCreate: React.FC = () => {
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
               Category
             </label>
-            <input
-              type="text"
+            <select
               id="category"
               name="category"
               value={formData.category}
               onChange={handleInputChange}
-              placeholder="e.g., Career Advice"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="General">General</option>
+              {/* A blog being edited (BlogEdit.tsx) may carry a category
+                  that's since been renamed/deactivated/deleted — keep it
+                  selectable so editing never silently blanks it out. */}
+              {formData.category && formData.category !== 'General' && !categories.some((c) => c.name === formData.category) && (
+                <option value={formData.category}>{formData.category}</option>
+              )}
+              {categories.map((c) => (
+                <option key={c._id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="featuredImage" className="block text-sm font-medium text-gray-700 mb-2">

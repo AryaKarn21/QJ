@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, Search, Plus } from 'lucide-react';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { BlogCategoriesExplore } from './BlogCategoriesExplore';
+// Matches the backend's actual default port (server.js: PORT || 3000) —
+// see BlogCreate.tsx for why the previous :8000 fallback was wrong.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 interface Blog {
   _id: string;
@@ -116,16 +119,24 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Renders nothing if no admin has published a blog category yet. */}
+      {!actualShowUserBlogs && <BlogCategoriesExplore />}
+
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">
+        {/* flex-col below sm: at narrow widths (390px and under) the
+            un-truncated "Latest Blogs" heading plus the "Create Blog"
+            button couldn't both fit on one `justify-between` row without
+            clipping the button — this is the class of bug flagged
+            (blog header/create action clipped at 390x844). */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             {actualShowUserBlogs ? 'My Blogs' : 'Latest Blogs'}
           </h1>
-          
+
           {isLoggedIn && (
             <Link
               to="/blog/create"
-              className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors self-start sm:self-auto"
             >
               <Plus className="h-5 w-5 mr-2" />
               Create Blog

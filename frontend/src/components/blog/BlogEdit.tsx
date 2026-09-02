@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Save, Plus, X } from 'lucide-react';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
+// Matches the backend's actual default port (server.js: PORT || 3000) —
+// see BlogCreate.tsx for why the previous :8000 fallback was wrong.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 interface BlogImage {
   url: string;
@@ -35,10 +38,17 @@ const BlogEdit: React.FC = () => {
   const [images, setImages] = useState<BlogImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingBlog, setFetchingBlog] = useState(true);
+  // Real, admin-managed categories (Phase 6) — see BlogCreate.tsx's copy
+  // of this same comment.
+  const [categories, setCategories] = useState<PublicBlogCategory[]>([]);
 
   useEffect(() => {
     fetchBlog();
   }, [id]);
+
+  useEffect(() => {
+    getActiveBlogCategories().then(setCategories).catch(() => setCategories([]));
+  }, []);
 
   const fetchBlog = async () => {
     try {
@@ -75,7 +85,7 @@ const BlogEdit: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -263,15 +273,24 @@ const BlogEdit: React.FC = () => {
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
               Category
             </label>
-            <input
-              type="text"
+            <select
               id="category"
               name="category"
               value={formData.category}
               onChange={handleInputChange}
-              placeholder="e.g., Career Advice"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="General">General</option>
+              {/* This blog's current category may since have been
+                  renamed/deactivated/deleted — keep it selectable so
+                  editing never silently blanks it out. */}
+              {formData.category && formData.category !== 'General' && !categories.some((c) => c.name === formData.category) && (
+                <option value={formData.category}>{formData.category}</option>
+              )}
+              {categories.map((c) => (
+                <option key={c._id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="featuredImage" className="block text-sm font-medium text-gray-700 mb-2">

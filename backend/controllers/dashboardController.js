@@ -176,7 +176,9 @@ exports.getActivityFeed = async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(6)
         .select("name email role createdAt isVerified"),
-      Job.find()
+      // Excludes "Draft" (Phase 4) — an employer saving/editing a draft
+      // isn't a real "new job posted" event worth surfacing to admins.
+      Job.find({ status: { $ne: "Draft" } })
         .sort({ createdAt: -1 })
         .limit(7)
         .populate("employer", "name")

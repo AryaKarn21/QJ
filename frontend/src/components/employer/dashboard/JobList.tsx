@@ -1,4 +1,4 @@
-import { MapPin, Clock, DollarSign, Users, PenSquare, MoreVertical, Trash2 } from "lucide-react";
+import { MapPin, Clock, DollarSign, Users, PenSquare, MoreVertical, Trash2, Send, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getEmployerJobs, patchJob, deleteJob } from "../employerApi/api";
@@ -10,7 +10,12 @@ interface Job {
   title: string;
   companyName: string;
   location: string;
-  type: string;
+  // The actual API field is `jobtype` (backend/models/Job.js) — this was
+  // typed as `type` (which the API never sends) so the job type column
+  // always silently rendered blank. Kept both so nothing already reading
+  // the old (always-empty) `type` breaks; `jobtype` is what's real.
+  type?: string;
+  jobtype: string;
   createdAt: string;
   salary: string;
   jobseekers?: string[];
@@ -103,8 +108,24 @@ const JobList = () => {
         return "bg-amber-200 text-black";
       case "Rejected":
         return "bg-red-200 text-black";
+      case "Draft":
+        return "bg-gray-200 text-gray-700";
       default:
         return "bg-gray-300 text-black";
+    }
+  };
+
+  // Draft -> Pending: the one status change an employer can make
+  // themselves (see backend/controllers/employerController.js's editJob),
+  // same "submit for admin review" transition as first posting a job.
+  const handlePublishDraft = async (jobId: string) => {
+    try {
+      await patchJob(jobId, { status: "Pending" });
+      setJobs((prevJobs) => prevJobs.map((job) => (job._id === jobId ? { ...job, status: "Pending" } : job)));
+      toast.success("Job submitted for review.");
+    } catch (error) {
+      console.error("Failed to publish draft:", error);
+      toast.error("Failed to publish job.");
     }
   };
 
@@ -174,6 +195,9 @@ const JobList = () => {
                     {job.status === "Pending" && (
                       <p className="text-xs text-gray-500 mt-1">Waiting for admin review</p>
                     )}
+                    {job.status === "Draft" && (
+                      <p className="text-xs text-gray-500 mt-1">Not submitted yet — finish and publish when ready.</p>
+                    )}
 
                     <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                       <div className="flex items-center">
@@ -182,7 +206,7 @@ const JobList = () => {
                       </div>
                       <div className="flex items-center">
                         <Clock size={16} className="mr-1" />
-                        <span>{job.type}</span>
+                        <span>{job.jobtype}</span>
                       </div>
                       <div className="flex items-center">
                         <DollarSign size={16} className="mr-1" />
@@ -229,6 +253,27 @@ const JobList = () => {
                     <PenSquare size={20} className="mr-2" />
                     Edit Job
                   </button>
+
+                  {job.status === "Draft" && (
+                    <button
+                      className="flex items-center text-primary hover:text-primary/80 font-medium"
+                      onClick={() => handlePublishDraft(job._id)}
+                      title="Submit this draft for admin review"
+                    >
+                      <Send size={18} className="mr-2" />
+                      Publish
+                    </button>
+                  )}
+
+                  <button
+                    className="flex items-center text-gray-600 hover:text-primary"
+                    onClick={() => navigate(`/employer/postjob?duplicateFrom=${job._id}`)}
+                    title="Create a new job pre-filled from this one"
+                  >
+                    <Copy size={18} className="mr-2" />
+                    Duplicate
+                  </button>
+
                   <button
                     className="flex items-center text-gray-600 hover:text-red-600"
                     onClick={() => handleDeleteJob(job._id)}

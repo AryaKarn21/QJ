@@ -77,7 +77,9 @@ const getAdminStats = async (req, res) => {
   try {
     const totalJobseekers = await User.countDocuments({ role: "jobseeker" });
     const totalEmployers = await User.countDocuments({ role: "employer" });
-    const totalJobs = await Job.countDocuments();
+    // Excludes "Draft" (Phase 4) — an employer's unsubmitted, half-filled
+    // draft was never a real posting and shouldn't inflate this count.
+    const totalJobs = await Job.countDocuments({ status: { $ne: "Draft" } });
     const totalApplications = await Application.countDocuments();
 
     res.status(200).json({
@@ -309,9 +311,13 @@ const getAllJobs = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const search = req.query.search || "";
 
-    const query = search
-      ? { $or: [{ title: { $regex: search, $options: "i" } }] }
-      : {};
+    // "Draft" (Phase 4) is employer-private and never submitted for
+    // review — it should never show up in the admin job queue, same as
+    // it's excluded from every public listing.
+    const query = {
+      status: { $ne: "Draft" },
+      ...(search ? { title: { $regex: search, $options: "i" } } : {}),
+    };
 
     const [jobs, total] = await Promise.all([
       Job.find(query)
@@ -390,8 +396,21 @@ const approveJob = async (req, res) => {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    job.status = "active";
+    // BUG FIX: this was writing lowercase "active", but the schema's
+    // `status` enum is capitalized ("Draft"/"Pending"/"Active"/...). That
+    // failed Mongoose validation on save (500), and the admin Approve
+    // button had no error handling, so it silently did nothing.
+    job.status = "Active";
+    job.rejectionReason = "";
     await job.save();
+
+    await sendNotification({
+      recipient: job.employer,
+      type: "job_approved",
+      message: `Your job posting "${job.title}" has been approved and is now live.`,
+      relatedJob: job._id,
+      link: "/employer/dashboard",
+    });
 
     res.json({ message: "Job approved", job });
   } catch (error) {
@@ -403,11 +422,23 @@ const approveJob = async (req, res) => {
 // Reject a job
 const rejectJob = async (req, res) => {
   try {
+    const { reason } = req.body;
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    job.status = "rejected";
+    // Same casing bug as approveJob above, plus this never persisted the
+    // admin's rejection reason the frontend already collects and sends.
+    job.status = "Rejected";
+    job.rejectionReason = reason || "Did not meet posting requirements.";
     await job.save();
+
+    await sendNotification({
+      recipient: job.employer,
+      type: "job_rejected",
+      message: `Your job posting "${job.title}" was rejected: ${job.rejectionReason}`,
+      relatedJob: job._id,
+      link: "/employer/dashboard",
+    });
 
     res.json({ message: "Job rejected", job });
   } catch (error) {

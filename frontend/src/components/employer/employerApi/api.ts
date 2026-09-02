@@ -1,8 +1,21 @@
 import axios from "axios";
 import type { ProfileStatus } from "../../../types/profileStatus";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-server.rupeshkumar.com.np';
+// Matches the backend's actual default port (server.js: PORT || 3000) and
+// every other API file in this app — this previously fell back to a
+// production URL instead of localhost:3000, so any local dev environment
+// missing VITE_API_BASE_URL silently hit production instead of the local
+// backend. Flagged repeatedly during the earlier production-hardening
+// pass; fixing it now while already in this exact file.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
+// The same list models/Job.js validates `country` against — see
+// backend/data/countries.js. Public, unauthenticated (it's just a lookup
+// list, same as fetchJobCategories).
+export const fetchCountries = async (): Promise<string[]> => {
+  const res = await axios.get(`${API_BASE_URL}/api/jobs/meta/countries`);
+  return res.data;
+};
 
 export const createJob = async (jobData: any) => {
   const token = localStorage.getItem("token");

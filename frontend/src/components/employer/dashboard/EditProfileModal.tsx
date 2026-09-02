@@ -37,6 +37,17 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
         establishedDate: "",
         description: "",
         website: "",
+        // `headline` (base User field) doubles as the company tagline shown
+        // on the Company Profile page (Phase 1/3) — reused, not a new field.
+        headline: "",
+        mission: "",
+        culture: "",
+        // Comma-separated in the UI, same convention used across this
+        // codebase (job skills/benefits, blog tags) — the backend already
+        // splits these on "," (see employerController.js).
+        companyLocations: "",
+        companyBenefits: "",
+        linkedin: "",
         companyLogo: null as File | null,
         coverPhoto: null as File | null,
     });
@@ -56,6 +67,12 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
                 establishedDate: profile.establishedDate?.split("T")[0] || "",
                 description: profile.description || "",
                 website: profile.website || "",
+                headline: profile.headline || "",
+                mission: profile.mission || "",
+                culture: profile.culture || "",
+                companyLocations: Array.isArray(profile.companyLocations) ? profile.companyLocations.join(", ") : "",
+                companyBenefits: Array.isArray(profile.companyBenefits) ? profile.companyBenefits.join(", ") : "",
+                linkedin: profile.socialLinks?.linkedin || "",
                 companyLogo: null,
                 coverPhoto: null,
             });
@@ -88,10 +105,17 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
     const handleSave = () => {
         const updatedFields: Record<string, any> = {};
         for (const key in formState) {
+            if (key === "linkedin") continue; // folded into socialLinks below
             const val = formState[key as keyof typeof formState];
             if (val !== "" && val !== null) {
                 updatedFields[key] = val;
             }
+        }
+        // Backend expects a `socialLinks` object (or JSON string over this
+        // multipart form) it merges into the existing value, not a flat
+        // `linkedin` field — see employerController.js's updateEmployerProfile.
+        if (formState.linkedin !== "") {
+            updatedFields.socialLinks = JSON.stringify({ linkedin: formState.linkedin });
         }
         onSave(updatedFields);
     };
@@ -198,6 +222,38 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
                     <div className="md:col-span-2">
                         <label className="font-semibold">About Company</label>
                         <textarea name="description" value={formState.description} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" rows={4} />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="font-semibold">
+                            Tagline <span className="text-xs font-normal text-gray-400">(short line shown under your company name)</span>
+                        </label>
+                        <input name="headline" placeholder="e.g. Building the future of work" value={formState.headline} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="font-semibold">LinkedIn Company URL</label>
+                        <input name="linkedin" type="url" placeholder="https://linkedin.com/company/yourcompany" value={formState.linkedin} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="font-semibold">Mission</label>
+                        <textarea name="mission" value={formState.mission} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" rows={2} />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="font-semibold">Culture</label>
+                        <textarea name="culture" value={formState.culture} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" rows={2} />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="font-semibold">Additional Office Locations</label>
+                        <input name="companyLocations" placeholder="Comma-separated, e.g. Kathmandu, Pokhara, Remote" value={formState.companyLocations} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="font-semibold">Company Benefits</label>
+                        <input name="companyBenefits" placeholder="Comma-separated, e.g. Health insurance, Flexible hours, Remote-friendly" value={formState.companyBenefits} onChange={handleInputChange} className="w-full border px-3 py-2 rounded mt-1" />
                     </div>
                 </div>
 

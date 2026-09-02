@@ -7,13 +7,26 @@ const Employer = require("../models/Employer");
 
 // Same pattern communityAiController.js already uses for every other AI
 // feature: a missing API key is a 503 with a clear, actionable message,
-// not a 500 with a raw SDK error leaked to the client.
+// not a 500 with a raw SDK error leaked to the client. Structured
+// {success, message, errorCode} shape so the frontend can branch on
+// errorCode instead of string-matching `message` — and the raw SDK
+// error (which can carry request/response details) never reaches the
+// client, only the server log.
 function friendlyAiError(res, error, fallbackMessage) {
   if (error.code === "GEMINI_NOT_CONFIGURED") {
-    return res.status(503).json({ message: "AI features aren't configured yet. Add GEMINI_API_KEY to the backend .env file." });
+    console.error("Blog AI generation unavailable: GEMINI_API_KEY not set.");
+    return res.status(503).json({
+      success: false,
+      message: "AI features aren't configured yet. Add GEMINI_API_KEY to the backend .env file.",
+      errorCode: "AI_NOT_CONFIGURED",
+    });
   }
   console.error(fallbackMessage, error);
-  return res.status(500).json({ message: fallbackMessage });
+  return res.status(500).json({
+    success: false,
+    message: fallbackMessage,
+    errorCode: "AI_GENERATION_FAILED",
+  });
 }
 // NOTE: Blog.content is stored and rendered as plain text (BlogDetail.tsx
 // renders it via a plain text node, not dangerouslySetInnerHTML — there's
@@ -59,7 +72,7 @@ const generateBlogContent = async (req, res) => {
     const { title } = req.body;
 
     if (!title) {
-      return res.status(400).json({ message: "Title is required" });
+      return res.status(400).json({ success: false, message: "Title is required", errorCode: "TITLE_REQUIRED" });
     }
 
     // Shared client (utils/geminiClient.js) — same model/config every
@@ -144,7 +157,6 @@ const createBlog = async (req, res) => {
     console.error("Error creating blog:", error);
     res.status(500).json({
       message: "Failed to create blog",
-      error: error.message,
     });
   }
 };
@@ -197,7 +209,6 @@ const getAllBlogs = async (req, res) => {
     console.error("Error fetching blogs:", error);
     res.status(500).json({
       message: "Failed to fetch blogs",
-      error: error.message,
     });
   }
 };
@@ -257,7 +268,6 @@ const getBlogById = async (req, res) => {
     console.error("Error fetching blog:", error);
     res.status(500).json({
       message: "Failed to fetch blog",
-      error: error.message,
     });
   }
 };
@@ -307,7 +317,6 @@ const updateBlog = async (req, res) => {
     console.error("Error updating blog:", error);
     res.status(500).json({
       message: "Failed to update blog",
-      error: error.message,
     });
   }
 };
@@ -339,7 +348,6 @@ const deleteBlog = async (req, res) => {
     console.error("Error deleting blog:", error);
     res.status(500).json({
       message: "Failed to delete blog",
-      error: error.message,
     });
   }
 };
@@ -378,7 +386,6 @@ const toggleLikeBlog = async (req, res) => {
     console.error("Error toggling like:", error);
     res.status(500).json({
       message: "Failed to toggle like",
-      error: error.message,
     });
   }
 };
@@ -419,7 +426,6 @@ const addComment = async (req, res) => {
     console.error("Error adding comment:", error);
     res.status(500).json({
       message: "Failed to add comment",
-      error: error.message,
     });
   }
 };
@@ -455,7 +461,6 @@ const getUserBlogs = async (req, res) => {
     console.error("Error fetching user blogs:", error);
     res.status(500).json({
       message: "Failed to fetch user blogs",
-      error: error.message,
     });
   }
 };
@@ -468,7 +473,9 @@ const getBlogCategories = async (req, res) => {
     res.status(200).json({ success: true, categories: categories.filter(Boolean).sort() });
   } catch (error) {
     console.error("Error fetching blog categories:", error);
-    res.status(500).json({ message: "Failed to fetch categories", error: error.message });
+    // Never echo error.message back to the client — same convention as
+    // every other catch block in this file (see friendlyAiError above).
+    res.status(500).json({ success: false, message: "Failed to fetch categories" });
   }
 };
 

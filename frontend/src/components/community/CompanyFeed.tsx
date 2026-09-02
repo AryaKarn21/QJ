@@ -5,6 +5,7 @@ import { fetchCompanyFeed } from '../../api/communityApi';
 import { fetchPublicProfile, fetchFollowCounts } from '../../api/followApi';
 import { getEmployeeCount } from '../../api/companyMemberApi';
 import { useCurrentUser } from '../../utils/currentUser';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from './Avatar';
 import { FollowButton } from './FollowButton';
 import { FeedFilters } from './FeedFilters';
@@ -63,9 +64,20 @@ export function CompanyFeed() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       {/* Company header card */}
-      <div className="mb-6 rounded-xl border border-gray-200 bg-light p-5 shadow-card">
-        <div className="flex flex-wrap items-center gap-4">
-          {profile ? <Avatar user={profile} size={16} /> : <div className="h-16 w-16 animate-pulse rounded-md bg-secondary" />}
+      <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-light shadow-card">
+        {/* Cover/banner — same gradient fallback as the employer dashboard's
+            edit modal (EditProfileModal.tsx) when no cover photo is set. */}
+        <div className="h-28 sm:h-36 w-full">
+          {profile?.coverPhoto ? (
+            <img src={resolveMediaUrl(profile.coverPhoto)} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-4 p-5 -mt-8">
+          <div className="rounded-md bg-white ring-4 ring-white shrink-0">
+            {profile ? <Avatar user={profile} size={16} /> : <div className="h-16 w-16 animate-pulse rounded-md bg-secondary" />}
+          </div>
           <div className="min-w-0 flex-1">
             <h1 className="flex items-center gap-1.5 truncate text-lg font-bold text-dark">
               <Building2 size={17} className="text-primary" /> {profile?.name || 'Loading…'}
@@ -107,11 +119,13 @@ export function CompanyFeed() {
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="mt-4 flex border-t border-gray-100 pt-3 gap-1">
+        {/* Tabs — this card no longer has a blanket p-5 (moved onto just
+            the avatar row above, so the cover banner can bleed to the
+            edges), so this row needs its own horizontal/bottom padding. */}
+        <div className="mt-4 flex overflow-x-auto border-t border-gray-100 px-5 pt-3 pb-5 gap-1">
           <button
             onClick={() => setActiveTab('posts')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+            className={`shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === 'posts' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-secondary'
             }`}
           >
@@ -119,7 +133,7 @@ export function CompanyFeed() {
           </button>
           <button
             onClick={() => setActiveTab('about')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+            className={`shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === 'about' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-secondary'
             }`}
           >
@@ -127,7 +141,7 @@ export function CompanyFeed() {
           </button>
           <button
             onClick={() => setActiveTab('jobs')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+            className={`shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === 'jobs' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-secondary'
             }`}
           >
@@ -135,7 +149,7 @@ export function CompanyFeed() {
           </button>
           <button
             onClick={() => setActiveTab('employees')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'employees' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-secondary'
             }`}
           >

@@ -26,7 +26,8 @@ exports.createPlan = async (req, res) => {
     });
     res.status(201).json(plan);
   } catch (error) {
-    res.status(500).json({ message: "Error creating plan", error: error.message });
+    console.error("Error creating plan:", error);
+    res.status(500).json({ message: "Error creating plan" });
   }
 };
 
@@ -39,7 +40,8 @@ exports.getPlans = async (req, res) => {
     const plans = await Plan.find(filter).sort({ price: 1 });
     res.json(plans);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching plans", error: error.message });
+    console.error("Error fetching plans:", error);
+    res.status(500).json({ message: "Error fetching plans" });
   }
 };
 
@@ -49,7 +51,8 @@ exports.getPlanById = async (req, res) => {
     if (!plan) return res.status(404).json({ message: "Plan not found" });
     res.json(plan);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching plan", error: error.message });
+    console.error("Error fetching plan:", error);
+    res.status(500).json({ message: "Error fetching plan" });
   }
 };
 
@@ -59,7 +62,8 @@ exports.updatePlan = async (req, res) => {
     if (!plan) return res.status(404).json({ message: "Plan not found" });
     res.json(plan);
   } catch (error) {
-    res.status(500).json({ message: "Error updating plan", error: error.message });
+    console.error("Error updating plan:", error);
+    res.status(500).json({ message: "Error updating plan" });
   }
 };
 
@@ -75,7 +79,8 @@ exports.deletePlan = async (req, res) => {
     if (!plan) return res.status(404).json({ message: "Plan not found" });
     res.json({ message: "Plan deleted" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting plan", error: error.message });
+    console.error("Error deleting plan:", error);
+    res.status(500).json({ message: "Error deleting plan" });
   }
 };
 
@@ -88,7 +93,8 @@ exports.getMySubscription = async (req, res) => {
       .sort({ createdAt: -1 });
     res.json({ subscription: subscription || null });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching subscription", error: error.message });
+    console.error("Error fetching subscription:", error);
+    res.status(500).json({ message: "Error fetching subscription" });
   }
 };
 
@@ -100,7 +106,8 @@ exports.getMyPaymentHistory = async (req, res) => {
       .limit(50);
     res.json(payments);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching payment history", error: error.message });
+    console.error("Error fetching payment history:", error);
+    res.status(500).json({ message: "Error fetching payment history" });
   }
 };
 
@@ -158,7 +165,7 @@ exports.initiateCheckout = async (req, res) => {
     });
   } catch (error) {
     console.error("Checkout initiation failed:", error);
-    res.status(500).json({ message: "Error initiating checkout", error: error.message });
+    res.status(500).json({ message: "Error initiating checkout" });
   }
 };
 
@@ -297,7 +304,7 @@ exports.verifyKhaltiCallback = async (req, res) => {
     return res.json({ status: "success" });
   } catch (error) {
     console.error("Khalti verification failed:", error);
-    res.status(500).json({ message: "Error verifying payment", error: error.message });
+    res.status(500).json({ message: "Error verifying payment" });
   }
 };
 
@@ -310,7 +317,8 @@ exports.cancelMySubscription = async (req, res) => {
     await subscription.save();
     res.json({ message: "Subscription cancelled", subscription });
   } catch (error) {
-    res.status(500).json({ message: "Error cancelling subscription", error: error.message });
+    console.error("Error cancelling subscription:", error);
+    res.status(500).json({ message: "Error cancelling subscription" });
   }
 };
 
@@ -330,7 +338,8 @@ exports.adminGetAllSubscriptions = async (req, res) => {
     const total = await Subscription.countDocuments(filter);
     res.json({ subscriptions, total, page: Number(page), limit: Number(limit) });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching subscriptions", error: error.message });
+    console.error("Error fetching subscriptions:", error);
+    res.status(500).json({ message: "Error fetching subscriptions" });
   }
 };
 
@@ -349,6 +358,7 @@ exports.adminGetSubscriptionById = async (req, res) => {
 
     res.json({ subscription, payments });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching subscription", error: error.message });
+    console.error("Error fetching subscription:", error);
+    res.status(500).json({ message: "Error fetching subscription" });
   }
 };

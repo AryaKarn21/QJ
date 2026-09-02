@@ -8,7 +8,8 @@ exports.getEmployerJobs = async (req, res) => {
     const employers = await User.find({ role: "employer" }).select("name email");
     res.status(200).json({ employers });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching employers", error: err.message });
+    console.error("Error fetching employers:", err);
+    res.status(500).json({ message: "Error fetching employers" });
   }
 };
 
@@ -19,7 +20,8 @@ exports.getJobsByEmployer = async (req, res) => {
     const jobs = await Job.find({ employer: employerId }).select("title");
     res.status(200).json({ jobs });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching jobs", error: err.message });
+    console.error("Error fetching jobs:", err);
+    res.status(500).json({ message: "Error fetching jobs" });
   }
 };
 
@@ -39,7 +41,8 @@ exports.getAllRevenue = async (req, res) => {
 
     res.status(200).json(revenues);
   } catch (err) {
-    res.status(500).json({ message: "Error fetching revenue records", error: err.message });
+    console.error("Error fetching revenue records:", err);
+    res.status(500).json({ message: "Error fetching revenue records" });
   }
 };
 
@@ -73,7 +76,8 @@ exports.addRevenue = async (req, res) => {
 
     res.status(201).json({ message: "Revenue added successfully", revenue });
   } catch (err) {
-    res.status(500).json({ message: "Error adding revenue", error: err.message });
+    console.error("Error adding revenue:", err);
+    res.status(500).json({ message: "Error adding revenue" });
   }
 };
 
@@ -107,7 +111,8 @@ exports.editRevenue = async (req, res) => {
 
     res.status(200).json({ message: "Revenue updated successfully", revenue });
   } catch (err) {
-    res.status(500).json({ message: "Error editing revenue", error: err.message });
+    console.error("Error editing revenue:", err);
+    res.status(500).json({ message: "Error editing revenue" });
   }
 };
 
@@ -123,6 +128,7 @@ exports.deleteRevenue = async (req, res) => {
 
     res.status(200).json({ message: "Revenue deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Error deleting revenue", error: err.message });
+    console.error("Error deleting revenue:", err);
+    res.status(500).json({ message: "Error deleting revenue" });
   }
 };
