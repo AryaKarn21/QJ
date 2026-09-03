@@ -59,12 +59,22 @@ const allowedOrigins = [
   ...devOrigins,
 ].filter(Boolean);
 
-console.log("CORS: allowing requests from", allowedOrigins.join(", "));
+// Vercel mints a brand-new, unique URL for every single deployment
+// (`qj-<hash>-aryakarn21s-projects.vercel.app`) in addition to the stable
+// production alias (e.g. qj-sigma.vercel.app, already covered by the exact
+// allowlist above). Without this, every fresh deploy's own preview URL
+// gets CORS-rejected until someone thinks to add it — this trusts the
+// whole family of this project's Vercel URLs by pattern instead of one
+// fixed string, scoped to this exact project+team so it can't be used to
+// front unrelated origins.
+const vercelPreviewPattern = /^https:\/\/qj(-[a-z0-9]+)*-aryakarn21s-projects\.vercel\.app$/i;
+
+console.log("CORS: allowing requests from", allowedOrigins.join(", "), "+ Vercel preview deployments matching", vercelPreviewPattern);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
         callback(null, true);
       } else {
         console.warn(
