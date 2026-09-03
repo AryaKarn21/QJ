@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { PlusCircle } from "lucide-react";
 import CompanySearchInput from "./CompanySearchInput";
 import { TagInput } from "../../common/TagInput";
+import ImageCropModal from "../../common/ImageCropModal";
 
 interface Qualification {
     degree: string;
@@ -81,6 +82,10 @@ const EditProfileModal: React.FC<Props> = ({
     removeCertification,
     handleCertificationChange,
 }) => {
+    // Raw file the user just picked, awaiting crop/zoom adjustment — kept
+    // as local state since it's transient UI, not part of the saved form.
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+
     if (!show) return null;
 
     // Resolve the preview URL: prefer a freshly selected File, fall back to
@@ -124,9 +129,11 @@ const EditProfileModal: React.FC<Props> = ({
                         <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) =>
-                                setFormState({ ...formState, profilePic: e.target.files?.[0] || null })
-                            }
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                e.target.value = ""; // allow re-selecting the same file later
+                                if (file) setPendingFile(file);
+                            }}
                             className="w-full mt-1"
                         />
                     </div>
@@ -367,6 +374,20 @@ const EditProfileModal: React.FC<Props> = ({
                     </button>
                 </div>
             </div>
+
+            {pendingFile && (
+                <ImageCropModal
+                    file={pendingFile}
+                    onCancel={() => setPendingFile(null)}
+                    onConfirm={(blob) => {
+                        setFormState({
+                            ...formState,
+                            profilePic: new File([blob], "avatar.jpg", { type: "image/jpeg" }),
+                        });
+                        setPendingFile(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

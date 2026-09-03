@@ -7,6 +7,7 @@ import {
 import { getJobseekerProfile, updateJobseekerProfile, updateJobseekerCareerStatus } from "../jobseekerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
 import EditProfileModal from "./EditProfileModal";
+import ImageCropModal from "../../common/ImageCropModal";
 import { ProfileStatusBadge } from "../../common/profileStatus/ProfileStatusBadge";
 import { ProfileStatusEditor } from "../../common/profileStatus/ProfileStatusEditor";
 import type { ProfileStatus } from "../../../types/profileStatus";
@@ -42,6 +43,9 @@ const UserProfile = () => {
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  // The raw file the user just picked, awaiting crop/zoom adjustment before
+  // upload — non-null while the ImageCropModal is open.
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
 
   const [formState, setFormState] = useState({
     name: "",
@@ -92,23 +96,29 @@ const UserProfile = () => {
   }, [profile]);
 
   // Direct upload from the avatar itself (camera icon) — skips the full
-  // Edit Profile modal for the single most common edit. Reuses the same
-  // partial-update endpoint; only the profilePic field is sent.
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Edit Profile modal for the single most common edit. Picking a file just
+  // opens the crop/zoom adjuster; the actual upload happens in
+  // handleAvatarCropConfirm once the user positions it.
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file later
     if (!file) return;
-
     setAvatarError(null);
+    setPendingAvatarFile(file);
+  };
+
+  const handleAvatarCropConfirm = async (blob: Blob) => {
     setAvatarUploading(true);
     try {
       const fd = new FormData();
-      fd.append("profilePic", file);
+      fd.append("profilePic", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
       const updated = await updateJobseekerProfile(fd);
       setProfile(updated.jobseeker);
+      setPendingAvatarFile(null);
     } catch (error) {
       console.error("Error uploading profile picture:", error);
       setAvatarError("Upload failed. Please try a smaller image (under 2MB) in JPG, PNG, GIF, or WEBP.");
+      setPendingAvatarFile(null);
     } finally {
       setAvatarUploading(false);
     }
@@ -196,6 +206,26 @@ const UserProfile = () => {
     );
   };
 
+  // Small reusable card wrapper so Qualifications/Skills/Experience/
+  // Projects/Certifications read as distinct sections instead of one long
+  // flat block of stacked text — same visual language, defined once.
+  const Section = ({
+    icon,
+    title,
+    children,
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    children: React.ReactNode;
+  }) => (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+      <div className="flex items-center gap-2 mb-3 text-base sm:text-lg font-semibold text-gray-800">
+        {icon} {title}
+      </div>
+      {children}
+    </div>
+  );
+
   const resumeDownloadButton = profile.resume
     ? React.createElement(
         "a",
@@ -218,15 +248,29 @@ const UserProfile = () => {
       );
 
   return (
-    <div className="bg-gray-50 px-4 py-8 sm:px-8 sm:py-12 lg:p-20 overflow-auto" style={{ maxHeight: "calc(100vh - 50px)" }}>
+    <div className="bg-gray-50 px-3 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-12 overflow-auto" style={{ maxHeight: "calc(100vh - 50px)" }}>
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-2xl shadow p-5 sm:p-8 relative">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+        <div className="bg-white rounded-2xl shadow overflow-hidden relative">
 
-            {/* Left column — avatar */}
-            <div className="text-center">
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-4 group">
-                <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden flex items-center justify-center ring-2 ring-white shadow-sm">
+          {/* Banner — gradient header the avatar overlaps into, with the
+              single Edit Profile entry point living here instead of
+              floating oddly over the details column. */}
+          <div className="h-20 sm:h-28 bg-gradient-to-r from-primary to-orange-400 relative">
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow hover:bg-white transition-colors"
+            >
+              <Pencil size={14} /> <span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit Profile</span>
+            </button>
+          </div>
+
+          <div className="px-4 sm:px-8 pb-6 sm:pb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+
+              {/* Left column — avatar */}
+              <div className="text-center">
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto -mt-14 sm:-mt-16 mb-4 z-10 group">
+                <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden flex items-center justify-center ring-4 ring-white shadow-md">
                   {profile.profilePic ? (
                     <img src={mediaUrl(profile.profilePic)} alt={profile.name} className="w-full h-full object-cover" />
                   ) : (
@@ -348,116 +392,94 @@ const UserProfile = () => {
                   )}
                 </div>
               )}
-            </div>
-
-            {/* Right column — details */}
-            <div className="md:col-span-2 flex flex-col justify-between relative">
-              <button onClick={() => setShowEditModal(true)} className="absolute top-0 right-0 p-2 text-gray-500 hover:text-primary">
-                <Pencil size={20} />
-              </button>
-
-              {/* Qualifications */}
-              <div className="pr-10">
-                <div className="flex items-center mb-2 text-lg sm:text-xl font-semibold text-gray-800">
-                  <GraduationCap className="mr-2 shrink-0 text-primary" size={32} /> Qualifications
-                </div>
-                {profile.qualifications?.length > 0 ? (
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    {profile.qualifications.map((q, i) => (
-                      <li key={i}>
-                        <p className="font-semibold text-base sm:text-lg">{q.degree}</p>
-                        {q.institution} <br /> {q.year}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No qualifications added.</p>
-                )}
               </div>
 
-              {/* Skills */}
-              <div className="mt-6">
-                <div className="flex items-center mb-2 text-base sm:text-lg font-semibold text-gray-800">
-                  <BadgeCheck className="mr-2 shrink-0 text-primary" size={26} /> Skills
-                </div>
-                {profile.skills?.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {profile.skills.map((skill, i) => (
-                      <span key={i} className="px-3 py-1 bg-gray-100 border text-sm rounded-full">{skill}</span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No skills added.</p>
-                )}
-              </div>
+              {/* Right column — details, as distinct section cards rather
+                  than one long stack of plain text. */}
+              <div className="md:col-span-2 md:mt-3 space-y-4">
+                <Section icon={<GraduationCap className="shrink-0 text-primary" size={24} />} title="Qualifications">
+                  {profile.qualifications?.length > 0 ? (
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      {profile.qualifications.map((q, i) => (
+                        <li key={i}>
+                          <p className="font-semibold text-base">{q.degree}</p>
+                          {q.institution} <br /> {q.year}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No qualifications added.</p>
+                  )}
+                </Section>
 
-              {/* Experience */}
-              <div className="mt-6">
-                <div className="flex items-center mb-2 text-base sm:text-lg font-semibold text-gray-800">
-                  <Briefcase className="mr-2 shrink-0 text-primary" size={26} /> Experience
-                </div>
-                {profile.experiences?.length > 0 ? (
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    {profile.experiences.map((exp, i) => (
-                      <li key={i} className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                        <strong>{exp.jobPosition}</strong>
-                        <span>at {experienceCompanyLink(exp)}</span>
-                        <span className="text-gray-500">— {exp.duration}</span>
-                        {exp.current && (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                            Current
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No experience added.</p>
-                )}
-              </div>
+                <Section icon={<BadgeCheck className="shrink-0 text-primary" size={22} />} title="Skills">
+                  {profile.skills?.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {profile.skills.map((skill, i) => (
+                        <span key={i} className="px-3 py-1 bg-white border text-sm rounded-full">{skill}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No skills added.</p>
+                  )}
+                </Section>
 
-              {/* Projects */}
-              <div className="mt-6">
-                <div className="flex items-center mb-2 text-base sm:text-lg font-semibold text-gray-800">
-                  <Briefcase className="mr-2 shrink-0 text-primary" size={26} /> Projects
-                </div>
-                {profile.projects && profile.projects.length > 0 ? (
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    {profile.projects.map((p, i) => (
-                      <li key={i}>
-                        <p className="font-semibold">{p.title}</p>
-                        {p.description && <p className="text-gray-600">{p.description}</p>}
-                        {p.technologies && <p className="text-xs text-gray-500">{p.technologies}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No projects added.</p>
-                )}
-              </div>
+                <Section icon={<Briefcase className="shrink-0 text-primary" size={22} />} title="Experience">
+                  {profile.experiences?.length > 0 ? (
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      {profile.experiences.map((exp, i) => (
+                        <li key={i} className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <strong>{exp.jobPosition}</strong>
+                          <span>at {experienceCompanyLink(exp)}</span>
+                          <span className="text-gray-500">— {exp.duration}</span>
+                          {exp.current && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                              Current
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No experience added.</p>
+                  )}
+                </Section>
 
-              {/* Certifications */}
-              <div className="mt-6">
-                <div className="flex items-center mb-2 text-base sm:text-lg font-semibold text-gray-800">
-                  <BadgeCheck className="mr-2 shrink-0 text-primary" size={26} /> Certifications
-                </div>
-                {profile.certifications && profile.certifications.length > 0 ? (
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    {profile.certifications.map((c, i) => (
-                      <li key={i}>
-                        <span className="font-semibold">{c.name}</span>
-                        {(c.issuer || c.year) && <span className="text-gray-500"> — {[c.issuer, c.year].filter(Boolean).join(", ")}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No certifications added.</p>
-                )}
-              </div>
+                <Section icon={<Briefcase className="shrink-0 text-primary" size={22} />} title="Projects">
+                  {profile.projects && profile.projects.length > 0 ? (
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      {profile.projects.map((p, i) => (
+                        <li key={i}>
+                          <p className="font-semibold">{p.title}</p>
+                          {p.description && <p className="text-gray-600">{p.description}</p>}
+                          {p.technologies && <p className="text-xs text-gray-500">{p.technologies}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No projects added.</p>
+                  )}
+                </Section>
 
-              {/* Resume download */}
-              <div className="mt-8 flex justify-center md:justify-end">
-                {resumeDownloadButton}
+                <Section icon={<BadgeCheck className="shrink-0 text-primary" size={22} />} title="Certifications">
+                  {profile.certifications && profile.certifications.length > 0 ? (
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      {profile.certifications.map((c, i) => (
+                        <li key={i}>
+                          <span className="font-semibold">{c.name}</span>
+                          {(c.issuer || c.year) && <span className="text-gray-500"> — {[c.issuer, c.year].filter(Boolean).join(", ")}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No certifications added.</p>
+                  )}
+                </Section>
+
+                {/* Resume download */}
+                <div className="flex justify-center md:justify-end pt-1">
+                  {resumeDownloadButton}
+                </div>
               </div>
             </div>
           </div>
@@ -492,6 +514,15 @@ const UserProfile = () => {
         onSave={(payload) => updateJobseekerCareerStatus(payload).then((res) => res.profileStatus)}
         onSaved={(updated) => setProfile((p) => (p ? { ...p, profileStatus: updated } : p))}
       />
+
+      {pendingAvatarFile && (
+        <ImageCropModal
+          file={pendingAvatarFile}
+          busy={avatarUploading}
+          onCancel={() => setPendingAvatarFile(null)}
+          onConfirm={handleAvatarCropConfirm}
+        />
+      )}
     </div>
   );
 };
