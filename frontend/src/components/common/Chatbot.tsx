@@ -111,7 +111,15 @@ export default function Chatbot() {
           role="dialog"
           aria-label="QuickJobs Assistant chat"
           onKeyDown={handlePanelKeyDown}
-          className="fixed inset-x-4 bottom-24 top-20 z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:bottom-24 sm:right-5 sm:top-auto sm:h-[32rem] sm:w-96"
+          // Always bottom-anchored, never top-anchored — the previous
+          // mobile/desktop split (top-20+bottom-24 below sm:, replaced by
+          // bottom-24+right-5+fixed h-[32rem] at sm:) meant the panel's
+          // rendered size depended entirely on that one breakpoint firing;
+          // anywhere that didn't land cleanly, it fell back to the "mobile"
+          // shape — nearly full viewport height/width — even on a wide
+          // screen. A height capped with CSS min() degrades continuously
+          // instead, so there's no single breakpoint for it to miss.
+          className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-5 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-96 h-[min(32rem,calc(100vh-7.5rem))]"
         >
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-slate-100 bg-primary px-4 py-3.5 text-white">
