@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Linkedin, Github, Twitter, Globe, Download,
-  GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2,
+  GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2, ImagePlus,
 } from "lucide-react";
 import { getJobseekerProfile, updateJobseekerProfile, updateJobseekerCareerStatus } from "../jobseekerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
@@ -23,6 +23,7 @@ type JobseekerProfile = {
   name: string;
   email: string;
   profilePic?: string;
+  coverPhoto?: string;
   resume?: string;
   skills: string[];
   qualifications: Qualification[];
@@ -46,6 +47,9 @@ const UserProfile = () => {
   // The raw file the user just picked, awaiting crop/zoom adjustment before
   // upload — non-null while the ImageCropModal is open.
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
 
   const [formState, setFormState] = useState({
     name: "",
@@ -121,6 +125,35 @@ const UserProfile = () => {
       setPendingAvatarFile(null);
     } finally {
       setAvatarUploading(false);
+    }
+  };
+
+  // Cover photo — same pick-then-crop flow as the avatar, but a wide banner
+  // frame instead of a circle. Uses the same partial-update endpoint; the
+  // backend already supported a `coverPhoto` field (see
+  // jobseekerController.js), it just had no UI entry point until now.
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setCoverError(null);
+    setPendingCoverFile(file);
+  };
+
+  const handleCoverCropConfirm = async (blob: Blob) => {
+    setCoverUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("coverPhoto", new File([blob], "cover.jpg", { type: "image/jpeg" }));
+      const updated = await updateJobseekerProfile(fd);
+      setProfile(updated.jobseeker);
+      setPendingCoverFile(null);
+    } catch (error) {
+      console.error("Error uploading cover photo:", error);
+      setCoverError("Upload failed. Please try a smaller image (under 2MB) in JPG, PNG, GIF, or WEBP.");
+      setPendingCoverFile(null);
+    } finally {
+      setCoverUploading(false);
     }
   };
 
@@ -252,16 +285,51 @@ const UserProfile = () => {
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-2xl shadow overflow-hidden relative">
 
-          {/* Banner — gradient header the avatar overlaps into, with the
-              single Edit Profile entry point living here instead of
-              floating oddly over the details column. */}
-          <div className="h-20 sm:h-28 bg-gradient-to-r from-primary to-orange-400 relative">
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow hover:bg-white transition-colors"
-            >
-              <Pencil size={14} /> <span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit Profile</span>
-            </button>
+          {/* Banner — an actual cover photo when one's set, gradient
+              fallback otherwise. The avatar overlaps into it, and both the
+              cover-photo uploader and the single Edit Profile entry point
+              live here instead of floating oddly over the details column. */}
+          <div className="h-20 sm:h-28 relative overflow-hidden bg-gradient-to-r from-primary to-orange-400">
+            {profile.coverPhoto && (
+              <img
+                src={mediaUrl(profile.coverPhoto)}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-2">
+              {/* Cover photo uploader — its own affordance, separate from
+                  Edit Profile, since it's a direct-manipulation edit just
+                  like the avatar's camera icon. */}
+              <label
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow hover:bg-white transition-colors cursor-pointer"
+                title={profile.coverPhoto ? "Change cover photo" : "Add a cover photo"}
+              >
+                {coverUploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                <span className="hidden sm:inline">{profile.coverPhoto ? "Change cover" : "Add cover"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  disabled={coverUploading}
+                  onChange={handleCoverChange}
+                />
+              </label>
+
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow hover:bg-white transition-colors"
+              >
+                <Pencil size={14} /> <span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit Profile</span>
+              </button>
+            </div>
+
+            {coverError && (
+              <p className="absolute bottom-2 left-3 right-3 text-[11px] text-white bg-red-600/90 rounded px-2 py-1">
+                {coverError}
+              </p>
+            )}
           </div>
 
           <div className="px-4 sm:px-8 pb-6 sm:pb-8">
@@ -521,6 +589,18 @@ const UserProfile = () => {
           busy={avatarUploading}
           onCancel={() => setPendingAvatarFile(null)}
           onConfirm={handleAvatarCropConfirm}
+        />
+      )}
+
+      {pendingCoverFile && (
+        <ImageCropModal
+          file={pendingCoverFile}
+          busy={coverUploading}
+          aspect={3}
+          shape="rect"
+          title="Adjust your cover photo"
+          onCancel={() => setPendingCoverFile(null)}
+          onConfirm={handleCoverCropConfirm}
         />
       )}
     </div>
