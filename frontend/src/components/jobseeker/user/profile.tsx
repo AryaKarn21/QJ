@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Linkedin, Github, Twitter, Globe, Download,
-  GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus,
+  GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2,
 } from "lucide-react";
 import { getJobseekerProfile, updateJobseekerProfile, updateJobseekerCareerStatus } from "../jobseekerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
@@ -40,6 +40,8 @@ const UserProfile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const [formState, setFormState] = useState({
     name: "",
@@ -50,6 +52,7 @@ const UserProfile = () => {
     certifications: [] as Certification[],
     resume: null as File | null,
     profilePic: null as File | null,
+    existingProfilePicUrl: undefined as string | undefined,
   });
 
   useEffect(() => {
@@ -79,9 +82,37 @@ const UserProfile = () => {
         certifications: profile.certifications || [],
         resume: null,
         profilePic: null,
+        // So the Edit Profile modal shows the current picture on open
+        // instead of a blank uploader — see EditProfileModal's previewSrc.
+        existingProfilePicUrl: profile.profilePic
+          ? `${MEDIA_URL.replace(/\/$/, "")}/${profile.profilePic.replace(/^\//, "")}`
+          : undefined,
       });
     }
   }, [profile]);
+
+  // Direct upload from the avatar itself (camera icon) — skips the full
+  // Edit Profile modal for the single most common edit. Reuses the same
+  // partial-update endpoint; only the profilePic field is sent.
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("profilePic", file);
+      const updated = await updateJobseekerProfile(fd);
+      setProfile(updated.jobseeker);
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      setAvatarError("Upload failed. Please try a smaller image (under 2MB) in JPG, PNG, GIF, or WEBP.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -194,13 +225,50 @@ const UserProfile = () => {
 
             {/* Left column — avatar */}
             <div className="text-center">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full mx-auto mb-4 bg-gray-200 overflow-hidden flex items-center justify-center">
-                {profile.profilePic ? (
-                  <img src={mediaUrl(profile.profilePic)} alt={profile.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-3xl font-bold text-gray-500">{profile.name?.charAt(0).toUpperCase()}</span>
-                )}
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-4 group">
+                <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden flex items-center justify-center ring-2 ring-white shadow-sm">
+                  {profile.profilePic ? (
+                    <img src={mediaUrl(profile.profilePic)} alt={profile.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-3xl font-bold text-gray-500">{profile.name?.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+
+                {/* Camera overlay — the actual "upload a photo" affordance.
+                    Fades in on hover (desktop); the whole circle stays
+                    clickable regardless, and the persistent badge below
+                    covers discoverability on touch devices that have no
+                    hover state. Always shown mid-upload. */}
+                <label
+                  className={`absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white
+                    transition-opacity cursor-pointer
+                    ${avatarUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                  title="Change profile picture"
+                >
+                  {avatarUploading ? (
+                    <Loader2 size={22} className="animate-spin" />
+                  ) : (
+                    <Camera size={22} />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={avatarUploading}
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+
+                {/* Small always-visible badge so the option is discoverable
+                    without needing to hover first (mirrors the overlay's
+                    icon, just persistent). */}
+                <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white shadow ring-2 ring-white pointer-events-none">
+                  <Camera size={13} />
+                </span>
               </div>
+              {avatarError && (
+                <p className="text-xs text-red-600 mb-2 max-w-[14rem] mx-auto">{avatarError}</p>
+              )}
               <h2 className="text-xl sm:text-2xl font-semibold break-words">{profile.name}</h2>
               {/* Career status replaces the generic "Jobseeker" role label
                   here — the account role itself is unaffected everywhere
