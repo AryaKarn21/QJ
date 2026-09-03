@@ -4,7 +4,7 @@ import { Heart, MessageCircle, Eye, Calendar, Search, Plus } from 'lucide-react'
 import { BlogCategoriesExplore } from './BlogCategoriesExplore';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 interface Blog {
   _id: string;

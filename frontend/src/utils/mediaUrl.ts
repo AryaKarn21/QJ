@@ -3,7 +3,7 @@
 // back from the API as root-relative ("/uploads/..."), and need the
 // backend's origin prefixed since the frontend is served from a different
 // origin/port.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || API_BASE_URL;
 
 export function resolveMediaUrl(path?: string | null): string {

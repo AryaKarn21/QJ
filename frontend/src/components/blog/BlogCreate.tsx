@@ -9,7 +9,7 @@ import { TagInput } from '../common/TagInput';
 // etc.). This previously fell back to :8000, nothing listens there, so any
 // environment missing VITE_API_BASE_URL had every blog request silently hit
 // the wrong port instead of the real backend.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 interface BlogImage {
   url: string;

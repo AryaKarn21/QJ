@@ -3,7 +3,7 @@ import { Eye, EyeOff, AlertTriangle, X } from 'lucide-react';
 import { getEmployerProfile, updateNotificationPreferences, deactivateEmployerAccount } from '../employerApi/api';
 import { changePassword } from '../../auth/authApi/authApi';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || import.meta.env.VITE_API_BASE_URL || "https://qj.onrender.com";
 
 type NotificationPrefs = {
   allNotifications: boolean;

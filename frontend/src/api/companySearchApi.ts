@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://backend-server.rupeshkumar.com.np";
+  import.meta.env.VITE_API_BASE_URL || "https://qj.onrender.com";
 
 const authHeaders = () => {
   const token = localStorage.getItem("token");

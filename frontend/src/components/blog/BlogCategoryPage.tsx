@@ -5,7 +5,7 @@ import { getBlogCategoryBySlug, type PublicBlogCategory } from '../../api/blogCa
 
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why a :8000 fallback would be wrong here too.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 interface Blog {

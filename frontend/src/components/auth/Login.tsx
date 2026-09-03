@@ -15,7 +15,7 @@ import googleIcon from '../../assets/authImages/google.png';
 import Logo from '../../assets/quickjobs.png';
 import { loginUser } from './authApi/authApi';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-server.rupeshkumar.com.np';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 // Professional Unsplash Workspace Image
 const PROFESSIONAL_BG_IMAGE = 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1200&auto=format&fit=crop';

@@ -6,7 +6,7 @@ import Logo from '../../assets/quickjobs.png';
 import SignUpImage from '../../assets/authImages/Signup.png';
 import { registerJobseeker } from './authApi/authApi';
 import Cookies from 'js-cookie';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-server.rupeshkumar.com.np';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 // Defines the shape of the form data
 interface FormData {

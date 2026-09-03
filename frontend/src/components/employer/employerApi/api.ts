@@ -7,7 +7,7 @@ import type { ProfileStatus } from "../../../types/profileStatus";
 // missing VITE_API_BASE_URL silently hit production instead of the local
 // backend. Flagged repeatedly during the earlier production-hardening
 // pass; fixing it now while already in this exact file.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 // The same list models/Job.js validates `country` against — see
 // backend/data/countries.js. Public, unauthenticated (it's just a lookup

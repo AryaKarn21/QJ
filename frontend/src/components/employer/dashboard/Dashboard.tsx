@@ -35,7 +35,7 @@ import {
 } from '../employerApi/api';
 import { CommunityPostsPreview } from '../../community/CommunityPostsPreview';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 const MEDIA_URL    = import.meta.env.VITE_MEDIA_URL    || API_BASE_URL;
 
 const T = {

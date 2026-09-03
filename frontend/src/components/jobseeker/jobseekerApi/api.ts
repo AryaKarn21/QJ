@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { ProfileStatus } from '../../../types/profileStatus';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+  import.meta.env.VITE_API_BASE_URL || "https://qj.onrender.com";
 
 // Create axios instance with base URL
 const api = axios.create({

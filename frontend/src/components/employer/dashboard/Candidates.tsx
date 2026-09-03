@@ -3,7 +3,7 @@ import { getCandidates, toggleSavedCandidate, updateApplicationStatus } from "..
 import { Bookmark, BookmarkCheck, Pencil, Calendar } from "lucide-react";
 import { toast } from "react-toastify";
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || import.meta.env.VITE_API_BASE_URL || "https://qj.onrender.com";
 
 interface Candidate {
     candidateId: string;
