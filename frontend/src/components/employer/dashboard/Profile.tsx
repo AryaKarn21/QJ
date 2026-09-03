@@ -22,11 +22,15 @@ import {
   FileText,
   Sparkles,
   ArrowUpRight,
+  Camera,
+  Loader2,
+  ImagePlus,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { getEmployerProfile, updateEmployerProfile, getEmployerDashboardStats, updateEmployerHiringStatusApi } from "../employerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
 import EditProfileModal from "./EditProfileModal";
+import ImageCropModal from "../../common/ImageCropModal";
 import { ProfileStatusBadge } from "../../common/profileStatus/ProfileStatusBadge";
 import { ProfileStatusEditor } from "../../common/profileStatus/ProfileStatusEditor";
 import type { ProfileStatus } from "../../../types/profileStatus";
@@ -40,6 +44,17 @@ const Profile = () => {
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
   const navigate = useNavigate();
+
+  // Direct-upload state for the logo and cover photo — same adjustable
+  // crop/zoom flow as the jobseeker profile's avatar/cover, so employers
+  // get the same quick, discoverable upload affordance instead of only
+  // finding logo/cover fields buried inside the full Edit Profile modal.
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -74,6 +89,58 @@ const Profile = () => {
       .then((c) => setFollowCounts({ followers: c.followers, following: c.following }))
       .catch(() => {});
   }, [profile?._id]);
+
+  const mediaUrl = (p?: string) => (p ? `${MEDIA_URL.replace(/\/$/, "")}/${p.replace(/^\//, "")}` : "");
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoError(null);
+    setPendingLogoFile(file);
+  };
+
+  const handleLogoCropConfirm = async (blob: Blob) => {
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("companyLogo", new File([blob], "logo.jpg", { type: "image/jpeg" }));
+      const updated = await updateEmployerProfile(fd);
+      setProfile((p: any) => ({ ...p, ...updated }));
+      setPendingLogoFile(null);
+    } catch (error) {
+      console.error("Error uploading company logo:", error);
+      setLogoError("Upload failed. Please try a smaller image (under 2MB) in JPG, PNG, GIF, or WEBP.");
+      setPendingLogoFile(null);
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setCoverError(null);
+    setPendingCoverFile(file);
+  };
+
+  const handleCoverCropConfirm = async (blob: Blob) => {
+    setCoverUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("coverPhoto", new File([blob], "cover.jpg", { type: "image/jpeg" }));
+      const updated = await updateEmployerProfile(fd);
+      setProfile((p: any) => ({ ...p, ...updated }));
+      setPendingCoverFile(null);
+    } catch (error) {
+      console.error("Error uploading cover photo:", error);
+      setCoverError("Upload failed. Please try a smaller image (under 2MB) in JPG, PNG, GIF, or WEBP.");
+      setPendingCoverFile(null);
+    } finally {
+      setCoverUploading(false);
+    }
+  };
 
   // Calculate Profile Completion Percentage
   const calculateProfileCompletion = (prof: any) => {
@@ -149,7 +216,7 @@ const Profile = () => {
          <div className="h-32 sm:h-40 relative overflow-hidden">
   {profile.coverPhoto ? (
     <img
-      src={`${MEDIA_URL.replace(/\/$/, "")}/${profile.coverPhoto.replace(/^\//, "")}`}
+      src={mediaUrl(profile.coverPhoto)}
       alt="Cover"
       className="w-full h-full object-cover"
     />
@@ -158,8 +225,32 @@ const Profile = () => {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.2),transparent)]" />
     </div>
   )}
-</div>   
-       
+
+  {/* Cover photo uploader — direct affordance on the banner itself
+      rather than only being reachable through the full Edit Profile
+      modal further down. */}
+  <label
+    className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 rounded-full bg-black/25 backdrop-blur-sm border border-white/40 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-black/40 transition-colors cursor-pointer"
+    title={profile.coverPhoto ? "Change cover photo" : "Add a cover photo"}
+  >
+    {coverUploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+    <span className="hidden sm:inline">{profile.coverPhoto ? "Change cover" : "Add cover"}</span>
+    <input
+      type="file"
+      accept="image/*"
+      className="sr-only"
+      disabled={coverUploading}
+      onChange={handleCoverChange}
+    />
+  </label>
+
+  {coverError && (
+    <p className="absolute bottom-2 left-3 right-3 text-[11px] text-white bg-red-600/90 rounded px-2 py-1">
+      {coverError}
+    </p>
+  )}
+</div>
+
           <div className="px-6 sm:px-8 pb-6 pt-0 relative">
             <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-4">
               
@@ -168,7 +259,7 @@ const Profile = () => {
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl bg-white p-1.5 shadow-md border border-orange-100 shrink-0 overflow-hidden">
                   {profile.companyLogo ? (
                     <img
-                      src={`${MEDIA_URL.replace(/\/$/, "")}/${profile.companyLogo.replace(/^\//, "")}`}
+                      src={mediaUrl(profile.companyLogo)}
                       alt={profile.name}
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
@@ -181,6 +272,34 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Camera overlay — the actual "upload a logo" affordance,
+                    same pattern as the jobseeker avatar: fades in on hover,
+                    whole box stays clickable regardless, small persistent
+                    badge covers discoverability on touch devices. */}
+                <label
+                  className={`absolute inset-1.5 rounded-xl flex items-center justify-center bg-black/50 text-white
+                    transition-opacity cursor-pointer
+                    ${logoUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                  title="Change company logo"
+                >
+                  {logoUploading ? <Loader2 size={22} className="animate-spin" /> : <Camera size={22} />}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={logoUploading}
+                    onChange={handleLogoChange}
+                  />
+                </label>
+                <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#F97316] text-white shadow ring-2 ring-white pointer-events-none">
+                  <Camera size={13} />
+                </span>
+                {logoError && (
+                  <p className="absolute top-full mt-1 left-0 right-0 text-[11px] text-red-600 bg-white/90 rounded px-1.5 py-1 shadow-sm">
+                    {logoError}
+                  </p>
+                )}
               </div>
 
               {/* Edit Profile Action Button */}
@@ -731,7 +850,12 @@ const Profile = () => {
               }
 
               const updated = await updateEmployerProfile(formData);
-              setProfile(updated);
+              // Merge, don't replace — `updated` only carries employer
+              // document fields, not the dashboard stats (jobsPostedCount,
+              // activeJobsCount, ...) merged in from a separate endpoint on
+              // initial load; a plain replace here reset the KPI cards to
+              // "--" after every single profile edit.
+              setProfile((p: any) => ({ ...p, ...updated }));
               setShowEditModal(false);
             } catch (error) {
               console.error("Failed to update profile:", error);
@@ -747,6 +871,29 @@ const Profile = () => {
           onSave={(payload) => updateEmployerHiringStatusApi(payload).then((res) => res.profileStatus)}
           onSaved={(updated) => setProfile((p: Record<string, unknown> | null) => (p ? { ...p, profileStatus: updated } : p))}
         />
+
+        {pendingLogoFile && (
+          <ImageCropModal
+            file={pendingLogoFile}
+            busy={logoUploading}
+            shape="rect"
+            title="Adjust your company logo"
+            onCancel={() => setPendingLogoFile(null)}
+            onConfirm={handleLogoCropConfirm}
+          />
+        )}
+
+        {pendingCoverFile && (
+          <ImageCropModal
+            file={pendingCoverFile}
+            busy={coverUploading}
+            aspect={3}
+            shape="rect"
+            title="Adjust your cover photo"
+            onCancel={() => setPendingCoverFile(null)}
+            onConfirm={handleCoverCropConfirm}
+          />
+        )}
 
       </div>
     </div>
