@@ -251,9 +251,12 @@ const UserProfile = () => {
     title: string;
     children: React.ReactNode;
   }) => (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
-      <div className="flex items-center gap-2 mb-3 text-base sm:text-lg font-semibold text-gray-800">
-        {icon} {title}
+    <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
+      <div className="flex items-center gap-2.5 mb-3.5 pb-3 border-b border-gray-100">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {icon}
+        </span>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 tracking-tight">{title}</h3>
       </div>
       {children}
     </div>
@@ -269,15 +272,15 @@ const UserProfile = () => {
         },
         React.createElement(
           "button",
-          { className: "flex items-center text-white bg-primary px-4 py-2 rounded-md hover:bg-primary/90" },
+          { className: "flex items-center text-white bg-primary font-medium px-4 py-2.5 rounded-lg shadow-sm hover:bg-primary/90 transition-colors" },
           React.createElement(Download, { size: 16, className: "mr-2" }),
           "Download CV"
         )
       )
     : React.createElement(
-        "div",
-        { className: "bg-gray-500 flex items-center px-4 py-1 rounded-md" },
-        React.createElement("p", { className: "text-white py-2" }, "No resume uploaded")
+        "p",
+        { className: "text-sm text-gray-400 italic" },
+        "No resume uploaded."
       );
 
   return (
@@ -301,9 +304,10 @@ const UserProfile = () => {
             <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-2">
               {/* Cover photo uploader — its own affordance, separate from
                   Edit Profile, since it's a direct-manipulation edit just
-                  like the avatar's camera icon. */}
+                  like the avatar's camera icon. Ghost/outline styling keeps
+                  it clearly secondary to the primary Edit Profile action. */}
               <label
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow hover:bg-white transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-black/25 backdrop-blur-sm border border-white/40 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-black/40 transition-colors cursor-pointer"
                 title={profile.coverPhoto ? "Change cover photo" : "Add a cover photo"}
               >
                 {coverUploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
@@ -319,7 +323,7 @@ const UserProfile = () => {
 
               <button
                 onClick={() => setShowEditModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow hover:bg-white transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors"
               >
                 <Pencil size={14} /> <span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit Profile</span>
               </button>
@@ -381,7 +385,7 @@ const UserProfile = () => {
               {avatarError && (
                 <p className="text-xs text-red-600 mb-2 max-w-[14rem] mx-auto">{avatarError}</p>
               )}
-              <h2 className="text-xl sm:text-2xl font-semibold break-words">{profile.name}</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 break-words">{profile.name}</h2>
               {/* Career status replaces the generic "Jobseeker" role label
                   here — the account role itself is unaffected everywhere
                   it's used for authorization (this is a display-only
@@ -393,7 +397,7 @@ const UserProfile = () => {
                   onEdit={() => setShowStatusEditor(true)}
                 />
               </div>
-              <p className="text-primary text-sm sm:text-base break-all mt-1.5">{profile.email}</p>
+              <p className="text-gray-500 text-sm sm:text-base break-all mt-1">{profile.email}</p>
 
               {/* Currently working at — the "recently working" highlight */}
               {currentJob && (currentJob.jobPosition || currentJob.institution) && (
@@ -416,19 +420,20 @@ const UserProfile = () => {
               {/* Followers / Following — reuses the Community follow system;
                   clicking through lands on the same pages linked from the
                   Community Profile header. */}
-              <div className="flex justify-center gap-6 mt-4 py-3 border-y border-gray-100">
+              <div className="flex justify-center items-stretch gap-6 mt-4 py-3 border-y border-gray-100">
                 <Link
                   to={`/community/profile/${profile._id}/followers`}
                   className="flex flex-col items-center hover:text-primary transition-colors group"
                 >
-                  <span className="text-base font-bold text-gray-900 group-hover:text-primary">{followCounts.followers}</span>
+                  <span className="text-lg font-bold text-gray-900 group-hover:text-primary">{followCounts.followers}</span>
                   <span className="text-[11px] text-gray-500 flex items-center gap-1"><UserPlus size={10} /> Followers</span>
                 </Link>
+                <div className="w-px bg-gray-100" />
                 <Link
                   to={`/community/profile/${profile._id}/following`}
                   className="flex flex-col items-center hover:text-primary transition-colors group"
                 >
-                  <span className="text-base font-bold text-gray-900 group-hover:text-primary">{followCounts.following}</span>
+                  <span className="text-lg font-bold text-gray-900 group-hover:text-primary">{followCounts.following}</span>
                   <span className="text-[11px] text-gray-500 flex items-center gap-1"><Users size={10} /> Following</span>
                 </Link>
               </div>
@@ -464,8 +469,8 @@ const UserProfile = () => {
 
               {/* Right column — details, as distinct section cards rather
                   than one long stack of plain text. */}
-              <div className="md:col-span-2 md:mt-3 space-y-4">
-                <Section icon={<GraduationCap className="shrink-0 text-primary" size={24} />} title="Qualifications">
+              <div className="md:col-span-2 md:mt-3 space-y-5">
+                <Section icon={<GraduationCap size={18} />} title="Qualifications">
                   {profile.qualifications?.length > 0 ? (
                     <ul className="space-y-2 text-sm text-gray-700">
                       {profile.qualifications.map((q, i) => (
@@ -480,11 +485,11 @@ const UserProfile = () => {
                   )}
                 </Section>
 
-                <Section icon={<BadgeCheck className="shrink-0 text-primary" size={22} />} title="Skills">
+                <Section icon={<BadgeCheck size={18} />} title="Skills">
                   {profile.skills?.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {profile.skills.map((skill, i) => (
-                        <span key={i} className="px-3 py-1 bg-white border text-sm rounded-full">{skill}</span>
+                        <span key={i} className="px-3 py-1 bg-primary/5 text-primary border border-primary/15 text-sm font-medium rounded-full">{skill}</span>
                       ))}
                     </div>
                   ) : (
@@ -492,7 +497,7 @@ const UserProfile = () => {
                   )}
                 </Section>
 
-                <Section icon={<Briefcase className="shrink-0 text-primary" size={22} />} title="Experience">
+                <Section icon={<Briefcase size={18} />} title="Experience">
                   {profile.experiences?.length > 0 ? (
                     <ul className="space-y-2 text-sm text-gray-700">
                       {profile.experiences.map((exp, i) => (
@@ -513,7 +518,7 @@ const UserProfile = () => {
                   )}
                 </Section>
 
-                <Section icon={<Briefcase className="shrink-0 text-primary" size={22} />} title="Projects">
+                <Section icon={<Briefcase size={18} />} title="Projects">
                   {profile.projects && profile.projects.length > 0 ? (
                     <ul className="space-y-2 text-sm text-gray-700">
                       {profile.projects.map((p, i) => (
@@ -529,7 +534,7 @@ const UserProfile = () => {
                   )}
                 </Section>
 
-                <Section icon={<BadgeCheck className="shrink-0 text-primary" size={22} />} title="Certifications">
+                <Section icon={<BadgeCheck size={18} />} title="Certifications">
                   {profile.certifications && profile.certifications.length > 0 ? (
                     <ul className="space-y-2 text-sm text-gray-700">
                       {profile.certifications.map((c, i) => (
