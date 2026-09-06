@@ -14,6 +14,12 @@ const SIZE_CLASSES: Record<number, string> = {
   10: 'h-10 w-10 text-sm',
   12: 'h-12 w-12 text-base',
   16: 'h-16 w-16 text-xl',
+  // ProfileFeed.tsx's main profile-card avatar already requested size=20
+  // (LinkedIn-scale, meant to prominently overlap the cover banner) — but
+  // 20 was never a key here, so it silently fell through to the size=10
+  // default (40px) instead, rendering a tiny avatar under a -48px negative
+  // margin clearly designed for something much bigger.
+  20: 'h-20 w-20 text-2xl',
 };
 
 export function Avatar({ user, size = 10, linkToProfile = false }: AvatarProps) {

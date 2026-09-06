@@ -245,7 +245,14 @@ export function ProfileFeed() {
           <div className="mb-3">
             {profile ? (
               <>
-                <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
+                <h1 className="flex items-center gap-1.5 text-xl font-bold text-gray-900">
+                  {profile.name}
+                  {profile.isVerified && (
+                    <span title="Verified" className="text-primary">
+                      ✓
+                    </span>
+                  )}
+                </h1>
                 {(profile.role === 'jobseeker' || profile.role === 'employer') && (
                   <div className="mt-1">
                     <ProfileStatusBadge
