@@ -571,7 +571,12 @@ export function ProfileFeed() {
             </ProfileSection>
           )}
 
-          {isOwnProfile && <PostComposer onPosted={(post) => setPosts((prev) => [post, ...prev])} />}
+          {isOwnProfile && profile && (
+            <PostComposer
+              onPosted={(post) => setPosts((prev) => [post, ...prev])}
+              currentUserSnapshot={{ name: profile.name, avatar: profile.avatar, role: profile.role }}
+            />
+          )}
 
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">Recent Activity</h2>

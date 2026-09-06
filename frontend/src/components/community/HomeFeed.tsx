@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { fetchFeed } from '../../api/communityApi';
+import { fetchPublicProfile } from '../../api/followApi';
 import { useCurrentUser } from '../../utils/currentUser';
 import { FeedFilters } from './FeedFilters';
 import { PostComposer } from './PostComposer';
@@ -11,7 +12,7 @@ import { MiniProfileCard } from './MiniProfileCard';
 import type { CommunityPost, FeedFilter } from '../../types/community';
 
 export function HomeFeed() {
-  const { isAuthenticated } = useCurrentUser();
+  const { isAuthenticated, userId } = useCurrentUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = (searchParams.get('filter') as FeedFilter) || 'latest';
 
@@ -20,6 +21,16 @@ export function HomeFeed() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  // PostComposer's collapsed "Start a post" trigger needs this to show
+  // your own avatar next to it (matching LinkedIn) — it was previously
+  // only ever passed by CompanyFeed.tsx, so the feed's own composer
+  // trigger silently rendered with no avatar at all.
+  const [ownSnapshot, setOwnSnapshot] = useState<{ name: string; avatar?: string | null; role: string } | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    fetchPublicProfile(userId).then(setOwnSnapshot).catch(() => {});
+  }, [userId]);
 
   useEffect(() => {
     setLoading(true);
@@ -77,7 +88,12 @@ export function HomeFeed() {
             </Link>
           </div>
           <FeedFilters active={filter} onChange={handleFilterChange} />
-          {isAuthenticated && <PostComposer onPosted={(post) => setPosts((prev) => [post, ...prev])} />}
+          {isAuthenticated && (
+            <PostComposer
+              onPosted={(post) => setPosts((prev) => [post, ...prev])}
+              currentUserSnapshot={ownSnapshot || undefined}
+            />
+          )}
 
           {loading ? (
             <div className="space-y-4">

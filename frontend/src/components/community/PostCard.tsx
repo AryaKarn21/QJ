@@ -398,34 +398,56 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
         )
       )}
 
-      {/* Action bar */}
-      <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-2 text-sm text-gray-500">
+      {/* Engagement summary — LinkedIn shows a one-line rollup above the
+          action buttons ("❤ 24 · 5 comments · 2 reposts") rather than
+          burying counts inside each button; only rendered when there's
+          something to summarize. */}
+      {(likeCount > 0 || commentCount > 0 || shareCount > 0) && (
+        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            {likeCount > 0 && (
+              <>
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-danger text-white">
+                  <Heart size={9} fill="currentColor" />
+                </span>
+                {likeCount}
+              </>
+            )}
+          </span>
+          <span className="flex items-center gap-2">
+            {commentCount > 0 && <span>{commentCount} comment{commentCount === 1 ? '' : 's'}</span>}
+            {shareCount > 0 && <span>{shareCount} repost{shareCount === 1 ? '' : 's'}</span>}
+          </span>
+        </div>
+      )}
+
+      {/* Action bar — four full-width, evenly-split buttons with icon +
+          label (LinkedIn's exact pattern), rather than icon-plus-count
+          buttons of varying width. */}
+      <div className="mt-1 flex items-center border-t border-gray-100 pt-1 text-gray-500">
         <button
           onClick={handleLike}
-          className={`flex items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-secondary ${liked ? 'text-danger' : ''}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium hover:bg-secondary ${liked ? 'text-danger' : ''}`}
         >
-          <Heart size={17} fill={liked ? 'currentColor' : 'none'} />
-          {likeCount > 0 && likeCount}
+          <Heart size={17} fill={liked ? 'currentColor' : 'none'} /> {liked ? 'Liked' : 'Like'}
         </button>
         <button
           onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-secondary"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium hover:bg-secondary"
         >
-          <MessageCircle size={17} />
-          {commentCount > 0 && commentCount}
+          <MessageCircle size={17} /> Comment
         </button>
         <button
           onClick={handleShare}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-secondary"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium hover:bg-secondary"
         >
-          <Share2 size={17} />
-          {shareCount > 0 && shareCount}
+          <Share2 size={17} /> Repost
         </button>
         <button
           onClick={handleBookmark}
-          className={`flex items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-secondary ${bookmarked ? 'text-primary' : ''}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium hover:bg-secondary ${bookmarked ? 'text-primary' : ''}`}
         >
-          <Bookmark size={17} fill={bookmarked ? 'currentColor' : 'none'} />
+          <Bookmark size={17} fill={bookmarked ? 'currentColor' : 'none'} /> {bookmarked ? 'Saved' : 'Save'}
         </button>
       </div>
 
