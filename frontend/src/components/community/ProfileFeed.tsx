@@ -11,6 +11,7 @@ import { openConversationWith } from '../../api/messageApi';
 import { updateJobseekerProfile, updateJobseekerCareerStatus } from '../../components/jobseeker/jobseekerApi/api';
 import { updateEmployerProfile, updateEmployerHiringStatusApi } from '../../components/employer/employerApi/api';
 import { useCurrentUser } from '../../utils/currentUser';
+import { addRecentlyViewedProfile } from '../../utils/recentSearches';
 import { Avatar } from './Avatar';
 import { FollowButton } from './FollowButton';
 import { ConnectionButton } from './ConnectionButton';
@@ -64,6 +65,14 @@ export function ProfileFeed() {
     fetchPublicProfile(profileId).then(setProfile).catch(() => setProfile(null));
     fetchFollowCounts(profileId).then(setCounts).catch(() => {});
   }, [profileId]);
+
+  // Feeds the header search's "Recent" people row (LinkedIn-style) — real
+  // browsing history only, per-browser via localStorage, never your own
+  // profile (not useful to see yourself in "recently viewed").
+  useEffect(() => {
+    if (!profileId || profileId === viewerId) return;
+    addRecentlyViewedProfile(profileId);
+  }, [profileId, viewerId]);
 
   useEffect(() => {
     if (!profileId) return;

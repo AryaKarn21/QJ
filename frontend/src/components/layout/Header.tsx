@@ -221,7 +221,9 @@ const Header: React.FC = () => {
               /community/search page. Search requires auth on the backend
               (backend/routes/searchRoutes.js), so it only renders once
               logged in — same gating as Messages/Notifications below. */}
-          {isLoggedIn && <HeaderSearch className="hidden md:block md:w-52 lg:w-64 xl:w-80 mx-2" />}
+          {isLoggedIn && (
+            <HeaderSearch className="hidden md:block md:w-52 lg:w-64 xl:w-80 mx-2" suggestionSeeds={jobCategories} />
+          )}
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 bg-slate-100/60 p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
@@ -436,7 +438,7 @@ const Header: React.FC = () => {
           <div className="px-4 pt-3 pb-6 space-y-1.5">
             {isLoggedIn && (
               <div className="pb-2">
-                <HeaderSearch onNavigate={() => setIsMobileMenuOpen(false)} />
+                <HeaderSearch onNavigate={() => setIsMobileMenuOpen(false)} suggestionSeeds={jobCategories} />
               </div>
             )}
             {NAV_ITEMS.map((item) => {

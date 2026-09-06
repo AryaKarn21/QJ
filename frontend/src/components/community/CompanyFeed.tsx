@@ -5,6 +5,7 @@ import { fetchCompanyFeed } from '../../api/communityApi';
 import { fetchPublicProfile, fetchFollowCounts } from '../../api/followApi';
 import { getEmployeeCount } from '../../api/companyMemberApi';
 import { useCurrentUser } from '../../utils/currentUser';
+import { addRecentlyViewedProfile } from '../../utils/recentSearches';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from './Avatar';
 import { FollowButton } from './FollowButton';
@@ -36,6 +37,13 @@ export function CompanyFeed() {
     fetchFollowCounts(companyId).then(setCounts).catch(() => {});
     getEmployeeCount(companyId).then(setEmployeeCount).catch(() => {});
   }, [companyId]);
+
+  // Feeds the header search's "Recent" people row (LinkedIn-style) — see
+  // ProfileFeed.tsx's identical hook for jobseeker/employer profiles.
+  useEffect(() => {
+    if (!companyId || companyId === userId) return;
+    addRecentlyViewedProfile(companyId);
+  }, [companyId, userId]);
 
   useEffect(() => {
     if (!companyId) return;
