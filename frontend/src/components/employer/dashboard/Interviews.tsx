@@ -84,7 +84,7 @@ const Interviews = () => {
         }
         setSavingEdit(true);
         try {
-            await updateApplicationStatus(editingFor, "Interview Scheduled", {
+            const res = await updateApplicationStatus(editingFor, "Interview Scheduled", {
                 scheduledAt: new Date(editDate).toISOString(),
                 mode: editMode,
                 meetingLink: editLink,
@@ -107,7 +107,14 @@ const Interviews = () => {
                         : iv
                 )
             );
-            toast.success("Interview updated — the candidate has been emailed the new details.");
+            // Honest, per emailSent (see employerController.js's
+            // updateApplication — it awaits the send and reports true/
+            // false/null) — same pattern as Applicants.tsx's toasts.
+            if (res?.emailSent === false) {
+                toast.warn("Interview updated, but we couldn't send the candidate an email — please follow up directly.");
+            } else {
+                toast.success("Interview updated — the candidate has been emailed the new details.");
+            }
             closeEdit();
         } catch (err) {
             console.error("Failed to update interview:", err);
