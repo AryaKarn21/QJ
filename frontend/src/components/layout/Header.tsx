@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Menu, Home, BriefcaseIcon, Info, FileText, Mail, Users,
   ChevronDown, SparkleIcon, MessageCircle, X, ArrowRight,
-  Grid, LogOut, LayoutDashboard, User, Settings, Newspaper,
+  Grid, LogOut, LayoutDashboard, User, Settings, Newspaper, Search,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import StarLogo from '../../assets/quickjobs.png';
@@ -10,6 +10,7 @@ import { jwtDecode } from 'jwt-decode';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { fetchJobCategories } from '../../api/jobCategoryApi';
 import { fetchPublicProfile } from '../../api/followApi';
+import HeaderSearch from './HeaderSearch';
 
 interface DecodedToken {
   id: string;
@@ -214,6 +215,14 @@ const Header: React.FC = () => {
             </div>
           </Link>
 
+          {/* Persistent people/company search — LinkedIn-style: always in
+              the header (not buried inside the Community page), live
+              preview dropdown, Enter/"See all results" goes to the full
+              /community/search page. Search requires auth on the backend
+              (backend/routes/searchRoutes.js), so it only renders once
+              logged in — same gating as Messages/Notifications below. */}
+          {isLoggedIn && <HeaderSearch className="hidden md:block md:w-52 lg:w-64 xl:w-80 mx-2" />}
+
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 bg-slate-100/60 p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
             {NAV_ITEMS.map((item) => {
@@ -282,6 +291,15 @@ const Header: React.FC = () => {
               </div>
             ) : (
               <div className="flex items-center space-x-1.5">
+                {/* Search shortcut — screens below md hide the inline
+                    HeaderSearch box above (no room for it next to the
+                    logo/icons), so this is the only way to reach search on
+                    phones/small tablets outside the hamburger drawer. */}
+                <Link to="/community/search" aria-label="Search people, companies, skills"
+                  className="md:hidden p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
+                  <Search size={20} />
+                </Link>
+
                 {/* Messages */}
                 <Link to="/messages" aria-label="Messages"
                   className="p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
@@ -416,6 +434,11 @@ const Header: React.FC = () => {
       {isMobileMenuOpen && (
         <div id="mobile-nav-menu" role="navigation" aria-label="Mobile" className="lg:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200/80 shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="px-4 pt-3 pb-6 space-y-1.5">
+            {isLoggedIn && (
+              <div className="pb-2">
+                <HeaderSearch onNavigate={() => setIsMobileMenuOpen(false)} />
+              </div>
+            )}
             {NAV_ITEMS.map((item) => {
               const isHome = item.path === '/';
               const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
