@@ -7,6 +7,7 @@ import { FeedFilters } from './FeedFilters';
 import { PostComposer } from './PostComposer';
 import { PostCard } from './PostCard';
 import { TrendingSidebar } from './TrendingSidebar';
+import { MiniProfileCard } from './MiniProfileCard';
 import type { CommunityPost, FeedFilter } from '../../types/community';
 
 export function HomeFeed() {
@@ -46,8 +47,24 @@ export function HomeFeed() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto max-w-7xl px-4 py-6">
+      {/* LinkedIn's classic 3-column feed layout: your own identity
+          anchored on the left (MiniProfileCard), the feed itself in the
+          center, discovery (trending/who-to-follow) on the right. Both
+          side columns collapse away below lg — on a phone/tablet the
+          feed is the only thing that matters, same as LinkedIn's mobile
+          app dropping the side rails entirely rather than squeezing them in. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)_320px]">
+        {isAuthenticated ? (
+          <aside className="hidden lg:block">
+            <div className="sticky top-6">
+              <MiniProfileCard />
+            </div>
+          </aside>
+        ) : (
+          <div className="hidden lg:block" />
+        )}
+
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-xl font-bold text-dark">Community</h1>
@@ -63,7 +80,23 @@ export function HomeFeed() {
           {isAuthenticated && <PostComposer onPosted={(post) => setPosts((prev) => [post, ...prev])} />}
 
           {loading ? (
-            <p className="py-8 text-center text-sm text-gray-400">Loading posts…</p>
+            <div className="space-y-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-xl border border-gray-100 bg-white p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gray-200" />
+                    <div className="space-y-1.5">
+                      <div className="h-3 w-32 rounded bg-gray-200" />
+                      <div className="h-2.5 w-20 rounded bg-gray-100" />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="h-3 w-full rounded bg-gray-100" />
+                    <div className="h-3 w-4/5 rounded bg-gray-100" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : posts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center">
               <p className="text-sm text-gray-500">
