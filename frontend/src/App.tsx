@@ -84,6 +84,7 @@ import { FollowersPage } from './components/community/FollowersPage';
 import { FollowingPage } from './components/community/FollowingPage';
 import { MyConnectionsPage } from './components/community/MyConnectionsPage';
 import { ConnectionRequestsPage } from './components/community/ConnectionRequestsPage';
+import { NetworkHub } from './components/community/NetworkHub';
 import Candidates from './components/employer/dashboard/Candidates';
 import SavedCandidates from './components/employer/dashboard/SavedCandidates';
 import Interviews from './components/employer/dashboard/Interviews';
@@ -209,6 +210,14 @@ function AppWrapper() {
           <Route path="/community/profile/:userId" element={<ProfileFeed />} />
           <Route path="/community/profile/:userId/followers" element={<FollowersPage />} />
           <Route path="/community/profile/:userId/following" element={<FollowingPage />} />
+          <Route
+            path="/community/network"
+            element={
+              <ProtectedRoute>
+                <NetworkHub />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/community/connections"
             element={

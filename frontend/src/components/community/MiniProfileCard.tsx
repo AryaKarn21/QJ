@@ -71,6 +71,13 @@ export function MiniProfileCard() {
             <span className="font-semibold text-gray-700">{counts.followers}</span>
           </Link>
         </div>
+
+        <Link
+          to="/community/network"
+          className="mt-3 block rounded-lg border border-gray-200 py-1.5 text-center text-xs font-semibold text-primary hover:bg-primary/5"
+        >
+          My Network
+        </Link>
       </div>
     </div>
   );

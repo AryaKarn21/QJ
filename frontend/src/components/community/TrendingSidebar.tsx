@@ -88,9 +88,14 @@ export function TrendingSidebar() {
 
       {isAuthenticated && connectionSuggestions.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-light p-4 shadow-card">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-dark">
-            <Users2 size={15} className="text-primary" /> People you may know
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-dark">
+              <Users2 size={15} className="text-primary" /> People you may know
+            </h3>
+            <Link to="/community/network" className="text-xs font-semibold text-primary hover:underline">
+              See all
+            </Link>
+          </div>
           <ul className="mt-2 space-y-3">
             {connectionSuggestions.slice(0, 5).map((p) => (
               <li key={p._id} className="flex items-center gap-2">
