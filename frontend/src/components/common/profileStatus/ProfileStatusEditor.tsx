@@ -14,6 +14,52 @@ import {
 const MAX_CHIPS = 10;
 const MAX_CHIP_LENGTH = 60;
 
+// Fixed set instead of freeform text — spec asked for "proper selectable
+// chips instead of a plain text field" specifically for employment type,
+// since (unlike target roles or locations) it's a small, closed set of
+// real-world options. Same backend field/validation
+// (utils/profileStatus.js's sanitizeStringList) — this only changes how
+// the value is collected on the frontend.
+const EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'];
+
+interface EmploymentTypeTogglesProps {
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+}
+
+const EmploymentTypeToggles: React.FC<EmploymentTypeTogglesProps> = ({ label, values, onChange }) => {
+  const toggle = (option: string) => {
+    onChange(values.includes(option) ? values.filter((v) => v !== option) : [...values, option]);
+  };
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>
+      <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
+        {EMPLOYMENT_TYPE_OPTIONS.map((option) => {
+          const selected = values.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggle(option)}
+              aria-pressed={selected}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                selected
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
+              }`}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 interface ChipListInputProps {
   label: string;
   values: string[];
@@ -210,11 +256,10 @@ export const ProfileStatusEditor: React.FC<ProfileStatusEditorProps> = ({
           onChange={setPreferredLocations}
           placeholder="Type a location and press Enter"
         />
-        <ChipListInput
+        <EmploymentTypeToggles
           label={statusType === 'JOB_SEEKER' ? 'Employment Preferences' : 'Employment Types'}
           values={employmentTypes}
           onChange={setEmploymentTypes}
-          placeholder="e.g. Full-time, Contract, Remote"
         />
 
         <div>

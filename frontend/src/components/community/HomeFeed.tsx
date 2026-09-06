@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { fetchFeed } from '../../api/communityApi';
 import { useCurrentUser } from '../../utils/currentUser';
 import { FeedFilters } from './FeedFilters';
@@ -48,7 +49,16 @@ export function HomeFeed() {
     <div className="mx-auto max-w-6xl px-4 py-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
-          <h1 className="text-xl font-bold text-dark">Community</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl font-bold text-dark">Community</h1>
+            <Link
+              to="/community/search"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-400 shadow-sm transition-colors hover:border-primary/40 hover:text-primary sm:max-w-xs"
+            >
+              <Search size={15} className="shrink-0" />
+              <span className="truncate">Search people, companies, skills…</span>
+            </Link>
+          </div>
           <FeedFilters active={filter} onChange={handleFilterChange} />
           {isAuthenticated && <PostComposer onPosted={(post) => setPosts((prev) => [post, ...prev])} />}
 

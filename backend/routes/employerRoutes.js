@@ -45,16 +45,30 @@ router.put("/profile", authenticate, authorizeRoles("employer"), userUpload, upd
 // separate from the multipart full-profile PUT above (see
 // employerController.js's updateEmployerHiringStatus for why).
 router.put("/profile/status", authenticate, authorizeRoles("employer"), updateEmployerHiringStatus);
+// Mutating/consequential actions stay gated by `authorizeEmployer` (requires
+// admin-verified KYC, isVerified===true) — creating/editing/deleting a job
+// or acting on someone's application is a real-world consequence worth
+// requiring verification for.
 router.post("/jobs", authenticate, authorizeEmployer, createJob);
 router.put("/jobs/:jobId", authenticate, authorizeEmployer, editJob);
 router.patch("/jobs/:jobId", authenticate, authorizeEmployer, editJob);
 router.patch("/applications/:applicationId/status", authenticate, authorizeEmployer, updateApplication);
 router.delete("/jobs/:jobId", authenticate, authorizeEmployer, deleteJob);
-router.get("/jobs/:jobId/jobseekers", authenticate, authorizeEmployer, getAppliedJobseekers);
-router.get("/my-jobs", authenticate, authorizeEmployer, getEmployerJobs);
-router.get("/dashboard-stats", authenticate, authorizeEmployer, getEmployerDashboardStats);
-router.get("/my-jobs/applications", authenticate, authorizeEmployer, getAllApplicantsForEmployer);
-router.get("/my-jobs/applicants", authenticate, authorizeEmployer, getAllApplicantsForEmployerJobs);
+
+// Read-only views of an employer's OWN data — previously gated by the same
+// verification-required `authorizeEmployer` as the mutating routes above,
+// which meant a brand-new, not-yet-KYC-verified employer got a 403 loading
+// their own dashboard stats / job list (while /profile, /candidates and
+// /interviews — same kind of own-data read — worked fine, since those
+// already used the weaker `authorizeRoles("employer")`). Viewing your own
+// account isn't a consequential action; verification shouldn't gate it.
+// Switched to `authorizeRoles("employer")` to match its sibling read routes
+// and stop that inconsistent 403.
+router.get("/jobs/:jobId/jobseekers", authenticate, authorizeRoles("employer"), getAppliedJobseekers);
+router.get("/my-jobs", authenticate, authorizeRoles("employer"), getEmployerJobs);
+router.get("/dashboard-stats", authenticate, authorizeRoles("employer"), getEmployerDashboardStats);
+router.get("/my-jobs/applications", authenticate, authorizeRoles("employer"), getAllApplicantsForEmployer);
+router.get("/my-jobs/applicants", authenticate, authorizeRoles("employer"), getAllApplicantsForEmployerJobs);
 router.patch("/notification-preferences", authenticate, authorizeRoles("employer"), updateNotificationPreferences);
 router.post("/deactivate", authenticate, authorizeRoles("employer"), deactivateAccount);
 router.get("/candidates", authenticate, authorizeRoles("employer"), getCandidates);

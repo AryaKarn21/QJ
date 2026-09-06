@@ -10,6 +10,7 @@ import ForgotResetPassword from './components/auth/forget-password';
 import JobseekerSignup from './components/auth/jobseekerSignup';
 import EmployerSignup from './components/auth/employerSignup';
 import Profile from './components/employer/dashboard/Profile';
+import EmployerJobCategories from './components/employer/dashboard/JobCategories';
 import Dashboard from './components/employer/dashboard/Dashboard';
 import Insight from './components/employer/dashboard/Insight';
 import JobList from './components/employer/dashboard/JobList';
@@ -89,6 +90,7 @@ import Interviews from './components/employer/dashboard/Interviews';
 import EmployeeList from './components/employer/dashboard/EmployeeList'; // ✅ NEW
 import { HashtagFeed } from './components/community/HashtagFeed';
 import { PostDetailPage } from './components/community/PostDetailPage';
+import PeopleSearch from './components/community/PeopleSearch';
 import { MessagesPage } from './components/messaging/MessagesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Unauthorized from './components/auth/Unauthorized';
@@ -195,6 +197,14 @@ function AppWrapper() {
 
           {/* Community Feed */}
           <Route path="/community" element={<HomeFeed />} />
+          <Route
+            path="/community/search"
+            element={
+              <ProtectedRoute>
+                <PeopleSearch />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/community/company/:companyId" element={<CompanyFeed />} />
           <Route path="/community/profile/:userId" element={<ProfileFeed />} />
           <Route path="/community/profile/:userId/followers" element={<FollowersPage />} />
@@ -267,6 +277,7 @@ function AppWrapper() {
             }
           >
             <Route path="profile" element={<Profile />} />
+            <Route path="job-categories" element={<EmployerJobCategories />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="insight" element={<Insight />} />
             <Route path="joblist" element={<JobList />} />

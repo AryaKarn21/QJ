@@ -100,7 +100,13 @@ export default function Chatbot() {
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={open ? 'Close QuickJobs help assistant' : 'Open QuickJobs help assistant'}
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30"
+        // env(safe-area-inset-*) keeps the button clear of the home-indicator
+        // / rounded-corner cutout on notched phones (portrait AND landscape,
+        // where the inset shows up on the *side* instead of the bottom) —
+        // without it the button sits flush against, or under, the system UI
+        // on those devices. Falls back to plain bottom-5/right-5 (adds 0)
+        // everywhere else.
+        className="fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-[calc(1.25rem+env(safe-area-inset-right))]"
       >
         {open ? <X size={24} /> : <MessageCircle size={24} />}
       </button>
@@ -119,7 +125,15 @@ export default function Chatbot() {
           // shape — nearly full viewport height/width — even on a wide
           // screen. A height capped with CSS min() degrades continuously
           // instead, so there's no single breakpoint for it to miss.
-          className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-5 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-96 h-[min(32rem,calc(100vh-7.5rem))]"
+          //
+          // `100dvh` (not `100vh`) for the height cap: on mobile Safari/Chrome
+          // `100vh` is the *largest* possible viewport (address bar hidden),
+          // so the panel was sized too tall and got clipped under the address
+          // bar until the user scrolled it away. `dvh` tracks the actual
+          // visible viewport as browser chrome shows/hides, so the panel
+          // never overflows behind it. The safe-area insets do the same job
+          // as on the toggle button, for notched phones in both orientations.
+          className="fixed z-50 sm:left-auto flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-96 h-[min(32rem,calc(100dvh-7.5rem))] bottom-[calc(6rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))] sm:right-[calc(1.25rem+env(safe-area-inset-right))]"
         >
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-slate-100 bg-primary px-4 py-3.5 text-white">
@@ -144,12 +158,17 @@ export default function Chatbot() {
           <div
             ref={scrollRef}
             aria-live="polite"
-            className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4"
+            // overscroll-contain: on mobile, scrolling past the top/bottom of
+            // this inner list used to hand the gesture off to the page
+            // behind the panel (scroll chaining), which felt like the whole
+            // page was jumping. Containing it keeps the scroll where the
+            // user's thumb is.
+            className="flex-1 space-y-3 overflow-y-auto overscroll-contain bg-slate-50 px-4 py-4"
           >
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap ${
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap break-words ${
                     m.role === 'user'
                       ? 'rounded-br-sm bg-primary text-white'
                       : 'rounded-bl-sm border border-slate-200 bg-white text-slate-700'

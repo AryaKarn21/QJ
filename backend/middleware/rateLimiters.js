@@ -78,6 +78,20 @@ const chatbotLimiter = rateLimit({
   keyGenerator: userOrIpKey,
 });
 
+// AI cover-letter generation/improvement — each call hits the Gemini API
+// (real cost + latency), and unlike the chatbot this is authenticated, so
+// it's keyed purely by user rather than falling back to IP. Resume/community
+// AI endpoints currently have no limiter at all; this is the first one
+// applied to a Gemini-calling endpoint outside the chatbot.
+const coverLetterAiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 15,
+  message: { message: "You're sending too many AI requests. Please wait a moment and try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+});
+
 module.exports = {
   loginLimiter,
   chatbotLimiter,
@@ -85,4 +99,5 @@ module.exports = {
   otpVerifyLimiter,
   followActionLimiter,
   followReadLimiter,
+  coverLetterAiLimiter,
 };

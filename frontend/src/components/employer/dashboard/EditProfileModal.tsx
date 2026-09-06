@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { X, Image } from "lucide-react";
+import { X, Image, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
 import { TagInput } from "../../common/TagInput";
+import { getFriendlyErrorMessage } from "../../../utils/apiError";
 
 interface Props {
     show: boolean;
@@ -55,6 +57,7 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
 
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (profile) {
@@ -103,7 +106,8 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
         if (file) setCoverPreview(URL.createObjectURL(file));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (saving) return; // guards against a double-click double-submitting
         const updatedFields: Record<string, any> = {};
         for (const key in formState) {
             if (key === "linkedin") continue; // folded into socialLinks below
@@ -118,15 +122,29 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
         if (formState.linkedin !== "") {
             updatedFields.socialLinks = JSON.stringify({ linkedin: formState.linkedin });
         }
-        onSave(updatedFields);
+
+        setSaving(true);
+        try {
+            await onSave(updatedFields);
+            toast.success("✓ Profile updated successfully");
+        } catch (error) {
+            toast.error(getFriendlyErrorMessage(error, "Could not save your changes. Please try again."));
+        } finally {
+            setSaving(false);
+        }
     };
 
     if (!show) return null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6 relative max-h-[90vh] overflow-y-auto">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-red-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 sm:p-6">
+            <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-lg sm:p-6">
+                <button
+                    onClick={onClose}
+                    disabled={saving}
+                    aria-label="Close"
+                    className="absolute top-4 right-4 text-gray-500 hover:text-red-600 disabled:opacity-50"
+                >
                     <X size={20} />
                 </button>
 
@@ -268,9 +286,22 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                    <button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded">Save Changes</button>
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button
+                        onClick={onClose}
+                        disabled={saving}
+                        className="w-full rounded px-4 py-2.5 font-medium bg-gray-200 hover:bg-gray-300 disabled:opacity-50 sm:w-auto sm:py-2"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded bg-primary px-4 py-2.5 font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2"
+                    >
+                        {saving && <Loader2 size={15} className="animate-spin" />}
+                        {saving ? "Saving..." : "Save Changes"}
+                    </button>
                 </div>
             </div>
         </div>

@@ -16,9 +16,16 @@ export interface PublicJobCategory {
   name: string;
   icon?: string;
   isTrending?: boolean;
+  description?: string;
+  scope?: 'system' | 'employer';
 }
 
+// `activeOnly=true` — categories an employer has deactivated (or an admin
+// has turned off) shouldn't appear as selectable here, even though the
+// admin management panel (which calls this same endpoint with no query
+// param) still needs to see them to reactivate them. See
+// jobCategoryController.js's getJobCategories.
 export const fetchJobCategories = async (): Promise<PublicJobCategory[]> => {
-  const res = await axios.get(`${API_BASE_URL}/api/jobcategories`);
+  const res = await axios.get(`${API_BASE_URL}/api/jobcategories`, { params: { activeOnly: 'true' } });
   return res.data;
 };

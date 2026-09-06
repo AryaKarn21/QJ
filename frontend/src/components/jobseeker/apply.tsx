@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { fetchJobById, applyToJob } from "./jobseekerApi/api";
 import { Lock, CheckCircle2 } from "lucide-react";
+import CoverLetterEditor, { htmlToPlainText } from "./coverLetter/CoverLetterEditor";
 
 interface Job {
   _id: string;
@@ -39,22 +40,33 @@ const ApplyPage: React.FC = () => {
   }, [jobId]);
 
   const isExpired = Boolean(job?.deadline && new Date(job.deadline).getTime() < Date.now());
+  // `coverLetter` holds the rich editor's HTML — Application.coverLetter is
+  // a plain String field (also the more ATS-safe representation to store
+  // and to show back to employers, who render it as plain text everywhere
+  // it's displayed today), so the plain-text derivation is what's actually
+  // required/submitted, not the HTML.
+  const coverLetterPlainText = htmlToPlainText(coverLetter);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!jobId || !resumeFile || isExpired || submitting) return;
+    if (!coverLetterPlainText.trim()) {
+      toast.error("Please write a cover letter before submitting.");
+      return;
+    }
 
     try {
       setSubmitting(true);
       await applyToJob({
         jobId,
         howDidYouHear,
-        coverLetter,
+        coverLetter: coverLetterPlainText,
         resumeFile,
       });
       // Confirmation shown inline below (status/date/company/job/resume)
       // instead of an alert+immediate redirect, so the jobseeker actually
       // sees what they just submitted.
+      localStorage.removeItem(`quickjobs:coverLetterDraft:${jobId}`);
       setSubmitted({ resumeName: resumeFile.name });
     } catch (error: any) {
       console.error("Application error:", error);
@@ -153,49 +165,53 @@ const ApplyPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-xl mx-auto mt-10 mb-10 p-6 bg-white shadow rounded">
-      <h1 className="text-2xl font-bold mb-4">Apply to {job.title}</h1>
-      <form onSubmit={handleSubmit} encType="multipart/form-data">
-        <label className="block mb-2">
-          How did you hear about this job?
-          <input
-            type="text"
-            value={howDidYouHear}
-            onChange={(e) => setHowDidYouHear(e.target.value)}
-            required
-            className="w-full border rounded p-2 mt-1"
-          />
-        </label>
+    <div className="mx-auto mb-10 mt-6 w-full max-w-5xl px-4 sm:mt-10 sm:px-6">
+      <div className="rounded-2xl bg-white p-4 shadow sm:p-6 md:p-8">
+        <h1 className="mb-4 text-xl font-bold sm:text-2xl">Apply to {job.title}</h1>
+        <form onSubmit={handleSubmit} encType="multipart/form-data" className="space-y-5">
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">How did you hear about this job?</span>
+            <input
+              type="text"
+              value={howDidYouHear}
+              onChange={(e) => setHowDidYouHear(e.target.value)}
+              required
+              placeholder="e.g. LinkedIn, a friend, this website"
+              className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            />
+          </label>
 
-        <label className="block mb-2 mt-4">
-          Cover Letter
-          <textarea
+          <CoverLetterEditor
+            jobId={jobId!}
+            jobTitle={job.title}
+            companyName={job.employer?.name || ""}
+            jobDescription={job.description}
             value={coverLetter}
-            onChange={(e) => setCoverLetter(e.target.value)}
-            required
-            className="w-full border rounded p-2 mt-1"
-            rows={8}
+            onChange={setCoverLetter}
           />
-        </label>
 
-        <label className="block mb-4 mt-4">
-          Resume (PDF or DOC)
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileChange}
-            required
-            className="block mt-1"
-          />
-        </label>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              Resume (PDF or DOC) <span className="text-rose-500">*</span>
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileChange}
+              required
+              className="mt-1 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+            />
+          </label>
 
-        <button
-          type="submit"
-          className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark"
-        >
-          Submit Application
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={submitting || !coverLetterPlainText.trim() || !resumeFile}
+            className="w-full rounded-lg bg-primary px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          >
+            {submitting ? "Submitting…" : "Submit Application"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

@@ -14,7 +14,7 @@ import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, PlusCircle, Briefcase, FileText,
   Users, CalendarDays, Bookmark, MessageSquare,
-  BarChart3, Building2, CreditCard, Settings,
+  BarChart3, Building2, CreditCard, Settings, Tags,
   LogOut, ChevronRight, Bell, Search, Download,
   Menu, X, Calendar, MessageCircle, Users2, Home,
 } from 'lucide-react';
@@ -54,6 +54,7 @@ const NAV_SECTIONS = [
     items: [
       { path: '/employer/insight',      icon: BarChart3,  label: 'Reports & Analytics' },
       { path: '/employer/profile',      icon: Building2,  label: 'Company Profile'     },
+      { path: '/employer/job-categories', icon: Tags,     label: 'Job Categories'      },
       { path: '/employer/subscription', icon: CreditCard, label: 'Subscription'        },
       { path: '/employer/settings',     icon: Settings,   label: 'Settings'            },
     ],

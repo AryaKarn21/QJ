@@ -34,12 +34,15 @@ import ImageCropModal from "../../common/ImageCropModal";
 import { ProfileStatusBadge } from "../../common/profileStatus/ProfileStatusBadge";
 import { ProfileStatusEditor } from "../../common/profileStatus/ProfileStatusEditor";
 import type { ProfileStatus } from "../../../types/profileStatus";
+import PermissionDenied from "../../common/PermissionDenied";
+import { getFriendlyErrorMessage, isForbidden, isUnauthorized } from "../../../utils/apiError";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<{ forbidden: boolean; message: string } | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
@@ -63,15 +66,28 @@ const Profile = () => {
         // Dashboard stats (jobs posted, active jobs, applications, views)
         // live on a separate endpoint, not on the User document — merge
         // them in so the KPI cards on this page have something to read.
+        // A 403 here now genuinely means "insufficient permission" (see
+        // employerRoutes.js — the isVerified-gated 403 that used to fire
+        // for every unverified employer's own dashboard was a bug, fixed
+        // there), so a failure at this point is worth surfacing rather
+        // than silently leaving KPIs blank.
         let stats = {};
         try {
           stats = await getEmployerDashboardStats();
         } catch (statsError) {
-          console.error("Failed to fetch dashboard stats:", statsError);
+          if (import.meta.env.DEV) console.error("Failed to fetch dashboard stats:", statsError);
+          if (isForbidden(statsError)) {
+            setLoadError({ forbidden: true, message: getFriendlyErrorMessage(statsError) });
+          }
         }
         setProfile({ ...data, ...stats });
       } catch (error) {
-        console.error("Failed to fetch profile:", error);
+        if (import.meta.env.DEV) console.error("Failed to fetch profile:", error);
+        if (isUnauthorized(error)) {
+          navigate("/login");
+          return;
+        }
+        setLoadError({ forbidden: isForbidden(error), message: getFriendlyErrorMessage(error) });
       } finally {
         setLoading(false);
       }
@@ -185,6 +201,16 @@ const Profile = () => {
   }
 
   if (!profile) {
+    // 403 (authenticated, but not permitted) gets its own message and
+    // action instead of the generic "failed to load" retry card — retrying
+    // a permissions error just gets the same 403 again.
+    if (loadError?.forbidden) {
+      return (
+        <div className="bg-[#FFF8F3] min-h-[calc(100vh-50px)] p-8 flex items-center justify-center">
+          <PermissionDenied message={loadError.message} actionTo="/employer/dashboard" />
+        </div>
+      );
+    }
     return (
       <div className="bg-[#FFF8F3] min-h-[calc(100vh-50px)] p-8 flex items-center justify-center">
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 text-center max-w-md">
@@ -858,7 +884,11 @@ const Profile = () => {
               setProfile((p: any) => ({ ...p, ...updated }));
               setShowEditModal(false);
             } catch (error) {
-              console.error("Failed to update profile:", error);
+              if (import.meta.env.DEV) console.error("Failed to update profile:", error);
+              // Re-thrown (not just logged) so EditProfileModal's own
+              // try/catch can show a proper "Saving..."/error-toast cycle
+              // instead of the modal silently doing nothing on failure.
+              throw error;
             }
           }}
         />
