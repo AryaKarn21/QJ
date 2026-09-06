@@ -237,6 +237,16 @@ const UserDashboardLayout = () => {
             <input type="text" placeholder="Search jobs, companies…" style={{ border: 'none', background: 'none', outline: 'none', fontSize: 13.5, color: '#111827', width: '100%', fontFamily: 'inherit' }} />
           </div>
 
+          {/* People/company search (LinkedIn-style) — this dashboard has
+              its own navbar, separate from the main site Header where that
+              search lives, so it never appeared here at all. Icon-only
+              shortcut straight to the full results page rather than
+              cramming the live-preview dropdown into an already-tight bar. */}
+          <Link to="/community/search" aria-label="Search people, companies, skills" title="Search people, companies, skills"
+            style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}>
+            <Users2 size={17} />
+          </Link>
+
           <div style={{ flex: 1 }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 36, border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 12.5, color: '#64748B', background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>

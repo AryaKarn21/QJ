@@ -290,6 +290,7 @@ export const fetchDashboardStats = async (): Promise<{
   reviewed: number;
   accepted: number;
   rejected: number;
+  interviewScheduled: number;
 }> => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");

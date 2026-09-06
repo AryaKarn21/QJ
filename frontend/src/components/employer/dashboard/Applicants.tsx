@@ -71,14 +71,24 @@ const Applicants = () => {
       return;
     }
     try {
-      await updateApplicationStatus(applicationId, newStatus);
+      const res = await updateApplicationStatus(applicationId, newStatus);
       setData((prev) =>
         prev.map((app) =>
           app.applicationId === applicationId ? { ...app, status: newStatus } : app
         )
       );
       setEditingStatus(null);
-      toast.success(`Status updated to "${newStatus}". Candidate notified by email.`);
+      // emailSent is null for statuses that never email (Pending/Reviewed),
+      // true/false for Accepted/Rejected — only claim the candidate was
+      // notified when the send actually succeeded, matching what the
+      // backend now honestly reports instead of assuming it always works.
+      if (res?.emailSent === false) {
+        toast.warn(`Status updated to "${newStatus}", but the notification email couldn't be sent.`);
+      } else if (res?.emailSent === true) {
+        toast.success(`Status updated to "${newStatus}". Candidate notified by email.`);
+      } else {
+        toast.success(`Status updated to "${newStatus}".`);
+      }
     } catch (err) {
       console.error("Failed to update status:", err);
       toast.error("Failed to update status.");
@@ -93,7 +103,7 @@ const Applicants = () => {
     }
     setSchedulingLoading(true);
     try {
-      await updateApplicationStatus(interviewModalFor, "Interview Scheduled", {
+      const res = await updateApplicationStatus(interviewModalFor, "Interview Scheduled", {
         scheduledAt: new Date(interviewDate).toISOString(),
         mode: interviewMode,
         meetingLink: interviewLink,
@@ -105,7 +115,11 @@ const Applicants = () => {
           app.applicationId === interviewModalFor ? { ...app, status: "Interview Scheduled" } : app
         )
       );
-      toast.success("Interview scheduled — the candidate has been emailed the details.");
+      if (res?.emailSent === false) {
+        toast.warn("Interview scheduled, but we couldn't send the confirmation email — please follow up with the candidate directly.");
+      } else {
+        toast.success("Interview scheduled — the candidate has been emailed the details.");
+      }
       setInterviewModalFor(null);
       setInterviewDate("");
       setInterviewMode("Video Call");

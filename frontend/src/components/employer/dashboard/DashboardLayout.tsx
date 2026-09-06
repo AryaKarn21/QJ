@@ -251,6 +251,15 @@ const DashboardLayout = () => {
             <kbd style={{ fontSize: 10.5, color: '#64748B', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit' }}>⌘ K</kbd>
           </div>
 
+          {/* People/company search (LinkedIn-style) — separate from the
+              job/candidate search above; this dashboard has its own
+              navbar (not the main site Header where that search lives),
+              so it never appeared here at all. */}
+          <Link to="/community/search" aria-label="Search people, companies, skills" title="Search people, companies, skills"
+            style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}>
+            <Users2 size={17} />
+          </Link>
+
           <div style={{ flex: 1 }} />
 
           {/* Date */}

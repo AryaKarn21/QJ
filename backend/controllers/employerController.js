@@ -551,6 +551,14 @@ const updateApplication = async (req, res) => {
     // and Reviewed are just internal triage states, not something worth
     // emailing about — Accepted, Rejected, and Interview Scheduled are the
     // moments a candidate actually needs to hear from us outside the app.
+    //
+    // `emailSent` is reported back in the response below — previously this
+    // was fire-and-forget with no way for the employer to know whether it
+    // actually went out; the toast on the frontend claimed "the candidate
+    // has been emailed" unconditionally, even if sendMail silently failed
+    // (bad EMAIL_USER/EMAIL_PASS, Gmail rejecting it, etc.) and only a
+    // server console line — which the employer never sees — recorded that.
+    let emailSent = null; // null = not applicable for this status
     if (["Accepted", "Rejected", "Interview Scheduled"].includes(status) && application.applicant?.email) {
       let subject;
       let text;
@@ -584,15 +592,23 @@ const updateApplication = async (req, res) => {
           `We encourage you to keep applying to other roles on Quick Jobs.\n\n— Quick Jobs`;
       }
 
-      // Best-effort — a failed email should never block the status update
-      // itself (the in-app notification above already succeeded).
-      sendMail(application.applicant.email, subject, text).catch((err) =>
-        console.error("Failed to send application status email:", err.message)
-      );
+      // Awaited now (not fire-and-forget) so the response can honestly
+      // report success/failure — but a failed send still never blocks the
+      // status update itself (the in-app notification above already
+      // succeeded, and the try/catch here means a thrown error just sets
+      // emailSent=false instead of failing the whole request).
+      try {
+        await sendMail(application.applicant.email, subject, text);
+        emailSent = true;
+      } catch (err) {
+        console.error("Failed to send application status email:", err.message);
+        emailSent = false;
+      }
     }
 
     res.json({
       message: "Application status updated successfully",
+      emailSent,
       updatedApplication: {
         applicationId: application._id,
         status: application.status,

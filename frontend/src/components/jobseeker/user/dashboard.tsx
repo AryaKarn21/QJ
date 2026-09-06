@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import {
   MapPin, Clock, Bell, MessageCircle, Briefcase,
   FileText, CheckCircle, XCircle, Eye, Send,
-  TrendingUp, ChevronRight, Loader2,
+  TrendingUp, ChevronRight, Loader2, CalendarClock,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -42,10 +42,11 @@ interface AppliedJob {
 }
 
 const statusConfig: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
-  Accepted:  { bg: "bg-green-50 text-green-700 border border-green-200",  text: "Accepted",  icon: <CheckCircle size={11} /> },
-  Rejected:  { bg: "bg-red-50 text-red-700 border border-red-200",        text: "Rejected",  icon: <XCircle size={11} /> },
-  Reviewed:  { bg: "bg-yellow-50 text-yellow-700 border border-yellow-200", text: "Reviewed", icon: <Eye size={11} /> },
-  Pending:   { bg: "bg-gray-50 text-gray-600 border border-gray-200",      text: "Pending",  icon: <Clock size={11} /> },
+  Accepted:             { bg: "bg-green-50 text-green-700 border border-green-200",   text: "Accepted",  icon: <CheckCircle size={11} /> },
+  Rejected:             { bg: "bg-red-50 text-red-700 border border-red-200",         text: "Rejected",  icon: <XCircle size={11} /> },
+  Reviewed:             { bg: "bg-yellow-50 text-yellow-700 border border-yellow-200", text: "Reviewed", icon: <Eye size={11} /> },
+  Pending:              { bg: "bg-gray-50 text-gray-600 border border-gray-200",       text: "Pending",  icon: <Clock size={11} /> },
+  "Interview Scheduled": { bg: "bg-purple-50 text-purple-700 border border-purple-200", text: "Interview Scheduled", icon: <CalendarClock size={11} /> },
 };
 
 const UserDashboard = () => {
@@ -85,6 +86,11 @@ const UserDashboard = () => {
         { label: "Total Applications", value: dashboardStats.totalApplications, icon: <FileText size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
         { label: "Pending",            value: dashboardStats.pending,            icon: <Clock size={20} />,    color: "text-amber-600", bg: "bg-amber-50" },
         { label: "Reviewed",           value: dashboardStats.reviewed,           icon: <Eye size={20} />,      color: "text-purple-600", bg: "bg-purple-50" },
+        // Was missing entirely — an application that had its interview
+        // scheduled fell out of every bucket below (see
+        // jobseekerController.js's getDashboardStats fix) while everything
+        // else on the page kept saying "0". Now it has its own home.
+        { label: "Interview Scheduled", value: dashboardStats.interviewScheduled, icon: <CalendarClock size={20} />, color: "text-indigo-600", bg: "bg-indigo-50" },
         { label: "Accepted",           value: dashboardStats.accepted,           icon: <CheckCircle size={20} />, color: "text-green-600", bg: "bg-green-50" },
         { label: "Rejected",           value: dashboardStats.rejected,           icon: <XCircle size={20} />,  color: "text-red-600", bg: "bg-red-50" },
       ]
@@ -110,9 +116,9 @@ const UserDashboard = () => {
         </div>
 
         {/* ── Stat cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {loadingStats
-            ? [...Array(5)].map((_, i) => (
+            ? [...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl p-5 shadow-sm animate-pulse h-24" />
               ))
             : statCards.map((s, i) => (

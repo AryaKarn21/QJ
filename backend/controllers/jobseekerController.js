@@ -200,11 +200,23 @@ const getDashboardStats = async (req, res) => {
       reviewed: 0,
       accepted: 0,
       rejected: 0,
+      // Application.js's status enum has a 5th value, "Interview
+      // Scheduled" (set by employerController.js's updateApplication when
+      // an employer schedules one) — this switch previously had no case
+      // for it, so as soon as ANY application moved to that status, its
+      // count vanished from every bucket below (while still counting
+      // toward totalApplications, since that increment happens outside
+      // the switch) — the exact "shows 0 everywhere right when I schedule
+      // an interview" bug.
+      interviewScheduled: 0,
     };
 
     stats.forEach((stat) => {
       result.totalApplications += stat.count;
       switch (stat._id) {
+        case "Interview Scheduled":
+          result.interviewScheduled = stat.count;
+          break;
         case "Pending":
           result.pending = stat.count;
           break;
