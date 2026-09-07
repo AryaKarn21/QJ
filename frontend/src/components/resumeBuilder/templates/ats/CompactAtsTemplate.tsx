@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, groupSkillsByCategory, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -52,6 +53,7 @@ export const CompactAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
                 <span className="font-normal text-slate-400">({formatDateRange(exp.startDate, exp.endDate, exp.current)})</span>
               </p>
               {exp.description && <p className="leading-snug text-slate-700">{toBulletLines(exp.description).join(' · ')}</p>}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -64,6 +66,7 @@ export const CompactAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.internships.map((it, i) => (
             <p key={it._id || i}>
               <span className="font-bold">{it.role}, {it.company}</span> ({formatDateRange(it.startDate, it.endDate, it.current)})
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -76,6 +79,7 @@ export const CompactAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.volunteering.map((v, i) => (
             <p key={v._id || i}>
               <span className="font-bold">{v.role}, {v.organization}</span> ({formatDateRange(v.startDate, v.endDate, v.current)})
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -113,27 +117,27 @@ export const CompactAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     certifications: () => (
       <Extra title="Certifications">
-        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`}</p>)}
+        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`} {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
       <Extra title="Achievements">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
       </Extra>
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
@@ -180,6 +184,7 @@ export const CompactAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <section key={id} className="mt-2.5">
               <Heading>{custom.title}</Heading>
               <p className="mt-1 whitespace-pre-wrap text-[11.5px] leading-snug">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </section>
           );
         }

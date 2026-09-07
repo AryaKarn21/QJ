@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSavedCandidates, toggleSavedCandidate } from "../employerApi/api";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import { BookmarkX } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -44,7 +45,7 @@ const SavedCandidates = () => {
     };
 
     return (
-        <div className="min-h-screen overflow-auto p-6" style={{ maxHeight: "calc(100vh - 50px)" }}>
+        <div className="min-h-screen overflow-auto p-6" style={{ maxHeight: "calc(100dvh - 50px)" }}>
             <h1 className="text-2xl font-semibold mb-1">Saved Candidates</h1>
             <p className="text-sm text-gray-500 mb-4">Candidates you've bookmarked for later.</p>
 
@@ -64,7 +65,7 @@ const SavedCandidates = () => {
                         <div key={c.candidateId} className="flex items-center gap-4 p-4">
                             {c.profilePic ? (
                                 <img
-                                    src={`${MEDIA_URL.replace(/\/$/, "")}/${c.profilePic.replace(/^\//, "")}`}
+                                    src={resolveMediaUrl(c.profilePic)}
                                     alt={c.name}
                                     className="w-11 h-11 rounded-full object-cover flex-shrink-0"
                                 />

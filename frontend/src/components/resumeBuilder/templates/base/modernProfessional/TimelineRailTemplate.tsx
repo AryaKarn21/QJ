@@ -4,6 +4,7 @@ import { getTheme } from '../../../themePresets';
 import { formatDateRange, skillsAsPlainText } from '../../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../../shared/sections';
 
+import { ResumeLink } from '../../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -52,6 +53,7 @@ export const TimelineRailTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.experience.map((exp, i) => (
             <Rail key={exp._id || i} date={formatDateRange(exp.startDate, exp.endDate, exp.current)}>
               <p className="text-[13px] font-semibold">{exp.role || 'Role'} · {exp.company || 'Company'}</p>
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </Rail>
           ))}
           {resume.experience.map((exp, i) =>
@@ -69,6 +71,7 @@ export const TimelineRailTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.education.map((edu, i) => (
             <Rail key={edu._id || i} date={`${edu.startDate}–${edu.endDate}`}>
               <p className="text-[13px] font-semibold">{edu.degree || 'Degree'}, {edu.institution}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </Rail>
           ))}
         </div>
@@ -97,6 +100,7 @@ export const TimelineRailTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.internships.map((it, i) => (
             <Rail key={it._id || i} date={formatDateRange(it.startDate, it.endDate, it.current)}>
               <p className="text-[13px] font-semibold">{it.role || 'Role'}, {it.company}</p>
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </Rail>
           ))}
         </div>
@@ -109,6 +113,7 @@ export const TimelineRailTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.volunteering.map((v, i) => (
             <Rail key={v._id || i} date={formatDateRange(v.startDate, v.endDate, v.current)}>
               <p className="text-[13px] font-semibold">{v.role || 'Role'}, {v.organization}</p>
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </Rail>
           ))}
         </div>
@@ -116,38 +121,38 @@ export const TimelineRailTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     certifications: () => (
       <Extra title="Certifications">
-        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`}</p>)}
+        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`} {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
       <Extra title="Achievements">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}{a.description && ` — ${a.description}`}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}{a.description && ` — ${a.description}`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
       </Extra>
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
       <Extra title="Positions of Responsibility">
-        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} ({formatDateRange(p.startDate, p.endDate)})</p>)}
+        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} ({formatDateRange(p.startDate, p.endDate)}) {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     hobbies: () => (<Extra title="Hobbies"><p>{resume.hobbies.join(', ')}</p></Extra>),
     references: () => (
       <Extra title="References">
-        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')}</p>)}
+        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} />}</p>)}
       </Extra>
     ),
     languages: () => (<Extra title="Languages"><p>{resume.languages.map((l) => `${l.name} (${l.level})`).join(', ')}</p></Extra>),
@@ -169,6 +174,7 @@ export const TimelineRailTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <section key={id} className="mt-5">
               <Heading>{custom.title}</Heading>
               <p className="mt-1.5 pl-5 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </section>
           );
         }

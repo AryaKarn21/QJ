@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 import {
   Users,
   Briefcase,
@@ -15,6 +16,7 @@ import {
   BarChart,
   Bar,
   CartesianGrid,
+  ResponsiveContainer,
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -176,7 +178,7 @@ const AdminDashboard = () => {
           <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
             {profile?.profilePic ? (
               <img
-                src={`${MEDIA_URL.replace(/\/$/, "")}/${profile.profilePic.replace(/^\//, "")}`}
+                src={resolveMediaUrl(profile.profilePic)}
                 alt={profile.name}
                 className="w-full h-full object-cover"
               />
@@ -222,25 +224,33 @@ const AdminDashboard = () => {
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
-          <div className="w-full lg:w-1/2">
+          <div className="w-full min-w-0 lg:w-1/2">
             <h3 className="text-md font-semibold mb-2">Views</h3>
-            <LineChart width={400} height={250} data={viewsData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" />
-              <YAxis allowDecimals={false} />
-              <Tooltip formatter={(value: any) => `${value} views`} />
-              <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} />
-            </LineChart>
+            {/* Fixed pixel width/height here previously overflowed the
+                viewport at narrow widths regardless of the flex wrapper
+                stacking — ResponsiveContainer measures its actual parent
+                and re-renders the chart to fit it. */}
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={viewsData} margin={{ left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(value: any) => `${value} views`} />
+                <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <div className="w-full lg:w-1/2">
+          <div className="w-full min-w-0 lg:w-1/2">
             <h3 className="text-md font-semibold mb-2">Applications</h3>
-            <BarChart width={400} height={250} data={applicationsData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" />
-              <YAxis allowDecimals={false} />
-              <Tooltip formatter={(value: any) => `${value} applications`} />
-              <Bar dataKey="value" fill="#82ca9d" />
-            </BarChart>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={applicationsData} margin={{ left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(value: any) => `${value} applications`} />
+                <Bar dataKey="value" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

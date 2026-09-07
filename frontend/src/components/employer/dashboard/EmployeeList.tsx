@@ -288,7 +288,7 @@ const EmployeeList = () => {
   const departments = Array.from(new Set(employees.map((e) => e.department).filter(Boolean)));
 
   return (
-    <div className="bg-[#FFF8F3] min-h-[calc(100vh-50px)] p-4 sm:p-6 lg:p-8">
+    <div className="bg-[#FFF8F3] min-h-[calc(100dvh-50px)] p-4 sm:p-6 lg:p-8">
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl text-white text-sm font-semibold shadow-lg transition-all ${toast.type === "success" ? "bg-emerald-500" : "bg-rose-500"}`}>
           {toast.msg}

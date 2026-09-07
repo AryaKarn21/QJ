@@ -118,6 +118,14 @@ export const Sidebar: React.FC = () => {
     };
   }, [mobileNavOpen]);
 
+  // Escape closes the drawer, matching the backdrop-click-to-close behavior.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMobileNav(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileNavOpen, closeMobileNav]);
+
   const showExpandedContent = !sidebarCollapsed || mobileNavOpen;
 
   return (
@@ -151,8 +159,8 @@ export const Sidebar: React.FC = () => {
       {/* Main Sidebar Container */}
       <aside
         aria-label="Admin Navigation Sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r border-slate-800/80 bg-gradient-to-b from-[#0B1020] to-[#121A2C] text-slate-200 backdrop-blur-xl transition-all duration-300 ease-in-out select-none
-          w-[320px] md:static md:z-auto md:translate-x-0
+        className={`fixed inset-y-0 left-0 z-50 flex h-dvh flex-col border-r border-slate-800/80 bg-gradient-to-b from-[#0B1020] to-[#121A2C] text-slate-200 backdrop-blur-xl transition-all duration-300 ease-in-out select-none
+          w-[min(320px,85vw)] md:static md:z-auto md:h-screen md:w-[320px] md:translate-x-0
           ${mobileNavOpen ? 'translate-x-0 shadow-2xl shadow-orange-950/20' : '-translate-x-full'}
           ${sidebarCollapsed ? 'md:w-[80px]' : 'md:w-[280px] lg:w-[320px]'}
         `}
@@ -311,7 +319,7 @@ export const Sidebar: React.FC = () => {
         </nav>
 
         {/* Footer & Expand/Collapse Controls */}
-        <div className="shrink-0 border-t border-slate-800/80 p-3 bg-slate-950/40">
+        <div className="shrink-0 border-t border-slate-800/80 p-3 bg-slate-950/40 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {/* Collapse Toggle Button (Desktop Only) */}
           <button
             onClick={toggleSidebar}

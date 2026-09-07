@@ -37,44 +37,19 @@ app.use(
 );
 
 // Trusted origins, environment-driven rather than hardcoded so the same
-// build can run against local/UAT/production without a code change:
-//   CORS_ALLOWED_ORIGINS=https://example.com,https://www.example.com
-// FRONTEND_URL is still honored on its own for backward compatibility
-// (it's also used elsewhere for redirect URLs). The bare localhost dev
-// origins only apply outside production, so a prod deploy that forgets to
-// set CORS_ALLOWED_ORIGINS doesn't silently end up trusting localhost.
-const configuredOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
-const devOrigins =
-  process.env.NODE_ENV === "production"
-    ? []
-    : ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173"];
-
-const allowedOrigins = [
-  ...configuredOrigins,
-  process.env.FRONTEND_URL,
-  ...devOrigins,
-].filter(Boolean);
-
-// Vercel mints a brand-new, unique URL for every single deployment
-// (`qj-<hash>-aryakarn21s-projects.vercel.app`) in addition to the stable
-// production alias (e.g. qj-sigma.vercel.app, already covered by the exact
-// allowlist above). Without this, every fresh deploy's own preview URL
-// gets CORS-rejected until someone thinks to add it — this trusts the
-// whole family of this project's Vercel URLs by pattern instead of one
-// fixed string, scoped to this exact project+team so it can't be used to
-// front unrelated origins.
-const vercelPreviewPattern = /^https:\/\/qj(-[a-z0-9]+)*-aryakarn21s-projects\.vercel\.app$/i;
+// build can run against local/UAT/production without a code change. Shared
+// with Socket.IO's CORS config (utils/socket.js) via ./config/corsOrigins so
+// a domain trusted for REST is automatically trusted for WebSockets too —
+// previously these were two independently-hardcoded lists that could (and
+// did) drift apart.
+const { allowedOrigins, vercelPreviewPattern, isOriginAllowed } = require("./config/corsOrigins");
 
 console.log("CORS: allowing requests from", allowedOrigins.join(", "), "+ Vercel preview deployments matching", vercelPreviewPattern);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         console.warn(

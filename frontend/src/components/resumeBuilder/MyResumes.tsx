@@ -49,8 +49,8 @@ const MyResumes: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <div className="flex items-center justify-between">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-800">My Resumes</h1>
             <p className="mt-1 text-sm text-slate-500">
@@ -59,7 +59,7 @@ const MyResumes: React.FC = () => {
           </div>
           <button
             onClick={() => navigate('/resume')}
-            className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 sm:w-auto"
           >
             <Plus size={15} /> New Resume
           </button>
@@ -77,75 +77,80 @@ const MyResumes: React.FC = () => {
             <p className="text-sm text-slate-500">You haven't created any resumes yet.</p>
             <button
               onClick={() => navigate('/resume')}
-              className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+              className="mt-4 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
             >
               Choose a Template
             </button>
           </div>
         )}
 
+        {/* Cards, not rows — a fixed-row layout either overflows the
+            viewport or crushes the title/actions unreadable at 360px; a
+            grid that collapses to one column per card fits comfortably and
+            scales up to 2-3 per row on larger screens. */}
         {!loading && resumes.length > 0 && (
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {resumes.map((resume) => {
               const template = getTemplateById(resume.layout);
               return (
                 <div
                   key={resume._id}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
+                  className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-slate-800">
-                        {resume.title || 'Untitled Resume'}
-                      </p>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          resume.status === 'final'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}
-                      >
-                        {resume.status === 'final' ? 'Final' : 'Draft'}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-slate-400">
-                      {template?.name || resume.layout}
-                      {resume.targetRole ? ` · ${resume.targetRole}` : ''} · Updated{' '}
-                      {formatDate(resume.updatedAt)}
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 truncate text-sm font-semibold text-slate-800">
+                      {resume.title || 'Untitled Resume'}
                     </p>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      onClick={() => navigate(`/resume/${resume._id}/edit`)}
-                      className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        resume.status === 'final'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
                     >
-                      <Pencil size={13} /> Edit
-                    </button>
+                      {resume.status === 'final' ? 'Final' : 'Draft'}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-slate-500">{template?.name || resume.layout}</p>
+                  {resume.targetRole && (
+                    <p className="mt-0.5 truncate text-xs text-slate-400">{resume.targetRole}</p>
+                  )}
+                  <p className="mt-2 text-[11px] text-slate-400">Updated {formatDate(resume.updatedAt)}</p>
 
+                  <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
                     {confirmId === resume._id ? (
-                      <div className="flex items-center gap-1.5">
+                      <>
                         <button
                           onClick={() => handleDelete(resume._id)}
                           disabled={deletingId === resume._id}
-                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                          className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
                         >
-                          {deletingId === resume._id ? 'Deleting…' : 'Confirm'}
+                          {deletingId === resume._id ? 'Deleting…' : 'Confirm Delete'}
                         </button>
                         <button
                           onClick={() => setConfirmId(null)}
-                          className="rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-50"
+                          className="rounded-lg px-3 py-2 text-xs text-slate-400 hover:bg-slate-50"
                         >
                           Cancel
                         </button>
-                      </div>
+                      </>
                     ) : (
-                      <button
-                        onClick={() => setConfirmId(resume._id)}
-                        className="flex items-center gap-1 rounded-lg border border-red-100 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50"
-                      >
-                        <Trash2 size={13} /> Delete
-                      </button>
+                      <>
+                        <button
+                          onClick={() => navigate(`/resume/${resume._id}/edit`)}
+                          aria-label={`Edit ${resume.title || 'Untitled Resume'}`}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        >
+                          <Pencil size={13} /> Edit
+                        </button>
+                        <button
+                          onClick={() => setConfirmId(resume._id)}
+                          aria-label={`Delete ${resume.title || 'Untitled Resume'}`}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-red-100 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

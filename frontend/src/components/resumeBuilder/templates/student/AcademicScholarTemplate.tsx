@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -51,6 +52,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
                 {edu.description && <p className="mt-0.5 text-[11.5px] italic text-slate-400">{edu.description}</p>}
               </div>
               <p className="shrink-0 text-[11.5px] text-slate-400">{edu.startDate} – {edu.endDate}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -82,6 +84,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
                 <p className="text-[12px] text-slate-500 italic">{s.institution}</p>
               </div>
               {s.year && <p className="shrink-0 text-[11px] text-slate-400">{s.year}</p>}
+            {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -95,6 +98,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
             <div key={a._id || i} className="flex items-baseline justify-between">
               <p className="text-[12.5px]">{a.title}</p>
               {a.year && <p className="shrink-0 text-[11px] text-slate-400">{a.year}</p>}
+            {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -131,6 +135,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -148,6 +153,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
               </div>
               <p className="text-[12px] italic text-slate-500">{it.company}</p>
               {it.description && <p className="mt-0.5 text-[12.5px] leading-relaxed">{it.description}</p>}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -165,6 +171,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
               </div>
               <p className="text-[12px] italic text-slate-500">{v.organization}</p>
               {v.description && <p className="mt-0.5 text-[12.5px] leading-relaxed">{v.description}</p>}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -178,6 +185,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
             <div key={p._id || i} className="flex items-baseline justify-between">
               <p className="text-[12.5px]"><span className="font-semibold">{p.title}</span>, {p.organization}</p>
               {p.startDate && <p className="shrink-0 text-[11px] text-slate-400">{formatDateRange(p.startDate, p.endDate, p.current)}</p>}
+            {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -230,6 +238,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
               <span className="font-semibold">{r.name}</span>
               {r.relationship && <span className="italic text-slate-500">, {r.relationship}</span>}
               {(r.email || r.phone) && <span className="text-slate-400"> — {[r.email, r.phone].filter(Boolean).join(', ')}</span>}
+            {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -267,6 +276,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
             <React.Fragment key={id}>
               <SectionHeading>{custom.title}</SectionHeading>
               <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-700">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </React.Fragment>
           );
         }

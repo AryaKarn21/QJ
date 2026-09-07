@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getAllApplicantsForEmployerJobs, updateApplicationStatus } from "./adminApi/api";
 import { Eye } from "lucide-react";
+import { Modal } from "../ui/Modal";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -71,8 +72,8 @@ const EmployerApplicants = () => {
 
     return (
         <div
-            className="min-h-screen overflow-auto p-6"
-            style={{ maxHeight: "calc(100vh - 50px)" }}
+            className="min-h-screen overflow-auto p-4 sm:p-6"
+            style={{ maxHeight: "calc(100dvh - 50px)" }}
         >
             <h1 className="text-2xl font-semibold mb-4">All Applicants</h1>
             {data.length === 0 ? (
@@ -137,9 +138,13 @@ const EmployerApplicants = () => {
                                             <td className="p-2 border">
                                                 {applicant.resume ? (
                                                     <a
-                                                        href={`${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume
-                                                            .replace(/\\/g, "/")
-                                                            .replace(/^.*\/uploads/, "uploads")}`}
+                                                        href={
+                                                            applicant.resume.startsWith('http')
+                                                                ? applicant.resume
+                                                                : `${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume
+                                                                    .replace(/\\/g, "/")
+                                                                    .replace(/^.*\/uploads/, "uploads")}`
+                                                        }
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >
@@ -176,21 +181,21 @@ const EmployerApplicants = () => {
             )}
 
             {/* Modal for Cover Letter */}
-            {selectedCoverLetter && (
-                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
-                        <p className="text-sm text-gray-800 whitespace-pre-wrap">{selectedCoverLetter}</p>
-                        <div className="mt-4 text-right">
-                            <button
-                                onClick={() => setSelectedCoverLetter(null)}
-                                className="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-sm"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Modal
+                open={!!selectedCoverLetter}
+                onClose={() => setSelectedCoverLetter(null)}
+                title="Cover Letter"
+                footer={
+                    <button
+                        onClick={() => setSelectedCoverLetter(null)}
+                        className="bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-sm"
+                    >
+                        Close
+                    </button>
+                }
+            >
+                <p className="text-sm text-gray-800 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{selectedCoverLetter}</p>
+            </Modal>
         </div>
     );
 };

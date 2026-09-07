@@ -135,7 +135,7 @@ const Applicants = () => {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-gray-50" style={{ maxHeight: "calc(100vh - 50px)", overflowY: "auto" }}>
+    <div className="min-h-screen p-4 sm:p-6 bg-gray-50" style={{ maxHeight: "calc(100dvh - 50px)", overflowY: "auto" }}>
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">All Applicants</h1>
@@ -169,8 +169,11 @@ const Applicants = () => {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* min-w so this scrolls cleanly inside its own container on
+              narrow screens instead of squishing 8 columns illegibly
+              narrow while technically staying within the viewport. */}
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[880px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3.5">
@@ -251,7 +254,11 @@ const Applicants = () => {
                     <td className="px-5 py-4">
                       {applicant.resume ? (
                         <a
-                          href={`${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume.replace(/\\/g, "/").replace(/^.*\/uploads/, "uploads")}`}
+                          href={
+                            applicant.resume.startsWith('http')
+                              ? applicant.resume
+                              : `${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume.replace(/\\/g, "/").replace(/^.*\/uploads/, "uploads")}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -305,7 +312,7 @@ const Applicants = () => {
       {/* Cover Letter Modal */}
       {selectedCoverLetter && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80dvh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
                 <FileText size={16} className="text-primary" /> Cover Letter
@@ -335,7 +342,11 @@ const Applicants = () => {
       {/* Interview Scheduling Modal */}
       {interviewModalFor && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md">
+          {/* This form (date/mode/conditional link-or-location/notes) is
+              tall enough that with the on-screen keyboard open on a short
+              mobile viewport, the Schedule button could end up unreachable
+              without a scrollable, height-capped container. */}
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto p-6">
             <div className="flex items-center gap-2 mb-1">
               <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center">
                 <Calendar size={16} className="text-purple-600" />

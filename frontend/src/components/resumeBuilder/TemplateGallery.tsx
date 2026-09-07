@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { X, CheckCircle2, HardHat, Sparkles, ArrowLeft, Search, ImageIcon, ImageOff } from 'lucide-react';
+import { X, CheckCircle2, HardHat, Sparkles, ArrowLeft, Search, ImageIcon, ImageOff, History } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useCurrentUser } from '../../utils/currentUser';
 import {
@@ -420,14 +420,22 @@ const TemplateGallery: React.FC = () => {
               </button>
             </p>
           </div>
-          <div className="relative w-full max-w-xs sm:w-64">
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); resetPaging(); }}
-              placeholder="Search templates…"
-              className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => navigate('/resume/history')}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <History size={13} /> Saved Resumes
+            </button>
+            <div className="relative w-full max-w-xs sm:w-64">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); resetPaging(); }}
+                placeholder="Search templates…"
+                className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+              />
+            </div>
           </div>
         </div>
 

@@ -185,7 +185,7 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="bg-[#FFF8F3] min-h-[calc(100vh-50px)] p-6 md:p-8 flex items-center justify-center">
+      <div className="bg-[#FFF8F3] min-h-[calc(100dvh-50px)] p-6 md:p-8 flex items-center justify-center">
         <div className="w-full max-w-6xl space-y-6 animate-pulse">
           <div className="h-48 bg-white/80 rounded-2xl border border-orange-100 shadow-sm" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -206,13 +206,13 @@ const Profile = () => {
     // a permissions error just gets the same 403 again.
     if (loadError?.forbidden) {
       return (
-        <div className="bg-[#FFF8F3] min-h-[calc(100vh-50px)] p-8 flex items-center justify-center">
+        <div className="bg-[#FFF8F3] min-h-[calc(100dvh-50px)] p-8 flex items-center justify-center">
           <PermissionDenied message={loadError.message} actionTo="/employer/dashboard" />
         </div>
       );
     }
     return (
-      <div className="bg-[#FFF8F3] min-h-[calc(100vh-50px)] p-8 flex items-center justify-center">
+      <div className="bg-[#FFF8F3] min-h-[calc(100dvh-50px)] p-8 flex items-center justify-center">
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 text-center max-w-md">
           <XCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-slate-800">Failed to load profile</h2>
@@ -233,7 +233,7 @@ const Profile = () => {
   const completionPercentage = calculateProfileCompletion(profile);
 
   return (
-    <div className="bg-[#FFF8F3] p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-50px)] overflow-y-auto selection:bg-orange-500 selection:text-white">
+    <div className="bg-[#FFF8F3] p-4 sm:p-6 lg:p-8 min-h-[calc(100dvh-50px)] overflow-y-auto selection:bg-orange-500 selection:text-white">
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* HERO SECTION */}

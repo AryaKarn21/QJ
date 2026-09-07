@@ -102,12 +102,27 @@ const getMessages = async (req, res) => {
 
     // Mark everything the viewer hasn't read yet as read, and zero their
     // unread counter for this conversation.
-    await Message.updateMany(
+    const readResult = await Message.updateMany(
       { conversation: conversationId, sender: { $ne: req.user._id }, readBy: { $ne: req.user._id } },
       { $addToSet: { readBy: req.user._id } }
     );
     conversation.unreadCounts.set(String(req.user._id), 0);
     await conversation.save();
+
+    // Tell the other participant's open chat window (if any) that their
+    // sent messages have now actually been read, so it can flip its
+    // "delivered" single-check to a "read" double-check in real time.
+    // Server-verified (this only fires from the mark-as-read side effect
+    // above, never from an unverified client claim), and only when
+    // something actually changed, so re-fetching an already-read page
+    // (e.g. loading older history) doesn't re-emit needlessly.
+    if (readResult.modifiedCount > 0) {
+      emitToConversation(conversationId, "conversation:read", {
+        conversationId,
+        readerId: req.user._id,
+        readAt: new Date().toISOString(),
+      });
+    }
 
     res.json({ messages: messages.reverse(), page, limit, hasMore: messages.length === limit });
   } catch (error) {

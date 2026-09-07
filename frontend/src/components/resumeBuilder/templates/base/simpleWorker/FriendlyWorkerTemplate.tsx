@@ -4,6 +4,7 @@ import { getTheme } from '../../../themePresets';
 import { formatDateRange, toBulletLines } from '../../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../../shared/sections';
 
+import { ResumeLink } from '../../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -59,6 +60,7 @@ export const FriendlyWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -86,49 +88,49 @@ export const FriendlyWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     internships: () => (
       <Extra title="Internships">
-        {resume.internships.map((it, i) => <p key={it._id || i}>{it.role}, {it.company}</p>)}
+        {resume.internships.map((it, i) => <p key={it._id || i}>{it.role}, {it.company} {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     volunteering: () => (
       <Extra title="Volunteer Work">
-        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization}</p>)}
+        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
       <Extra title="Achievements">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     projects: () => (
       <Extra title="Projects">
-        {resume.projects.map((p, i) => <p key={p._id || i}>{p.title}: {p.description}</p>)}
+        {resume.projects.map((p, i) => <p key={p._id || i}>{p.title}: {p.description} {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
       <Extra title="Positions of Responsibility">
-        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization}</p>)}
+        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     hobbies: () => (<Extra title="Hobbies"><p>{resume.hobbies.join(', ')}</p></Extra>),
     languages: () => (<Extra title="Languages"><p>{resume.languages.map((l) => `${l.name} (${l.level})`).join(', ')}</p></Extra>),
     references: () => (
       <Extra title="References">
-        {resume.references.map((r, i) => <p key={r._id || i}>{r.name} — {[r.email, r.phone].filter(Boolean).join(', ')}</p>)}
+        {resume.references.map((r, i) => <p key={r._id || i}>{r.name} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} />}</p>)}
       </Extra>
     ),
   };
@@ -151,6 +153,7 @@ export const FriendlyWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <section key={id} className="mt-4">
               <Heading>{custom.title}</Heading>
               <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </section>
           );
         }

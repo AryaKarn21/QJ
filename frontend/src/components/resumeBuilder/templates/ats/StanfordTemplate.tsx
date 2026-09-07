@@ -3,6 +3,7 @@ import type { Resume } from '../../resumeApi';
 import { formatDateRange, skillsAsPlainText, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -48,6 +49,7 @@ export const StanfordTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="text-[12.5px] font-semibold">{edu.institution || 'Institution'}</p>
               <p className="text-[12px] text-slate-600">{edu.degree}</p>
               <p className="text-[11px] text-slate-400">{edu.startDate}–{edu.endDate}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -68,6 +70,7 @@ export const StanfordTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   ))}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -81,6 +84,7 @@ export const StanfordTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <div key={p._id || i}>
               <p className="text-[12.5px] font-semibold">{p.title}</p>
               {p.description && <p className="text-[12.5px] leading-relaxed text-slate-600">{p.description}</p>}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -108,7 +112,7 @@ export const StanfordTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     certifications: () => (
       <Extra title="Certifications">
-        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`}</p>)}
+        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`} {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
@@ -120,17 +124,17 @@ export const StanfordTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
@@ -178,6 +182,7 @@ export const StanfordTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <section key={id} className="mt-5">
               <Heading>{custom.title}</Heading>
               <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </section>
           );
         }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, MapPin, Clock, Trash2 } from 'lucide-react';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { fetchSavedJobs, toggleSaveJob } from '../jobseekerApi/api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -19,8 +20,6 @@ interface Job {
   createdAt: string;
   deadline?: string;
 }
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 const UserSavedJobs = () => {
   const [savedJobs, setSavedJobs] = useState<Job[]>([]);
@@ -64,7 +63,7 @@ const UserSavedJobs = () => {
     );
 
   return (
-    <div className="min-h-screen overflow-auto bg-gray-50 p-6" style={{ maxHeight: 'calc(100vh - 50px)' }}>
+    <div className="min-h-screen overflow-auto bg-gray-50 p-4 sm:p-6" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-6">
           {/* flex-col below sm — a fixed w-64 search input plus a select
@@ -101,71 +100,129 @@ const UserSavedJobs = () => {
           ) : filteredJobs.length === 0 ? (
             <div className="text-center py-10 text-gray-500">No saved jobs found.</div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-primary text-white">
-                  <th className="px-6 py-3 text-left">Job Title</th>
-                  <th className="px-6 py-3 text-left">Company Detail</th>
-                  <th className="px-6 py-3 text-left">Deadline</th>
-                  <th className="px-6 py-3 text-left">Posted</th>
-                  <th className="px-6 py-3 text-left">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.map((job) => (
-                  <tr key={job._id} className="border-b">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        {job.employer?.companyLogo ? (
-                          <img
-                            src={`${MEDIA_URL}/${job.employer.companyLogo.replace(/^\//, '')}`}
-                            alt={job.employer.name}
-                            className="w-10 h-10 rounded-lg mr-3 object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg mr-3 bg-gray-200 flex items-center justify-center font-bold text-sm text-gray-600">
-                            {job.employer?.name?.[0] || 'C'}
+            <>
+              {/* Desktop/tablet: table. Below md: card list — five columns
+                  (logo+title, location+type, deadline, posted, actions)
+                  either force page-level horizontal scroll or get crushed
+                  unreadable on a phone; a stacked card repeats the same
+                  data in a layout that actually fits (same pattern as
+                  myApplications.tsx). */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-primary text-white">
+                      <th className="px-6 py-3 text-left">Job Title</th>
+                      <th className="px-6 py-3 text-left">Company Detail</th>
+                      <th className="px-6 py-3 text-left">Deadline</th>
+                      <th className="px-6 py-3 text-left">Posted</th>
+                      <th className="px-6 py-3 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredJobs.map((job) => (
+                      <tr key={job._id} className="border-b">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            {job.employer?.companyLogo ? (
+                              <img
+                                src={resolveMediaUrl(job.employer.companyLogo)}
+                                alt={job.employer.name}
+                                className="w-10 h-10 rounded-lg mr-3 object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg mr-3 bg-gray-200 flex items-center justify-center font-bold text-sm text-gray-600">
+                                {job.employer?.name?.[0] || 'C'}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium">{job.title}</div>
+                              <div className="text-sm text-gray-500">{job.employer?.name}</div>
+                            </div>
                           </div>
-                        )}
-                        <div>
-                          <div className="font-medium">{job.title}</div>
-                          <div className="text-sm text-gray-500">{job.employer?.name}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center text-gray-500">
+                            <MapPin size={16} className="mr-2" />
+                            <span>{job.location}</span>
+                            <span className="mx-2">•</span>
+                            <Clock size={16} className="mr-2" />
+                            <span>{job.jobtype}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {job.deadline ? format(new Date(job.deadline), 'MMM dd, yyyy') : '—'}
+                        </td>
+                        <td className="px-6 py-4">{format(new Date(job.createdAt), 'MMM dd, yyyy')}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <button
+                              className="text-primary hover:text-primary/80"
+                              onClick={() => navigate(`/jobs/${job._id}`)}
+                            >
+                              View Details
+                            </button>
+                            <button
+                              className="text-red-500 hover:text-red-600"
+                              onClick={() => handleUnsave(job._id)}
+                              aria-label="Remove from saved jobs"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-3 md:hidden">
+                {filteredJobs.map((job) => (
+                  <div key={job._id} className="rounded-xl border border-gray-100 p-4">
+                    <div className="flex items-start gap-3">
+                      {job.employer?.companyLogo ? (
+                        <img
+                          src={resolveMediaUrl(job.employer.companyLogo)}
+                          alt={job.employer.name}
+                          className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-200 text-sm font-bold text-gray-600">
+                          {job.employer?.name?.[0] || 'C'}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center text-gray-500">
-                        <MapPin size={16} className="mr-2" />
-                        <span>{job.location}</span>
-                        <span className="mx-2">•</span>
-                        <Clock size={16} className="mr-2" />
-                        <span>{job.jobtype}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {job.deadline ? format(new Date(job.deadline), 'MMM dd, yyyy') : '—'}
-                    </td>
-                    <td className="px-6 py-4">{format(new Date(job.createdAt), 'MMM dd, yyyy')}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-gray-900">{job.title}</p>
+                            <p className="truncate text-sm text-gray-500">{job.employer?.name}</p>
+                          </div>
+                          <button
+                            className="shrink-0 text-red-500 hover:text-red-600"
+                            onClick={() => handleUnsave(job._id)}
+                            aria-label="Remove from saved jobs"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-1"><MapPin size={12} /> {job.location}</span>
+                          <span className="flex items-center gap-1"><Clock size={12} /> {job.jobtype}</span>
+                          <span>Posted {format(new Date(job.createdAt), 'MMM dd, yyyy')}</span>
+                          {job.deadline && <span>Deadline {format(new Date(job.deadline), 'MMM dd, yyyy')}</span>}
+                        </div>
                         <button
-                          className="text-primary hover:text-primary/80"
+                          className="mt-2.5 text-sm font-semibold text-primary hover:underline"
                           onClick={() => navigate(`/jobs/${job._id}`)}
                         >
-                          View Details
-                        </button>
-                        <button
-                          className="text-red-500 hover:text-red-600"
-                          onClick={() => handleUnsave(job._id)}
-                        >
-                          <Trash2 size={20} />
+                          View Details →
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       </div>

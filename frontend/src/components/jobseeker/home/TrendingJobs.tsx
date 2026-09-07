@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Briefcase, DollarSign, ArrowRight, TrendingUp, SearchX } from 'lucide-react';
 import { fetchTrendingJobs, Job } from '../jobseekerApi/api';
@@ -104,7 +105,7 @@ const TrendingJobs: React.FC = () => {
                     <div className="flex min-w-0 items-center gap-3">
                       {job.employer?.companyLogo ? (
                         <img
-                          src={`${MEDIA_URL.replace(/\/$/, '')}/${job.employer.companyLogo.replace(/^\//, '')}`}
+                          src={resolveMediaUrl(job.employer.companyLogo)}
                           alt={`${job.employer.name} logo`}
                           className="h-11 w-11 shrink-0 rounded-xl object-cover"
                         />

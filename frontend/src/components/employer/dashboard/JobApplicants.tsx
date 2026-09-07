@@ -80,7 +80,7 @@ const JobApplicants = () => {
     return (
         <div
             className="min-h-screen overflow-auto p-6 max-w-6xl mx-auto"
-            style={{ maxHeight: "calc(100vh - 50px)" }}
+            style={{ maxHeight: "calc(100dvh - 50px)" }}
         >
             <h1 className="text-2xl font-bold mb-6">Applicants for: {data.jobTitle}</h1>
 
@@ -127,9 +127,13 @@ const JobApplicants = () => {
                                     <td className="p-3 border">
                                         {applicant.resume ? (
                                             <a
-                                                href={`${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume
-                                                    .replace(/\\/g, "/")
-                                                    .replace(/^.*\/uploads/, "uploads")}`}
+                                                href={
+                                                    applicant.resume.startsWith('http')
+                                                        ? applicant.resume
+                                                        : `${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume
+                                                            .replace(/\\/g, "/")
+                                                            .replace(/^.*\/uploads/, "uploads")}`
+                                                }
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >

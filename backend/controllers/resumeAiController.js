@@ -8,7 +8,7 @@ const {
 } = require("../services/resumeAI.service");
 const { analyzeResumeAts } = require("../services/atsAnalysis.service");
 const { listCategories } = require("../data/occupations");
-const { getGeminiModel } = require("../utils/geminiClient");
+const { getGeminiModel, extractJson, classifyGeminiError } = require("../utils/geminiClient");
 
 function logAiUsage(feature, userId) {
   AiUsageLog.create({ feature, action: "generated", user: userId || null }).catch((e) =>
@@ -16,11 +16,48 @@ function logAiUsage(feature, userId) {
   );
 }
 
+// Specific, honest messages per failure *kind* — before this, an invalid/
+// expired/quota-exceeded key, a Gemini outage, and a real network blip all
+// fell through to the same generic `fallbackMessage` (e.g. "Failed to
+// generate summary."), so there was no way for the user (or whoever they
+// report the bug to) to tell "the API key needs rotating" apart from
+// "transient, just retry" apart from "this is a real bug, not AI-related."
+const AI_ERROR_RESPONSES = {
+  GEMINI_NOT_CONFIGURED: {
+    status: 503,
+    message: "AI features aren't configured yet. Add GEMINI_API_KEY to the backend .env file.",
+  },
+  GEMINI_INVALID_KEY: {
+    status: 503,
+    message: "AI service authentication failed. Please contact the administrator.",
+  },
+  GEMINI_QUOTA_EXCEEDED: {
+    status: 429,
+    message: "AI usage limit reached. Please try again later.",
+  },
+  GEMINI_UNAVAILABLE: {
+    status: 503,
+    message: "AI service is temporarily unavailable. Please try again.",
+  },
+  GEMINI_NETWORK_ERROR: {
+    status: 502,
+    message: "Unable to reach the AI service. Please check your connection.",
+  },
+  AI_BAD_RESPONSE: {
+    status: 502,
+    message: "The AI returned an unexpected response. Please try again.",
+  },
+};
+
 function friendlyAiError(res, error, fallbackMessage) {
-  if (error.code === "GEMINI_NOT_CONFIGURED") {
-    return res.status(503).json({
-      message: "AI features aren't configured yet. Add GEMINI_API_KEY to the backend .env file.",
-    });
+  const code = classifyGeminiError(error);
+  const known = code && AI_ERROR_RESPONSES[code];
+  if (known) {
+    // "Not configured" is a routine, expected state in dev — everything
+    // else classified here is worth a server-side log even though the
+    // client gets a clean, specific message instead of the raw error.
+    if (code !== "GEMINI_NOT_CONFIGURED") console.error(`${fallbackMessage} [${code}]`, error);
+    return res.status(known.status).json({ message: known.message });
   }
   console.error(fallbackMessage, error);
   return res.status(500).json({ message: fallbackMessage });
@@ -159,17 +196,13 @@ Return this exact JSON shape:
 `.trim();
 
     const result = await model.generateContent(prompt);
-    let raw = result.response.text().trim();
-
-    raw = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (e) {
-      console.error("Gemini returned invalid JSON:", raw);
-      return res.status(500).json({ message: "AI returned an unexpected format. Please try again." });
-    }
+    // Shared with every other Gemini JSON call (occupation suggestions,
+    // improve-experience, translate) instead of this handler's own
+    // hand-rolled fence-stripping/JSON.parse — one place to get fence
+    // stripping right, and a parse failure now throws a classifiable
+    // `AI_BAD_RESPONSE` error that flows through the same friendlyAiError()
+    // path as every other AI failure, rather than a bespoke inline 500.
+    const parsed = extractJson(result.response.text());
 
     const updatableFields = [
       "targetRole", "personalInfo", "summary", "experience",

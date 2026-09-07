@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* `@tailwind base/components/utilities` intentionally NOT repeated here —
+   src/index.css (imported first in main.tsx) already emits them once;
+   duplicating the directives compiled the same base/utility layer twice
+   into the bundle for no benefit. This file only adds the brand variables,
+   the global reset, and the animation keyframes below. */
 
 :root {
   /* --primary: #A75233; */

@@ -256,7 +256,7 @@ const JobCategories = () => {
   }, [categories, searchQuery, trendingFilter, sortOrder]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 h-[calc(100vh-64px)] overflow-y-auto w-full bg-slate-50/50 text-slate-800 selection:bg-orange-500 selection:text-white">
+    <div className="p-4 sm:p-6 lg:p-8 h-[calc(100dvh-64px)] overflow-y-auto w-full bg-slate-50/50 text-slate-800 selection:bg-orange-500 selection:text-white">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* PAGE HEADER */}

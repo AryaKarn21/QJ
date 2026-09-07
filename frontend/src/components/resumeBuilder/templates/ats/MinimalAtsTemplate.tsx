@@ -4,6 +4,7 @@ import { formatDateRange, skillsAsPlainText, toBulletLines } from '../shared/tem
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 import { ResumePhoto } from '../shared/ResumePhoto';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -63,6 +64,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   ))}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -84,6 +86,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
                 </p>
               </div>
               {it.description && <p className="mt-1 text-[12.5px] leading-relaxed">{it.description}</p>}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -105,6 +108,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
                 </p>
               </div>
               {v.description && <p className="mt-1 text-[12.5px] leading-relaxed">{v.description}</p>}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -123,6 +127,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="whitespace-nowrap text-[11px] italic text-[#1a1a1a]/65">
                 {edu.startDate}–{edu.endDate}
               </p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -135,6 +140,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.projects.map((p, i) => (
             <p key={p._id || i} className="text-[12.5px] leading-relaxed">
               <span className="font-semibold">{p.title}.</span> {p.description}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -153,6 +159,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.certifications.map((c, i) => (
             <p key={c._id || i} className="text-[12.5px]">
               {c.name}, {c.issuer} {c.year && `(${c.year})`}
+            {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -204,6 +211,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
           <p key={r._id || i}>
             {r.name}{r.relationship && `, ${r.relationship}`}{r.company && `, ${r.company}`}
             {(r.email || r.phone) && ` — ${[r.email, r.phone].filter(Boolean).join(', ')}`}
+          {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} className="mt-0.5 inline-block" />}
           </p>
         ))}
       </Extra>
@@ -256,6 +264,7 @@ export const MinimalAtsTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <section key={id} className="mt-5">
               <Heading>{custom.title}</Heading>
               <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </section>
           );
         }

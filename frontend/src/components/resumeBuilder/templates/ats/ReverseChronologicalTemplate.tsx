@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, skillsAsPlainText } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -58,6 +59,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
               <p className="text-[13px] font-semibold">{exp.role || 'Role'}</p>
               <p className="text-[12px] text-slate-500">{exp.company}{exp.location && `, ${exp.location}`}</p>
               {exp.description && <p className="mt-0.5 whitespace-pre-line text-[12.5px] leading-relaxed">{exp.description}</p>}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </DateColRow>
           ))}
         </div>
@@ -72,6 +74,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
               <p className="text-[13px] font-semibold">{it.role || 'Role'}</p>
               <p className="text-[12px] text-slate-500">{it.company}</p>
               {it.description && <p className="mt-0.5 text-[12.5px] leading-relaxed">{it.description}</p>}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </DateColRow>
           ))}
         </div>
@@ -86,6 +89,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
               <p className="text-[13px] font-semibold">{v.role || 'Role'}</p>
               <p className="text-[12px] text-slate-500">{v.organization}</p>
               {v.description && <p className="mt-0.5 text-[12.5px] leading-relaxed">{v.description}</p>}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </DateColRow>
           ))}
         </div>
@@ -99,6 +103,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
             <DateColRow key={edu._id || i} date={`${edu.startDate}–${edu.endDate}`}>
               <p className="text-[13px] font-semibold">{edu.degree || 'Degree'}</p>
               <p className="text-[12px] text-slate-500">{edu.institution}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </DateColRow>
           ))}
         </div>
@@ -111,6 +116,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
           {resume.projects.map((p, i) => (
             <p key={p._id || i} className="text-[12.5px] leading-relaxed">
               <span className="font-semibold">{p.title}.</span> {p.description}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -124,7 +130,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
     ),
     certifications: () => (
       <Extra title="Certifications">
-        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`}</p>)}
+        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}, {c.issuer} {c.year && `(${c.year})`} {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
@@ -136,17 +142,17 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
@@ -191,6 +197,7 @@ export const ReverseChronologicalTemplate: React.FC<TemplateProps> = ({ resume }
             <section key={id} className="mt-5">
               <Heading>{custom.title}</Heading>
               <p className="mt-1.5 pl-[91px] whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </section>
           );
         }

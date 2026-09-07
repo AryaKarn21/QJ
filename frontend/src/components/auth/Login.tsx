@@ -95,7 +95,7 @@ const Login: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className="relative min-h-[calc(100vh-80px)] w-full bg-[#0B0F17] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden select-none">
+    <div className="relative min-h-[calc(100dvh-80px)] w-full bg-[#0B0F17] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden select-none">
       
       {/* Subtle Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">

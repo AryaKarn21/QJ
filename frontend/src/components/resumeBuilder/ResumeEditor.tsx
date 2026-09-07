@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Plus, Trash2, Check, Loader2, ArrowLeft, Palette,
   Sparkles, Download, Save, Layers, ChevronUp, ChevronDown, Eye, EyeOff, LayoutTemplate,
-  ShieldCheck,
+  ShieldCheck, History,
 } from 'lucide-react';
 import {
   getResumeById,
@@ -13,6 +13,14 @@ import {
   EducationEntry,
   ProjectEntry,
   CertificationEntry,
+  InternshipEntry,
+  VolunteerEntry,
+  AchievementEntry,
+  PublicationEntry,
+  TrainingEntry,
+  ScholarshipEntry,
+  PositionEntry,
+  ReferenceEntry,
   SkillEntry,
   CustomSectionEntry,
 } from './resumeApi';
@@ -63,7 +71,19 @@ const emptyEducation: EducationEntry = {
   degree: '', institution: '', startDate: '', endDate: '', description: '',
 };
 const emptyProject: ProjectEntry = { title: '', description: '', link: '' };
-const emptyCertification: CertificationEntry = { name: '', issuer: '', year: '' };
+const emptyCertification: CertificationEntry = { name: '', issuer: '', year: '', link: '' };
+const emptyInternship: InternshipEntry = {
+  role: '', company: '', location: '', startDate: '', endDate: '', current: false, description: '', link: '',
+};
+const emptyVolunteer: VolunteerEntry = {
+  role: '', organization: '', location: '', startDate: '', endDate: '', current: false, description: '', link: '',
+};
+const emptyAchievement: AchievementEntry = { title: '', description: '', year: '', link: '' };
+const emptyPublication: PublicationEntry = { title: '', publisher: '', link: '', year: '', description: '' };
+const emptyTraining: TrainingEntry = { title: '', provider: '', startDate: '', endDate: '', description: '', link: '' };
+const emptyScholarship: ScholarshipEntry = { title: '', institution: '', amount: '', year: '', description: '', link: '' };
+const emptyPosition: PositionEntry = { title: '', organization: '', startDate: '', endDate: '', description: '', link: '' };
+const emptyReference: ReferenceEntry = { name: '', relationship: '', company: '', email: '', phone: '', link: '' };
 
 const fieldClass =
   'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100';
@@ -83,15 +103,19 @@ function updateArrayItem<K extends keyof Resume>(
   update({ [key]: list } as Partial<Resume>);
 }
 
-const Section: React.FC<{ title: string; onAdd?: () => void; children: React.ReactNode }> = ({
-  title, onAdd, children,
+const Section: React.FC<{ title: string; addLabel?: string; onAdd?: () => void; children: React.ReactNode }> = ({
+  title, addLabel, onAdd, children,
 }) => (
   <div>
-    <div className="mb-2 flex items-center justify-between">
+    <div className="mb-2 flex items-center justify-between gap-2">
       <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
       {onAdd && (
-        <button onClick={onAdd} className="flex items-center gap-1 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-600 hover:bg-violet-100">
-          <Plus size={12} /> Add
+        <button
+          onClick={onAdd}
+          aria-label={addLabel || `Add ${title}`}
+          className="flex min-h-[36px] items-center gap-1 rounded-md bg-violet-50 px-2.5 py-2 text-xs font-medium text-violet-600 hover:bg-violet-100"
+        >
+          <Plus size={12} /> {addLabel || 'Add'}
         </button>
       )}
     </div>
@@ -99,12 +123,17 @@ const Section: React.FC<{ title: string; onAdd?: () => void; children: React.Rea
   </div>
 );
 
-const EntryCard: React.FC<{ onRemove: () => void; children: React.ReactNode }> = ({ onRemove, children }) => (
+const EntryCard: React.FC<{ onRemove: () => void; removeLabel?: string; children: React.ReactNode }> = ({ onRemove, removeLabel, children }) => (
   <div className="relative rounded-lg border border-slate-200 p-3">
-    <button onClick={onRemove} className="absolute right-2 top-2 rounded-md p-1 text-slate-300 hover:bg-red-50 hover:text-red-500" title="Remove">
+    <button
+      onClick={onRemove}
+      aria-label={removeLabel || 'Remove entry'}
+      title={removeLabel || 'Remove'}
+      className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500"
+    >
       <Trash2 size={13} />
     </button>
-    <div className="pr-6">{children}</div>
+    <div className="pr-8">{children}</div>
   </div>
 );
 
@@ -132,13 +161,19 @@ const SkillsInput: React.FC<{ skills: SkillEntry[]; onChange: (skills: SkillEntr
         <input className={fieldClass} placeholder="Type a skill and press Enter" value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }} />
-        <button onClick={addSkill} className="rounded-lg bg-violet-600 px-3 text-sm font-medium text-white hover:bg-violet-700">Add</button>
+        <button onClick={addSkill} aria-label="Add skill" className="min-h-[40px] min-w-[40px] rounded-lg bg-violet-600 px-4 text-sm font-medium text-white hover:bg-violet-700">Add</button>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {skills.map((skill) => (
-          <span key={skill.name} className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
+          <span key={skill.name} className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
             {skill.name}
-            <button onClick={() => onChange(skills.filter((s) => s.name !== skill.name))} className="text-slate-400 hover:text-red-500">×</button>
+            <button
+              onClick={() => onChange(skills.filter((s) => s.name !== skill.name))}
+              aria-label={`Remove ${skill.name}`}
+              className="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-red-500"
+            >
+              ×
+            </button>
           </span>
         ))}
       </div>
@@ -263,6 +298,13 @@ const SectionsPanel: React.FC<{
                     value={custom.content}
                     onChange={(e) => onUpdateCustom(id, { content: e.target.value })}
                   />
+                  <input
+                    type="url"
+                    className={fieldClass}
+                    placeholder="Link (optional)"
+                    value={custom.link || ''}
+                    onChange={(e) => onUpdateCustom(id, { link: e.target.value })}
+                  />
                 </div>
               )}
             </div>
@@ -313,7 +355,8 @@ const SectionsPanel: React.FC<{
       ) : (
         <button
           onClick={() => setShowAddForm(true)}
-          className="mt-3 flex items-center gap-1 rounded-md bg-violet-50 px-2.5 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-100"
+          aria-label="Add custom section"
+          className="mt-3 flex min-h-[36px] items-center gap-1 rounded-md bg-violet-50 px-3 py-2 text-xs font-medium text-violet-600 hover:bg-violet-100"
         >
           <Plus size={12} /> Add custom section
         </button>
@@ -546,7 +589,7 @@ const ResumeEditor: React.FC = () => {
     <div className="flex min-h-screen flex-col bg-slate-50 lg:flex-row print:block">
 
       {/* ── Form panel ── */}
-      <div className="w-full space-y-6 overflow-y-auto border-b border-slate-200 bg-white p-5 lg:h-screen lg:w-1/2 lg:border-b-0 lg:border-r print:hidden">
+      <div className="w-full space-y-6 overflow-y-auto border-b border-slate-200 bg-white p-5 lg:h-dvh lg:w-1/2 lg:border-b-0 lg:border-r print:hidden">
 
         {/* Top bar — wraps on narrow screens instead of overflowing
             horizontally now that there are 5 action buttons + Back. */}
@@ -555,6 +598,9 @@ const ResumeEditor: React.FC = () => {
             <ArrowLeft size={15} /> Back
           </button>
           <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => navigate('/resume/history')} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+              <History size={13} /> Saved Resumes
+            </button>
             <SaveIndicator state={saveState} />
             <button onClick={handleManualSave} className="flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100">
               <Save size={13} /> Save
@@ -739,7 +785,7 @@ const ResumeEditor: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input className={fieldClass} placeholder="Full name" value={resume.personalInfo.fullName}
               onChange={(e) => update({ personalInfo: { ...resume.personalInfo, fullName: e.target.value } })} />
             <input className={fieldClass} placeholder="Email" value={resume.personalInfo.email}
@@ -752,7 +798,7 @@ const ResumeEditor: React.FC = () => {
               onChange={(e) => update({ personalInfo: { ...resume.personalInfo, linkedin: e.target.value } })} />
             <input className={fieldClass} placeholder="Website / Portfolio" value={resume.personalInfo.website}
               onChange={(e) => update({ personalInfo: { ...resume.personalInfo, website: e.target.value } })} />
-            <input className={`${fieldClass} col-span-2`} placeholder="GitHub URL" value={resume.personalInfo.github || ''}
+            <input className={`${fieldClass} sm:col-span-2`} placeholder="GitHub URL" value={resume.personalInfo.github || ''}
               onChange={(e) => update({ personalInfo: { ...resume.personalInfo, github: e.target.value } })} />
           </div>
         </Section>
@@ -782,10 +828,10 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Experience */}
-        <Section title="Experience" onAdd={() => update({ experience: [...resume.experience, { ...emptyExperience }] })}>
+        <Section title="Experience" addLabel="Add Experience" onAdd={() => update({ experience: [...resume.experience, { ...emptyExperience }] })}>
           {resume.experience.map((exp, i) => (
-            <EntryCard key={exp._id || i} onRemove={() => update({ experience: resume.experience.filter((_, idx) => idx !== i) })}>
-              <div className="grid grid-cols-2 gap-2">
+            <EntryCard key={exp._id || i} removeLabel="Remove experience" onRemove={() => update({ experience: resume.experience.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input className={fieldClass} placeholder="Role / Job Title" value={exp.role}
                   onChange={(e) => updateArrayItem(resume, update, 'experience', i, { role: e.target.value })} />
                 <input className={fieldClass} placeholder="Company" value={exp.company}
@@ -796,6 +842,8 @@ const ResumeEditor: React.FC = () => {
                   onChange={(e) => updateArrayItem(resume, update, 'experience', i, { startDate: e.target.value })} />
                 <input className={fieldClass} placeholder="End" value={exp.endDate} disabled={exp.current}
                   onChange={(e) => updateArrayItem(resume, update, 'experience', i, { endDate: e.target.value })} />
+                <input type="url" className={fieldClass} placeholder="Company / Experience Link (optional)" value={exp.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { link: e.target.value })} />
               </div>
               <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
                 <input type="checkbox" checked={exp.current}
@@ -808,11 +856,69 @@ const ResumeEditor: React.FC = () => {
           ))}
         </Section>
 
+        {/* Internships */}
+        <Section title="Internships" addLabel="Add Internship" onAdd={() => update({ internships: [...resume.internships, { ...emptyInternship }] })}>
+          {resume.internships.map((it, i) => (
+            <EntryCard key={it._id || i} removeLabel="Remove internship" onRemove={() => update({ internships: resume.internships.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Role / Job Title" value={it.role}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { role: e.target.value })} />
+                <input className={fieldClass} placeholder="Company" value={it.company}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { company: e.target.value })} />
+                <input className={fieldClass} placeholder="Location" value={it.location}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { location: e.target.value })} />
+                <input className={fieldClass} placeholder="Start" value={it.startDate}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { startDate: e.target.value })} />
+                <input className={fieldClass} placeholder="End" value={it.endDate} disabled={it.current}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { endDate: e.target.value })} />
+                <input type="url" className={fieldClass} placeholder="Company / Internship Link (optional)" value={it.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { link: e.target.value })} />
+              </div>
+              <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                <input type="checkbox" checked={it.current}
+                  onChange={(e) => updateArrayItem(resume, update, 'internships', i, { current: e.target.checked })} />
+                I currently work here
+              </label>
+              <textarea className={`${fieldClass} mt-2`} rows={3} placeholder="What did you do?"
+                value={it.description} onChange={(e) => updateArrayItem(resume, update, 'internships', i, { description: e.target.value })} />
+            </EntryCard>
+          ))}
+        </Section>
+
+        {/* Volunteer Experience */}
+        <Section title="Volunteer Experience" addLabel="Add Volunteer Experience" onAdd={() => update({ volunteering: [...resume.volunteering, { ...emptyVolunteer }] })}>
+          {resume.volunteering.map((v, i) => (
+            <EntryCard key={v._id || i} removeLabel="Remove volunteer experience" onRemove={() => update({ volunteering: resume.volunteering.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Role" value={v.role}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { role: e.target.value })} />
+                <input className={fieldClass} placeholder="Organization" value={v.organization}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { organization: e.target.value })} />
+                <input className={fieldClass} placeholder="Location" value={v.location}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { location: e.target.value })} />
+                <input className={fieldClass} placeholder="Start" value={v.startDate}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { startDate: e.target.value })} />
+                <input className={fieldClass} placeholder="End" value={v.endDate} disabled={v.current}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { endDate: e.target.value })} />
+                <input type="url" className={fieldClass} placeholder="Organization / Volunteer Link (optional)" value={v.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { link: e.target.value })} />
+              </div>
+              <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                <input type="checkbox" checked={v.current}
+                  onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { current: e.target.checked })} />
+                I currently volunteer here
+              </label>
+              <textarea className={`${fieldClass} mt-2`} rows={3} placeholder="What did you do?"
+                value={v.description} onChange={(e) => updateArrayItem(resume, update, 'volunteering', i, { description: e.target.value })} />
+            </EntryCard>
+          ))}
+        </Section>
+
         {/* Education */}
-        <Section title="Education" onAdd={() => update({ education: [...resume.education, { ...emptyEducation }] })}>
+        <Section title="Education" addLabel="Add Education" onAdd={() => update({ education: [...resume.education, { ...emptyEducation }] })}>
           {resume.education.map((edu, i) => (
-            <EntryCard key={edu._id || i} onRemove={() => update({ education: resume.education.filter((_, idx) => idx !== i) })}>
-              <div className="grid grid-cols-2 gap-2">
+            <EntryCard key={edu._id || i} removeLabel="Remove education" onRemove={() => update({ education: resume.education.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input className={fieldClass} placeholder="Degree" value={edu.degree}
                   onChange={(e) => updateArrayItem(resume, update, 'education', i, { degree: e.target.value })} />
                 <input className={fieldClass} placeholder="Institution" value={edu.institution}
@@ -821,17 +927,21 @@ const ResumeEditor: React.FC = () => {
                   onChange={(e) => updateArrayItem(resume, update, 'education', i, { startDate: e.target.value })} />
                 <input className={fieldClass} placeholder="End year" value={edu.endDate}
                   onChange={(e) => updateArrayItem(resume, update, 'education', i, { endDate: e.target.value })} />
+                <input type="url" className={`${fieldClass} sm:col-span-2`} placeholder="Institution Website / Link (optional)" value={edu.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'education', i, { link: e.target.value })} />
               </div>
             </EntryCard>
           ))}
         </Section>
 
         {/* Projects */}
-        <Section title="Projects" onAdd={() => update({ projects: [...resume.projects, { ...emptyProject }] })}>
+        <Section title="Projects" addLabel="Add Project" onAdd={() => update({ projects: [...resume.projects, { ...emptyProject }] })}>
           {resume.projects.map((p, i) => (
-            <EntryCard key={p._id || i} onRemove={() => update({ projects: resume.projects.filter((_, idx) => idx !== i) })}>
+            <EntryCard key={p._id || i} removeLabel="Remove project" onRemove={() => update({ projects: resume.projects.filter((_, idx) => idx !== i) })}>
               <input className={fieldClass} placeholder="Project title" value={p.title}
                 onChange={(e) => updateArrayItem(resume, update, 'projects', i, { title: e.target.value })} />
+              <input type="url" className={`${fieldClass} mt-2`} placeholder="Project Link (optional)" value={p.link || ''}
+                onChange={(e) => updateArrayItem(resume, update, 'projects', i, { link: e.target.value })} />
               <textarea className={`${fieldClass} mt-2`} rows={2} placeholder="What did you build?" value={p.description}
                 onChange={(e) => updateArrayItem(resume, update, 'projects', i, { description: e.target.value })} />
             </EntryCard>
@@ -839,17 +949,123 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Certifications */}
-        <Section title="Certifications" onAdd={() => update({ certifications: [...resume.certifications, { ...emptyCertification }] })}>
+        <Section title="Certifications" addLabel="Add Certification" onAdd={() => update({ certifications: [...resume.certifications, { ...emptyCertification }] })}>
           {resume.certifications.map((c, i) => (
-            <EntryCard key={c._id || i} onRemove={() => update({ certifications: resume.certifications.filter((_, idx) => idx !== i) })}>
-              <div className="grid grid-cols-3 gap-2">
+            <EntryCard key={c._id || i} removeLabel="Remove certification" onRemove={() => update({ certifications: resume.certifications.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <input className={fieldClass} placeholder="Name" value={c.name}
                   onChange={(e) => updateArrayItem(resume, update, 'certifications', i, { name: e.target.value })} />
                 <input className={fieldClass} placeholder="Issuer" value={c.issuer}
                   onChange={(e) => updateArrayItem(resume, update, 'certifications', i, { issuer: e.target.value })} />
                 <input className={fieldClass} placeholder="Year" value={c.year}
                   onChange={(e) => updateArrayItem(resume, update, 'certifications', i, { year: e.target.value })} />
+                <input type="url" className={`${fieldClass} sm:col-span-3`} placeholder="Certificate / Credential Link (optional)" value={c.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'certifications', i, { link: e.target.value })} />
               </div>
+            </EntryCard>
+          ))}
+        </Section>
+
+        {/* Achievements */}
+        <Section title="Achievements" addLabel="Add Achievement" onAdd={() => update({ achievements: [...resume.achievements, { ...emptyAchievement }] })}>
+          {resume.achievements.map((a, i) => (
+            <EntryCard key={a._id || i} removeLabel="Remove achievement" onRemove={() => update({ achievements: resume.achievements.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Title" value={a.title}
+                  onChange={(e) => updateArrayItem(resume, update, 'achievements', i, { title: e.target.value })} />
+                <input className={fieldClass} placeholder="Year" value={a.year}
+                  onChange={(e) => updateArrayItem(resume, update, 'achievements', i, { year: e.target.value })} />
+                <input type="url" className={`${fieldClass} sm:col-span-2`} placeholder="Proof / Achievement Link (optional)" value={a.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'achievements', i, { link: e.target.value })} />
+              </div>
+              <textarea className={`${fieldClass} mt-2`} rows={2} placeholder="Details (optional)" value={a.description}
+                onChange={(e) => updateArrayItem(resume, update, 'achievements', i, { description: e.target.value })} />
+            </EntryCard>
+          ))}
+        </Section>
+
+        {/* Publications */}
+        <Section title="Publications" addLabel="Add Publication" onAdd={() => update({ publications: [...resume.publications, { ...emptyPublication }] })}>
+          {resume.publications.map((p, i) => (
+            <EntryCard key={p._id || i} removeLabel="Remove publication" onRemove={() => update({ publications: resume.publications.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Title" value={p.title}
+                  onChange={(e) => updateArrayItem(resume, update, 'publications', i, { title: e.target.value })} />
+                <input className={fieldClass} placeholder="Publisher" value={p.publisher}
+                  onChange={(e) => updateArrayItem(resume, update, 'publications', i, { publisher: e.target.value })} />
+                <input className={fieldClass} placeholder="Year" value={p.year}
+                  onChange={(e) => updateArrayItem(resume, update, 'publications', i, { year: e.target.value })} />
+                <input type="url" className={fieldClass} placeholder="Publication Link (optional)" value={p.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'publications', i, { link: e.target.value })} />
+              </div>
+              <textarea className={`${fieldClass} mt-2`} rows={2} placeholder="Details (optional)" value={p.description}
+                onChange={(e) => updateArrayItem(resume, update, 'publications', i, { description: e.target.value })} />
+            </EntryCard>
+          ))}
+        </Section>
+
+        {/* Trainings */}
+        <Section title="Trainings" addLabel="Add Training" onAdd={() => update({ trainings: [...resume.trainings, { ...emptyTraining }] })}>
+          {resume.trainings.map((t, i) => (
+            <EntryCard key={t._id || i} removeLabel="Remove training" onRemove={() => update({ trainings: resume.trainings.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Title" value={t.title}
+                  onChange={(e) => updateArrayItem(resume, update, 'trainings', i, { title: e.target.value })} />
+                <input className={fieldClass} placeholder="Provider" value={t.provider}
+                  onChange={(e) => updateArrayItem(resume, update, 'trainings', i, { provider: e.target.value })} />
+                <input className={fieldClass} placeholder="Start" value={t.startDate}
+                  onChange={(e) => updateArrayItem(resume, update, 'trainings', i, { startDate: e.target.value })} />
+                <input className={fieldClass} placeholder="End" value={t.endDate}
+                  onChange={(e) => updateArrayItem(resume, update, 'trainings', i, { endDate: e.target.value })} />
+                <input type="url" className={`${fieldClass} sm:col-span-2`} placeholder="Training / Course Link (optional)" value={t.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'trainings', i, { link: e.target.value })} />
+              </div>
+              <textarea className={`${fieldClass} mt-2`} rows={2} placeholder="Details (optional)" value={t.description}
+                onChange={(e) => updateArrayItem(resume, update, 'trainings', i, { description: e.target.value })} />
+            </EntryCard>
+          ))}
+        </Section>
+
+        {/* Scholarships */}
+        <Section title="Scholarships" addLabel="Add Scholarship" onAdd={() => update({ scholarships: [...resume.scholarships, { ...emptyScholarship }] })}>
+          {resume.scholarships.map((s, i) => (
+            <EntryCard key={s._id || i} removeLabel="Remove scholarship" onRemove={() => update({ scholarships: resume.scholarships.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Title" value={s.title}
+                  onChange={(e) => updateArrayItem(resume, update, 'scholarships', i, { title: e.target.value })} />
+                <input className={fieldClass} placeholder="Institution" value={s.institution}
+                  onChange={(e) => updateArrayItem(resume, update, 'scholarships', i, { institution: e.target.value })} />
+                <input className={fieldClass} placeholder="Amount" value={s.amount}
+                  onChange={(e) => updateArrayItem(resume, update, 'scholarships', i, { amount: e.target.value })} />
+                <input className={fieldClass} placeholder="Year" value={s.year}
+                  onChange={(e) => updateArrayItem(resume, update, 'scholarships', i, { year: e.target.value })} />
+                <input type="url" className={`${fieldClass} sm:col-span-2`} placeholder="Scholarship / Award Link (optional)" value={s.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'scholarships', i, { link: e.target.value })} />
+              </div>
+              <textarea className={`${fieldClass} mt-2`} rows={2} placeholder="Details (optional)" value={s.description}
+                onChange={(e) => updateArrayItem(resume, update, 'scholarships', i, { description: e.target.value })} />
+            </EntryCard>
+          ))}
+        </Section>
+
+        {/* Positions of Responsibility */}
+        <Section title="Positions of Responsibility" addLabel="Add Position" onAdd={() => update({ positionsOfResponsibility: [...resume.positionsOfResponsibility, { ...emptyPosition }] })}>
+          {resume.positionsOfResponsibility.map((p, i) => (
+            <EntryCard key={p._id || i} removeLabel="Remove position" onRemove={() => update({ positionsOfResponsibility: resume.positionsOfResponsibility.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Title" value={p.title}
+                  onChange={(e) => updateArrayItem(resume, update, 'positionsOfResponsibility', i, { title: e.target.value })} />
+                <input className={fieldClass} placeholder="Organization" value={p.organization}
+                  onChange={(e) => updateArrayItem(resume, update, 'positionsOfResponsibility', i, { organization: e.target.value })} />
+                <input className={fieldClass} placeholder="Start" value={p.startDate}
+                  onChange={(e) => updateArrayItem(resume, update, 'positionsOfResponsibility', i, { startDate: e.target.value })} />
+                <input className={fieldClass} placeholder="End" value={p.endDate}
+                  onChange={(e) => updateArrayItem(resume, update, 'positionsOfResponsibility', i, { endDate: e.target.value })} />
+                <input type="url" className={`${fieldClass} sm:col-span-2`} placeholder="Organization / Position Link (optional)" value={p.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'positionsOfResponsibility', i, { link: e.target.value })} />
+              </div>
+              <textarea className={`${fieldClass} mt-2`} rows={2} placeholder="Details (optional)" value={p.description}
+                onChange={(e) => updateArrayItem(resume, update, 'positionsOfResponsibility', i, { description: e.target.value })} />
             </EntryCard>
           ))}
         </Section>
@@ -859,10 +1075,39 @@ const ResumeEditor: React.FC = () => {
           <SkillsInput skills={resume.skills} onChange={(skills) => update({ skills })} />
         </Section>
 
+        {/* References */}
+        <Section title="References" addLabel="Add Reference" onAdd={() => update({ references: [...resume.references, { ...emptyReference }] })}>
+          {resume.references.map((r, i) => (
+            <EntryCard key={r._id || i} removeLabel="Remove reference" onRemove={() => update({ references: resume.references.filter((_, idx) => idx !== i) })}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className={fieldClass} placeholder="Name" value={r.name}
+                  onChange={(e) => updateArrayItem(resume, update, 'references', i, { name: e.target.value })} />
+                <input className={fieldClass} placeholder="Relationship (e.g. Former Manager)" value={r.relationship}
+                  onChange={(e) => updateArrayItem(resume, update, 'references', i, { relationship: e.target.value })} />
+                <input className={fieldClass} placeholder="Company" value={r.company}
+                  onChange={(e) => updateArrayItem(resume, update, 'references', i, { company: e.target.value })} />
+                <input className={fieldClass} placeholder="Email" value={r.email}
+                  onChange={(e) => updateArrayItem(resume, update, 'references', i, { email: e.target.value })} />
+                <input className={fieldClass} placeholder="Phone" value={r.phone}
+                  onChange={(e) => updateArrayItem(resume, update, 'references', i, { phone: e.target.value })} />
+                <input type="url" className={fieldClass} placeholder="Profile / LinkedIn Link (optional)" value={r.link || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'references', i, { link: e.target.value })} />
+              </div>
+            </EntryCard>
+          ))}
+        </Section>
+
       </div>
 
-      {/* ── Live preview panel ── */}
-      <div className="flex-1 overflow-y-auto bg-slate-100 p-6 lg:h-screen print:bg-white print:p-0 print:overflow-visible">
+      {/* ── Live preview panel ──
+          The rendered resume page (TemplateRenderer) is a fixed-width
+          "document" (~720-800px, same as the PDF export) — on a phone
+          that's wider than the whole viewport. `overflow-x-auto` here lets
+          this panel scroll the oversized page horizontally within its own
+          box (so the visual page formatting stays correct, matching the
+          PDF) instead of the fixed-width content blowing out the page's
+          width and causing whole-page horizontal scroll. */}
+      <div className="flex-1 overflow-x-auto overflow-y-auto bg-slate-100 p-6 lg:h-dvh print:bg-white print:p-0 print:overflow-visible">
         {/* At the default font size/spacing (scale 1) both wrapper styles
             below are `undefined` — this renders byte-for-byte the same DOM
             styling as before the Customize feature existed, so nobody who

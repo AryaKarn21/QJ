@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -69,6 +70,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="font-semibold text-white">{edu.degree}</p>
               <p>{edu.institution}</p>
               <p className="text-white/50">{edu.endDate}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -82,6 +84,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <div key={c._id || i}>
               <p className="font-semibold text-white">{c.name}</p>
               <p>{c.issuer}{c.year && `, ${c.year}`}</p>
+            {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -112,6 +115,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -153,6 +157,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <span className="font-semibold">{p.title}</span>
               {p.publisher && <span className="text-slate-500 italic"> — {p.publisher}</span>}
               {p.year && <span className="text-slate-400"> ({p.year})</span>}
+            {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -173,6 +178,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(it.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -193,6 +199,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(v.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -202,7 +209,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <BodyHeading>Trainings</BodyHeading>
         <div className="space-y-0.5">
-          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider}</p>)}
+          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -210,7 +217,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <BodyHeading>Scholarships</BodyHeading>
         <div className="space-y-0.5">
-          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution}</p>)}
+          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -218,7 +225,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <BodyHeading>Positions of Responsibility</BodyHeading>
         <div className="space-y-0.5">
-          {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.organization}</p>)}
+          {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -292,6 +299,7 @@ export const BoldSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <React.Fragment key={id}>
                 <BodyHeading>{custom.title}</BodyHeading>
                 <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-600">{custom.content}</p>
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
               </React.Fragment>
             );
           }

@@ -3,8 +3,7 @@ const Jobseeker = require("../models/Jobseeker");
 const Job = require("../models/Job");
 const Application = require("../models/Application");
 const mongoose = require("mongoose");
-const fs = require("fs");
-const path = require("path");
+const { persistUpload, deleteStoredFile } = require("../services/media.service");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
 const {
   JOBSEEKER_STATUSES,
@@ -26,19 +25,6 @@ const getJobseekerProfile = async (req, res) => {
     console.error("Error in getJobseekerProfile:", error);
     res.status(500).json({ message: "Server error" });
   }
-};
-
-// Delete a previously stored upload file.
-// `storedPath` is the full root-relative path as saved in DB,
-// e.g. "/uploads/profile_pics/abc.png" — we resolve it against the
-// backend root so we never build a double-subfolder path.
-const deleteFile = (storedPath) => {
-  if (!storedPath) return;
-  // storedPath is e.g. "/uploads/profile_pics/uuid.png"
-  const filePath = path.join(__dirname, "..", storedPath);
-  fs.unlink(filePath, (err) => {
-    if (err) console.error(`Failed to delete file: ${filePath}`, err.message);
-  });
 };
 
 // The client sends `experiences[].companyId` verbatim from the "link to a
@@ -102,10 +88,16 @@ const updateJobseekerProfile = async (req, res) => {
     if (projects !== undefined) jobseeker.projects = JSON.parse(projects);
     if (certifications !== undefined) jobseeker.certifications = JSON.parse(certifications);
 
-    // Handle profilePic file — delete old file using the full stored path
+    // Handle profilePic file — persistUpload writes to Supabase Storage
+    // when configured (services/media.service.js), local disk otherwise;
+    // old file (either kind) is deleted only after the new one saves
+    // successfully, so a failed upload never leaves the user with no
+    // photo. ownerId namespaces the storage path so one user's upload can
+    // never land in (or overwrite) another user's folder.
     if (req.files?.profilePic) {
-      if (jobseeker.profilePic) deleteFile(jobseeker.profilePic);
-      jobseeker.profilePic = `/uploads/profile_pics/${req.files.profilePic[0].filename}`;
+      const oldPhoto = jobseeker.profilePic;
+      jobseeker.profilePic = await persistUpload(req.files.profilePic[0], "profile_pics", jobseeker._id);
+      if (oldPhoto) deleteStoredFile(oldPhoto);
     }
 
     // Handle coverPhoto file — same upload field the Employer profile
@@ -113,21 +105,23 @@ const updateJobseekerProfile = async (req, res) => {
     // wired for storage/validation; this is the first jobseeker-side
     // consumer of it).
     if (req.files?.coverPhoto) {
-      if (jobseeker.coverPhoto) deleteFile(jobseeker.coverPhoto);
-      jobseeker.coverPhoto = `/uploads/cover_photos/${req.files.coverPhoto[0].filename}`;
+      const oldCover = jobseeker.coverPhoto;
+      jobseeker.coverPhoto = await persistUpload(req.files.coverPhoto[0], "cover_photos", jobseeker._id);
+      if (oldCover) deleteStoredFile(oldCover);
     } else if (req.body.removeCoverPhoto === "true" || req.body.removeCoverPhoto === true) {
       // Explicit removal — FormData booleans arrive as strings, so both
       // forms are checked. Only reachable for the authenticated user's own
       // record (jobseeker was loaded via req.user.id above), never a
       // frontend-supplied id.
-      if (jobseeker.coverPhoto) deleteFile(jobseeker.coverPhoto);
+      if (jobseeker.coverPhoto) deleteStoredFile(jobseeker.coverPhoto);
       jobseeker.coverPhoto = null;
     }
 
     // Handle resume file
     if (req.files?.resume) {
-      if (jobseeker.resume) deleteFile(jobseeker.resume);
-      jobseeker.resume = `/uploads/resumes/${req.files.resume[0].filename}`;
+      const oldResume = jobseeker.resume;
+      jobseeker.resume = await persistUpload(req.files.resume[0], "resumes", jobseeker._id);
+      if (oldResume) deleteStoredFile(oldResume);
     }
 
     await jobseeker.save();

@@ -4,23 +4,16 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import {
   Send, Search, Loader2, AlertCircle, MessageCircle,
-  Phone, Video, MoreHorizontal, ChevronDown, X, Minimize2,
-  Check, CheckCheck, Circle, Edit3,
+  Phone, Video, MoreHorizontal, ChevronLeft, X, Check, CheckCheck, Edit3, User,
 } from 'lucide-react';
 import { fetchConversations, fetchMessages, sendMessage } from '../../api/messageApi';
 import { useSocket } from '../../context/SocketContext';
 import { useCurrentUser } from '../../utils/currentUser';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from '../community/Avatar';
 import type { ConversationSummary, DirectMessage } from '../../types/community';
 import { useWebRTC } from './useWebRTC';
 import { CallOverlay } from './CallOverlay';
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
-
-function avatarUrl(avatar?: string | null) {
-  if (!avatar) return '';
-  return `${MEDIA_URL.replace(/\/$/, '')}/${avatar.replace(/^\//, '')}`;
-}
 
 function timeLabel(d: string) {
   return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -49,6 +42,9 @@ function dayLabel(d: string) {
 
 type PendingMessage = DirectMessage & { _pending?: boolean; _failed?: boolean };
 
+const TYPING_DEBOUNCE_MS = 2000;
+const TYPING_AUTO_CLEAR_MS = 5000;
+
 // ─── Sidebar conversation item ────────────────────────────────────────────────
 
 function ConvItem({
@@ -57,7 +53,7 @@ function ConvItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors relative group ${active ? 'bg-blue-50 border-l-[3px] border-blue-600' : 'border-l-[3px] border-transparent'}`}
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors relative group min-h-[44px] ${active ? 'bg-blue-50 border-l-[3px] border-blue-600' : 'border-l-[3px] border-transparent'}`}
     >
       {/* Avatar with online dot */}
       <div className="relative flex-shrink-0">
@@ -66,20 +62,20 @@ function ConvItem({
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
             {conv.otherUser.name}
           </p>
-          <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">
+          <span className="text-[10px] text-slate-400 flex-shrink-0">
             {conv.lastMessageAt ? relativeLabel(conv.lastMessageAt) : ''}
           </span>
         </div>
-        <div className="flex items-center justify-between mt-0.5">
-          <p className={`text-xs truncate ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+        <div className="flex items-center justify-between gap-2 mt-0.5">
+          <p className={`text-xs truncate min-w-0 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
             {conv.lastMessage?.text || 'Start a conversation'}
           </p>
           {conv.unreadCount > 0 && (
-            <span className="ml-2 flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
               {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
             </span>
           )}
@@ -92,12 +88,14 @@ function ConvItem({
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
 function Bubble({
-  msg, mine, showAvatar, conv,
+  msg, mine, showAvatar, conv, read, onRetry,
 }: {
   msg: PendingMessage;
   mine: boolean;
   showAvatar: boolean;
   conv: ConversationSummary;
+  read: boolean;
+  onRetry: (msg: PendingMessage) => void;
 }) {
   return (
     <div className={`flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -106,33 +104,40 @@ function Bubble({
         {!mine && showAvatar && <Avatar user={conv.otherUser} size={8} />}
       </div>
 
-      <div className={`flex flex-col max-w-[68%] ${mine ? 'items-end' : 'items-start'}`}>
-        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-          mine
-            ? msg._failed
-              ? 'bg-red-500 text-white rounded-br-none'
-              : 'bg-blue-600 text-white rounded-br-none'
-            : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
-        } ${msg._pending ? 'opacity-60' : ''}`}>
-          <p className="whitespace-pre-wrap">{msg.text}</p>
-        </div>
+      <div className={`flex min-w-0 flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[68%] ${mine ? 'items-end' : 'items-start'}`}>
+        <button
+          type="button"
+          onClick={() => msg._failed && onRetry(msg)}
+          disabled={!msg._failed}
+          className={`min-w-0 max-w-full px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm text-left ${
+            mine
+              ? msg._failed
+                ? 'bg-red-500 text-white rounded-br-none cursor-pointer'
+                : 'bg-blue-600 text-white rounded-br-none'
+              : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
+          } ${msg._pending ? 'opacity-60' : ''} ${!msg._failed ? 'cursor-default' : ''}`}
+        >
+          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.text}</p>
+        </button>
 
         <div className={`flex items-center gap-1 mt-1 px-1 ${mine ? 'flex-row-reverse' : ''}`}>
           <span className="text-[10px] text-slate-400">
             {msg._pending ? 'Sending…' : msg._failed ? 'Failed' : timeLabel(msg.createdAt)}
           </span>
           {mine && !msg._pending && !msg._failed && (
-            <CheckCheck size={12} className="text-blue-500" />
-          )}
-          {mine && msg._pending && (
-            <Check size={12} className="text-slate-300" />
+            read
+              ? <CheckCheck size={12} className="text-blue-500" aria-label="Read" />
+              : <Check size={12} className="text-slate-300" aria-label="Sent" />
           )}
         </div>
 
         {msg._failed && (
-          <p className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5 px-1">
+          <button
+            onClick={() => onRetry(msg)}
+            className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5 px-1 hover:underline"
+          >
             <AlertCircle size={10} /> Tap to retry
-          </p>
+          </button>
         )}
       </div>
     </div>
@@ -142,12 +147,13 @@ function Bubble({
 // ─── Chat panel ───────────────────────────────────────────────────────────────
 
 function ChatPanel({
-  conv, onVoiceCall, onVideoCall, onMarkRead,
+  conv, onVoiceCall, onVideoCall, onMarkRead, onBack,
 }: {
   conv: ConversationSummary;
   onVoiceCall: () => void;
   onVideoCall: () => void;
   onMarkRead: (id: string) => void;
+  onBack: () => void;
 }) {
   const { userId } = useCurrentUser();
   const { socket } = useSocket();
@@ -158,18 +164,34 @@ function ChatPanel({
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [sending, setSending] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const [readAt, setReadAt] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const otherTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
   const scrollToBottom = useCallback((smooth = true) => {
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
   }, []);
 
+  // Reset all per-conversation transient UI state (including the draft —
+  // previously left in place, so typing a draft in one chat and switching
+  // conversations silently pre-filled the *next* chat's input box with it)
+  // whenever the open conversation changes.
   useEffect(() => {
     setLoading(true);
     setMessages([]);
     setPage(1);
+    setText('');
+    setSending(false);
+    setOtherTyping(false);
+    setReadAt(null);
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null; }
     fetchMessages(conv._id, 1)
       .then((res) => {
         setMessages(res.messages);
@@ -180,20 +202,52 @@ function ChatPanel({
       .catch(() => toast.error('Could not load messages.'))
       .finally(() => setLoading(false));
     inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conv._id]);
 
   useEffect(() => {
     if (!socket) return;
     socket.emit('conversation:join', conv._id);
-    const handler = (msg: DirectMessage) => {
-      if (msg.conversation === conv._id) {
-        setMessages((p) => [...p, msg]);
-        setTimeout(() => scrollToBottom(), 50);
+
+    const handleNewMessage = (msg: DirectMessage) => {
+      if (msg.conversation !== conv._id) return;
+      setMessages((p) => {
+        // The sender's own socket also receives this broadcast — if the
+        // optimistic-send's REST response already landed (or lands right
+        // after), the same message would otherwise be appended twice.
+        if (p.some((m) => m._id === msg._id)) return p;
+        return [...p, msg];
+      });
+      setTimeout(() => scrollToBottom(), 50);
+    };
+
+    const handleTyping = ({ conversationId, isTyping }: { conversationId: string; isTyping: boolean }) => {
+      if (conversationId !== conv._id) return;
+      setOtherTyping(isTyping);
+      if (otherTypingTimeoutRef.current) { clearTimeout(otherTypingTimeoutRef.current); otherTypingTimeoutRef.current = null; }
+      if (isTyping) {
+        // Safety net in case the "stopped typing" event never arrives
+        // (dropped connection, tab closed mid-type).
+        otherTypingTimeoutRef.current = setTimeout(() => setOtherTyping(false), TYPING_AUTO_CLEAR_MS);
       }
     };
-    socket.on('message:new', handler);
-    return () => { socket.emit('conversation:leave', conv._id); socket.off('message:new', handler); };
-  }, [socket, conv._id]);
+
+    const handleRead = (data: { conversationId: string; readerId: string; readAt: string }) => {
+      if (data.conversationId !== conv._id || data.readerId === userId) return;
+      setReadAt(data.readAt);
+    };
+
+    socket.on('message:new', handleNewMessage);
+    socket.on('conversation:typing', handleTyping);
+    socket.on('conversation:read', handleRead);
+    return () => {
+      socket.emit('conversation:leave', conv._id);
+      socket.off('message:new', handleNewMessage);
+      socket.off('conversation:typing', handleTyping);
+      socket.off('conversation:read', handleRead);
+      if (otherTypingTimeoutRef.current) clearTimeout(otherTypingTimeoutRef.current);
+    };
+  }, [socket, conv._id, userId, scrollToBottom]);
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -213,26 +267,71 @@ function ChatPanel({
     finally { setLoadingMore(false); }
   };
 
-  const send = async () => {
-    if (!text.trim() || sending || !userId) return;
-    const body = text.trim();
-    const tempId = `tmp-${Date.now()}`;
-    setText('');
-    setSending(false);
-    setMessages((p) => [...p, { _id: tempId, conversation: conv._id, sender: userId, text: body, createdAt: new Date().toISOString(), _pending: true }]);
-    setTimeout(() => scrollToBottom(), 50);
+  const stopTyping = useCallback(() => {
+    if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null; }
+    if (isTypingRef.current && socket) {
+      isTypingRef.current = false;
+      socket.emit('conversation:typing', { conversationId: conv._id, isTyping: false });
+    }
+  }, [socket, conv._id]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+
+    if (!socket) return;
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      socket.emit('conversation:typing', { conversationId: conv._id, isTyping: true });
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(stopTyping, TYPING_DEBOUNCE_MS);
+  };
+
+  // Sends (or re-sends) `body` under `id` (a fresh temp id for a new
+  // message, or an existing failed message's id for a retry). Dedupes
+  // against the real-time `message:new` broadcast either order arrives in:
+  // if the socket delivers the saved message before this REST call
+  // resolves, the temp entry is simply dropped instead of duplicated.
+  const deliver = async (id: string, body: string) => {
+    setSending(true);
     try {
       const saved = await sendMessage(conv._id, body);
-      setMessages((p) => p.map((m) => m._id === tempId ? saved : m));
+      setMessages((p) => {
+        const withoutTemp = p.filter((m) => m._id !== id);
+        if (withoutTemp.some((m) => m._id === saved._id)) return withoutTemp;
+        return [...withoutTemp, saved];
+      });
     } catch (err) {
-      setMessages((p) => p.map((m) => m._id === tempId ? { ...m, _pending: false, _failed: true } : m));
+      setMessages((p) => p.map((m) => m._id === id ? { ...m, _pending: false, _failed: true } : m));
       // A 403 here means the messaging-permission check failed (e.g. one
       // side blocked the other) — worth a specific toast, not just the
       // silent "failed" bubble, so the sender understands why.
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         toast.error(err.response.data?.message || "You can't send messages in this conversation.");
       }
+    } finally {
+      setSending(false);
     }
+  };
+
+  const send = async () => {
+    if (!text.trim() || sending || !userId) return;
+    const body = text.trim();
+    const tempId = `tmp-${Date.now()}`;
+    setText('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+    stopTyping();
+    setMessages((p) => [...p, { _id: tempId, conversation: conv._id, sender: userId, text: body, createdAt: new Date().toISOString(), _pending: true }]);
+    setTimeout(() => scrollToBottom(), 50);
+    await deliver(tempId, body);
+  };
+
+  const retry = (msg: PendingMessage) => {
+    if (sending) return;
+    setMessages((p) => p.map((m) => m._id === msg._id ? { ...m, _pending: true, _failed: false } : m));
+    deliver(msg._id, msg.text);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -256,31 +355,58 @@ function ChatPanel({
     return out;
   }, [messages]);
 
+  const profileHref = conv.otherUser.role === 'employer'
+    ? `/community/company/${conv.otherUser._id}`
+    : `/community/profile/${conv.otherUser._id}`;
+
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-white">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white z-10">
-        <div className="flex items-center gap-3">
-          <div className="relative">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2 sm:px-5 sm:py-3 z-10">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <button
+            onClick={onBack}
+            aria-label="Back to conversations"
+            className="md:hidden flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 -ml-1"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <div className="relative flex-shrink-0">
             <Avatar user={conv.otherUser} size={10} linkToProfile />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
           </div>
-          <div>
-            <p className="font-semibold text-sm text-slate-900 leading-tight">{conv.otherUser.name}</p>
-            {conv.otherUser.headline && (
-              <p className="text-xs text-slate-400 truncate max-w-[200px]">{conv.otherUser.headline}</p>
-            )}
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-slate-900 leading-tight truncate">{conv.otherUser.name}</p>
+            <p className="text-xs text-slate-400 truncate">
+              {otherTyping ? <span className="text-blue-500 font-medium">typing…</span> : conv.otherUser.headline || 'Online'}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-0.5">
-          <IconBtn icon={<Phone size={17} />} title="Voice call" onClick={onVoiceCall} hoverColor="hover:text-green-600" />
-          <IconBtn icon={<Video size={17} />} title="Video call" onClick={onVideoCall} hoverColor="hover:text-blue-600" />
-          <IconBtn icon={<MoreHorizontal size={17} />} title="More" onClick={() => {}} />
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <IconBtn icon={<Phone size={17} />} label="Voice call" onClick={onVoiceCall} hoverColor="hover:text-green-600" />
+          <IconBtn icon={<Video size={17} />} label="Video call" onClick={onVideoCall} hoverColor="hover:text-blue-600" />
+          <div className="relative">
+            <IconBtn icon={<MoreHorizontal size={17} />} label="More options" onClick={() => setMoreOpen((v) => !v)} />
+            {moreOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} aria-hidden="true" />
+                <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <a
+                    href={profileHref}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <User size={15} /> View profile
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ── Messages ── */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-1" style={{ background: '#f3f2ef' }}>
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-6 space-y-1" style={{ background: '#f3f2ef' }}>
         {loading ? (
           <div className="flex justify-center pt-10"><Loader2 size={24} className="animate-spin text-slate-300" /></div>
         ) : (
@@ -316,6 +442,8 @@ function ChatPanel({
                   mine={item.msg.sender === userId}
                   showAvatar={item.showAvatar}
                   conv={conv}
+                  read={!!readAt && item.msg.createdAt <= readAt}
+                  onRetry={retry}
                 />
               )
             )}
@@ -325,33 +453,35 @@ function ChatPanel({
       </div>
 
       {/* ── Input ── */}
-      <div className="px-4 py-3 border-t border-slate-100 bg-white">
-        <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 px-4 py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+      <div className="border-t border-slate-100 bg-white px-3 py-2.5 sm:px-4 sm:py-3 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:pb-3">
+        <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 px-3 py-1.5 sm:px-4 sm:py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <textarea
             ref={inputRef}
             value={text}
-            onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
+            onChange={handleTextChange}
             onKeyDown={handleKeyDown}
+            onBlur={stopTyping}
             placeholder={`Message ${conv.otherUser.name}…`}
             rows={1}
-            className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-0.5"
+            aria-label="Type a message"
+            className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-1.5"
             style={{ maxHeight: 120 }}
           />
-          <button onClick={send} disabled={!text.trim() || sending}
-            className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all ${text.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <button onClick={send} disabled={!text.trim() || sending} aria-label="Send message"
+            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${text.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
-        <p className="text-[10px] text-slate-400 text-center mt-1.5">Enter to send · Shift+Enter for new line</p>
+        <p className="hidden sm:block text-[10px] text-slate-400 text-center mt-1.5">Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );
 }
 
-function IconBtn({ icon, title, onClick, hoverColor = 'hover:text-slate-700' }: { icon: React.ReactNode; title: string; onClick: () => void; hoverColor?: string }) {
+function IconBtn({ icon, label, onClick, hoverColor = 'hover:text-slate-700' }: { icon: React.ReactNode; label: string; onClick: () => void; hoverColor?: string }) {
   return (
-    <button onClick={onClick} title={title}
-      className={`p-2 rounded-full text-slate-400 ${hoverColor} hover:bg-slate-100 transition-colors`}>
+    <button onClick={onClick} title={label} aria-label={label}
+      className={`flex h-10 w-10 items-center justify-center rounded-full text-slate-400 ${hoverColor} hover:bg-slate-100 transition-colors`}>
       {icon}
     </button>
   );
@@ -368,11 +498,10 @@ export function MessagesPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   const {
     callState, callType, incomingCall, localStream, remoteStream,
-    isMuted, isCamOff, callDuration,
+    isMuted, isCamOff, callDuration, error: callError, dismissError,
     startCall, answerCall, rejectCall, endCall, toggleMute, toggleCamera,
   } = useWebRTC(socket, userId || '');
 
@@ -383,10 +512,6 @@ export function MessagesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (conversationId) setMobileShowChat(true);
-  }, [conversationId]);
-
   const filtered = useMemo(() => {
     if (!search.trim()) return conversations;
     const q = search.toLowerCase();
@@ -394,43 +519,52 @@ export function MessagesPage() {
   }, [conversations, search]);
 
   const active = conversations.find((c) => c._id === conversationId);
+  // Which pane mobile shows is derived directly from the route, not a
+  // separately-tracked boolean — the previous `mobileShowChat` state could
+  // desync from the URL (e.g. browser back navigation clearing
+  // `conversationId` without going through the in-app "Back" button),
+  // stranding the UI on an empty chat pane with no way back except leaving
+  // the page entirely.
+  const showingChat = !!conversationId;
 
   const markRead = (id: string) =>
     setConversations((p) => p.map((c) => c._id === id ? { ...c, unreadCount: 0 } : c));
 
   const handleVoiceCall = () => {
     if (!active) return;
-    startCall(active.otherUser._id, 'audio', active.otherUser.name, avatarUrl(active.otherUser.avatar));
+    startCall(active.otherUser._id, 'audio', active.otherUser.name, resolveMediaUrl(active.otherUser.avatar));
   };
   const handleVideoCall = () => {
     if (!active) return;
-    startCall(active.otherUser._id, 'video', active.otherUser.name, avatarUrl(active.otherUser.avatar));
+    startCall(active.otherUser._id, 'video', active.otherUser.name, resolveMediaUrl(active.otherUser.avatar));
   };
 
   const callRemoteName = incomingCall?.callerName || active?.otherUser.name || 'Unknown';
-  const callRemoteAvatar = incomingCall?.callerAvatar || avatarUrl(active?.otherUser.avatar);
+  const callRemoteAvatar = incomingCall?.callerAvatar || resolveMediaUrl(active?.otherUser.avatar);
 
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-[#f3f2ef]">
+    <div className="min-h-dvh bg-[#f3f2ef]">
       {/* Call overlay */}
-      {callState !== 'idle' && callState !== 'ended' && (
+      {(callState === 'calling' || callState === 'incoming' || callState === 'connected' || callState === 'failed') && (
         <CallOverlay
           callState={callState} callType={callType}
           remoteName={callRemoteName} remoteAvatar={callRemoteAvatar}
           localStream={localStream} remoteStream={remoteStream}
           isMuted={isMuted} isCamOff={isCamOff} callDuration={callDuration}
+          error={callError}
           onAnswer={answerCall} onReject={rejectCall} onEnd={endCall}
           onToggleMute={toggleMute} onToggleCamera={toggleCamera}
+          onDismissError={dismissError}
         />
       )}
 
-      <div className="max-w-5xl mx-auto py-6 px-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex h-[calc(100vh-120px)] min-h-[560px]">
+      <div className="mx-auto max-w-5xl px-0 py-0 sm:px-4 sm:py-6">
+        <div className="flex h-[calc(100dvh-4rem)] overflow-hidden border-0 border-slate-200 bg-white sm:h-[calc(100dvh-120px)] sm:min-h-[560px] sm:rounded-xl sm:border sm:shadow-sm">
 
           {/* ── LEFT SIDEBAR ── */}
-          <div className={`w-full md:w-[320px] flex-shrink-0 flex flex-col border-r border-slate-100 ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`w-full flex-shrink-0 flex-col border-r border-slate-100 md:flex md:w-[320px] ${showingChat ? 'hidden' : 'flex'}`}>
             {/* Sidebar header */}
             <div className="px-4 pt-4 pb-3 border-b border-slate-100">
               <div className="flex items-center justify-between mb-3">
@@ -442,20 +576,25 @@ export function MessagesPage() {
                     </span>
                   )}
                 </div>
-                <button className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <button aria-label="New message" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                   <Edit3 size={16} />
                 </button>
               </div>
               {/* Search */}
-              <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-2">
                 <Search size={14} className="text-slate-400 flex-shrink-0" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search messages"
-                  className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full"
+                  aria-label="Search messages"
+                  className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full min-w-0"
                 />
-                {search && <button onClick={() => setSearch('')}><X size={13} className="text-slate-400" /></button>}
+                {search && (
+                  <button onClick={() => setSearch('')} aria-label="Clear search">
+                    <X size={13} className="text-slate-400" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -492,7 +631,7 @@ export function MessagesPage() {
                       key={c._id}
                       conv={c}
                       active={c._id === conversationId}
-                      onClick={() => { navigate(`/messages/${c._id}`); setMobileShowChat(true); }}
+                      onClick={() => navigate(`/messages/${c._id}`)}
                     />
                   ))}
                 </div>
@@ -501,23 +640,15 @@ export function MessagesPage() {
           </div>
 
           {/* ── RIGHT PANEL ── */}
-          <div className={`flex-1 flex flex-col ${!mobileShowChat && !conversationId ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`min-w-0 flex-1 flex-col md:flex ${showingChat ? 'flex' : 'hidden'}`}>
             {active ? (
-              <>
-                {/* Mobile back */}
-                <div className="md:hidden px-4 py-2 border-b border-slate-100">
-                  <button onClick={() => { setMobileShowChat(false); navigate('/messages'); }}
-                    className="text-sm text-blue-600 font-medium flex items-center gap-1">
-                    ← Back
-                  </button>
-                </div>
-                <ChatPanel
-                  conv={active}
-                  onVoiceCall={handleVoiceCall}
-                  onVideoCall={handleVideoCall}
-                  onMarkRead={markRead}
-                />
-              </>
+              <ChatPanel
+                conv={active}
+                onVoiceCall={handleVoiceCall}
+                onVideoCall={handleVideoCall}
+                onMarkRead={markRead}
+                onBack={() => navigate('/messages')}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center px-8">
                 <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-5">

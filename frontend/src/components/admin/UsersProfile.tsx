@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { useParams } from "react-router-dom";
 import { getAllUsers } from "./adminApi/api";
 import { AxiosError } from "axios";
@@ -146,7 +147,7 @@ const UsersProfile = () => {
                             <h4 className="text-lg font-semibold">Resume</h4>
                             {user.resume ? (
                                 <a
-                                    href={`${MEDIA_URL.replace(/\/$/, "")}/${user.resume.replace(/^\//, "")}`}
+                                    href={resolveMediaUrl(user.resume)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-block px-2 py-1 bg-primary text-white rounded-md hover:bg-primary/90 transition"

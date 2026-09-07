@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { X, Image, Loader2 } from "lucide-react";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import { toast } from "react-toastify";
 import { TagInput } from "../../common/TagInput";
 import { getFriendlyErrorMessage } from "../../../utils/apiError";
@@ -81,7 +82,7 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
                 coverPhoto: null,
             });
             if (profile.coverPhoto) {
-                setCoverPreview(`${MEDIA_URL.replace(/\/$/, "")}/${profile.coverPhoto.replace(/^\//, "")}`);
+                setCoverPreview(resolveMediaUrl(profile.coverPhoto));
             } else {
                 setCoverPreview(null);
             }
@@ -138,7 +139,7 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 sm:p-6">
-            <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-lg sm:p-6">
+            <div className="relative max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-lg sm:p-6">
                 <button
                     onClick={onClose}
                     disabled={saving}

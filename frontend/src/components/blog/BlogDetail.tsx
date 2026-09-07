@@ -248,7 +248,7 @@ const BlogDetail: React.FC = () => {
           )}
         </div>
 
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">{blog.title}</h1>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 break-words [overflow-wrap:anywhere]">{blog.title}</h1>
 
         {blog.featuredImage && (
           <img

@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, groupSkillsByCategory, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -54,6 +55,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
               </div>
               <p className="text-[12px] text-slate-600">{edu.institution}</p>
               {edu.description && <p className="mt-0.5 text-[12px] text-slate-500 italic">{edu.description}</p>}
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -111,6 +113,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(it.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -131,6 +134,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(v.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -151,6 +155,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -164,6 +169,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <p key={p._id || i} className="text-[12.5px]">
               <span className="font-semibold">{p.title}</span>, {p.organization}
               {p.startDate && <span className="text-slate-400"> · {formatDateRange(p.startDate, p.endDate, p.current)}</span>}
+            {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -193,7 +199,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <SectionHeading>Publications</SectionHeading>
         <div className="space-y-0.5">
-          {resume.publications.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+          {resume.publications.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -201,7 +207,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <SectionHeading>Trainings</SectionHeading>
         <div className="space-y-0.5">
-          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider}</p>)}
+          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -270,6 +276,7 @@ export const FreshGradTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <React.Fragment key={id}>
               <SectionHeading>{custom.title}</SectionHeading>
               <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-700">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </React.Fragment>
           );
         }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import {
   Linkedin, Github, Twitter, Globe, Download,
   GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2, ImagePlus,
@@ -92,9 +93,7 @@ const UserProfile = () => {
         profilePic: null,
         // So the Edit Profile modal shows the current picture on open
         // instead of a blank uploader — see EditProfileModal's previewSrc.
-        existingProfilePicUrl: profile.profilePic
-          ? `${MEDIA_URL.replace(/\/$/, "")}/${profile.profilePic.replace(/^\//, "")}`
-          : undefined,
+        existingProfilePicUrl: profile.profilePic ? resolveMediaUrl(profile.profilePic) : undefined,
       });
     }
   }, [profile]);
@@ -284,7 +283,7 @@ const UserProfile = () => {
       );
 
   return (
-    <div className="bg-gray-50 px-3 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-12 overflow-auto" style={{ maxHeight: "calc(100vh - 50px)" }}>
+    <div className="bg-gray-50 px-3 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-12 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-2xl shadow overflow-hidden relative">
 

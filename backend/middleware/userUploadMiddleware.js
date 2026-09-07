@@ -1,49 +1,14 @@
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
-const { safeExtensionFor } = require('./safeUploadExtension');
 
-// 1. Configure Storage
-// We define where files should be stored and how they should be named.
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = '';
-    if (file.fieldname === 'profilePic') {
-      folder = 'profile_pics'; // Dedicated folder for profile pictures
-    } else if (file.fieldname === 'companyLogo') {
-      folder = 'company_logos'; // Dedicated folder for company logos
-    }
-
-    else if (file.fieldname === 'coverPhoto') {
-     folder = 'cover_photos';
-    }
-
-    else if (file.fieldname === 'resume') {
-      folder = 'resumes'; // Resumes folder for jobseekers resumes
-    }
-    // The destination path is relative to the project root. multer never
-    // creates this directory itself — since `backend/uploads/` is entirely
-    // gitignored (see backend/.gitignore), a subfolder like "cover_photos"
-    // simply doesn't exist on a fresh clone/deploy until something creates
-    // it, and multer's write then fails with ENOENT, surfaced to the
-    // client as an opaque 500. Creating it here on first use makes every
-    // upload field self-healing instead of depending on someone having
-    // manually mkdir'd every folder in advance.
-    const dir = path.join(__dirname, `../uploads/${folder}`);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    // Extension is derived from the validated mimetype, never from the
-    // client-supplied original filename — see safeUploadExtension.js.
-    const ext = safeExtensionFor(file.mimetype);
-    if (!ext) {
-      return cb(new Error('Invalid file type.'));
-    }
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
+// In-memory storage — the controller (via services/media.service.js)
+// decides what happens to the buffer: uploaded to Supabase Storage when
+// configured, or written to local disk exactly as before when it isn't.
+// This used to be multer.diskStorage writing straight into
+// backend/uploads/<folder>/ — that's what made every profile pic/company
+// logo/cover photo/resume disappear on Render's ephemeral filesystem the
+// moment the dyno restarted; the file itself never left this process
+// until media.service.js decides where it's actually going.
+const storage = multer.memoryStorage();
 
 // 2. Configure File Filter
 // We control which file types are allowed.

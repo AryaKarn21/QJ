@@ -101,7 +101,7 @@ const Insight: React.FC = () => {
   // --- END DEBUGGING ---
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 overflow-auto" style={{ maxHeight: "calc(100vh - 50px)" }}>
+    <div className="min-h-screen bg-gray-50 p-6 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-7xl mx-auto" ref={dashboardRef}>
         <div className="flex justify-end items-center mb-6">
           <button
