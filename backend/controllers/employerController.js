@@ -97,19 +97,21 @@ const updateEmployerProfile = async (req, res) => {
       }
     }
 
-    // Handle companyLogo upload — persistUpload writes to Cloudinary when
-    // configured (services/media.service.js), local disk otherwise; the
-    // old logo (either kind) is only deleted after the new one saves.
+    // Handle companyLogo upload — persistUpload writes to Supabase Storage
+    // when configured (services/media.service.js), local disk otherwise;
+    // the old logo (either kind) is only deleted after the new one saves.
+    // ownerId namespaces the storage path so one company's upload can
+    // never land in (or overwrite) another company's folder.
     if (req.files?.companyLogo?.[0]) {
       const oldLogo = employer.companyLogo;
-      employer.companyLogo = await persistUpload(req.files.companyLogo[0], "company_logos");
+      employer.companyLogo = await persistUpload(req.files.companyLogo[0], "company_logos", employer._id);
       if (oldLogo) deleteStoredFile(oldLogo);
     }
 
     // Handle coverPhoto upload
     if (req.files?.coverPhoto?.[0]) {
       const oldCover = employer.coverPhoto;
-      employer.coverPhoto = await persistUpload(req.files.coverPhoto[0], "cover_photos");
+      employer.coverPhoto = await persistUpload(req.files.coverPhoto[0], "cover_photos", employer._id);
       if (oldCover) deleteStoredFile(oldCover);
     } else if (req.body.removeCoverPhoto === "true" || req.body.removeCoverPhoto === true) {
       // Explicit removal — employer was loaded via req.user.id above, so

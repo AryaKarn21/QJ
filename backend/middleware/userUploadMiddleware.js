@@ -1,7 +1,7 @@
 const multer = require('multer');
 
 // In-memory storage — the controller (via services/media.service.js)
-// decides what happens to the buffer: uploaded to Cloudinary when
+// decides what happens to the buffer: uploaded to Supabase Storage when
 // configured, or written to local disk exactly as before when it isn't.
 // This used to be multer.diskStorage writing straight into
 // backend/uploads/<folder>/ — that's what made every profile pic/company

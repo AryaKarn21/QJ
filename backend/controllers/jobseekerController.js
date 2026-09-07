@@ -88,13 +88,15 @@ const updateJobseekerProfile = async (req, res) => {
     if (projects !== undefined) jobseeker.projects = JSON.parse(projects);
     if (certifications !== undefined) jobseeker.certifications = JSON.parse(certifications);
 
-    // Handle profilePic file — persistUpload writes to Cloudinary when
-    // configured (services/media.service.js), local disk otherwise; old
-    // file (either kind) is deleted only after the new one saves
-    // successfully, so a failed upload never leaves the user with no photo.
+    // Handle profilePic file — persistUpload writes to Supabase Storage
+    // when configured (services/media.service.js), local disk otherwise;
+    // old file (either kind) is deleted only after the new one saves
+    // successfully, so a failed upload never leaves the user with no
+    // photo. ownerId namespaces the storage path so one user's upload can
+    // never land in (or overwrite) another user's folder.
     if (req.files?.profilePic) {
       const oldPhoto = jobseeker.profilePic;
-      jobseeker.profilePic = await persistUpload(req.files.profilePic[0], "profile_pics");
+      jobseeker.profilePic = await persistUpload(req.files.profilePic[0], "profile_pics", jobseeker._id);
       if (oldPhoto) deleteStoredFile(oldPhoto);
     }
 
@@ -104,7 +106,7 @@ const updateJobseekerProfile = async (req, res) => {
     // consumer of it).
     if (req.files?.coverPhoto) {
       const oldCover = jobseeker.coverPhoto;
-      jobseeker.coverPhoto = await persistUpload(req.files.coverPhoto[0], "cover_photos");
+      jobseeker.coverPhoto = await persistUpload(req.files.coverPhoto[0], "cover_photos", jobseeker._id);
       if (oldCover) deleteStoredFile(oldCover);
     } else if (req.body.removeCoverPhoto === "true" || req.body.removeCoverPhoto === true) {
       // Explicit removal — FormData booleans arrive as strings, so both
@@ -118,7 +120,7 @@ const updateJobseekerProfile = async (req, res) => {
     // Handle resume file
     if (req.files?.resume) {
       const oldResume = jobseeker.resume;
-      jobseeker.resume = await persistUpload(req.files.resume[0], "resumes");
+      jobseeker.resume = await persistUpload(req.files.resume[0], "resumes", jobseeker._id);
       if (oldResume) deleteStoredFile(oldResume);
     }
 
