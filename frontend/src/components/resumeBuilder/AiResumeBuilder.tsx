@@ -13,6 +13,7 @@ import {
   Wrench,
   FileText,
   Languages,
+  History,
 } from 'lucide-react';
 import axios from 'axios';
 import { createResume, updateResume } from './resumeApi';
@@ -263,6 +264,14 @@ const AiResumeBuilder: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl">
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => navigate('/resume/history')}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <History size={13} /> Saved Resumes
+            </button>
+          </div>
           {/* Header */}
           <div className="mb-8 text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-1.5 text-sm font-medium text-violet-700 mb-4">

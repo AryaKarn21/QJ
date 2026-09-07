@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, getInitials } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -129,6 +130,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="text-[13px] font-semibold">{exp.role || 'Role'}</p>
               <p className="text-[12px] text-slate-500">{exp.company || 'Company'}{exp.location ? ` · ${exp.location}` : ''}</p>
               {exp.description && <p className="mt-0.5 whitespace-pre-line text-[12.5px] leading-relaxed">{exp.description}</p>}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -144,6 +146,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="text-[13px] font-semibold">{it.role || 'Role'}</p>
               <p className="text-[12px] text-slate-500">{it.company || 'Company'}</p>
               {it.description && <p className="mt-0.5 text-[12.5px] leading-relaxed">{it.description}</p>}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -159,6 +162,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="text-[13px] font-semibold">{v.role || 'Role'}</p>
               <p className="text-[12px] text-slate-500">{v.organization || 'Organization'}</p>
               {v.description && <p className="mt-0.5 text-[12.5px] leading-relaxed">{v.description}</p>}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -173,6 +177,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <p className="text-[11px] text-slate-400">{formatDateRange(edu.startDate, edu.endDate, false)}</p>
               <p className="text-[13px] font-semibold">{edu.degree || 'Degree'}</p>
               <p className="text-[12px] text-slate-500">{edu.institution}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -186,6 +191,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <div key={p._id || i}>
               <p className="text-[13px] font-semibold">{p.title}</p>
               {p.description && <p className="text-[12.5px] leading-relaxed">{p.description}</p>}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -193,27 +199,27 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     achievements: () => (
       <MainExtra title="Achievements">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}{a.description && ` — ${a.description}`}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}{a.description && ` — ${a.description}`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
       </MainExtra>
     ),
     publications: () => (
       <MainExtra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </MainExtra>
     ),
     trainings: () => (
       <MainExtra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </MainExtra>
     ),
     scholarships: () => (
       <MainExtra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </MainExtra>
     ),
     positionsOfResponsibility: () => (
       <MainExtra title="Positions of Responsibility">
-        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} ({formatDateRange(p.startDate, p.endDate)})</p>)}
+        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} ({formatDateRange(p.startDate, p.endDate)}) {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
       </MainExtra>
     ),
     hobbies: () => (
@@ -223,7 +229,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     references: () => (
       <MainExtra title="References">
-        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')}</p>)}
+        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} />}</p>)}
       </MainExtra>
     ),
   };
@@ -279,6 +285,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <section key={id} className="mt-4">
                 <SectionTitle>{custom.title}</SectionTitle>
                 <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
               </section>
             );
           }

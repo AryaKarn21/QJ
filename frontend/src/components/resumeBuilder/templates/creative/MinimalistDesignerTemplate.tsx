@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -59,6 +60,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
                   </ul>
                 )}
               </div>
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -100,6 +102,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
                 <p className="text-[12px] text-slate-400">{edu.institution}</p>
                 {edu.description && <p className="text-[11.5px] font-light text-slate-400 italic">{edu.description}</p>}
               </div>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -117,6 +120,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
                 <p className="text-[13px] font-medium">{it.role}</p>
                 <p className="text-[12px] text-slate-400">{it.company}</p>
               </div>
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -134,6 +138,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
                 <p className="text-[13px] font-medium">{v.role}</p>
                 <p className="text-[12px] text-slate-400">{v.organization}</p>
               </div>
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -146,6 +151,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
             <div key={a._id || i} className="flex gap-6">
               <p className="w-20 shrink-0 text-[10.5px] text-slate-300">{a.year}</p>
               <p className="text-[12.5px] font-light text-slate-600">{a.title}</p>
+            {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -158,6 +164,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
             <div key={c._id || i} className="flex gap-6">
               <p className="w-20 shrink-0 text-[10.5px] text-slate-300">{c.year}</p>
               <p className="text-[12.5px] font-light text-slate-600">{c.name} — {c.issuer}</p>
+            {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -170,6 +177,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
             <div key={p._id || i} className="flex gap-6">
               <p className="w-20 shrink-0 text-[10.5px] text-slate-300">{p.year}</p>
               <p className="text-[12.5px] font-light text-slate-600">{p.title} — {p.publisher}</p>
+            {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -191,6 +199,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
             <div key={s._id || i} className="flex gap-6">
               <p className="w-20 shrink-0 text-[10.5px] text-slate-300">{s.year}</p>
               <p className="text-[12.5px] font-light text-slate-600">{s.title} — {s.institution}</p>
+            {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -218,6 +227,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
           {resume.references.map((r, i) => (
             <p key={r._id || i} className="text-[12.5px] font-light text-slate-600">
               {r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')}
+            {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -268,6 +278,7 @@ export const MinimalistDesignerTemplate: React.FC<TemplateProps> = ({ resume }) 
           return (
             <Section key={id} title={custom.title}>
               <p className="whitespace-pre-wrap text-[12.5px] font-light leading-loose text-slate-600">{custom.content}</p>
+              {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
             </Section>
           );
         }

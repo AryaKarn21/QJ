@@ -10,6 +10,9 @@ const ExperienceSchema = new mongoose.Schema(
     endDate: { type: String, default: "" },
     current: { type: Boolean, default: false },
     description: { type: String, default: "" },
+    // Optional company/experience URL (e.g. company site or a case-study
+    // page for the role) — never required, never rendered if empty.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -21,6 +24,8 @@ const EducationSchema = new mongoose.Schema(
     startDate: { type: String, default: "" },
     endDate: { type: String, default: "" },
     description: { type: String, default: "" },
+    // Optional institution website — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -40,6 +45,8 @@ const CertificationSchema = new mongoose.Schema(
     name: { type: String, default: "" },
     issuer: { type: String, default: "" },
     year: { type: String, default: "" },
+    // Optional credential/verification URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -53,6 +60,8 @@ const InternshipSchema = new mongoose.Schema(
     endDate: { type: String, default: "" },
     current: { type: Boolean, default: false },
     description: { type: String, default: "" },
+    // Optional company/internship URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -64,6 +73,8 @@ const TrainingSchema = new mongoose.Schema(
     startDate: { type: String, default: "" },
     endDate: { type: String, default: "" },
     description: { type: String, default: "" },
+    // Optional training/course URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -73,6 +84,8 @@ const AchievementSchema = new mongoose.Schema(
     title: { type: String, default: "" },
     description: { type: String, default: "" },
     year: { type: String, default: "" },
+    // Optional proof/announcement URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -95,6 +108,8 @@ const ScholarshipSchema = new mongoose.Schema(
     amount: { type: String, default: "" },
     year: { type: String, default: "" },
     description: { type: String, default: "" },
+    // Optional scholarship/award URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -106,6 +121,8 @@ const PositionSchema = new mongoose.Schema(
     startDate: { type: String, default: "" },
     endDate: { type: String, default: "" },
     description: { type: String, default: "" },
+    // Optional organization/position URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -117,6 +134,8 @@ const ReferenceSchema = new mongoose.Schema(
     company: { type: String, default: "" },
     email: { type: String, default: "" },
     phone: { type: String, default: "" },
+    // Optional profile/LinkedIn URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -133,6 +152,8 @@ const VolunteerSchema = new mongoose.Schema(
     endDate: { type: String, default: "" },
     current: { type: Boolean, default: false },
     description: { type: String, default: "" },
+    // Optional organization/volunteer URL — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );
@@ -144,6 +165,8 @@ const CustomSectionSchema = new mongoose.Schema(
   {
     title: { type: String, default: "" },
     content: { type: String, default: "" },
+    // Optional supporting URL (e.g. an organization's site) — never required.
+    link: { type: String, default: "" },
   },
   { _id: true }
 );

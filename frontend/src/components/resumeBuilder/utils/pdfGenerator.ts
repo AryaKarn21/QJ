@@ -4,6 +4,7 @@ import { logResumeBuild } from './aiUsageApi';
 import type { Resume } from '../resumeApi';
 import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCustomSectionId } from '../templates/shared/sections';
 import { getFontFamilyPreset } from '../themePresets';
+import { sanitizeResumeLink } from '../templates/shared/ResumeLink';
 
 // Same combined fontScale × spacing multiplier ResumeEditor.tsx's live
 // preview applies via CSS `zoom` — kept here too so the exported PDF's
@@ -209,6 +210,24 @@ class TextPdfWriter {
     if (!items.length) return;
     this.paragraph(items.join('  •  '));
   }
+
+  // Unlike generatePDF() (a flat screenshot — no clickable anything, it's
+  // just an image), this export draws real text via jsPDF's native APIs,
+  // so a link can be made genuinely clickable with `textWithLink`. Runs
+  // the same protocol allow-list every on-screen template link does
+  // (`sanitizeResumeLink`) before ever handing a URL to jsPDF — silently
+  // does nothing for an empty/unsafe value, same as the on-screen component.
+  link(label: string, url?: string) {
+    const safe = sanitizeResumeLink(url);
+    if (!safe) return;
+    this.pdf.setFont(this.font, 'normal');
+    this.pdf.setFontSize(9.5 * this.scale);
+    this.ensureSpace(5 * this.scale);
+    this.pdf.setTextColor(37, 99, 235);
+    this.pdf.textWithLink(label, MARGIN, this.y, { url: safe });
+    this.pdf.setTextColor(0, 0, 0);
+    this.y += 5 * this.scale;
+  }
 }
 
 const dateRange = (start?: string, end?: string, current?: boolean) => {
@@ -229,6 +248,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
       w.entryHeader(`${e.role || 'Role'}${e.company ? ' — ' + e.company : ''}`, dateRange(e.startDate, e.endDate, e.current));
       if (e.location) w.subLine(e.location);
       w.bullets(e.description);
+      w.link('Company Link', e.link);
     });
   },
   internships: (w, r) => {
@@ -237,6 +257,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
       w.entryHeader(`${e.role || 'Internship'}${e.company ? ' — ' + e.company : ''}`, dateRange(e.startDate, e.endDate, e.current));
       if (e.location) w.subLine(e.location);
       w.bullets(e.description);
+      w.link('Company Link', e.link);
     });
   },
   volunteering: (w, r) => {
@@ -245,6 +266,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
       w.entryHeader(`${e.role || 'Volunteer'}${e.organization ? ' — ' + e.organization : ''}`, dateRange(e.startDate, e.endDate, e.current));
       if (e.location) w.subLine(e.location);
       w.bullets(e.description);
+      w.link('Organization Link', e.link);
     });
   },
   education: (w, r) => {
@@ -252,6 +274,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.education || []).forEach((e) => {
       w.entryHeader(`${e.degree || 'Degree'}${e.institution ? ' — ' + e.institution : ''}`, dateRange(e.startDate, e.endDate));
       w.paragraph(e.description);
+      w.link('Institution Website', e.link);
     });
   },
   projects: (w, r) => {
@@ -260,7 +283,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
       w.entryHeader(p.title || 'Project', '');
       if (p.technologies) w.subLine(p.technologies);
       w.paragraph(p.description);
-      if (p.link) w.paragraph(p.link);
+      w.link('View Project', p.link);
     });
   },
   skills: (w, r) => {
@@ -271,6 +294,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     w.heading('Certifications');
     (r.certifications || []).forEach((c) => {
       w.entryHeader(`${c.name || 'Certification'}${c.issuer ? ' — ' + c.issuer : ''}`, c.year || '');
+      w.link('View Credential', c.link);
     });
   },
   achievements: (w, r) => {
@@ -278,6 +302,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.achievements || []).forEach((a) => {
       w.entryHeader(a.title || 'Achievement', a.year || '');
       w.paragraph(a.description);
+      w.link('View Proof', a.link);
     });
   },
   publications: (w, r) => {
@@ -285,6 +310,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.publications || []).forEach((p) => {
       w.entryHeader(`${p.title || 'Publication'}${p.publisher ? ' — ' + p.publisher : ''}`, p.year || '');
       w.paragraph(p.description);
+      w.link('View Publication', p.link);
     });
   },
   trainings: (w, r) => {
@@ -292,6 +318,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.trainings || []).forEach((t) => {
       w.entryHeader(`${t.title || 'Training'}${t.provider ? ' — ' + t.provider : ''}`, dateRange(t.startDate, t.endDate));
       w.paragraph(t.description);
+      w.link('View Course', t.link);
     });
   },
   scholarships: (w, r) => {
@@ -299,6 +326,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.scholarships || []).forEach((s) => {
       w.entryHeader(`${s.title || 'Scholarship'}${s.institution ? ' — ' + s.institution : ''}`, s.year || '');
       w.paragraph(s.description);
+      w.link('View Award', s.link);
     });
   },
   positionsOfResponsibility: (w, r) => {
@@ -306,6 +334,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.positionsOfResponsibility || []).forEach((p) => {
       w.entryHeader(`${p.title || 'Position'}${p.organization ? ' — ' + p.organization : ''}`, dateRange(p.startDate, p.endDate));
       w.paragraph(p.description);
+      w.link('Organization Link', p.link);
     });
   },
   hobbies: (w, r) => {
@@ -317,6 +346,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     (r.references || []).forEach((ref) => {
       w.entryHeader(ref.name || 'Reference', ref.relationship || '');
       w.paragraph([ref.company, ref.email, ref.phone].filter(Boolean).join('  •  '));
+      w.link('Profile', ref.link);
     });
   },
   languages: (w, r) => {
@@ -345,6 +375,7 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
       if (!content) continue;
       w.heading(content.title || sectionLabel(resume, sectionId));
       w.paragraph(content.content);
+      w.link('Learn More', content.link);
       continue;
     }
     SECTION_RENDERERS[sectionId]?.(w, resume);

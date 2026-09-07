@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -58,6 +59,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
             <p key={c._id || i} className="leading-snug text-slate-600">
               {c.name}
               <span className="block text-slate-400">{c.issuer}{c.year && `, ${c.year}`}</span>
+            {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -72,6 +74,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
               <p className="font-semibold leading-snug text-slate-700">{edu.degree}</p>
               <p className="text-slate-500">{edu.institution}</p>
               <p className="text-slate-400">{edu.endDate}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -131,6 +134,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -148,6 +152,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
               </div>
               <p className="text-[12px]" style={{ color: theme.accent }}>{it.company}</p>
               {it.description && <p className="mt-1 text-[12px] leading-relaxed text-slate-600">{it.description}</p>}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -165,6 +170,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
               </div>
               <p className="text-[12px]" style={{ color: theme.accent }}>{v.organization}</p>
               {v.description && <p className="mt-1 text-[12px] leading-relaxed text-slate-600">{v.description}</p>}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -178,6 +184,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
             <p key={a._id || i} className="text-[12.5px]">
               <span className="mr-1.5" style={{ color: theme.accent }}>✦</span>
               {a.title}{a.year && <span className="text-slate-400"> ({a.year})</span>}
+            {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -187,7 +194,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
       <div className="mb-5">
         <MainHeading>Publications</MainHeading>
         <div className="space-y-1">
-          {resume.publications.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+          {resume.publications.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
         </div>
       </div>
     ),
@@ -195,7 +202,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
       <div className="mb-5">
         <MainHeading>Trainings</MainHeading>
         <div className="space-y-1">
-          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider}</p>)}
+          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
         </div>
       </div>
     ),
@@ -203,7 +210,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
       <div className="mb-5">
         <MainHeading>Scholarships</MainHeading>
         <div className="space-y-1">
-          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution}</p>)}
+          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
         </div>
       </div>
     ),
@@ -211,7 +218,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
       <div className="mb-5">
         <MainHeading>Positions of Responsibility</MainHeading>
         <div className="space-y-1">
-          {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.organization}</p>)}
+          {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
         </div>
       </div>
     ),
@@ -275,6 +282,7 @@ export const PortfolioCreativeTemplate: React.FC<TemplateProps> = ({ resume }) =
                 <div key={id} className="mb-5">
                   <MainHeading>{custom.title}</MainHeading>
                   <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-600">{custom.content}</p>
+                  {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
                 </div>
               );
             }

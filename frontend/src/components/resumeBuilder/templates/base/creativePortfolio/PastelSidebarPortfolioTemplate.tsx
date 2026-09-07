@@ -4,6 +4,7 @@ import { getTheme } from '../../../themePresets';
 import { formatDateRange, getInitials, toBulletLines } from '../../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../../shared/sections';
 
+import { ResumeLink } from '../../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -55,6 +56,7 @@ export const PastelSidebarPortfolioTemplate: React.FC<TemplateProps> = ({ resume
             <p className="font-semibold text-slate-800">{edu.degree}</p>
             <p>{edu.institution}</p>
             <p className="text-slate-400">{edu.endDate}</p>
+          {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
           </div>
         ))}
       </div>
@@ -78,6 +80,7 @@ export const PastelSidebarPortfolioTemplate: React.FC<TemplateProps> = ({ resume
             <div key={p._id || i} className="rounded-xl border border-slate-100 p-3 shadow-sm">
               <p className="text-[13px] font-bold text-slate-900">{p.title}</p>
               {p.description && <p className="mt-1 text-[12px] leading-relaxed text-slate-600">{p.description}</p>}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -99,6 +102,7 @@ export const PastelSidebarPortfolioTemplate: React.FC<TemplateProps> = ({ resume
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -106,42 +110,42 @@ export const PastelSidebarPortfolioTemplate: React.FC<TemplateProps> = ({ resume
     ),
     internships: () => (
       <Extra title="Internships">
-        {resume.internships.map((it, i) => <p key={it._id || i}>{it.role}, {it.company} — {formatDateRange(it.startDate, it.endDate, it.current)}</p>)}
+        {resume.internships.map((it, i) => <p key={it._id || i}>{it.role}, {it.company} — {formatDateRange(it.startDate, it.endDate, it.current)} {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     volunteering: () => (
       <Extra title="Volunteer Experience">
-        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} — {formatDateRange(v.startDate, v.endDate, v.current)}</p>)}
+        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} — {formatDateRange(v.startDate, v.endDate, v.current)} {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
       <Extra title="Recognition">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
       </Extra>
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
       <Extra title="Positions of Responsibility">
-        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization}</p>)}
+        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     references: () => (
       <Extra title="References">
-        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')}</p>)}
+        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} />}</p>)}
       </Extra>
     ),
   };
@@ -187,6 +191,7 @@ export const PastelSidebarPortfolioTemplate: React.FC<TemplateProps> = ({ resume
               <section key={id} className="mt-5">
                 <MainHeading>{custom.title}</MainHeading>
                 <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-600">{custom.content}</p>
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
               </section>
             );
           }

@@ -4,6 +4,7 @@ import { getTheme } from '../../../themePresets';
 import { formatDateRange, toBulletLines } from '../../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../../shared/sections';
 
+import { ResumeLink } from '../../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -47,13 +48,14 @@ export const TwoColumnStudentTemplate: React.FC<TemplateProps> = ({ resume }) =>
             <p className="font-semibold text-slate-800">{edu.degree}</p>
             <p>{edu.institution}</p>
             <p className="text-slate-400">{edu.startDate}–{edu.endDate}</p>
+          {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
           </div>
         ))}
       </div>
     ),
     certifications: () => (
       <div className="space-y-1 text-[11px] text-slate-600">
-        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}{c.year && ` · ${c.year}`}</p>)}
+        {resume.certifications.map((c, i) => <p key={c._id || i}>{c.name}{c.year && ` · ${c.year}`} {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} />}</p>)}
       </div>
     ),
     languages: () => (
@@ -83,6 +85,7 @@ export const TwoColumnStudentTemplate: React.FC<TemplateProps> = ({ resume }) =>
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -99,6 +102,7 @@ export const TwoColumnStudentTemplate: React.FC<TemplateProps> = ({ resume }) =>
                 <p className="text-[11px] text-slate-400">{formatDateRange(it.startDate, it.endDate, it.current)}</p>
               </div>
               {it.description && <p className="text-[12.5px] text-slate-600">{it.description}</p>}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -116,37 +120,37 @@ export const TwoColumnStudentTemplate: React.FC<TemplateProps> = ({ resume }) =>
     ),
     volunteering: () => (
       <Extra title="Volunteer Experience">
-        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} — {formatDateRange(v.startDate, v.endDate, v.current)}</p>)}
+        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} — {formatDateRange(v.startDate, v.endDate, v.current)} {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
       <Extra title="Leadership & Activities">
-        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization}</p>)}
+        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
       </Extra>
     ),
     achievements: () => (
       <Extra title="Achievements">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
       </Extra>
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     references: () => (
       <Extra title="References">
-        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')}</p>)}
+        {resume.references.map((r, i) => <p key={r._id || i}>{r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} />}</p>)}
       </Extra>
     ),
   };
@@ -182,6 +186,7 @@ export const TwoColumnStudentTemplate: React.FC<TemplateProps> = ({ resume }) =>
                 <section key={id} className="mt-4">
                   <MainHeading>{custom.title}</MainHeading>
                   <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+                  {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
                 </section>
               );
             }

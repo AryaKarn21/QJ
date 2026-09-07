@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, groupSkillsByCategory, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -54,6 +55,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(p.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -71,6 +73,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
                 {edu.description && <p className="text-[11.5px] italic text-slate-400">{edu.description}</p>}
               </div>
               <p className="shrink-0 text-[11px] text-slate-400">{edu.startDate} – {edu.endDate}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -84,6 +87,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <div key={a._id || i} className="flex items-baseline justify-between">
               <p className="text-[12.5px]"><span className="mr-2" style={{ color: theme.accent }}>▸</span>{a.title}</p>
               {a.year && <p className="shrink-0 text-[11px] text-slate-400">{a.year}</p>}
+            {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -104,6 +108,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(it.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -124,6 +129,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(v.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -144,6 +150,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
                   {toBulletLines(exp.description).map((line, li) => <li key={li}>{line}</li>)}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -157,6 +164,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <div key={p._id || i}>
               <p className="text-[13px] font-semibold">{p.title}</p>
               {p.description && <p className="text-[12.5px] leading-relaxed">{p.description}</p>}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -199,7 +207,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <SectionHeading>Trainings</SectionHeading>
         <div className="mt-2 space-y-0.5">
-          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider}</p>)}
+          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -207,7 +215,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
       <>
         <SectionHeading>Scholarships</SectionHeading>
         <div className="mt-2 space-y-0.5">
-          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
         </div>
       </>
     ),
@@ -270,6 +278,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <React.Fragment key={id}>
                 <SectionHeading>{custom.title}</SectionHeading>
                 <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
               </React.Fragment>
             );
           }

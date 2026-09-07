@@ -5,6 +5,7 @@ import { formatDateRange, getInitials, groupSkillsByCategory } from '../shared/t
 import { SKILL_LEVELS } from '../../resumeApi';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -145,6 +146,7 @@ export const IrisSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
               {exp.description && (
                 <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-slate-700">{exp.description}</p>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -161,6 +163,7 @@ export const IrisSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
                 <p className="text-[11.5px] text-slate-500">{edu.institution}</p>
               </div>
               <p className="whitespace-nowrap text-[11px] text-slate-400">{edu.startDate}–{edu.endDate}</p>
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -173,6 +176,7 @@ export const IrisSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.projects.map((p, i) => (
             <p key={p._id || i} className="text-[12px] leading-relaxed text-slate-700">
               <span className="font-semibold text-slate-900">{p.title}.</span> {p.description}
+            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -201,17 +205,17 @@ export const IrisSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.year && `(${p.year})`} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.year && `(${s.year})`} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
@@ -226,6 +230,7 @@ export const IrisSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
         {resume.references.map((r, i) => (
           <p key={r._id || i}>
             {r.name}{r.relationship && `, ${r.relationship}`} — {[r.email, r.phone].filter(Boolean).join(', ')}
+          {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} className="mt-0.5 inline-block" />}
           </p>
         ))}
       </Extra>
@@ -293,6 +298,7 @@ export const IrisSidebarTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <section key={id} className="mt-5">
                 <MainHeading>{custom.title}</MainHeading>
                 <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-700">{custom.content}</p>
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
               </section>
             );
           }

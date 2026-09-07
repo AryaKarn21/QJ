@@ -22,6 +22,8 @@ export interface ExperienceEntry {
   endDate: string;
   current: boolean;
   description: string;
+  /** Optional company/experience URL — never required. */
+  link?: string;
 }
 
 export interface InternshipEntry {
@@ -33,6 +35,8 @@ export interface InternshipEntry {
   endDate: string;
   current: boolean;
   description: string;
+  /** Optional company/internship URL — never required. */
+  link?: string;
 }
 
 export interface EducationEntry {
@@ -42,6 +46,8 @@ export interface EducationEntry {
   startDate: string;
   endDate: string;
   description: string;
+  /** Optional institution website — never required. */
+  link?: string;
 }
 
 export interface ProjectEntry {
@@ -57,6 +63,8 @@ export interface CertificationEntry {
   name: string;
   issuer: string;
   year: string;
+  /** Optional credential/verification URL — never required. */
+  link?: string;
 }
 
 export interface AchievementEntry {
@@ -64,6 +72,8 @@ export interface AchievementEntry {
   title: string;
   description: string;
   year: string;
+  /** Optional proof/announcement URL — never required. */
+  link?: string;
 }
 
 export interface PublicationEntry {
@@ -82,6 +92,8 @@ export interface TrainingEntry {
   startDate: string;
   endDate: string;
   description: string;
+  /** Optional training/course URL — never required. */
+  link?: string;
 }
 
 export interface ScholarshipEntry {
@@ -91,6 +103,8 @@ export interface ScholarshipEntry {
   amount: string;
   year: string;
   description: string;
+  /** Optional scholarship/award URL — never required. */
+  link?: string;
 }
 
 export interface PositionEntry {
@@ -100,6 +114,8 @@ export interface PositionEntry {
   startDate: string;
   endDate: string;
   description: string;
+  /** Optional organization/position URL — never required. */
+  link?: string;
 }
 
 export interface ReferenceEntry {
@@ -109,6 +125,8 @@ export interface ReferenceEntry {
   company: string;
   email: string;
   phone: string;
+  /** Optional profile/LinkedIn URL — never required. */
+  link?: string;
 }
 
 export interface VolunteerEntry {
@@ -120,12 +138,16 @@ export interface VolunteerEntry {
   endDate: string;
   current: boolean;
   description: string;
+  /** Optional organization/volunteer URL — never required. */
+  link?: string;
 }
 
 export interface CustomSectionEntry {
   _id?: string;
   title: string;
   content: string;
+  /** Optional supporting URL — never required. */
+  link?: string;
 }
 
 export const LANGUAGE_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Native'] as const;

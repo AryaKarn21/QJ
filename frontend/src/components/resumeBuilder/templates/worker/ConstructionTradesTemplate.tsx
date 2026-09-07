@@ -3,6 +3,7 @@ import type { Resume } from '../../resumeApi';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
 
+import { ResumeLink } from '../shared/ResumeLink';
 interface TemplateProps {
   resume: Resume;
 }
@@ -65,6 +66,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
                   ))}
                 </ul>
               )}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -78,6 +80,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
             <p key={it._id || i} className="text-[12.5px]">
               <span className="font-semibold">{it.role}</span>, {it.company}
               <span className="text-[#888]"> — {formatDateRange(it.startDate, it.endDate, it.current)}</span>
+            {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -91,6 +94,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
             <p key={v._id || i} className="text-[12.5px]">
               <span className="font-semibold">{v.role}</span>, {v.organization}
               <span className="text-[#888]"> — {formatDateRange(v.startDate, v.endDate, v.current)}</span>
+            {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -108,6 +112,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
                 {c.issuer && <p className="text-[11px] text-[#666]">{c.issuer}</p>}
                 {c.year && <p className="text-[10.5px] text-[#888]">{c.year}</p>}
               </div>
+            {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -123,6 +128,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
               {edu.institution && <span className="text-[#555]">, {edu.institution}</span>}
             </p>
             <p className="text-[11px] text-[#777]">{edu.startDate}–{edu.endDate}</p>
+          {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
           </div>
         ))}
       </section>
@@ -141,7 +147,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
       <section className="mb-5">
         <SectionHeading>Publications</SectionHeading>
         <div className="space-y-1">
-          {resume.publications.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.publisher}</p>)}
+          {resume.publications.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.publisher} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
         </div>
       </section>
     ),
@@ -149,7 +155,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
       <section className="mb-5">
         <SectionHeading>Trainings</SectionHeading>
         <div className="space-y-1">
-          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider}</p>)}
+          {resume.trainings.map((t, i) => <p key={t._id || i} className="text-[12.5px]">{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
         </div>
       </section>
     ),
@@ -157,7 +163,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
       <section className="mb-5">
         <SectionHeading>Scholarships</SectionHeading>
         <div className="space-y-1">
-          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution}</p>)}
+          {resume.scholarships.map((s, i) => <p key={s._id || i} className="text-[12.5px]">{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
         </div>
       </section>
     ),
@@ -165,7 +171,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
       <section className="mb-5">
         <SectionHeading>Positions of Responsibility</SectionHeading>
         <div className="space-y-1">
-          {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.organization}</p>)}
+          {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i} className="text-[12.5px]">{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
         </div>
       </section>
     ),
@@ -189,6 +195,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
             <span className="font-semibold">{r.name}</span>
             {r.company && <span className="text-[#555]">, {r.company}</span>}
             {(r.email || r.phone) && <span className="text-[#777]"> — {[r.email, r.phone].filter(Boolean).join(' | ')}</span>}
+          {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} className="mt-0.5 inline-block" />}
           </p>
         ))}
       </section>
@@ -230,6 +237,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
               <section key={id} className="mb-5">
                 <SectionHeading>{custom.title}</SectionHeading>
                 <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-[#333]">{custom.content}</p>
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
               </section>
             );
           }

@@ -108,6 +108,7 @@ export interface CustomSectionContent {
   id: string;
   title: string;
   content: string;
+  link?: string;
 }
 
 export function getCustomSectionContent(resume: Resume, id: string): CustomSectionContent | null {
@@ -115,7 +116,7 @@ export function getCustomSectionContent(resume: Resume, id: string): CustomSecti
   const key = customSectionKey(id);
   const section = (resume.customSections || []).find((c) => c._id === key);
   if (!section) return null;
-  return { id, title: section.title?.trim() || 'Custom Section', content: section.content || '' };
+  return { id, title: section.title?.trim() || 'Custom Section', content: section.content || '', link: section.link || '' };
 }
 
 function isSectionEmpty(resume: Resume, id: string): boolean {
