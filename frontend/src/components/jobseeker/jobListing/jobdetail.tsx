@@ -8,6 +8,7 @@ import {
   Linkedin, Target, Heart,
 } from 'lucide-react';
 import { fetchJobById, fetchJobs, likeJob, dislikeJob, toggleSaveJob } from '../jobseekerApi/api';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { jwtDecode } from 'jwt-decode';
 
 
@@ -327,7 +328,7 @@ const JobDetailPage = () => {
                 <div className="flex items-start space-x-4 min-w-0">
                   {displayLogo ? (
                     <img
-                      src={`${MEDIA_URL.replace(/\/$/, '')}/${displayLogo.replace(/^\//, '')}`}
+                      src={resolveMediaUrl(displayLogo)}
                       alt={`${displayName} Logo`}
                       className="w-16 h-16 rounded-full object-cover bg-gray-100 shrink-0"
                     />
@@ -543,7 +544,7 @@ const JobDetailPage = () => {
                 <div className="flex items-start gap-4 mb-4">
                   {job.employer.companyLogo ? (
                     <img
-                      src={`${MEDIA_URL.replace(/\/$/, '')}/${job.employer.companyLogo.replace(/^\//, '')}`}
+                      src={resolveMediaUrl(job.employer.companyLogo)}
                       alt={`${job.employer.name} Logo`}
                       className="w-14 h-14 rounded-full object-cover bg-gray-100 shrink-0"
                     />
@@ -688,7 +689,7 @@ const JobDetailPage = () => {
                             <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border bg-gray-200">
                               {sJob.employer?.companyLogo ? (
                                 <img
-                                  src={`${MEDIA_URL.replace(/\/$/, '')}/${sJob.employer.companyLogo.replace(/^\//, '')}`}
+                                  src={resolveMediaUrl(sJob.employer.companyLogo)}
                                   alt={sJob.employer.name}
                                   className="w-full h-full object-cover"
                                 />

@@ -114,7 +114,7 @@ const JobManagement = () => {
   };
 
   return (
-    <div className="p-4 h-[calc(100vh-64px)] overflow-y-auto w-full">
+    <div className="p-4 h-[calc(100dvh-64px)] overflow-y-auto w-full">
       <h2 className="text-2xl font-semibold mb-6">Job Management</h2>
 
       {/* Search */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Eye, EyeOff, Lock, KeyRound, Megaphone, ShieldCheck, Send, Loader2 } from 'lucide-react';
 import { getAdminProfile, makeAnnouncement } from './adminApi/api';
 import { changePassword } from '../auth/authApi/authApi';
@@ -92,7 +93,7 @@ const AdminSettings = () => {
     confirmPassword.trim().length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 overflow-y-auto w-full text-slate-800" style={{ maxHeight: 'calc(100vh - 50px)' }}>
+    <div className="min-h-screen bg-slate-50/50 overflow-y-auto w-full text-slate-800" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
 
         {/* PAGE HEADER */}
@@ -114,7 +115,7 @@ const AdminSettings = () => {
           <div className="flex items-center gap-3 bg-white border border-slate-200/80 rounded-xl px-3 py-2 shadow-sm shrink-0 self-start sm:self-auto">
             {user?.profilePic ? (
               <img
-                src={`${MEDIA_URL.replace(/\/$/, "")}/${user.profilePic.replace(/^\//, "")}`}
+                src={resolveMediaUrl(user.profilePic)}
                 alt={user.name}
                 className="w-9 h-9 rounded-full object-cover ring-2 ring-orange-100"
               />

@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { fetchJobs, fetchSavedJobs, toggleSaveJob, fetchJobCountsByCountry, type Job } from '../jobseekerApi/api';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { AdBanner } from '../../common/AdBanner';
 
 
@@ -561,10 +562,7 @@ const AllJobListing = () => {
                     <div className="flex gap-3 items-start">
                       {job.employer?.companyLogo && (
                         <img
-                          src={`${MEDIA_URL.replace(/\/$/, '')}/${job.employer.companyLogo.replace(
-                            /^\//,
-                            ''
-                          )}`}
+                          src={resolveMediaUrl(job.employer.companyLogo)}
                           alt="Company Logo"
                           className="w-10 h-10 rounded object-cover"
                         />

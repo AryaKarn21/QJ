@@ -12,3 +12,50 @@
     @apply font-sans;
   }
 }
+
+/* ── Mobile viewport foundation ──────────────────────────────────────────
+   Applied once, globally, instead of per-component band-aids:
+   - `100dvh` (not `100vh`) so full-bleed shells track the *actual* visible
+     viewport as mobile browser chrome shows/hides, instead of being sized
+     to the largest-possible viewport and getting clipped under it.
+   - `overflow-x: hidden` on the root shell only — this guards against
+     accidental page-level horizontal scroll, it is NOT a substitute for
+     fixing a component that is actually wider than the viewport (those are
+     fixed at the source; see components under review). `max-width: 100vw`
+     is redundant with `width: 100%` here but is cheap insurance against
+     any child computing width relative to the (sometimes wider, scrollbar-
+     including) `100vw` unit and pushing the root itself out.
+   - Safe-area CSS variables so any component can opt into notch/gesture-bar
+     clearance via `env(--safe-*)`-style arbitrary Tailwind values without
+     re-deriving the same `env(safe-area-inset-*)` calc in every file (the
+     pattern already proven in Chatbot.tsx, generalized here). */
+@layer base {
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    min-height: 100dvh;
+  }
+
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+  }
+}

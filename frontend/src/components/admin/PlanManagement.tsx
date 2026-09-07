@@ -200,18 +200,22 @@ export default function PlanManagement() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-3 sm:p-4">
+          {/* max-h + overflow-y-auto so this (fairly tall) form scrolls
+              within the viewport instead of extending past it — on a short
+              mobile viewport, or with the on-screen keyboard eating a third
+              of the screen, the Save button was otherwise unreachable. */}
+          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white sm:max-h-[calc(100dvh-2rem)]">
+            <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-2">
               <h2 className="text-lg font-bold text-slate-900">
                 {editing ? 'Edit Plan' : 'New Plan'}
               </h2>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setModalOpen(false)} aria-label="Close" className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2 space-y-3">
               <div>
                 <label className="text-sm text-slate-600">Plan name</label>
                 <input
@@ -221,7 +225,7 @@ export default function PlanManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-slate-600">Audience</label>
                   <select
@@ -251,7 +255,7 @@ export default function PlanManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-slate-600">Price (NPR)</label>
                   <input
@@ -302,7 +306,7 @@ export default function PlanManagement() {
               </label>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex shrink-0 justify-end gap-2 px-6 py-4">
               <button
                 onClick={() => setModalOpen(false)}
                 className="px-4 py-2 rounded-lg border border-slate-300 text-sm"

@@ -140,7 +140,7 @@ const JobCategories: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-50px)] bg-[#FFF8F3] p-4 sm:p-6 md:p-8">
+    <div className="min-h-[calc(100dvh-50px)] bg-[#FFF8F3] p-4 sm:p-6 md:p-8">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff, AlertTriangle, X } from 'lucide-react';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { getEmployerProfile, updateNotificationPreferences, deactivateEmployerAccount } from '../employerApi/api';
 import { changePassword } from '../../auth/authApi/authApi';
 
@@ -119,7 +120,7 @@ const EmployerSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-auto p-6" style={{ maxHeight: 'calc(100vh - 50px)' }}>
+    <div className="min-h-screen bg-gray-50 overflow-auto p-6" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <div className="flex items-center justify-between mb-8">
@@ -127,7 +128,7 @@ const EmployerSettings = () => {
             <div className="flex items-center space-x-3">
               {user?.companyLogo ? (
                 <img
-                  src={`${MEDIA_URL.replace(/\/$/, "")}/${user.companyLogo.replace(/^\//, "")}`}
+                  src={resolveMediaUrl(user.companyLogo)}
                   alt={user.name}
                   className="w-8 h-8 rounded-full object-cover"
                 />

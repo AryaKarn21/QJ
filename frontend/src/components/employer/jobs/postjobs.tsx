@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import { createJob, getSingleJob, editJob, getEmployerProfile, fetchCountries } from "../employerApi/api";
 import { fetchJobCategories } from "../../../api/jobCategoryApi";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -260,7 +261,7 @@ const PostJob = () => {
   const displayCompanyTagline = formData.useCompanyOverride && formData.overrideTagline ? formData.overrideTagline : companyProfile?.headline;
 
   return (
-    <div className="min-h-screen overflow-auto bg-gray-50 py-8" style={{ maxHeight: "calc(100vh - 50px)" }}>
+    <div className="min-h-screen overflow-auto bg-gray-50 py-8" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6 sm:p-8">
         <h2 className="text-2xl font-bold mb-1">
           {isEdit ? "Edit Job" : duplicateFrom ? "Duplicate Job" : "Post a Job"}
@@ -465,7 +466,7 @@ const PostJob = () => {
             <div className="space-y-5">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 flex items-start gap-4">
                 {companyProfile?.companyLogo ? (
-                  <img src={`${MEDIA_URL.replace(/\/$/, "")}/${companyProfile.companyLogo.replace(/^\//, "")}`} alt="" className="h-14 w-14 rounded-full object-cover bg-white shrink-0" />
+                  <img src={resolveMediaUrl(companyProfile.companyLogo)} alt="" className="h-14 w-14 rounded-full object-cover bg-white shrink-0" />
                 ) : (
                   <div className="h-14 w-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-semibold shrink-0">
                     <Building2 size={22} />

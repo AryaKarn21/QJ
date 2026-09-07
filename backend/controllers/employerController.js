@@ -15,8 +15,7 @@ const {
   sanitizeStringList,
 } = require("../utils/profileStatus");
 const bcrypt = require("bcryptjs");
-const fs = require("fs");
-const path = require("path");
+const { persistUpload, deleteStoredFile } = require("../services/media.service");
 
 // Get Employer Profile
 const getEmployerProfile = async (req, res) => {
@@ -38,14 +37,6 @@ const getEmployerProfile = async (req, res) => {
   }
 };
 
-
-// Helper to delete old files and update Employer Profile
-const deleteFile = (subfolder, filename) => {
-  const filePath = path.join(__dirname, `../uploads/${subfolder}/${filename}`);
-  fs.unlink(filePath, (err) => {
-    if (err) console.error(`Failed to delete file: ${filePath}`, err.message);
-  });
-};
 
 const updateEmployerProfile = async (req, res) => {
   try {
@@ -106,29 +97,24 @@ const updateEmployerProfile = async (req, res) => {
       }
     }
 
-    // Handle companyLogo upload
+    // Handle companyLogo upload — persistUpload writes to Cloudinary when
+    // configured (services/media.service.js), local disk otherwise; the
+    // old logo (either kind) is only deleted after the new one saves.
     if (req.files?.companyLogo?.[0]) {
-      if (employer.companyLogo) {
-        const oldFilename = path.basename(employer.companyLogo);
-        deleteFile("company_logos", oldFilename);
-      }
-
-      employer.companyLogo = `/uploads/company_logos/${req.files.companyLogo[0].filename}`;
+      const oldLogo = employer.companyLogo;
+      employer.companyLogo = await persistUpload(req.files.companyLogo[0], "company_logos");
+      if (oldLogo) deleteStoredFile(oldLogo);
     }
 
     // Handle coverPhoto upload
     if (req.files?.coverPhoto?.[0]) {
-      if (employer.coverPhoto) {
-        const oldFilename = path.basename(employer.coverPhoto);
-        deleteFile("cover_photos", oldFilename);
-      }
-      employer.coverPhoto = `/uploads/cover_photos/${req.files.coverPhoto[0].filename}`;
+      const oldCover = employer.coverPhoto;
+      employer.coverPhoto = await persistUpload(req.files.coverPhoto[0], "cover_photos");
+      if (oldCover) deleteStoredFile(oldCover);
     } else if (req.body.removeCoverPhoto === "true" || req.body.removeCoverPhoto === true) {
       // Explicit removal — employer was loaded via req.user.id above, so
       // this can only ever act on the authenticated user's own record.
-      if (employer.coverPhoto) {
-        deleteFile("cover_photos", path.basename(employer.coverPhoto));
-      }
+      if (employer.coverPhoto) deleteStoredFile(employer.coverPhoto);
       employer.coverPhoto = null;
     }
 

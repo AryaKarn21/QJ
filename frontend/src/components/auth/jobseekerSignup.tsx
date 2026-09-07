@@ -312,7 +312,7 @@ const JobseekerSignup: React.FC = () => {
         </div>
 
         {/* Right Panel - Form */}
-        <div className="w-full md:w-1/2 p-6 ml-6 md:p-2 flex flex-col overflow-auto" style={{ maxHeight: 'calc(100vh - 50px)' }}>
+        <div className="w-full md:w-1/2 p-6 ml-6 md:p-2 flex flex-col overflow-auto" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
           <div className="mb-6 text-center">
             <div className="flex justify-center mb-3">
               <div className="text-primary font-bold text-2xl flex items-center">

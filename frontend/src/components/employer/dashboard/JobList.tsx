@@ -132,7 +132,7 @@ const JobList = () => {
   return (
     <div
       className="min-h-screen overflow-auto bg-gray-50 p-6"
-      style={{ maxHeight: "calc(100vh - 50px)" }}
+      style={{ maxHeight: "calc(100dvh - 50px)" }}
     >
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">

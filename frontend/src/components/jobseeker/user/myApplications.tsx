@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, MapPin, Clock, Briefcase } from 'lucide-react';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { fetchAppliedJobs } from '../jobseekerApi/api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -39,7 +40,7 @@ const STATUS_STYLES: Record<AppliedJob['applicationStatus'], { label: string; cl
 const CompanyAvatar = ({ app }: { app: AppliedJob }) =>
   app.employer?.companyLogo ? (
     <img
-      src={`${MEDIA_URL.replace(/\/$/, '')}/${app.employer.companyLogo.replace(/^\//, '')}`}
+      src={resolveMediaUrl(app.employer.companyLogo)}
       alt={app.employer.name}
       className="h-10 w-10 shrink-0 rounded-lg object-cover"
     />
@@ -87,7 +88,7 @@ const UserMyApplications = () => {
     .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
 
   return (
-    <div className="min-h-screen overflow-auto bg-gray-50 p-4 sm:p-6" style={{ maxHeight: 'calc(100vh - 50px)' }}>
+    <div className="min-h-screen overflow-auto bg-gray-50 p-4 sm:p-6" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
       <div className="mx-auto max-w-5xl">
         <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

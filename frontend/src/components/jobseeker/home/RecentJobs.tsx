@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import {
   MapPin,
   Clock,
@@ -229,7 +230,7 @@ const RecentJobs: React.FC = () => {
                       <div className="flex items-center gap-3.5 min-w-0">
                         {job.employer?.companyLogo ? (
                           <img
-                            src={`${MEDIA_URL.replace(/\/$/, '')}/${job.employer.companyLogo.replace(/^\//, '')}`}
+                            src={resolveMediaUrl(job.employer.companyLogo)}
                             alt={`${job.employer.name} Logo`}
                             className="w-14 h-14 rounded-2xl object-cover bg-slate-100 border border-slate-200/60 shrink-0 group-hover:scale-105 transition-transform duration-300"
                           />

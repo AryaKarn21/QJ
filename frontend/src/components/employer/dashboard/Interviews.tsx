@@ -125,7 +125,7 @@ const Interviews = () => {
     };
 
     return (
-        <div className="min-h-screen overflow-auto p-6" style={{ maxHeight: "calc(100vh - 50px)" }}>
+        <div className="min-h-screen overflow-auto p-6" style={{ maxHeight: "calc(100dvh - 50px)" }}>
             <h1 className="text-2xl font-semibold mb-1">Interviews</h1>
             <p className="text-sm text-gray-500 mb-4">
                 Scheduled from the Applications page. Candidates are emailed these details automatically.

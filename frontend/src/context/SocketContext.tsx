@@ -2,7 +2,12 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { io, type Socket } from 'socket.io-client';
 import { useCurrentUser } from '../utils/currentUser';
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// Same fallback as api/messageApi.ts and utils/mediaUrl.ts — when
+// VITE_API_BASE_URL is unset, REST calls and the socket connection must
+// still land on the same backend, or messages/calls silently never arrive
+// in an environment that forgot to set the env var (REST would hit the
+// deployed backend while the socket tried a local one that isn't running).
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -44,7 +49,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       socket.disconnect();
       socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   return (

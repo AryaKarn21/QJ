@@ -18,7 +18,7 @@ import {
   LogOut, ChevronRight, Bell, Search, Download,
   Menu, X, Calendar, MessageCircle, Users2, Home,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // ── Nav tree ─────────────────────────────────────────────────────────
 // Candidates / Interviews / Saved Candidates / Subscription don't have a
@@ -92,6 +92,21 @@ const DashboardLayout = () => {
     day: 'numeric', month: 'short', year: 'numeric',
   });
 
+  // Escape closes the drawer, and body scroll is locked while it's open —
+  // otherwise the page behind a full-height mobile overlay keeps scrolling
+  // underneath it, which reads as broken on a touch device.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false); };
+    document.addEventListener('keydown', onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [sidebarOpen]);
+
   return (
     <>
       {/* Mobile overlay */}
@@ -102,18 +117,27 @@ const DashboardLayout = () => {
         />
       )}
 
-      <div style={{ display: 'flex', minHeight: '100vh', background: BRAND.pageBg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
+      <div style={{ display: 'flex', minHeight: '100dvh', background: BRAND.pageBg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
         {/* ══ SIDEBAR ═══════════════════════════════════════════════ */}
-        <aside style={{
-          position: 'fixed', top: 0, left: 0, height: '100vh', width: 256,
-          background: '#fff', borderRight: '1px solid #E5E7EB',
-          boxShadow: '2px 0 24px rgba(0,0,0,.06)',
-          display: 'flex', flexDirection: 'column', zIndex: 100,
-          transform: sidebarOpen ? 'translateX(0)' : undefined,
-          transition: 'transform .22s cubic-bezier(.4,0,.2,1)',
-        }}
-          className="employer-sidebar"
+        <aside
+          role="dialog"
+          aria-modal={sidebarOpen || undefined}
+          aria-label="Employer navigation"
+          style={{
+            position: 'fixed', top: 0, left: 0, height: '100dvh', width: 256,
+            background: '#fff', borderRight: '1px solid #E5E7EB',
+            boxShadow: '2px 0 24px rgba(0,0,0,.06)',
+            display: 'flex', flexDirection: 'column', zIndex: 100,
+            transition: 'transform .22s cubic-bezier(.4,0,.2,1)',
+          }}
+          // The mobile media query below hides this off-screen with
+          // `!important` — a plain inline `transform` (no `!important`)
+          // can never win against that, so opening the drawer has to go
+          // through the `.open` class (already defined below) rather than
+          // an inline style, or the hamburger button would visibly do
+          // nothing on mobile.
+          className={`employer-sidebar${sidebarOpen ? ' open' : ''}`}
         >
           {/* Logo */}
           <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
@@ -123,6 +147,7 @@ const DashboardLayout = () => {
             <button
               style={{ display: 'none' }}
               className="sidebar-close-mobile"
+              aria-label="Close menu"
               onClick={e => { e.stopPropagation(); setSidebarOpen(false); }}
             >
               <X size={16} />
@@ -235,7 +260,8 @@ const DashboardLayout = () => {
           {/* Mobile menu btn */}
           <button
             className="mobile-menu-btn-employer"
-            style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
+            aria-label="Open menu"
+            style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
             onClick={() => setSidebarOpen(true)}
           >
             <Menu size={20} />
@@ -269,13 +295,13 @@ const DashboardLayout = () => {
           </div>
 
           {/* Notification */}
-          <button style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'all .15s' }}>
+          <button aria-label="Notifications" style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'all .15s' }}>
             <Bell size={17} />
             <span style={{ position: 'absolute', top: 9, right: 9, width: 7, height: 7, borderRadius: '50%', background: '#EF4444', border: '2px solid #fff' }} />
           </button>
 
           {/* Messages */}
-          <Link to="/messages" style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}>
+          <Link to="/messages" aria-label="Messages" style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}>
             <MessageCircle size={17} />
           </Link>
 
@@ -297,7 +323,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* ══ MAIN ══════════════════════════════════════════════════ */}
-        <main style={{ flex: 1, marginLeft: 256, paddingTop: 72, minHeight: '100vh', background: BRAND.pageBg }} className="employer-main">
+        <main style={{ flex: 1, marginLeft: 256, paddingTop: 72, minHeight: '100dvh', background: BRAND.pageBg }} className="employer-main">
           <Outlet />
         </main>
       </div>
@@ -325,10 +351,13 @@ const DashboardLayout = () => {
 
       <style>{`
         @media (max-width: 768px) {
-          .employer-sidebar { transform: translateX(-256px) !important; }
+          .employer-sidebar { transform: translateX(-256px) !important; padding-bottom: env(safe-area-inset-bottom); }
           .employer-sidebar.open { transform: translateX(0) !important; }
-          .sidebar-close-mobile { display: flex !important; }
-          .employer-navbar { left: 0 !important; padding: 0 16px !important; }
+          .sidebar-close-mobile { display: flex !important; width: 32px; height: 32px; align-items: center; justify-content: center; }
+          .employer-navbar {
+            left: 0 !important;
+            padding: 0 calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left)) !important;
+          }
           .mobile-menu-btn-employer { display: flex !important; }
           .employer-main { margin-left: 0 !important; }
         }

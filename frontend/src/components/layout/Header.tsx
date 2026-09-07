@@ -11,6 +11,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 import { fetchJobCategories } from '../../api/jobCategoryApi';
 import { fetchPublicProfile } from '../../api/followApi';
 import HeaderSearch from './HeaderSearch';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 interface DecodedToken {
   id: string;
@@ -325,7 +326,7 @@ const Header: React.FC = () => {
                     <div className="w-8 h-8 rounded-lg overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
                       {userInfo?.avatar ? (
                         <img
-                          src={`${MEDIA_URL.replace(/\/$/, '')}/${userInfo.avatar.replace(/^\//, '')}`}
+                          src={resolveMediaUrl(userInfo.avatar)}
                           alt={userInfo.name}
                           className="w-full h-full object-cover"
                         />
@@ -353,7 +354,7 @@ const Header: React.FC = () => {
                           <div className="w-10 h-10 rounded-xl overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
                             {userInfo?.avatar ? (
                               <img
-                                src={`${MEDIA_URL.replace(/\/$/, '')}/${userInfo.avatar.replace(/^\//, '')}`}
+                                src={resolveMediaUrl(userInfo.avatar)}
                                 alt={userInfo.name}
                                 className="w-full h-full object-cover"
                               />
@@ -434,7 +435,7 @@ const Header: React.FC = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div id="mobile-nav-menu" role="navigation" aria-label="Mobile" className="lg:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200/80 shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div id="mobile-nav-menu" role="navigation" aria-label="Mobile" className="lg:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-4rem)] overflow-y-auto">
           <div className="px-4 pt-3 pb-6 space-y-1.5">
             {isLoggedIn && (
               <div className="pb-2">

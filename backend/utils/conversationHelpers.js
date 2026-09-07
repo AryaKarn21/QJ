@@ -57,7 +57,23 @@ async function findOrCreateConversation(userAId, userBId) {
   }
 
   if (!conversation) {
-    conversation = await Conversation.create({ participants: [userAId, userBId] });
+    try {
+      conversation = await Conversation.create({ participants: [userAId, userBId] });
+    } catch (err) {
+      // Two concurrent "open conversation with this user" requests for the
+      // same brand-new pair can both pass the findOne check above before
+      // either has created anything (there's no unique index on
+      // `participants` to make Mongo reject the second create at the DB
+      // level). Rather than end up with two conversations for one pair
+      // (which would silently split their message history across both),
+      // re-query once — if the other request won the race, use its
+      // conversation instead of surfacing an error for what the user just
+      // experiences as "open a chat".
+      conversation = await Conversation.findOne({
+        participants: { $all: [userAId, userBId], $size: 2 },
+      });
+      if (!conversation) throw err;
+    }
   }
 
   return conversation;

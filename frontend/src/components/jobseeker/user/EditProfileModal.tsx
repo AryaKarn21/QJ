@@ -96,7 +96,7 @@ const EditProfileModal: React.FC<Props> = ({
 
     return (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white w-full max-w-3xl rounded-lg shadow-lg p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="bg-white w-full max-w-3xl rounded-lg shadow-lg p-6 relative max-h-[90dvh] overflow-y-auto">
                 <h2 className="text-xl font-bold mb-4">Edit Profile</h2>
 
                 <div className="grid grid-cols-1 gap-4">

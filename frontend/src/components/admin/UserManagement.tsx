@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { FileDown, Trash2, CheckCircle2, UserCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAllUsers, deleteUser } from './adminApi/api';
@@ -328,7 +329,7 @@ const UserManagement: React.FC = () => {
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {user.resume ? (
                         <a
-                          href={`${MEDIA_URL.replace(/\/$/, '')}/${user.resume.replace(/^\//, '')}`}
+                          href={resolveMediaUrl(user.resume)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"

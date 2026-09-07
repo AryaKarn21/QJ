@@ -18,6 +18,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -387,7 +388,7 @@ const Dashboard: React.FC = () => {
                     <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         {app.avatar ? (
-                          <img src={`${MEDIA_URL.replace(/\/$/, "")}/${app.avatar.replace(/^\//, "")}`} alt={app.name} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} onError={e => (e.target as HTMLImageElement).style.display = 'none'} />
+                          <img src={resolveMediaUrl(app.avatar)} alt={app.name} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} onError={e => (e.target as HTMLImageElement).style.display = 'none'} />
                         ) : (
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#FDBA74,#F97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: '#fff', flexShrink: 0 }}>
                             {app.name?.charAt(0)?.toUpperCase() || '?'}
@@ -408,7 +409,7 @@ const Dashboard: React.FC = () => {
                     </td>
                     <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
                       {app.resume ? (
-                        <a href={`${MEDIA_URL.replace(/\/$/, "")}/${app.resume.replace(/^\//, "")}`} target="_blank" rel="noreferrer"
+                        <a href={resolveMediaUrl(app.resume)} target="_blank" rel="noreferrer"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}>
                           <Eye size={13} /> View
                         </a>
