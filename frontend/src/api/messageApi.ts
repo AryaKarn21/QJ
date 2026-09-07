@@ -34,3 +34,10 @@ export const sendMessage = async (conversationId: string, text: string) => {
   );
   return res.data.message as DirectMessage;
 };
+
+export const deleteMessage = async (conversationId: string, messageId: string) => {
+  await axios.delete(
+    `${API_BASE_URL}/api/community/messages/${conversationId}/messages/${messageId}`,
+    getAuthHeader()
+  );
+};

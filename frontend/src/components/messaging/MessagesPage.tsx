@@ -4,9 +4,9 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import {
   Send, Search, Loader2, AlertCircle, MessageCircle,
-  Phone, Video, MoreHorizontal, ChevronLeft, X, Check, CheckCheck, Edit3, User,
+  Phone, Video, MoreHorizontal, ChevronLeft, X, Check, CheckCheck, Edit3, User, Trash2,
 } from 'lucide-react';
-import { fetchConversations, fetchMessages, sendMessage } from '../../api/messageApi';
+import { fetchConversations, fetchMessages, sendMessage, deleteMessage } from '../../api/messageApi';
 import { useSocket } from '../../context/SocketContext';
 import { useCurrentUser } from '../../utils/currentUser';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
@@ -48,17 +48,20 @@ const TYPING_AUTO_CLEAR_MS = 5000;
 // ─── Sidebar conversation item ────────────────────────────────────────────────
 
 function ConvItem({
-  conv, active, onClick,
-}: { conv: ConversationSummary; active: boolean; onClick: () => void }) {
+  conv, active, online, onClick,
+}: { conv: ConversationSummary; active: boolean; online: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors relative group min-h-[44px] ${active ? 'bg-blue-50 border-l-[3px] border-blue-600' : 'border-l-[3px] border-transparent'}`}
     >
-      {/* Avatar with online dot */}
+      {/* Avatar — online dot only rendered when actually online, not a
+          permanent decoration */}
       <div className="relative flex-shrink-0">
         <Avatar user={conv.otherUser} size={12} />
-        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
+        {online && (
+          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -88,7 +91,7 @@ function ConvItem({
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
 function Bubble({
-  msg, mine, showAvatar, conv, read, onRetry,
+  msg, mine, showAvatar, conv, read, onRetry, onDelete,
 }: {
   msg: PendingMessage;
   mine: boolean;
@@ -96,13 +99,30 @@ function Bubble({
   conv: ConversationSummary;
   read: boolean;
   onRetry: (msg: PendingMessage) => void;
+  onDelete: (msg: PendingMessage) => void;
 }) {
   return (
-    <div className={`flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`group flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar — only shown for last message in a group */}
       <div className="w-8 flex-shrink-0">
         {!mine && showAvatar && <Avatar user={conv.otherUser} size={8} />}
       </div>
+
+      {/* Delete — sender-only (matches the backend's own-messages-only
+          rule). Always visible (not hover-revealed) — a hover-only
+          affordance would simply never be reachable on a touch device,
+          which is most of this app's traffic; kept small/muted instead
+          so it doesn't read as visual clutter. */}
+      {mine && (
+        <button
+          onClick={() => onDelete(msg)}
+          aria-label="Delete message"
+          title="Delete"
+          className="mb-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-slate-100 hover:text-red-500"
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
 
       <div className={`flex min-w-0 flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[68%] ${mine ? 'items-end' : 'items-start'}`}>
         <button
@@ -147,9 +167,10 @@ function Bubble({
 // ─── Chat panel ───────────────────────────────────────────────────────────────
 
 function ChatPanel({
-  conv, onVoiceCall, onVideoCall, onMarkRead, onBack,
+  conv, online, onVoiceCall, onVideoCall, onMarkRead, onBack,
 }: {
   conv: ConversationSummary;
+  online: boolean;
   onVoiceCall: () => void;
   onVideoCall: () => void;
   onMarkRead: (id: string) => void;
@@ -237,14 +258,24 @@ function ChatPanel({
       setReadAt(data.readAt);
     };
 
+    // Server-verified deletion (see messageController.deleteMessage) —
+    // removes the message from whichever side currently has this
+    // conversation open, including the deleter's own other tabs/devices.
+    const handleDeleted = (data: { conversation: string; messageId: string }) => {
+      if (data.conversation !== conv._id) return;
+      setMessages((p) => p.filter((m) => m._id !== data.messageId));
+    };
+
     socket.on('message:new', handleNewMessage);
     socket.on('conversation:typing', handleTyping);
     socket.on('conversation:read', handleRead);
+    socket.on('message:deleted', handleDeleted);
     return () => {
       socket.emit('conversation:leave', conv._id);
       socket.off('message:new', handleNewMessage);
       socket.off('conversation:typing', handleTyping);
       socket.off('conversation:read', handleRead);
+      socket.off('message:deleted', handleDeleted);
       if (otherTypingTimeoutRef.current) clearTimeout(otherTypingTimeoutRef.current);
     };
   }, [socket, conv._id, userId, scrollToBottom]);
@@ -334,6 +365,29 @@ function ChatPanel({
     deliver(msg._id, msg.text);
   };
 
+  const handleDeleteMessage = async (msg: PendingMessage) => {
+    // A pending/failed optimistic message never made it to the server (its
+    // _id is a locally-generated "tmp-..." placeholder) — just drop it
+    // locally, no API call to make.
+    if (msg._pending || msg._failed || msg._id.startsWith('tmp-')) {
+      setMessages((p) => p.filter((m) => m._id !== msg._id));
+      return;
+    }
+    if (!window.confirm('Delete this message?')) return;
+    // Optimistic removal, restored on failure — matches the rest of this
+    // file's pattern of updating local state immediately and only
+    // reconciling on error rather than waiting on the round trip.
+    setMessages((p) => p.filter((m) => m._id !== msg._id));
+    try {
+      await deleteMessage(conv._id, msg._id);
+    } catch (err) {
+      setMessages((p) => (p.some((m) => m._id === msg._id) ? p : [...p, msg]));
+      toast.error(
+        (axios.isAxiosError(err) && err.response?.data?.message) || 'Could not delete this message.'
+      );
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
@@ -373,12 +427,18 @@ function ChatPanel({
           </button>
           <div className="relative flex-shrink-0">
             <Avatar user={conv.otherUser} size={10} linkToProfile />
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+            {online && (
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+            )}
           </div>
           <div className="min-w-0">
             <p className="font-semibold text-sm text-slate-900 leading-tight truncate">{conv.otherUser.name}</p>
             <p className="text-xs text-slate-400 truncate">
-              {otherTyping ? <span className="text-blue-500 font-medium">typing…</span> : conv.otherUser.headline || 'Online'}
+              {otherTyping
+                ? <span className="text-blue-500 font-medium">typing…</span>
+                : online
+                  ? <span className="text-green-600">Online</span>
+                  : conv.otherUser.headline || null}
             </p>
           </div>
         </div>
@@ -444,6 +504,7 @@ function ChatPanel({
                   conv={conv}
                   read={!!readAt && item.msg.createdAt <= readAt}
                   onRetry={retry}
+                  onDelete={handleDeleteMessage}
                 />
               )
             )}
@@ -498,6 +559,7 @@ export function MessagesPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
 
   const {
     callState, callType, incomingCall, localStream, remoteStream,
@@ -511,6 +573,40 @@ export function MessagesPage() {
       .catch(() => toast.error('Could not load conversations.'))
       .finally(() => setLoading(false));
   }, []);
+
+  // Real presence, not a decorative always-on dot: a stable key (not the
+  // `conversations` array reference itself, which gets a new identity on
+  // every unrelated update like markRead) so this only re-queries when the
+  // actual set of conversation partners changes.
+  const partnerIdsKey = useMemo(
+    () => [...new Set(conversations.map((c) => c.otherUser._id))].sort().join(','),
+    [conversations]
+  );
+
+  useEffect(() => {
+    if (!socket || !partnerIdsKey) return;
+    const userIds = partnerIdsKey.split(',');
+    const queryPresence = () => {
+      socket.emit('presence:query', userIds, (result: Record<string, boolean>) => {
+        setOnlineMap((prev) => ({ ...prev, ...result }));
+      });
+    };
+    queryPresence();
+    // presence:update (below) covers changes going forward, but a
+    // reconnect after a network blip can miss some of those — re-ask for
+    // the current snapshot whenever the socket (re)establishes.
+    socket.on('connect', queryPresence);
+    return () => { socket.off('connect', queryPresence); };
+  }, [socket, partnerIdsKey]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handlePresenceUpdate = ({ userId: otherId, online }: { userId: string; online: boolean }) => {
+      setOnlineMap((prev) => ({ ...prev, [otherId]: online }));
+    };
+    socket.on('presence:update', handlePresenceUpdate);
+    return () => { socket.off('presence:update', handlePresenceUpdate); };
+  }, [socket]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return conversations;
@@ -631,6 +727,7 @@ export function MessagesPage() {
                       key={c._id}
                       conv={c}
                       active={c._id === conversationId}
+                      online={!!onlineMap[c.otherUser._id]}
                       onClick={() => navigate(`/messages/${c._id}`)}
                     />
                   ))}
@@ -644,6 +741,7 @@ export function MessagesPage() {
             {active ? (
               <ChatPanel
                 conv={active}
+                online={!!onlineMap[active.otherUser._id]}
                 onVoiceCall={handleVoiceCall}
                 onVideoCall={handleVideoCall}
                 onMarkRead={markRead}

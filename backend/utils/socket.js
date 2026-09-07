@@ -73,8 +73,57 @@ function initSocket(httpServer) {
     }
   });
 
-  ioInstance.on("connection", (socket) => {
+  ioInstance.on("connection", async (socket) => {
     socket.join(`user:${socket.userId}`);
+
+    // ── Presence ─────────────────────────────────────────────────────────────
+    // "Online" is derived from whether the user's room has any connected
+    // socket at all — via the adapter's own room query (`allSockets`),
+    // which works correctly whether this is a single instance (in-memory
+    // adapter) or several behind the optional Redis adapter above, unlike
+    // hand-rolling a local counter that would only ever see this process's
+    // own connections. A user with two tabs/devices open only fires an
+    // online→offline transition once their LAST socket disconnects.
+    try {
+      const sockets = await ioInstance.in(`user:${socket.userId}`).allSockets();
+      if (sockets.size === 1) {
+        // This connection is the only one in the room — i.e. the user just
+        // came online (they weren't already connected from elsewhere).
+        broadcastPresence(socket.userId, true);
+      }
+    } catch (err) {
+      console.error("presence (connect) error:", err.message);
+    }
+
+    socket.on("disconnect", async () => {
+      try {
+        // Socket.IO removes a socket from its rooms before/at the point
+        // 'disconnect' fires, so this query no longer counts it.
+        const sockets = await ioInstance.in(`user:${socket.userId}`).allSockets();
+        if (sockets.size === 0) broadcastPresence(socket.userId, false);
+      } catch (err) {
+        console.error("presence (disconnect) error:", err.message);
+      }
+    });
+
+    // Lets a freshly-opened Messages page ask "which of these users are
+    // online right now" once, up front — `presence:update` below only
+    // covers *changes* after that, not the state at load time. Uses
+    // Socket.IO's ack-callback (a response to one specific request)
+    // rather than a REST endpoint, since the answer is already exactly
+    // what this in-memory/Redis-backed room state is for.
+    socket.on("presence:query", async (userIds, callback) => {
+      if (typeof callback !== "function") return;
+      if (!Array.isArray(userIds)) return callback({});
+      const result = {};
+      await Promise.all(
+        userIds.filter((id) => mongoose.Types.ObjectId.isValid(id)).map(async (id) => {
+          const sockets = await ioInstance.in(`user:${id}`).allSockets();
+          result[id] = sockets.size > 0;
+        })
+      );
+      callback(result);
+    });
 
     // ── Messaging ────────────────────────────────────────────────────────────
     socket.on("conversation:join", async (conversationId) => {
@@ -193,6 +242,28 @@ function initSocket(httpServer) {
   });
 
   return ioInstance;
+}
+
+// Tells everyone who shares a conversation with `userId` that their
+// online status just changed — not a global broadcast (which would mean
+// querying/notifying every user in the system for every connect/
+// disconnect), just the people who could plausibly have that user's
+// Messages conversation open and care.
+async function broadcastPresence(userId, online) {
+  try {
+    const conversations = await Conversation.find({ participants: userId }).select("participants").lean();
+    const partnerIds = new Set();
+    conversations.forEach((c) =>
+      c.participants.forEach((p) => {
+        if (String(p) !== String(userId)) partnerIds.add(String(p));
+      })
+    );
+    partnerIds.forEach((partnerId) => {
+      ioInstance.to(`user:${partnerId}`).emit("presence:update", { userId, online });
+    });
+  } catch (err) {
+    console.error("broadcastPresence error:", err.message);
+  }
 }
 
 function getIO() { return ioInstance; }

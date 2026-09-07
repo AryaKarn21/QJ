@@ -193,4 +193,52 @@ const sendMessage = async (req, res) => {
   }
 };
 
-module.exports = { getOrCreateConversation, getConversations, getMessages, sendMessage };
+// DELETE /:conversationId/messages/:messageId
+// Soft-delete (Message.isDeleted) — only the sender may delete their own
+// message, same "only act on your own stuff" rule as everywhere else in
+// this file. getMessages already filters `isDeleted: false`, so setting
+// this flag is the only piece that was missing for the field to do
+// anything; nothing else needs to change to stop returning it.
+const deleteMessage = async (req, res) => {
+  try {
+    const { conversationId, messageId } = req.params;
+
+    const message = await Message.findOne({ _id: messageId, conversation: conversationId });
+    if (!message || message.isDeleted) {
+      return res.status(404).json({ message: "Message not found." });
+    }
+    if (String(message.sender) !== String(req.user._id)) {
+      return res.status(403).json({ message: "You can only delete your own messages." });
+    }
+
+    message.isDeleted = true;
+    await message.save();
+
+    // If this was the conversation list's preview (lastMessage), point it
+    // at the next most recent non-deleted message instead — otherwise the
+    // sidebar would keep showing a deleted message's text after refresh.
+    const conversation = await Conversation.findById(conversationId);
+    if (conversation && String(conversation.lastMessage) === String(message._id)) {
+      const replacement = await Message.findOne({ conversation: conversationId, isDeleted: false })
+        .sort({ createdAt: -1 })
+        .select("_id createdAt");
+      conversation.lastMessage = replacement ? replacement._id : null;
+      if (replacement) conversation.lastMessageAt = replacement.createdAt;
+      await conversation.save();
+    }
+
+    // Real-time removal from whichever open chat windows currently have
+    // this conversation loaded, on both sides — not just the sender's.
+    emitToConversation(conversationId, "message:deleted", {
+      conversation: conversationId,
+      messageId: message._id,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({ message: "Failed to delete message." });
+  }
+};
+
+module.exports = { getOrCreateConversation, getConversations, getMessages, sendMessage, deleteMessage };
