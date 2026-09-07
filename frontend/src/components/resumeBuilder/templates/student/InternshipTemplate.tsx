@@ -157,7 +157,7 @@ export const InternshipTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.positionsOfResponsibility.map((p, i) => (
             <p key={p._id || i} className="text-[12px]">
               <span className="font-semibold">{p.title}</span>, {p.organization}
-              {p.startDate && <span className="text-slate-400"> · {formatDateRange(p.startDate, p.endDate, p.current)}</span>}
+              {p.startDate && <span className="text-slate-400"> · {formatDateRange(p.startDate, p.endDate)}</span>}
             {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </p>
           ))}

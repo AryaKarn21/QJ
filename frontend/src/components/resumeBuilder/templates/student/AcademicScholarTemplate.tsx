@@ -184,7 +184,7 @@ export const AcademicScholarTemplate: React.FC<TemplateProps> = ({ resume }) => 
           {resume.positionsOfResponsibility.map((p, i) => (
             <div key={p._id || i} className="flex items-baseline justify-between">
               <p className="text-[12.5px]"><span className="font-semibold">{p.title}</span>, {p.organization}</p>
-              {p.startDate && <p className="shrink-0 text-[11px] text-slate-400">{formatDateRange(p.startDate, p.endDate, p.current)}</p>}
+              {p.startDate && <p className="shrink-0 text-[11px] text-slate-400">{formatDateRange(p.startDate, p.endDate)}</p>}
             {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} className="mt-0.5 inline-block" />}
             </div>
           ))}

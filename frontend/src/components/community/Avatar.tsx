@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import type { AuthorSnapshot } from '../../types/community';
@@ -25,12 +26,25 @@ const SIZE_CLASSES: Record<number, string> = {
 export function Avatar({ user, size = 10, linkToProfile = false }: AvatarProps) {
   const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES[10];
   const isCompany = user.role === 'employer';
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-  const inner = user.avatar ? (
+  const resolvedSrc = user.avatar ? resolveMediaUrl(user.avatar) : '';
+  // A broken/stale image URL (a since-deleted file, an expired reference
+  // from before a storage migration, etc.) used to fall through to the
+  // browser's native broken-image behavior — showing the full `alt` text
+  // (the user's name) wrapped inside the circular, object-cover-clipped
+  // frame instead of a photo, which reads as a rendering bug rather than
+  // "no photo set". Tracking the failure by the URL itself (not just a
+  // bare boolean) means switching to a different user/avatar always gets
+  // a fresh attempt instead of staying stuck on a previous failure.
+  const showImage = Boolean(resolvedSrc) && resolvedSrc !== failedSrc;
+
+  const inner = showImage ? (
     <img
-      src={resolveMediaUrl(user.avatar)}
+      src={resolvedSrc}
       alt={user.name}
       className={`${sizeClass} ${isCompany ? 'rounded-md' : 'rounded-full'} object-cover`}
+      onError={() => setFailedSrc(resolvedSrc)}
     />
   ) : (
     <span

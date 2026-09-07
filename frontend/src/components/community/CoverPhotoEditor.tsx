@@ -31,9 +31,16 @@ export function CoverPhotoEditor({ coverPhoto, editable, onUpload, onRemove }: C
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   const resolvedCover = resolveMediaUrl(coverPhoto);
-  const hasCover = Boolean(coverPhoto);
+  // A broken/stale cover URL used to fall through to the browser's native
+  // broken-image behavior — the literal alt text "Cover" rendered in the
+  // corner over the gradient background instead of the decorative
+  // fallback pattern below. Comparing against the resolved src (not just
+  // a bare boolean) means uploading a new cover after a failure always
+  // gets a fresh attempt.
+  const hasCover = Boolean(coverPhoto) && resolvedCover !== failedSrc;
 
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -126,7 +133,12 @@ export function CoverPhotoEditor({ coverPhoto, editable, onUpload, onRemove }: C
       className="relative h-36 overflow-hidden bg-gradient-to-br from-primary via-[#8B3F26] to-[#5C2416] sm:h-44"
     >
       {hasCover ? (
-        <img src={resolvedCover} alt="Cover" className="h-full w-full object-cover" />
+        <img
+          src={resolvedCover}
+          alt="Cover"
+          className="h-full w-full object-cover"
+          onError={() => setFailedSrc(resolvedCover)}
+        />
       ) : (
         // QuickJobs-branded fallback — the original decorative gradient pattern.
         <div
@@ -142,7 +154,10 @@ export function CoverPhotoEditor({ coverPhoto, editable, onUpload, onRemove }: C
       {editable && (
         <div className="absolute bottom-3 right-3 flex items-center gap-2">
           <input ref={inputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleFileSelect} />
-          {hasCover && (
+          {Boolean(coverPhoto) && (
+            // Keyed to whether a cover is set at all, not `hasCover` (which
+            // also turns false when the image failed to load) — a broken
+            // reference should still be removable without first replacing it.
             <button
               onClick={handleRemove}
               disabled={removing}

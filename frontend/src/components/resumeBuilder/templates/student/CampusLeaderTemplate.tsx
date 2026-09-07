@@ -47,7 +47,7 @@ export const CampusLeaderTemplate: React.FC<TemplateProps> = ({ resume }) => {
             <div key={p._id || i}>
               <div className="flex items-baseline justify-between">
                 <p className="text-[13px] font-semibold" style={{ color: theme.accent }}>{p.title}</p>
-                {p.startDate && <p className="text-[11px] text-slate-400">{formatDateRange(p.startDate, p.endDate, p.current)}</p>}
+                {p.startDate && <p className="text-[11px] text-slate-400">{formatDateRange(p.startDate, p.endDate)}</p>}
               </div>
               <p className="text-[12px] font-medium text-slate-600">{p.organization}</p>
               {p.description && (

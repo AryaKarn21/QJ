@@ -272,8 +272,11 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
       }
       // The user may have hung up (or another call may have started) while
       // the permission prompt was open — don't proceed with a call nobody
-      // asked for anymore.
-      if (callStateRef.current !== 'calling') {
+      // asked for anymore. (Cast: TS narrows callStateRef.current to 'idle'
+      // from the guard above and doesn't know setCallState('calling') right
+      // after it — or another handler entirely, during the `await` — can
+      // change it; this comparison is real at runtime.)
+      if ((callStateRef.current as CallState) !== 'calling') {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }

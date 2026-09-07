@@ -113,7 +113,7 @@ class TextPdfWriter {
     this.y += 8 * this.scale;
   }
 
-  contactLine(parts: string[]) {
+  contactLine(parts: (string | undefined)[]) {
     const line = parts.filter(Boolean).join('   |   ');
     if (!line) return;
     this.pdf.setFont(this.font, 'normal');

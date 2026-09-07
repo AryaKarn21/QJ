@@ -50,7 +50,7 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.certifications.map((c, i) => (
             <span key={c._id || i} className="rounded border border-slate-300 px-2 py-0.5 font-mono text-[11px]">
               {c.name} {c.year && `· ${c.year}`}
-            {c.link && <ResumeLink href={c.link} label="View Credential" color={theme.accent} className="mt-0.5 inline-block" />}
+            {c.link && <ResumeLink href={c.link} label="View Credential" className="mt-0.5 inline-block" />}
             </span>
           ))}
         </div>
@@ -73,7 +73,7 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
                 <p className="whitespace-nowrap text-[11px] text-slate-400">{formatDateRange(exp.startDate, exp.endDate, exp.current)}</p>
               </div>
               {exp.description && <p className="mt-0.5 whitespace-pre-line text-[12.5px] leading-relaxed">{exp.description}</p>}
-            {exp.link && <ResumeLink href={exp.link} label="Company Link" color={theme.accent} className="mt-0.5 inline-block" />}
+            {exp.link && <ResumeLink href={exp.link} label="Company Link" className="mt-0.5 inline-block" />}
             </div>
           ))}
         </div>
@@ -86,7 +86,7 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.projects.map((p, i) => (
             <p key={p._id || i} className="text-[12.5px] leading-relaxed">
               <span className="font-semibold">{p.title}.</span> {p.description}
-            {p.link && <ResumeLink href={p.link} label="View Project" color={theme.accent} className="mt-0.5 inline-block" />}
+            {p.link && <ResumeLink href={p.link} label="View Project" className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -99,7 +99,7 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.education.map((edu, i) => (
             <p key={edu._id || i} className="text-[12.5px]">
               <span className="font-semibold">{edu.degree}</span>, {edu.institution} ({edu.startDate}–{edu.endDate})
-            {edu.link && <ResumeLink href={edu.link} label="Institution Website" color={theme.accent} className="mt-0.5 inline-block" />}
+            {edu.link && <ResumeLink href={edu.link} label="Institution Website" className="mt-0.5 inline-block" />}
             </p>
           ))}
         </div>
@@ -107,37 +107,37 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     internships: () => (
       <Extra title="Internships">
-        {resume.internships.map((it, i) => <p key={it._id || i}>{it.role}, {it.company} — {formatDateRange(it.startDate, it.endDate, it.current)} {it.link && <ResumeLink href={it.link} label="Company Link" color={theme.accent} />}</p>)}
+        {resume.internships.map((it, i) => <p key={it._id || i}>{it.role}, {it.company} — {formatDateRange(it.startDate, it.endDate, it.current)} {it.link && <ResumeLink href={it.link} label="Company Link" />}</p>)}
       </Extra>
     ),
     volunteering: () => (
       <Extra title="Volunteer Experience">
-        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} — {formatDateRange(v.startDate, v.endDate, v.current)} {v.link && <ResumeLink href={v.link} label="Organization Link" color={theme.accent} />}</p>)}
+        {resume.volunteering.map((v, i) => <p key={v._id || i}>{v.role}, {v.organization} — {formatDateRange(v.startDate, v.endDate, v.current)} {v.link && <ResumeLink href={v.link} label="Organization Link" />}</p>)}
       </Extra>
     ),
     achievements: () => (
       <Extra title="Achievements">
-        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`} {a.link && <ResumeLink href={a.link} label="View Proof" color={theme.accent} />}</p>)}
+        {resume.achievements.map((a, i) => <p key={a._id || i}>{a.title} {a.year && `(${a.year})`} {a.link && <ResumeLink href={a.link} label="View Proof" />}</p>)}
       </Extra>
     ),
     publications: () => (
       <Extra title="Publications">
-        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.link && <ResumeLink href={p.link} label="View Publication" color={theme.accent} />}</p>)}
+        {resume.publications.map((p, i) => <p key={p._id || i}>{p.title}, {p.publisher} {p.link && <ResumeLink href={p.link} label="View Publication" />}</p>)}
       </Extra>
     ),
     trainings: () => (
       <Extra title="Trainings">
-        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" color={theme.accent} />}</p>)}
+        {resume.trainings.map((t, i) => <p key={t._id || i}>{t.title}, {t.provider} {t.link && <ResumeLink href={t.link} label="View Course" />}</p>)}
       </Extra>
     ),
     scholarships: () => (
       <Extra title="Scholarships">
-        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" color={theme.accent} />}</p>)}
+        {resume.scholarships.map((s, i) => <p key={s._id || i}>{s.title}, {s.institution} {s.link && <ResumeLink href={s.link} label="View Award" />}</p>)}
       </Extra>
     ),
     positionsOfResponsibility: () => (
       <Extra title="Positions of Responsibility">
-        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" color={theme.accent} />}</p>)}
+        {resume.positionsOfResponsibility.map((p, i) => <p key={p._id || i}>{p.title}, {p.organization} {p.link && <ResumeLink href={p.link} label="Organization Link" />}</p>)}
       </Extra>
     ),
     hobbies: () => (
@@ -147,7 +147,7 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
     ),
     references: () => (
       <Extra title="References">
-        {resume.references.map((r, i) => <p key={r._id || i}>{r.name} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" color={theme.accent} />}</p>)}
+        {resume.references.map((r, i) => <p key={r._id || i}>{r.name} — {[r.email, r.phone].filter(Boolean).join(', ')} {r.link && <ResumeLink href={r.link} label="Profile" />}</p>)}
       </Extra>
     ),
     languages: () => (
@@ -177,7 +177,7 @@ export const CyberSecurityTemplate: React.FC<TemplateProps> = ({ resume }) => {
               <section key={id} className="mt-4">
                 <Heading>{custom.title}</Heading>
                 <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-relaxed">{custom.content}</p>
-                {custom.link && <ResumeLink href={custom.link} label="Learn More" color={theme.accent} />}
+                {custom.link && <ResumeLink href={custom.link} label="Learn More" />}
               </section>
             );
           }
