@@ -102,7 +102,16 @@ const getReplies = async (req, res) => {
 const addComment = async (req, res) => {
   try {
     const { postId } = req.params;
-    const { content, parentCommentId } = req.body;
+    const { content } = req.body;
+    // `let`, not `const` — flattening reply-to-reply below reassigns this
+    // to the top-level comment's id. It used to be destructured as `const`
+    // alongside `content`, which threw "Assignment to constant variable"
+    // on every single reply (any request with parentCommentId set) — the
+    // resulting TypeError was caught by this function's own try/catch and
+    // reported as a plain 500, with no hint in the response that it was a
+    // reply specifically. Top-level comments (no parentCommentId) never
+    // reached the reassignment, so they always worked fine.
+    let { parentCommentId } = req.body;
 
     if (!content || !content.trim()) {
       return res.status(400).json({ message: "Comment cannot be empty." });
