@@ -216,8 +216,14 @@ const AllJobListing = () => {
       <div className="container mx-auto px-4 md:px-6 lg:px-8 py-8">
         {/* Search */}
         <div className="bg-white rounded-lg shadow-sm p-2 mb-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
+          {/* flex-wrap + a min-w floor on the input below — at very narrow
+              widths (≈320px) the input, Search/Clear button and Filters
+              button couldn't all fit on one nowrap row without overflowing
+              the page horizontally. This lets the buttons drop to a second
+              line there while staying a single row from sm+ up, matching
+              the existing layout exactly at every width that already worked. */}
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:gap-4">
+            <div className="relative flex-1 min-w-[140px]">
               <input
                 type="text"
                 placeholder="Search by title or category"
@@ -512,7 +518,13 @@ const AllJobListing = () => {
 
           {/* Job Cards */}
 
-          <div className="flex-1 pr-4 md:pr-0">
+          {/* min-w-0 — without it, this flex item (sidebar's sibling in the
+              md:flex-row row above) falls back to its content's min-content
+              width; a long unbroken job title/company name inside the grid
+              below could then force this column (and the whole row) wider
+              than the viewport instead of wrapping, causing horizontal
+              page overflow at desktop/tablet widths. */}
+          <div className="flex-1 min-w-0 pr-4 md:pr-0">
             {/* flex-col below sm — a fixed-width sort <select> squeezed
                 against a `w-full` results-count block on a single
                 non-wrapping row could overflow/clip at narrow widths,
@@ -558,28 +570,28 @@ const AllJobListing = () => {
                     expired ? 'opacity-75' : ''
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex gap-3 items-start">
+                  <div className="flex justify-between items-start gap-2 mb-4">
+                    <div className="flex gap-3 items-start min-w-0">
                       {job.employer?.companyLogo && (
                         <img
                           src={resolveMediaUrl(job.employer.companyLogo)}
                           alt="Company Logo"
-                          className="w-10 h-10 rounded object-cover"
+                          className="w-10 h-10 rounded object-cover flex-shrink-0"
                         />
                       )}
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg">{job.title}</h3>
+                          <h3 className="font-semibold text-lg break-words">{job.title}</h3>
                           {expired && (
                             <span className="text-[11px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
                               Deadline Passed
                             </span>
                           )}
                         </div>
-                        <p className="text-gray-600 text-sm">{job.employer?.name}</p>
+                        <p className="text-gray-600 text-sm break-words">{job.employer?.name}</p>
                       </div>
                     </div>
-                    <button onClick={() => handleToggleSave(job._id)} className="p-1">
+                    <button onClick={() => handleToggleSave(job._id)} className="p-1 flex-shrink-0">
                       {savedJobs.some((saved) => saved._id === job._id) ? (
                         <Bookmark fill="currentColor" className="text-primary" size={20} />
                       ) : (
@@ -589,30 +601,32 @@ const AllJobListing = () => {
                   </div>
 
                   <div className="text-sm text-gray-500 space-y-1">
-                    <div className="flex items-center">
-                      <MapPin className="mr-2" size={16} /> {job.location}
+                    <div className="flex items-center min-w-0">
+                      <MapPin className="mr-2 flex-shrink-0" size={16} /> <span className="break-words">{job.location}</span>
                     </div>
-                    <div className="flex items-center">
-                      <Clock className="mr-2" size={16} /> {job.jobtype}
+                    <div className="flex items-center min-w-0">
+                      <Clock className="mr-2 flex-shrink-0" size={16} /> <span className="break-words">{job.jobtype}</span>
                     </div>
-                    <div className="flex items-center">
-                      <DollarSign className="mr-2" size={16} /> {job.salary}
+                    <div className="flex items-center min-w-0">
+                      <DollarSign className="mr-2 flex-shrink-0" size={16} /> <span className="break-words">{job.salary}</span>
                     </div>
                     {job.deadline && (
-                      <div className={`flex items-center ${expired ? 'text-red-500' : ''}`}>
-                        <CalendarClock className="mr-2" size={16} />
-                        {expired
-                          ? `Closed on ${formatDeadline(job.deadline)}`
-                          : `Apply by ${formatDeadline(job.deadline)}`}
+                      <div className={`flex items-center min-w-0 ${expired ? 'text-red-500' : ''}`}>
+                        <CalendarClock className="mr-2 flex-shrink-0" size={16} />
+                        <span className="break-words">
+                          {expired
+                            ? `Closed on ${formatDeadline(job.deadline)}`
+                            : `Apply by ${formatDeadline(job.deadline)}`}
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
+                  <div className="mt-4 flex flex-wrap justify-between items-center gap-2 text-sm text-gray-500">
                     <span>{getTimeAgo(job.createdAt)}</span>
                     <button
                       onClick={() => navigate(`/jobs/${job._id}`)}
-                      className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="flex-shrink-0 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       View Details
                     </button>
