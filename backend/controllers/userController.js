@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const sendNotification = require("../utils/sendNotifications");
 const { recordAudit } = require("../utils/auditLogger");
+const { persistUpload } = require("../services/media.service");
 
 
 // Register User
@@ -112,26 +113,28 @@ const registerUser = async (req, res) => {
         }
       }
 
-      // Add profilePic and resume paths if files were uploaded
-      if (profilePicFile) {
-        userData.profilePic = `/uploads/profile_pics/${profilePicFile.filename}`; // Store relative path
-      }
-      if (resumeFile) {
-        userData.resume = `/uploads/resumes/${resumeFile.filename}`; // Store relative path
-      }
-
       user = new Jobseeker({
         ...userData,
         skills: parsedSkills, // Use parsed array
         qualifications: parsedQualifications, // Use parsed array of objects
         experiences: parsedExperiences, // Use parsed array of objects
       });
-    } else if (role === "employer") {
-      // Add companyLogo path if file was uploaded
-      if (companyLogoFile) {
-        userData.companyLogo = `/uploads/company_logos/${companyLogoFile.filename}`; // Store relative path
-      }
 
+      // userUploadMiddleware.js uses multer.memoryStorage() — these files
+      // only exist as in-memory buffers (no .filename), so they have to go
+      // through persistUpload() (Supabase Storage when configured, local
+      // disk otherwise) same as every other controller already does. The
+      // Jobseeker document above isn't saved yet, but Mongoose assigns
+      // `_id` on `new Jobseeker(...)`, not on save — so it's already a
+      // real id to namespace the storage path with, instead of uploading
+      // under an "undefined" owner and fixing it up after the fact.
+      if (profilePicFile) {
+        user.profilePic = await persistUpload(profilePicFile, "profile_pics", user._id);
+      }
+      if (resumeFile) {
+        user.resume = await persistUpload(resumeFile, "resumes", user._id);
+      }
+    } else if (role === "employer") {
       user = new Employer({
         ...userData,
         panNumber,
@@ -142,6 +145,13 @@ const registerUser = async (req, res) => {
         telephone,
         description,
       });
+
+      // Same reasoning as the jobseeker branch above — persistUpload()
+      // instead of the old companyLogoFile.filename (undefined under
+      // memoryStorage), using the id Mongoose already assigned.
+      if (companyLogoFile) {
+        user.companyLogo = await persistUpload(companyLogoFile, "company_logos", user._id);
+      }
     } else if (role === "admin") {
       // Handle admin specific fields if any, or just use base userData
       user = new User({ ...userData });
