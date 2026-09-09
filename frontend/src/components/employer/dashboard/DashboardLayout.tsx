@@ -16,9 +16,9 @@ import {
   Users, CalendarDays, Bookmark, MessageSquare,
   BarChart3, Building2, CreditCard, Settings, Tags,
   LogOut, ChevronRight, Bell, Search, Download,
-  Menu, X, Calendar, MessageCircle, Users2, Home,
+  Menu, X, Calendar, MessageCircle, Users2, Home, User,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // ── Nav tree ─────────────────────────────────────────────────────────
 // Candidates / Interviews / Saved Candidates / Subscription don't have a
@@ -75,16 +75,42 @@ const BRAND = {
   pageBg: '#FFF8F3',        // warm cream, matches Profile.tsx's page background
 };
 
+// Static placeholder rows for the notification dropdown — there's no
+// notifications API/model yet, so this is presentational only (per the
+// design brief) rather than wired to real data.
+const NOTIFICATIONS = [
+  { id: 1, message: 'New application received', time: '2 min ago' },
+  { id: 2, message: 'Interview scheduled', time: '1 hour ago' },
+  { id: 3, message: 'Candidate accepted offer', time: 'Yesterday' },
+];
+
 const DashboardLayout = () => {
   const location  = useLocation();
   const navigate  = useNavigate();
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
   const [showLogout,    setShowLogout]    = useState(false);
+  const [notifOpen,     setNotifOpen]     = useState(false);
+  const [profileOpen,   setProfileOpen]   = useState(false);
+  const [hasUnread,     setHasUnread]     = useState(true);
+
+  const notifRef   = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close either dropdown when clicking outside of it.
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.dispatchEvent(new Event('authChange'));
     setShowLogout(false);
+    setProfileOpen(false);
     navigate('/');
   };
 
@@ -295,10 +321,60 @@ const DashboardLayout = () => {
           </div>
 
           {/* Notification */}
-          <button aria-label="Notifications" style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'all .15s' }}>
-            <Bell size={17} />
-            <span style={{ position: 'absolute', top: 9, right: 9, width: 7, height: 7, borderRadius: '50%', background: '#EF4444', border: '2px solid #fff' }} />
-          </button>
+          <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              aria-label="Notifications"
+              onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}
+              style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', transition: 'all .15s' }}
+            >
+              <Bell size={17} />
+              {hasUnread && (
+                <span style={{ position: 'absolute', top: 9, right: 9, width: 7, height: 7, borderRadius: '50%', background: '#EF4444', border: '2px solid #fff' }} />
+              )}
+            </button>
+
+            {notifOpen && (
+              <div
+                role="menu"
+                aria-label="Notifications"
+                style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 320,
+                  background: '#fff', borderRadius: 16, boxShadow: '0 16px 40px rgba(0,0,0,.14)',
+                  border: '1px solid #E5E7EB', zIndex: 110, overflow: 'hidden',
+                  maxWidth: 'calc(100vw - 32px)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Notifications</span>
+                  <button
+                    onClick={() => setHasUnread(false)}
+                    style={{ background: 'none', border: 'none', color: BRAND.primary, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+                  >
+                    Mark all read
+                  </button>
+                </div>
+
+                <div>
+                  {NOTIFICATIONS.map(n => (
+                    <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', borderBottom: '1px solid #F8FAFC' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: BRAND.primary, marginTop: 6, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, color: '#111827', margin: 0 }}>{n.message}</p>
+                        <p style={{ fontSize: 11.5, color: '#94A3B8', margin: '2px 0 0' }}>{n.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setNotifOpen(false)}
+                  style={{ width: '100%', textAlign: 'center', padding: '11px', background: BRAND.pageBg, border: 'none', borderTop: '1px solid #F1F5F9', color: BRAND.primary, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  View all notifications
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Messages */}
           <Link to="/messages" aria-label="Messages" style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}>
@@ -315,10 +391,66 @@ const DashboardLayout = () => {
           </button>
 
           {/* Avatar */}
-          <div
-            onClick={() => navigate('/employer/profile')}
-            style={{ width: 36, height: 36, borderRadius: '50%', background: `linear-gradient(135deg,#FDBA74,${BRAND.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
-            EM
+          <div ref={profileRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              onClick={() => { setProfileOpen(o => !o); setNotifOpen(false); }}
+              style={{ width: 36, height: 36, borderRadius: '50%', background: `linear-gradient(135deg,#FDBA74,${BRAND.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', cursor: 'pointer' }}
+            >
+              EM
+            </div>
+
+            {profileOpen && (
+              <div
+                role="menu"
+                aria-label="Profile menu"
+                style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 200,
+                  background: '#fff', borderRadius: 16, boxShadow: '0 16px 40px rgba(0,0,0,.14)',
+                  border: '1px solid #E5E7EB', zIndex: 110, overflow: 'hidden',
+                  maxWidth: 'calc(100vw - 32px)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: `linear-gradient(135deg,#FDBA74,${BRAND.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
+                    EM
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Employer</div>
+                    <div style={{ fontSize: 11.5, color: '#64748B' }}>Company Admin</div>
+                  </div>
+                </div>
+
+                <div style={{ padding: 6 }}>
+                  <Link
+                    to="/employer/profile"
+                    onClick={() => setProfileOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, color: '#374151', fontSize: 13.5, fontWeight: 500, textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = BRAND.primaryHover}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    <User size={15} /> My Profile
+                  </Link>
+                  <Link
+                    to="/employer/settings"
+                    onClick={() => setProfileOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, color: '#374151', fontSize: 13.5, fontWeight: 500, textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = BRAND.primaryHover}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    <Settings size={15} /> Settings
+                  </Link>
+                  <div style={{ height: 1, background: '#F1F5F9', margin: '6px 4px' }} />
+                  <button
+                    onClick={() => { setProfileOpen(false); setShowLogout(true); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, color: '#EF4444', fontSize: 13.5, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FFF1F2'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    <LogOut size={15} /> Log Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 
