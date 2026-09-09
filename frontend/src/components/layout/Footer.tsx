@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import StarFooter from '../../assets/quickjobs.png';
 import {
   Home,
@@ -10,8 +10,11 @@ import {
   ArrowRight,
   ShieldCheck,
   FileText,
-  HelpCircle
+  HelpCircle,
+  Loader2
 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { subscribeToNewsletter } from '../../api/newsletterApi';
 
 // lucide-react has no WhatsApp glyph, so it's a small inline brand SVG
 // sized/styled to match the other footer social icons.
@@ -65,8 +68,29 @@ const Footer: React.FC = () => {
     }
   };
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [subscribing, setSubscribing] = useState(false);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const email = newsletterEmail.trim();
+    if (!email) {
+      toast.error('Please enter your email address.');
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const res = await subscribeToNewsletter(email);
+      toast.success(res?.message || 'Subscribed! Watch your inbox for job alerts and hiring trends.');
+      setNewsletterEmail('');
+    } catch (err: any) {
+      console.error('Newsletter subscribe failed:', err);
+      toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   return (
@@ -262,16 +286,29 @@ const Footer: React.FC = () => {
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder="Your email"
-                  className="w-full bg-slate-900/90 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  disabled={subscribing}
+                  className="w-full bg-slate-900/90 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-60"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors cursor-pointer"
+                disabled={subscribing}
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span>Subscribe</span>
-                <ArrowRight size={13} />
+                {subscribing ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Subscribing…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Subscribe</span>
+                    <ArrowRight size={13} />
+                  </>
+                )}
               </button>
             </form>
           </div>

@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { getCandidates, toggleSavedCandidate, updateApplicationStatus } from "../employerApi/api";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
-import { Bookmark, BookmarkCheck, Pencil, Calendar } from "lucide-react";
+import { Bookmark, BookmarkCheck, Pencil, Calendar, Search, Users } from "lucide-react";
 import { toast } from "react-toastify";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || import.meta.env.VITE_API_BASE_URL || "https://qj.onrender.com";
 
 interface Candidate {
     candidateId: string;
@@ -32,6 +30,11 @@ const Candidates = () => {
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [loading, setLoading] = useState(true);
     const [savingId, setSavingId] = useState<string | null>(null);
+
+    // Search + career status filter — client-side only, over the already
+    // fetched candidate list (no extra API calls).
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("All");
 
     // Status dropdown open for this candidate's applicationId
     const [editingStatusFor, setEditingStatusFor] = useState<string | null>(null);
@@ -137,93 +140,176 @@ const Candidates = () => {
         }
     };
 
+    const filteredCandidates = candidates.filter((c) => {
+        const matchesSearch =
+            !searchQuery.trim() ||
+            c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "All" || c.latestStatus === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
     return (
-        <div className="min-h-screen overflow-auto p-6" style={{ maxHeight: "calc(100dvh - 50px)" }}>
-            <h1 className="text-2xl font-semibold mb-1">Candidates</h1>
-            <p className="text-sm text-gray-500 mb-4">Everyone who has applied to any of your jobs.</p>
-
-            {loading ? (
-                <div className="space-y-3">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                    ))}
+        <div className="min-h-screen bg-[#FFF8F3] p-4 sm:p-6 lg:p-8">
+            <div className="max-w-6xl mx-auto space-y-6">
+                {/* Header */}
+                <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                        <h1 className="text-xl font-bold text-gray-900">All Candidates</h1>
+                        {!loading && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
+                                {candidates.length} total
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Everyone who has applied to any of your jobs.</p>
                 </div>
-            ) : candidates.length === 0 ? (
-                <p className="text-gray-500">No candidates yet — once people apply to your jobs, they'll show up here.</p>
-            ) : (
-                <div className="bg-white rounded-lg shadow-sm divide-y">
-                    {candidates.map((c) => (
-                        <div key={c.candidateId} className="flex items-center gap-4 p-4">
-                            {c.profilePic ? (
-                                <img
-                                    src={resolveMediaUrl(c.profilePic)}
-                                    alt={c.name}
-                                    className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-                                />
-                            ) : (
-                                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center font-semibold flex-shrink-0">
-                                    {c.name?.charAt(0)?.toUpperCase() || "?"}
-                                </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{c.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{c.email}</p>
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                    Applied to {c.latestJobTitle}
-                                    {c.totalApplications > 1 && ` (+${c.totalApplications - 1} more)`}
-                                </p>
-                            </div>
 
-                            <div className="relative flex-shrink-0">
-                                {editingStatusFor === c.latestApplicationId ? (
-                                    <select
-                                        autoFocus
-                                        value={c.latestStatus}
-                                        disabled={updatingStatus}
-                                        onChange={(e) => handleStatusChange(c.latestApplicationId, e.target.value)}
-                                        onBlur={() => setEditingStatusFor(null)}
-                                        className="text-xs font-medium rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                                    >
-                                        {STATUS_OPTIONS.map((s) => (
-                                            <option key={s} value={s}>
-                                                {s}
-                                            </option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <button
-                                        onClick={() => setEditingStatusFor(c.latestApplicationId)}
-                                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap hover:opacity-80 ${
-                                            statusColor[c.latestStatus] || "bg-gray-100 text-gray-600"
-                                        }`}
-                                        title="Change status"
-                                    >
-                                        {c.latestStatus}
-                                        <Pencil size={11} />
-                                    </button>
-                                )}
-                            </div>
+                {/* Search + filter bar */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="relative flex-1">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                        />
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 flex-shrink-0"
+                    >
+                        <option value="All">All Statuses</option>
+                        {STATUS_OPTIONS.map((s) => (
+                            <option key={s} value={s}>
+                                {s}
+                            </option>
+                        ))}
+                    </select>
+                </div>
 
-                            <button
-                                onClick={() => handleToggleSave(c.candidateId)}
-                                disabled={savingId === c.candidateId}
-                                title={c.isSaved ? "Remove from saved" : "Save candidate"}
-                                className="p-2 rounded-lg hover:bg-orange-50 text-orange-600 disabled:opacity-50"
-                            >
-                                {c.isSaved ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
-                            </button>
+                {loading ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="h-28 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-pulse" />
+                        ))}
+                    </div>
+                ) : candidates.length === 0 ? (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 py-16 flex flex-col items-center text-center px-6">
+                        <div className="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mb-4">
+                            <Users size={24} className="text-orange-500" />
                         </div>
-                    ))}
-                </div>
-            )}
+                        <h3 className="text-base font-semibold text-gray-900">No candidates yet</h3>
+                        <p className="text-sm text-gray-500 mt-1 max-w-sm">
+                            Once people apply to your jobs, they'll show up here.
+                        </p>
+                    </div>
+                ) : filteredCandidates.length === 0 ? (
+                    <div className="text-center text-gray-500 py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+                        No candidates match your search.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {filteredCandidates.map((c) => (
+                            <div
+                                key={c.candidateId}
+                                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 hover:shadow-md transition-shadow"
+                            >
+                                {c.profilePic ? (
+                                    <img
+                                        src={resolveMediaUrl(c.profilePic)}
+                                        alt={c.name}
+                                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center font-semibold flex-shrink-0">
+                                        {c.name?.charAt(0)?.toUpperCase() || "?"}
+                                    </div>
+                                )}
+
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900 truncate">{c.name}</p>
+                                    <p className="text-xs text-gray-500 truncate">{c.email}</p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Applied for: {c.latestJobTitle}
+                                    </p>
+                                    {c.totalApplications > 1 && (
+                                        <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium">
+                                            {c.totalApplications} applications
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                    <div className="relative">
+                                        {editingStatusFor === c.latestApplicationId ? (
+                                            <select
+                                                autoFocus
+                                                value={c.latestStatus}
+                                                disabled={updatingStatus}
+                                                onChange={(e) => handleStatusChange(c.latestApplicationId, e.target.value)}
+                                                onBlur={() => setEditingStatusFor(null)}
+                                                className="text-xs font-medium rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                                            >
+                                                {STATUS_OPTIONS.map((s) => (
+                                                    <option key={s} value={s}>
+                                                        {s}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <button
+                                                onClick={() => setEditingStatusFor(c.latestApplicationId)}
+                                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap hover:opacity-80 ${
+                                                    statusColor[c.latestStatus] || "bg-gray-100 text-gray-600"
+                                                }`}
+                                                title="Change status"
+                                            >
+                                                {c.latestStatus}
+                                                <Pencil size={11} />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={() => setInterviewModalFor(c.latestApplicationId)}
+                                            className="flex items-center gap-1 border border-orange-200 text-orange-600 text-xs font-medium px-2.5 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                                            title="Schedule Interview"
+                                        >
+                                            <Calendar size={13} />
+                                            Schedule
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleSave(c.candidateId)}
+                                            disabled={savingId === c.candidateId}
+                                            title={c.isSaved ? "Remove from saved" : "Save candidate"}
+                                            className={`p-2 rounded-lg disabled:opacity-50 transition-colors ${
+                                                c.isSaved
+                                                    ? "text-orange-600 hover:bg-orange-50"
+                                                    : "text-gray-400 border border-gray-200 hover:bg-gray-50"
+                                            }`}
+                                        >
+                                            {c.isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* Interview Scheduling Modal */}
             {interviewModalFor && (
-                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md">
+                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-[480px] max-h-[90dvh] overflow-y-auto">
                         <div className="flex items-center gap-2 mb-1">
-                            <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center">
-                                <Calendar size={16} className="text-purple-600" />
+                            <div className="h-9 w-9 rounded-full bg-orange-50 flex items-center justify-center">
+                                <Calendar size={16} className="text-orange-600" />
                             </div>
                             <h2 className="text-lg font-bold text-gray-900">Schedule Interview</h2>
                         </div>
@@ -236,7 +322,7 @@ const Candidates = () => {
                                     type="datetime-local"
                                     value={interviewDate}
                                     onChange={(e) => setInterviewDate(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                                 />
                             </div>
 
@@ -245,7 +331,7 @@ const Candidates = () => {
                                 <select
                                     value={interviewMode}
                                     onChange={(e) => setInterviewMode(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                                 >
                                     <option value="Video Call">Video Call</option>
                                     <option value="Phone Call">Phone Call</option>
@@ -261,7 +347,7 @@ const Candidates = () => {
                                         value={interviewLocation}
                                         onChange={(e) => setInterviewLocation(e.target.value)}
                                         placeholder="Office address"
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                                     />
                                 </div>
                             ) : (
@@ -274,7 +360,7 @@ const Candidates = () => {
                                         value={interviewLink}
                                         onChange={(e) => setInterviewLink(e.target.value)}
                                         placeholder={interviewMode === "Video Call" ? "https://meet.google.com/…" : "+977-…"}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
                                     />
                                 </div>
                             )}
@@ -286,7 +372,7 @@ const Candidates = () => {
                                     onChange={(e) => setInterviewNotes(e.target.value)}
                                     rows={3}
                                     placeholder="Anything the candidate should prepare or know in advance"
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 resize-none"
                                 />
                             </div>
                         </div>
@@ -301,7 +387,8 @@ const Candidates = () => {
                             <button
                                 onClick={handleScheduleInterview}
                                 disabled={scheduling}
-                                className="flex-1 bg-primary text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
+                                className="flex-1 text-white rounded-xl px-4 py-2.5 text-sm font-medium transition-opacity disabled:opacity-60"
+                                style={{ background: "linear-gradient(135deg,#F59E0B,#F97316)" }}
                             >
                                 {scheduling ? "Scheduling…" : "Schedule"}
                             </button>
