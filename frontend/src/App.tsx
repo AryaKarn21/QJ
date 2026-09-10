@@ -129,6 +129,12 @@ function AppWrapper() {
     <div className="min-h-screen bg-secondary flex flex-col">
       {!shouldHideHeaderFooter && <Header />}
 
+      {/* Spacer that matches the fixed header height so content doesn't
+          hide behind it. 4rem (64px) for mobile, 5rem (80px) for sm+,
+          matching Header.tsx's h-16 sm:h-20. Hidden on pages where the
+          Header is suppressed (dashboard layouts with their own nav). */}
+      {!shouldHideHeaderFooter && <div className="h-16 sm:h-20 flex-shrink-0" aria-hidden="true" />}
+
       <div className="flex-1">
         <Suspense
           fallback={

@@ -34,6 +34,7 @@ function buildAuthorSnapshot(userDoc) {
     bio: userDoc.bio || "",
     socialLinks: userDoc.socialLinks || null,
     joinedAt: userDoc.createdAt || null,
+    lastLogin: userDoc.lastLogin || null,
     // `name` already IS the company name for employer accounts (see
     // Employer Profile page), so surface it explicitly under a role-
     // agnostic key the UI can check without re-deriving the convention.

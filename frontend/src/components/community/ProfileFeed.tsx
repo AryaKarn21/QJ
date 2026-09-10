@@ -181,19 +181,23 @@ export function ProfileFeed() {
 
         <div className="px-6 pb-6">
           {/* Avatar + action buttons row */}
-          <div className="flex flex-wrap items-end justify-between gap-4 -mt-12 mb-4">
+          <div className="flex flex-wrap items-end justify-between gap-4 -mt-16 mb-5">
             <div className="relative">
               {profile ? (
-                <div className="rounded-full ring-4 ring-white shadow-lg">
-                  <Avatar user={profile} size={20} />
+                <div className="rounded-full ring-[3px] ring-white shadow-xl">
+                  <Avatar user={profile} size={24} />
                 </div>
               ) : (
-                <div className="h-20 w-20 animate-pulse rounded-full bg-gray-200 ring-4 ring-white" />
+                <div className="h-24 w-24 animate-pulse rounded-full bg-gray-200 ring-[3px] ring-white" />
               )}
-              {/* Role badge */}
+              {/* Role badge — cleaner pill, uses a softer tone */}
               {profile?.role && (
-                <span className="absolute -bottom-1 -right-1 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full capitalize border-2 border-white">
-                  {profile.role}
+                <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold px-2.5 py-0.5 rounded-full border-2 border-white capitalize shadow-sm ${
+                  profile.role === 'employer' ? 'bg-blue-600 text-white'
+                  : profile.role === 'jobseeker' ? 'bg-primary text-white'
+                  : 'bg-gray-600 text-white'
+                }`}>
+                  {profile.role === 'jobseeker' ? 'Jobseeker' : profile.role}
                 </span>
               )}
             </div>
@@ -224,9 +228,9 @@ export function ProfileFeed() {
                         toast.error(err?.response?.data?.message || 'Could not open a conversation.')
                       )
                   }
-                  className="flex items-center gap-1.5 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors"
+                  className="flex items-center gap-1.5 rounded-full bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors shadow-sm"
                 >
-                  <MessageCircle size={14} /> Message
+                  <MessageCircle size={14} className="text-primary" /> Message
                 </button>
               </div>
             )}
@@ -234,7 +238,7 @@ export function ProfileFeed() {
             {isOwnProfile && (
               <button
                 onClick={() => navigate(ownEditProfilePath)}
-                className="flex items-center gap-1.5 rounded-full border border-gray-300 hover:border-primary hover:text-primary px-4 py-2 text-sm font-semibold text-gray-700 transition-colors pb-1"
+                className="flex items-center gap-1.5 rounded-full border border-gray-300 hover:border-primary hover:text-primary hover:bg-primary/5 px-5 py-2 text-sm font-semibold text-gray-700 transition-all shadow-sm"
               >
                 <Pencil size={13} /> Edit Profile
               </button>
@@ -242,13 +246,13 @@ export function ProfileFeed() {
           </div>
 
           {/* Name + headline */}
-          <div className="mb-3">
+          <div className="mb-4">
             {profile ? (
               <>
-                <h1 className="flex items-center gap-1.5 text-xl font-bold text-gray-900">
+                <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 leading-tight">
                   {profile.name}
                   {profile.isVerified && (
-                    <span title="Verified" className="text-primary">
+                    <span title="Verified" className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex-shrink-0">
                       ✓
                     </span>
                   )}
@@ -326,14 +330,8 @@ export function ProfileFeed() {
             <p className="text-sm text-gray-600 leading-relaxed mb-4 max-w-2xl">{profile.bio}</p>
           )}
 
-          {/* Stats row — on the owner's own profile this is 4 stat groups
-              plus 3 dividers with no wrap or scroll container; at 360px
-              that overflowed the card (which clips via `overflow-hidden`
-              on its outer wrapper, so it silently cut content off rather
-              than scrolling). flex-wrap lets it drop to a second line
-              instead; dividers are hidden below `sm` since a divider
-              orphaned at the start of a wrapped line looks broken. */}
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-start sm:gap-x-5 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+          {/* Stats row */}
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-start sm:gap-x-6 mb-5 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
             <Link
               to={`/community/profile/${profileId}/followers`}
               className="flex flex-col items-center hover:text-primary transition-colors group"
