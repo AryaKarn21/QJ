@@ -201,7 +201,7 @@ const Header: React.FC = () => {
     : '';
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ease-in-out ${
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
       scrolled
         ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
         : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'

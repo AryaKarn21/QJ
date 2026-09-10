@@ -19,6 +19,21 @@ function timeLabel(d: string) {
   return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+/** LinkedIn-style "Active now / Active Xm ago / Active Xh ago / Active Xd ago" */
+function activeLabel(online: boolean, lastLogin?: string | null): string {
+  if (online) return 'Active now';
+  if (!lastLogin) return '';
+  const diff = Date.now() - new Date(lastLogin).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 2) return 'Active now';
+  if (m < 60) return `Active ${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Active ${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 8) return `Active ${d}d ago`;
+  return '';
+}
+
 function relativeLabel(d: string) {
   const diff = Date.now() - new Date(d).getTime();
   const m = Math.floor(diff / 60000);
@@ -50,13 +65,13 @@ const TYPING_AUTO_CLEAR_MS = 5000;
 function ConvItem({
   conv, active, online, onClick,
 }: { conv: ConversationSummary; active: boolean; online: boolean; onClick: () => void }) {
+  const actLabel = activeLabel(online, (conv.otherUser as any).lastLogin);
   return (
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors relative group min-h-[44px] ${active ? 'bg-blue-50 border-l-[3px] border-blue-600' : 'border-l-[3px] border-transparent'}`}
     >
-      {/* Avatar — online dot only rendered when actually online, not a
-          permanent decoration */}
+      {/* Avatar with online indicator */}
       <div className="relative flex-shrink-0">
         <Avatar user={conv.otherUser} size={12} />
         {online && (
@@ -73,16 +88,32 @@ function ConvItem({
             {conv.lastMessageAt ? relativeLabel(conv.lastMessageAt) : ''}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className={`text-xs truncate min-w-0 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+        {/* Active status row — shown instead of the last-message preview
+            only when we have meaningful activity info, otherwise falls
+            through to the message preview exactly as before. */}
+        {actLabel ? (
+          <p className={`text-[11px] mt-0.5 truncate font-medium ${online ? 'text-green-600' : 'text-slate-400'}`}>
+            {actLabel}
+          </p>
+        ) : (
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <p className={`text-xs truncate min-w-0 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+              {conv.lastMessage?.text || 'Start a conversation'}
+            </p>
+          </div>
+        )}
+        {/* Last message preview shown below activity status */}
+        {actLabel && (
+          <p className={`text-xs truncate min-w-0 mt-0.5 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
             {conv.lastMessage?.text || 'Start a conversation'}
           </p>
-          {conv.unreadCount > 0 && (
-            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-              {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-            </span>
-          )}
-        </div>
+        )}
+        {/* Unread badge — always shown regardless of actLabel */}
+        {conv.unreadCount > 0 && (
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+            {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -433,12 +464,18 @@ function ChatPanel({
           </div>
           <div className="min-w-0">
             <p className="font-semibold text-sm text-slate-900 leading-tight truncate">{conv.otherUser.name}</p>
-            <p className="text-xs text-slate-400 truncate">
+            <p className="text-xs truncate">
               {otherTyping
                 ? <span className="text-blue-500 font-medium">typing…</span>
                 : online
-                  ? <span className="text-green-600">Online</span>
-                  : conv.otherUser.headline || null}
+                  ? <span className="text-green-600 font-medium">Active now</span>
+                  : (() => {
+                      const lbl = activeLabel(false, (conv.otherUser as any).lastLogin);
+                      return lbl
+                        ? <span className="text-slate-400">{lbl}</span>
+                        : <span className="text-slate-400">{conv.otherUser.headline || ''}</span>;
+                    })()
+              }
             </p>
           </div>
         </div>

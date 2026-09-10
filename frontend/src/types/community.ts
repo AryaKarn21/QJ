@@ -70,6 +70,8 @@ export interface AuthorSnapshot {
   bio?: string;
   socialLinks?: { linkedin?: string; twitter?: string; github?: string; website?: string } | null;
   joinedAt?: string | null;
+  /** Last login timestamp — used to show LinkedIn-style "Active X ago" in messaging */
+  lastLogin?: string | null;
   company?: string | null;
   // Additive — only set when `company` was resolved from a real,
   // verified CompanyMember row (see followController.js's
