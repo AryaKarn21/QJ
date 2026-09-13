@@ -299,8 +299,13 @@ const JobseekerSignup: React.FC = () => {
   };
 
   const handleGoogleSignIn = () => {
-    // Redirect to backend Google OAuth endpoint
-    window.location.href = `${API_BASE_URL}/api/auth/google`;
+    // Redirect to backend Google OAuth endpoint. Must include redirect_uri:
+    // without it, the backend falls back to its own FRONTEND_URL env var
+    // (googleAuth() in authController.js) instead of this actual deployed
+    // origin — if that env var is stale/misconfigured, the post-login
+    // redirect lands on a URL that doesn't exist (404). Mirrors Login.tsx.
+    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback`);
+    window.location.href = `${API_BASE_URL}/api/auth/google?redirect_uri=${redirectUri}`;
   };
 
   return (

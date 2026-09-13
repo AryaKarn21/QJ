@@ -106,7 +106,18 @@ export default function Chatbot() {
         // without it the button sits flush against, or under, the system UI
         // on those devices. Falls back to plain bottom-5/right-5 (adds 0)
         // everywhere else.
-        className="fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-[calc(1.25rem+env(safe-area-inset-right))]"
+        //
+        // Bottom offset is larger below `lg` because that's exactly where
+        // Header.tsx's fixed bottom tab bar is visible (`lg:hidden`, h-14 +
+        // its own safe-area padding — see BOTTOM_TABS there). At the old
+        // fixed bottom-5 offset this button's 56px height range (20px-76px
+        // from the bottom) sat squarely on top of that bar's rightmost
+        // (Profile/Me) tab. 4.75rem clears the bar's height with the same
+        // 1.25rem breathing room the desktop position already had; `lg:`
+        // reverts to that original tight offset once the bar disappears.
+        // z-40 (not 50, matching the bar) so the bar's own controls are
+        // never covered even if a future device's safe-area math is off.
+        className="fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[calc(1.25rem+env(safe-area-inset-right))] lg:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         {open ? <X size={24} /> : <MessageCircle size={24} />}
       </button>
@@ -133,7 +144,15 @@ export default function Chatbot() {
           // visible viewport as browser chrome shows/hides, so the panel
           // never overflows behind it. The safe-area insets do the same job
           // as on the toggle button, for notched phones in both orientations.
-          className="fixed z-50 sm:left-auto flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-96 h-[min(32rem,calc(100dvh-7.5rem))] bottom-[calc(6rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))] sm:right-[calc(1.25rem+env(safe-area-inset-right))]"
+          //
+          // Bottom offset (9.5rem below `lg`, 6rem at `lg`+) sits directly
+          // above the repositioned toggle button — same reasoning as the
+          // button above: it must clear Header.tsx's fixed bottom tab bar,
+          // which is only present below `lg`. The height cap's subtracted
+          // amount grows to match, so the panel still ends the same
+          // comfortable distance from the top of the screen instead of
+          // stretching taller by the same amount it moved up.
+          className="fixed z-40 sm:left-auto flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-96 h-[min(32rem,calc(100dvh-11rem))] lg:h-[min(32rem,calc(100dvh-7.5rem))] bottom-[calc(9.5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(6rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))] sm:right-[calc(1.25rem+env(safe-area-inset-right))]"
         >
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-slate-100 bg-primary px-4 py-3.5 text-white">

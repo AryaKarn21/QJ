@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming, AlertCircle,
+  PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming, AlertCircle, SwitchCamera,
 } from 'lucide-react';
 
 interface CallOverlayProps {
-  callState: 'calling' | 'incoming' | 'connected' | 'failed';
+  callState: 'calling' | 'incoming' | 'connected' | 'reconnecting' | 'failed';
   callType: 'audio' | 'video';
   remoteName: string;
   remoteAvatar?: string;
@@ -14,11 +14,13 @@ interface CallOverlayProps {
   isCamOff: boolean;
   callDuration: number;
   error?: string | null;
+  canSwitchCamera?: boolean;
   onAnswer: () => void;
   onReject: () => void;
   onEnd: () => void;
   onToggleMute: () => void;
   onToggleCamera: () => void;
+  onSwitchCamera?: () => void;
   onDismissError?: () => void;
 }
 
@@ -62,11 +64,13 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
   isCamOff,
   callDuration,
   error,
+  canSwitchCamera,
   onAnswer,
   onReject,
   onEnd,
   onToggleMute,
   onToggleCamera,
+  onSwitchCamera,
   onDismissError,
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -92,6 +96,7 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
     callState === 'failed' ? (error || 'Call ended')
     : callState === 'calling' ? 'Calling…'
     : callState === 'incoming' ? 'Incoming call'
+    : callState === 'reconnecting' ? 'Reconnecting…'
     : formatDuration(callDuration);
 
   return (
@@ -105,7 +110,7 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
       {/* ── Video Call Layout ── */}
-      {callType === 'video' && callState === 'connected' ? (
+      {callType === 'video' && (callState === 'connected' || callState === 'reconnecting') ? (
         <div className="relative w-full h-full">
           {/* Remote video — full screen */}
           <video
@@ -159,6 +164,9 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
           >
             <CtrlBtn icon={isMuted ? <MicOff size={20} /> : <Mic size={20} />} onClick={onToggleMute} active={isMuted} label={isMuted ? 'Unmute' : 'Mute'} ariaLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'} />
             <CtrlBtn icon={isCamOff ? <VideoOff size={20} /> : <Video size={20} />} onClick={onToggleCamera} active={isCamOff} label={isCamOff ? 'Cam on' : 'Cam off'} ariaLabel={isCamOff ? 'Turn camera on' : 'Turn camera off'} />
+            {canSwitchCamera && onSwitchCamera && !isCamOff && (
+              <CtrlBtn icon={<SwitchCamera size={20} />} onClick={onSwitchCamera} label="Flip" ariaLabel="Switch between front and rear camera" />
+            )}
             <CtrlBtn icon={<PhoneOff size={22} />} onClick={onEnd} red label="End" ariaLabel="End call" />
           </div>
         </div>
@@ -220,10 +228,10 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
             </div>
           )}
 
-          {/* Calling / connected buttons */}
-          {(callState === 'calling' || callState === 'connected') && (
+          {/* Calling / connected / reconnecting buttons */}
+          {(callState === 'calling' || callState === 'connected' || callState === 'reconnecting') && (
             <div className="flex gap-5 mt-2">
-              {callState === 'connected' && (
+              {(callState === 'connected' || callState === 'reconnecting') && (
                 <CtrlBtn icon={isMuted ? <MicOff size={20} /> : <Mic size={20} />} onClick={onToggleMute} active={isMuted} label={isMuted ? 'Unmute' : 'Mute'} ariaLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'} />
               )}
               <CtrlBtn icon={<PhoneOff size={22} />} onClick={onEnd} red label="End" ariaLabel="End call" />

@@ -5,6 +5,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const { isOriginAllowed } = require('../config/corsOrigins');
 
 // Google OAuth is optional-but-common: registering the strategy used to
 // happen unconditionally at module load, which threw synchronously
@@ -108,7 +109,29 @@ const googleAuth = (req, res, next) => {
     return res.status(503).json({ message: 'Google sign-in is not configured on this server.' });
   }
 
-  const redirectUri = req.query.redirect_uri || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback`;
+  // Validate the requested redirect_uri's origin against the same trusted
+  // list CORS uses (config/corsOrigins.js) before honoring it as the OAuth
+  // `state` value. Without this, anyone could send a victim to
+  // /api/auth/google?redirect_uri=https://evil.example/callback and, once
+  // they complete Google sign-in, have their JWT delivered straight to an
+  // attacker-controlled page (the token is appended to this URL in
+  // googleAuthCallback below) — a classic OAuth open-redirect token theft.
+  // An untrusted or malformed redirect_uri silently falls back to
+  // FRONTEND_URL instead of failing the request outright.
+  const frontendFallback = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback`;
+  let redirectUri = frontendFallback;
+  if (req.query.redirect_uri) {
+    try {
+      const parsedOrigin = new URL(req.query.redirect_uri).origin;
+      if (isOriginAllowed(parsedOrigin)) {
+        redirectUri = req.query.redirect_uri;
+      } else {
+        console.warn(`Google OAuth: rejected untrusted redirect_uri origin "${parsedOrigin}" — falling back to FRONTEND_URL.`);
+      }
+    } catch {
+      console.warn('Google OAuth: malformed redirect_uri query param — falling back to FRONTEND_URL.');
+    }
+  }
   req.session.redirect_uri = redirectUri;
 
   const auth = passport.authenticate('google', {

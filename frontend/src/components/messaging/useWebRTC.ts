@@ -6,6 +6,7 @@ export type CallState =
   | 'calling'      // we are calling someone
   | 'incoming'     // someone is calling us
   | 'connected'    // call is live
+  | 'reconnecting' // the peer connection dropped and may recover on its own (see DISCONNECT_GRACE_MS)
   | 'failed'       // just ended abnormally (no answer, permission denied, connection lost, rejected…) — shows `error` briefly, then auto-returns to idle
   | 'ended';
 
@@ -230,19 +231,33 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
           if (pcRef.current === pc) failCall('The call connection failed.');
         } else if (pc.connectionState === 'disconnected') {
           // Transient network blips often self-heal — don't tear the call
-          // down immediately, only if it's still disconnected after a
-          // grace period (and only if this is still the live connection).
+          // down immediately. Surface it as 'reconnecting' (a real status
+          // the UI shows) rather than silently staying on 'connected' for
+          // the whole grace period, then only fail if it's still
+          // disconnected after that (and only if this is still the live
+          // connection).
+          if (pcRef.current === pc && callStateRef.current === 'connected') {
+            setCallState('reconnecting');
+          }
           setTimeout(() => {
-            if (pcRef.current === pc && pc.connectionState === 'disconnected') {
+            if (pcRef.current !== pc) return;
+            if (pc.connectionState === 'disconnected') {
               failCall('The call connection was lost.');
+            } else if (callStateRef.current === 'reconnecting') {
+              // Recovered on its own before the grace period elapsed.
+              setCallState('connected');
             }
           }, DISCONNECT_GRACE_MS);
+        } else if (pc.connectionState === 'connected') {
+          if (pcRef.current === pc && callStateRef.current === 'reconnecting') {
+            setCallState('connected');
+          }
         }
       };
 
       return pc;
     },
-    [socket, setRemoteStream, failCall]
+    [socket, setRemoteStream, failCall, setCallState]
   );
 
   // ── Start a call ─────────────────────────────────────────────────────────────
@@ -391,6 +406,78 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
     setIsCamOff((c) => !c);
   }, []);
 
+  // ── Switch camera (front/rear) ───────────────────────────────────────────────
+  // Only meaningful on devices with more than one camera (mobile front/rear);
+  // `canSwitchCamera` is computed once below so the UI can hide the control
+  // entirely on a single-camera desktop instead of showing a button that does
+  // nothing. `facingModeRef` tracks which one is currently active — there's no
+  // reliable cross-browser way to read this back off a live track's settings.
+  const [canSwitchCamera, setCanSwitchCamera] = useState(false);
+  const facingModeRef = useRef<'user' | 'environment'>('user');
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => setCanSwitchCamera(devices.filter((d) => d.kind === 'videoinput').length > 1))
+      .catch(() => {});
+  }, []);
+
+  const switchCamera = useCallback(async () => {
+    const stream = localStreamRef.current;
+    const pc = pcRef.current;
+    if (!stream || !pc || callType !== 'video') return;
+
+    const nextFacing = facingModeRef.current === 'user' ? 'environment' : 'user';
+    let newStream: MediaStream;
+    try {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: nextFacing },
+      });
+    } catch (err) {
+      // Some devices/browsers don't support facingMode constraints even
+      // with 2+ videoinput entries — fail quietly and keep the current
+      // camera rather than tearing down an otherwise-healthy call.
+      console.warn('Failed to switch camera:', err);
+      return;
+    }
+
+    const newTrack = newStream.getVideoTracks()[0];
+    if (!newTrack) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    // Swap the outgoing track on the existing connection — renegotiating
+    // via a fresh offer/answer here would show a brief black frame (and
+    // extra signaling round-trip) for something the other side doesn't
+    // need to know happened at all.
+    const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+    if (sender) {
+      try {
+        await sender.replaceTrack(newTrack);
+      } catch (err) {
+        console.warn('Failed to replace video track:', err);
+        newStream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+    }
+
+    // Mutate the existing MediaStream in place (rather than calling
+    // setLocalStream with a new object) — the local <video> element's
+    // srcObject already points at this stream, and swapping its track set
+    // updates the rendered frame live without needing to re-attach it.
+    const oldTrack = stream.getVideoTracks()[0];
+    newTrack.enabled = !isCamOff;
+    if (oldTrack) {
+      stream.removeTrack(oldTrack);
+      oldTrack.stop();
+    }
+    stream.addTrack(newTrack);
+    facingModeRef.current = nextFacing;
+  }, [callType, isCamOff]);
+
   // ── Socket event listeners — registered exactly ONCE per socket instance
   // (not re-subscribed on every callState change like the previous
   // implementation), reading `callStateRef.current` for freshness instead.
@@ -483,5 +570,7 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
     endCall,
     toggleMute,
     toggleCamera,
+    canSwitchCamera,
+    switchCamera,
   };
 }

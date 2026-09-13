@@ -16,9 +16,11 @@ const OAuthCallback: React.FC = () => {
       // Dispatch auth change event to update the app state
       window.dispatchEvent(new Event('authChange'));
 
-      // Redirect based on role
+      // Redirect based on role — jobseekers land on the Community feed
+      // (their default landing page), not Home. Employer/admin dashboards
+      // are unaffected.
       if (role === 'jobseeker') {
-        navigate('/');
+        navigate('/community');
       } else if (role === 'employer') {
         navigate('/employer/profile');
       } else if (role === 'admin' || role === 'superadmin') {

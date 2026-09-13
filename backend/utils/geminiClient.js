@@ -8,13 +8,16 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // it's missing — instead of five copies of `new GoogleGenerativeAI(...)`.
 let cachedClient = null;
 
-// "gemini-3.5-flash" here was a typo (there is no such model — the
-// comment above even says this should match blogController.js, which
-// used "gemini-2.5-flash") that broke every caller of this shared
-// client: chatbot, community AI (captions/grammar/summarize/moderation/
-// hiring-detect/job-recs), resume AI, and content moderation all request
-// a model that doesn't exist and fail on every call.
-function getGeminiModel(modelName = "gemini-2.5-flash")   {
+// Model pinned to "gemini-2.5-flash" used to work, but Google has since
+// retired it for this project: generateContent on it now returns 404
+// "This model models/gemini-2.5-flash is no longer available to new
+// users. Please update your code to use models/gemini-3.6-flash" — verified
+// directly against the Generative Language API with the configured key.
+// Every caller of this shared client (chatbot, community AI, resume AI,
+// cover letter AI, blog AI, moderation) was silently falling back to its
+// non-AI path because of this. Confirmed gemini-3.6-flash generates
+// successfully with the same key.
+function getGeminiModel(modelName = "gemini-3.6-flash")   {
   if (!process.env.GEMINI_API_KEY) {
     const err = new Error(
       "GEMINI_API_KEY is not set. AI features (caption generation, grammar " +

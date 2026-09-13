@@ -7,6 +7,24 @@ const { allowedOrigins } = require("../config/corsOrigins");
 
 let ioInstance = null;
 
+// Tracks who is currently in an established call: userId -> partner userId.
+// Populated when a call is answered, cleared on end/reject/disconnect.
+// Used to (a) tell a caller immediately that someone is already on another
+// call instead of silently ringing for the full client-side timeout, and
+// (b) proactively notify the other party if this user disconnects
+// unexpectedly (tab closed, crash, network loss) instead of relying solely
+// on their RTCPeerConnection to notice — which it eventually does too, but
+// only after its own multi-second ICE disconnect grace period.
+const activeCalls = new Map();
+
+function clearActiveCall(userId) {
+  const partner = activeCalls.get(userId);
+  if (!partner) return null;
+  activeCalls.delete(userId);
+  if (activeCalls.get(partner) === userId) activeCalls.delete(partner);
+  return partner;
+}
+
 function initSocket(httpServer) {
   const { Server } = require("socket.io");
 
@@ -100,7 +118,15 @@ function initSocket(httpServer) {
         // Socket.IO removes a socket from its rooms before/at the point
         // 'disconnect' fires, so this query no longer counts it.
         const sockets = await ioInstance.in(`user:${socket.userId}`).allSockets();
-        if (sockets.size === 0) broadcastPresence(socket.userId, false);
+        if (sockets.size === 0) {
+          broadcastPresence(socket.userId, false);
+          // If this was their last connection and they were mid-call,
+          // don't leave the other party's peer connection to figure out on
+          // its own (multiple seconds later, via ICE) that nobody's coming
+          // back — tell them right away so the UI can end cleanly.
+          const partner = clearActiveCall(socket.userId);
+          if (partner) ioInstance.to(`user:${partner}`).emit("call:ended", { from: socket.userId });
+        }
       } catch (err) {
         console.error("presence (disconnect) error:", err.message);
       }
@@ -197,6 +223,21 @@ function initSocket(httpServer) {
         socket.emit("call:error", { reason: "Could not place the call. Please try again." });
         return;
       }
+
+      // Fail fast instead of leaving the caller ringing out the full
+      // client-side timeout (CALL_TIMEOUT_MS in useWebRTC.ts) for something
+      // we already know server-side: nobody's there to answer, or they're
+      // already on another call.
+      if (activeCalls.has(to)) {
+        socket.emit("call:error", { reason: "This user is currently on another call." });
+        return;
+      }
+      const targetSockets = await ioInstance.in(`user:${to}`).allSockets();
+      if (targetSockets.size === 0) {
+        socket.emit("call:error", { reason: "This user is currently offline." });
+        return;
+      }
+
       ioInstance.to(`user:${to}`).emit("call:incoming", {
         from: socket.userId,
         offer,
@@ -206,9 +247,14 @@ function initSocket(httpServer) {
       });
     });
 
-    // Callee accepts — sends answer back to caller
+    // Callee accepts — sends answer back to caller. This is the point the
+    // call is actually established, so it's what marks both sides "busy"
+    // for the activeCalls busy-check above (not the initial offer/ring,
+    // which hasn't been accepted by anyone yet).
     socket.on("call:answer", ({ to, answer }) => {
       if (!isValidTarget(to) || !answer) return;
+      activeCalls.set(socket.userId, to);
+      activeCalls.set(to, socket.userId);
       ioInstance.to(`user:${to}`).emit("call:answered", {
         from: socket.userId,
         answer,
@@ -227,6 +273,7 @@ function initSocket(httpServer) {
     // Either side ends the call
     socket.on("call:end", ({ to }) => {
       if (!isValidTarget(to)) return;
+      clearActiveCall(socket.userId);
       ioInstance.to(`user:${to}`).emit("call:ended", {
         from: socket.userId,
       });
@@ -235,6 +282,7 @@ function initSocket(httpServer) {
     // Callee rejects the call
     socket.on("call:reject", ({ to }) => {
       if (!isValidTarget(to)) return;
+      clearActiveCall(socket.userId);
       ioInstance.to(`user:${to}`).emit("call:rejected", {
         from: socket.userId,
       });

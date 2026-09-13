@@ -602,6 +602,7 @@ export function MessagesPage() {
     callState, callType, incomingCall, localStream, remoteStream,
     isMuted, isCamOff, callDuration, error: callError, dismissError,
     startCall, answerCall, rejectCall, endCall, toggleMute, toggleCamera,
+    canSwitchCamera, switchCamera,
   } = useWebRTC(socket, userId || '');
 
   useEffect(() => {
@@ -680,15 +681,16 @@ export function MessagesPage() {
   return (
     <div className="min-h-dvh bg-[#f3f2ef]">
       {/* Call overlay */}
-      {(callState === 'calling' || callState === 'incoming' || callState === 'connected' || callState === 'failed') && (
+      {(callState === 'calling' || callState === 'incoming' || callState === 'connected' || callState === 'reconnecting' || callState === 'failed') && (
         <CallOverlay
           callState={callState} callType={callType}
           remoteName={callRemoteName} remoteAvatar={callRemoteAvatar}
           localStream={localStream} remoteStream={remoteStream}
           isMuted={isMuted} isCamOff={isCamOff} callDuration={callDuration}
           error={callError}
+          canSwitchCamera={canSwitchCamera}
           onAnswer={answerCall} onReject={rejectCall} onEnd={endCall}
-          onToggleMute={toggleMute} onToggleCamera={toggleCamera}
+          onToggleMute={toggleMute} onToggleCamera={toggleCamera} onSwitchCamera={switchCamera}
           onDismissError={dismissError}
         />
       )}

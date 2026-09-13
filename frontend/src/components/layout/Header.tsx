@@ -31,11 +31,14 @@ const NAV_ITEMS = [
   { name: 'Contact',        icon: <Mail size={18} />,          path: '/contact' },
 ];
 
-// Bottom tab bar — Community first (as requested), icon-only, LinkedIn flow.
+// Bottom tab bar — Community is the primary jobseeker destination (default
+// post-login landing page, see Login.tsx/OAuthCallback.tsx), so it leads the
+// bar and Home has been dropped from it entirely. Home is still reachable
+// via the logo and the full desktop nav (NAV_ITEMS above) at its existing
+// '/' route — this only changes what the mobile tab bar surfaces.
 // Resume Builder excluded here (shown in non-sticky nav only per requirement).
 const BOTTOM_TABS = [
   { name: 'Community', icon: Users,          path: '/community' },
-  { name: 'Home',      icon: Home,           path: '/'          },
   { name: 'Jobs',      icon: BriefcaseIcon,  path: '/jobs'      },
   { name: 'Messages',  icon: MessageCircle,  path: '/messages'  },
   { name: 'Profile',   icon: User,           path: null         }, // opens profile menu

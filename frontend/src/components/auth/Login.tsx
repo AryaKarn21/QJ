@@ -49,7 +49,7 @@ const Login: React.FC = () => {
 
       const role = response.role;
       if (role === 'jobseeker') {
-        navigate('/');
+        navigate('/community');
       } else if (role === 'employer') {
         navigate('/employer/profile');
       } else if (role === 'admin' || role === 'superadmin') {
@@ -85,7 +85,7 @@ const Login: React.FC = () => {
       localStorage.setItem('token', token);
 
       if (role === 'jobseeker') {
-        navigate('/');
+        navigate('/community');
       } else if (role === 'employer') {
         navigate('/employer/profile');
       } else if (role === 'admin' || role === 'superadmin') {
