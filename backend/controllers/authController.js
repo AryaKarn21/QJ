@@ -7,6 +7,35 @@ const { OAuth2Client } = require('google-auth-library');
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const { isOriginAllowed } = require('../config/corsOrigins');
 
+// Verified live (2026-09) that this deployment's FRONTEND_URL was still set
+// to the literal example placeholder from backend/.env.example
+// ("https://your-frontend.vercel.app") — a domain nobody owns, so every
+// redirect built from it 404s. That's a dashboard config value this code
+// can't fix directly, but every Google OAuth redirect in this file used to
+// build itself from `process.env.FRONTEND_URL || 'http://localhost:5173'`
+// with no sanity check — so a misconfigured *or still-placeholder* value
+// broke Google sign-in silently, in production, with no error surfaced
+// anywhere. Treat an unset or placeholder-shaped value as unset and fall
+// back to the actual known production frontend instead, so sign-in keeps
+// working even before FRONTEND_URL gets corrected on Render. Once it's set
+// correctly there, this fallback simply never triggers.
+const KNOWN_PRODUCTION_FRONTEND_URL = 'https://qj-sigma.vercel.app';
+function resolveFrontendUrl() {
+  const configured = (process.env.FRONTEND_URL || '').trim();
+  const looksLikePlaceholder = !configured || /your-frontend|example\.(com|org)/i.test(configured);
+  if (looksLikePlaceholder) {
+    if (configured) {
+      console.warn(
+        `Google OAuth: FRONTEND_URL ("${configured}") looks like an unfilled placeholder — ` +
+        `falling back to ${process.env.NODE_ENV === 'production' ? KNOWN_PRODUCTION_FRONTEND_URL : 'http://localhost:5173'}. ` +
+        `Fix FRONTEND_URL in this server's environment config to remove this warning.`
+      );
+    }
+    return process.env.NODE_ENV === 'production' ? KNOWN_PRODUCTION_FRONTEND_URL : 'http://localhost:5173';
+  }
+  return configured;
+}
+
 // Google OAuth is optional-but-common: registering the strategy used to
 // happen unconditionally at module load, which threw synchronously
 // ("OAuth2Strategy requires a clientID option") the moment this file was
@@ -118,7 +147,7 @@ const googleAuth = (req, res, next) => {
   // googleAuthCallback below) — a classic OAuth open-redirect token theft.
   // An untrusted or malformed redirect_uri silently falls back to
   // FRONTEND_URL instead of failing the request outright.
-  const frontendFallback = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback`;
+  const frontendFallback = `${resolveFrontendUrl()}/auth/callback`;
   let redirectUri = frontendFallback;
   if (req.query.redirect_uri) {
     try {
@@ -223,14 +252,14 @@ const verifyGoogleTokenMobile = async (req, res) => {
 
 // Google OAuth callback
 const googleAuthCallback = (req, res, next) => {
-  const frontendFallback = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendFallback = resolveFrontendUrl();
   if (!GOOGLE_OAUTH_CONFIGURED) {
     return res.redirect(`${frontendFallback}/login?error=${encodeURIComponent('Google sign-in is not configured.')}`);
   }
 
   passport.authenticate('google', (err, user) => {
-    const redirectUri = req.session.redirect_uri || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback`;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const redirectUri = req.session.redirect_uri || `${resolveFrontendUrl()}/auth/callback`;
+    const frontendUrl = resolveFrontendUrl();
 
     if (err || !user) {
       return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Authentication failed')}`);
