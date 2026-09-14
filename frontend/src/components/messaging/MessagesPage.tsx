@@ -5,15 +5,51 @@ import axios from 'axios';
 import {
   Send, Search, Loader2, AlertCircle, MessageCircle,
   Phone, Video, MoreHorizontal, ChevronLeft, X, Check, CheckCheck, Edit3, User, Trash2,
+  Paperclip, PhoneMissed, FileText, Download,
 } from 'lucide-react';
-import { fetchConversations, fetchMessages, sendMessage, deleteMessage } from '../../api/messageApi';
+import { fetchConversations, fetchMessages, sendMessage, deleteMessage, logCall } from '../../api/messageApi';
 import { useSocket } from '../../context/SocketContext';
 import { useCurrentUser } from '../../utils/currentUser';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from '../community/Avatar';
-import type { ConversationSummary, DirectMessage } from '../../types/community';
-import { useWebRTC } from './useWebRTC';
+import type { ConversationSummary, DirectMessage, MessageAttachment } from '../../types/community';
+import { useWebRTC, type CallEndedInfo } from './useWebRTC';
 import { CallOverlay } from './CallOverlay';
+
+// 15MB/file, 4 files/message — mirrors backend/middleware/messageUploadMiddleware.js.
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+const MAX_ATTACHMENTS = 4;
+const ATTACHMENT_ACCEPT =
+  'image/jpeg,image/png,image/gif,image/webp,application/pdf,application/msword,' +
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document,' +
+  'application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,' +
+  'application/zip,text/plain';
+
+function isImageAttachment(a: MessageAttachment) {
+  return !!a.mimeType?.startsWith('image/');
+}
+
+function formatBytes(bytes?: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatCallDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+// Short, sender-agnostic summary used both in the chat thread's call bubble
+// and the sidebar's last-message preview.
+function callSummary(callType: 'audio' | 'video', status: 'completed' | 'missed' | 'declined', duration: number, mine: boolean): string {
+  const kind = callType === 'video' ? 'Video call' : 'Voice call';
+  if (status === 'completed') return `${kind} · ${formatCallDuration(duration)}`;
+  if (status === 'declined') return mine ? `${kind} declined` : `You declined this ${kind.toLowerCase()}`;
+  return mine ? `${kind} · No answer` : `Missed ${kind.toLowerCase()}`;
+}
 
 function timeLabel(d: string) {
   return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -55,17 +91,28 @@ function dayLabel(d: string) {
   return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-type PendingMessage = DirectMessage & { _pending?: boolean; _failed?: boolean };
+type PendingMessage = DirectMessage & { _pending?: boolean; _failed?: boolean; _files?: File[] };
 
 const TYPING_DEBOUNCE_MS = 2000;
 const TYPING_AUTO_CLEAR_MS = 5000;
 
 // ─── Sidebar conversation item ────────────────────────────────────────────────
 
+function lastMessagePreview(conv: ConversationSummary, userId: string | null): string {
+  const lm = conv.lastMessage;
+  if (!lm) return 'Start a conversation';
+  if (lm.type === 'call' && lm.call) {
+    return callSummary(lm.call.callType, lm.call.status, lm.call.duration, String(lm.sender) === userId);
+  }
+  if (lm.hasAttachments) return lm.text ? lm.text : '📎 Attachment';
+  return lm.text || 'Start a conversation';
+}
+
 function ConvItem({
-  conv, active, online, onClick,
-}: { conv: ConversationSummary; active: boolean; online: boolean; onClick: () => void }) {
+  conv, active, online, onClick, userId,
+}: { conv: ConversationSummary; active: boolean; online: boolean; onClick: () => void; userId: string | null }) {
   const actLabel = activeLabel(online, (conv.otherUser as any).lastLogin);
+  const preview = lastMessagePreview(conv, userId);
   return (
     <button
       onClick={onClick}
@@ -98,14 +145,14 @@ function ConvItem({
         ) : (
           <div className="flex items-center justify-between gap-2 mt-0.5">
             <p className={`text-xs truncate min-w-0 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
-              {conv.lastMessage?.text || 'Start a conversation'}
+              {preview}
             </p>
           </div>
         )}
         {/* Last message preview shown below activity status */}
         {actLabel && (
           <p className={`text-xs truncate min-w-0 mt-0.5 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
-            {conv.lastMessage?.text || 'Start a conversation'}
+            {preview}
           </p>
         )}
         {/* Unread badge — always shown regardless of actLabel */}
@@ -132,6 +179,29 @@ function Bubble({
   onRetry: (msg: PendingMessage) => void;
   onDelete: (msg: PendingMessage) => void;
 }) {
+  // Call-log entries render as a centered muted pill (WhatsApp/Messenger
+  // convention) rather than a chat bubble — there's no text to send/retry,
+  // and it belongs to neither side of the conversation visually.
+  if (msg.type === 'call' && msg.call) {
+    const missed = msg.call.status !== 'completed';
+    const CallIcon = msg.call.callType === 'video' ? Video : missed ? PhoneMissed : Phone;
+    return (
+      <div className="flex justify-center py-1">
+        <div className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium ${
+          missed ? 'border-red-100 bg-red-50 text-red-500' : 'border-slate-200 bg-white text-slate-500'
+        }`}>
+          <CallIcon size={13} />
+          <span>{callSummary(msg.call.callType, msg.call.status, msg.call.duration, mine)}</span>
+          <span className="text-slate-300">·</span>
+          <span className="text-slate-400">{timeLabel(msg.createdAt)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const images = (msg.attachments || []).filter(isImageAttachment);
+  const files = (msg.attachments || []).filter((a) => !isImageAttachment(a));
+
   return (
     <div className={`group flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar — only shown for last message in a group */}
@@ -156,20 +226,67 @@ function Bubble({
       )}
 
       <div className={`flex min-w-0 flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[68%] ${mine ? 'items-end' : 'items-start'}`}>
-        <button
-          type="button"
-          onClick={() => msg._failed && onRetry(msg)}
-          disabled={!msg._failed}
-          className={`min-w-0 max-w-full px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm text-left ${
-            mine
-              ? msg._failed
-                ? 'bg-red-500 text-white rounded-br-none cursor-pointer'
-                : 'bg-blue-600 text-white rounded-br-none'
-              : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
-          } ${msg._pending ? 'opacity-60' : ''} ${!msg._failed ? 'cursor-default' : ''}`}
-        >
-          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.text}</p>
-        </button>
+        {/* Image attachments — small thumbnail grid, click opens full size */}
+        {images.length > 0 && (
+          <div className={`mb-1 grid gap-1 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {images.map((img, idx) => (
+              <a
+                key={idx}
+                href={resolveMediaUrl(img.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+              >
+                <img
+                  src={resolveMediaUrl(img.url)}
+                  alt={img.fileName || 'Attachment'}
+                  className="h-40 w-full max-w-[220px] object-cover sm:h-48 sm:max-w-[260px]"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Non-image attachments — download chips */}
+        {files.length > 0 && (
+          <div className="mb-1 flex flex-col gap-1.5">
+            {files.map((f, idx) => (
+              <a
+                key={idx}
+                href={resolveMediaUrl(f.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={f.fileName}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs shadow-sm ${
+                  mine ? 'border-blue-400/40 bg-blue-500/10 text-blue-900' : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                <FileText size={16} className="flex-shrink-0 text-slate-400" />
+                <span className="min-w-0 flex-1 truncate font-medium">{f.fileName || 'File'}</span>
+                <span className="flex-shrink-0 text-slate-400">{formatBytes(f.size)}</span>
+                <Download size={13} className="flex-shrink-0 text-slate-400" />
+              </a>
+            ))}
+          </div>
+        )}
+
+        {msg.text && (
+          <button
+            type="button"
+            onClick={() => msg._failed && onRetry(msg)}
+            disabled={!msg._failed}
+            className={`min-w-0 max-w-full px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm text-left ${
+              mine
+                ? msg._failed
+                  ? 'bg-red-500 text-white rounded-br-none cursor-pointer'
+                  : 'bg-blue-600 text-white rounded-br-none'
+                : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
+            } ${msg._pending ? 'opacity-60' : ''} ${!msg._failed ? 'cursor-default' : ''}`}
+          >
+            <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.text}</p>
+          </button>
+        )}
 
         <div className={`flex items-center gap-1 mt-1 px-1 ${mine ? 'flex-row-reverse' : ''}`}>
           <span className="text-[10px] text-slate-400">
@@ -219,8 +336,10 @@ function ChatPanel({
   const [otherTyping, setOtherTyping] = useState(false);
   const [readAt, setReadAt] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -242,6 +361,7 @@ function ChatPanel({
     setSending(false);
     setOtherTyping(false);
     setReadAt(null);
+    setPendingFiles([]);
     isTypingRef.current = false;
     if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null; }
     fetchMessages(conv._id, 1)
@@ -351,15 +471,15 @@ function ChatPanel({
     typingTimeoutRef.current = setTimeout(stopTyping, TYPING_DEBOUNCE_MS);
   };
 
-  // Sends (or re-sends) `body` under `id` (a fresh temp id for a new
+  // Sends (or re-sends) `body`/`files` under `id` (a fresh temp id for a new
   // message, or an existing failed message's id for a retry). Dedupes
   // against the real-time `message:new` broadcast either order arrives in:
   // if the socket delivers the saved message before this REST call
   // resolves, the temp entry is simply dropped instead of duplicated.
-  const deliver = async (id: string, body: string) => {
+  const deliver = async (id: string, body: string, files?: File[]) => {
     setSending(true);
     try {
-      const saved = await sendMessage(conv._id, body);
+      const saved = await sendMessage(conv._id, body, files);
       setMessages((p) => {
         const withoutTemp = p.filter((m) => m._id !== id);
         if (withoutTemp.some((m) => m._id === saved._id)) return withoutTemp;
@@ -372,6 +492,8 @@ function ChatPanel({
       // silent "failed" bubble, so the sender understands why.
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         toast.error(err.response.data?.message || "You can't send messages in this conversation.");
+      } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+        toast.error(err.response.data.message);
       }
     } finally {
       setSending(false);
@@ -379,21 +501,56 @@ function ChatPanel({
   };
 
   const send = async () => {
-    if (!text.trim() || sending || !userId) return;
     const body = text.trim();
+    const files = pendingFiles;
+    if ((!body && files.length === 0) || sending || !userId) return;
     const tempId = `tmp-${Date.now()}`;
     setText('');
+    setPendingFiles([]);
     if (inputRef.current) inputRef.current.style.height = 'auto';
     stopTyping();
-    setMessages((p) => [...p, { _id: tempId, conversation: conv._id, sender: userId, text: body, createdAt: new Date().toISOString(), _pending: true }]);
+    setMessages((p) => [...p, {
+      _id: tempId,
+      conversation: conv._id,
+      sender: userId,
+      text: body,
+      // Local object URLs so the optimistic bubble shows the picked
+      // images/files immediately, before the server round-trip resolves.
+      attachments: files.map((f) => ({ url: URL.createObjectURL(f), mimeType: f.type, fileName: f.name, size: f.size })),
+      createdAt: new Date().toISOString(),
+      _pending: true,
+      _files: files,
+    }]);
     setTimeout(() => scrollToBottom(), 50);
-    await deliver(tempId, body);
+    await deliver(tempId, body, files);
   };
 
   const retry = (msg: PendingMessage) => {
     if (sending) return;
     setMessages((p) => p.map((m) => m._id === msg._id ? { ...m, _pending: true, _failed: false } : m));
-    deliver(msg._id, msg.text);
+    deliver(msg._id, msg.text, msg._files);
+  };
+
+  const handleFilesPicked = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const incoming = Array.from(fileList);
+    const oversized = incoming.filter((f) => f.size > MAX_ATTACHMENT_BYTES);
+    if (oversized.length > 0) {
+      toast.error(`${oversized.length > 1 ? 'Some files are' : `"${oversized[0].name}" is`} larger than 15MB.`);
+    }
+    setPendingFiles((p) => {
+      const next = [...p, ...incoming.filter((f) => f.size <= MAX_ATTACHMENT_BYTES)];
+      if (next.length > MAX_ATTACHMENTS) {
+        toast.error(`You can attach up to ${MAX_ATTACHMENTS} files at once.`);
+        return next.slice(0, MAX_ATTACHMENTS);
+      }
+      return next;
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePendingFile = (idx: number) => {
+    setPendingFiles((p) => p.filter((_, i) => i !== idx));
   };
 
   const handleDeleteMessage = async (msg: PendingMessage) => {
@@ -552,7 +709,52 @@ function ChatPanel({
 
       {/* ── Input ── */}
       <div className="border-t border-slate-100 bg-white px-3 py-2.5 sm:px-4 sm:py-3 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:pb-3">
+        {/* Picked-but-not-yet-sent attachments — shown above the input so
+            the sender can review/remove before hitting send. */}
+        {pendingFiles.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {pendingFiles.map((f, idx) => {
+              const isImg = f.type.startsWith('image/');
+              return (
+                <div key={idx} className="relative flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2 text-xs text-slate-600">
+                  {isImg ? (
+                    <img src={URL.createObjectURL(f)} alt="" className="h-8 w-8 rounded object-cover" />
+                  ) : (
+                    <FileText size={16} className="text-slate-400" />
+                  )}
+                  <span className="max-w-[110px] truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removePendingFile(idx)}
+                    aria-label={`Remove ${f.name}`}
+                    className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-300 text-white hover:bg-slate-400"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 px-3 py-1.5 sm:px-4 sm:py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ATTACHMENT_ACCEPT}
+            onChange={(e) => handleFilesPicked(e.target.files)}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={pendingFiles.length >= MAX_ATTACHMENTS}
+            aria-label="Attach photo or file"
+            title="Attach photo or file"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Paperclip size={18} />
+          </button>
           <textarea
             ref={inputRef}
             value={text}
@@ -565,8 +767,8 @@ function ChatPanel({
             className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-1.5"
             style={{ maxHeight: 120 }}
           />
-          <button onClick={send} disabled={!text.trim() || sending} aria-label="Send message"
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${text.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <button onClick={send} disabled={(!text.trim() && pendingFiles.length === 0) || sending} aria-label="Send message"
+            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${(text.trim() || pendingFiles.length > 0) ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
@@ -598,12 +800,24 @@ export function MessagesPage() {
   const [search, setSearch] = useState('');
   const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
 
+  // Logs the call as a message once it ends (see useWebRTC's onCallEnded
+  // contract) — only fires on the caller's side, so this never double-logs.
+  // Looked up by peer id against the already-loaded conversation list rather
+  // than threading a conversationId through the call itself, since a call
+  // can only be placed from an existing conversation (see call:offer's
+  // permission check in backend/utils/socket.js).
+  const handleCallEnded = useCallback((info: CallEndedInfo) => {
+    const conv = conversations.find((c) => c.otherUser._id === info.peerId);
+    if (!conv) return;
+    logCall(conv._id, info).catch((err) => console.error('Failed to log call:', err));
+  }, [conversations]);
+
   const {
     callState, callType, incomingCall, localStream, remoteStream,
     isMuted, isCamOff, callDuration, error: callError, dismissError,
     startCall, answerCall, rejectCall, endCall, toggleMute, toggleCamera,
     canSwitchCamera, switchCamera,
-  } = useWebRTC(socket, userId || '');
+  } = useWebRTC(socket, userId || '', handleCallEnded);
 
   useEffect(() => {
     fetchConversations()
@@ -611,6 +825,41 @@ export function MessagesPage() {
       .catch(() => toast.error('Could not load conversations.'))
       .finally(() => setLoading(false));
   }, []);
+
+  // Keeps the sidebar itself live: without this, a new message only updated
+  // the currently-open ChatPanel (which explicitly joins that one
+  // conversation's socket room) — the conversation list's unread badge,
+  // preview text, and ordering were frozen until the next full page load.
+  // The recipient's personal room (see messageController.js's emitToUser)
+  // is what makes this fire regardless of which conversation, if any, is
+  // currently open.
+  useEffect(() => {
+    if (!socket) return;
+    const handleGlobalMessage = (msg: DirectMessage) => {
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c._id === msg.conversation);
+        if (idx === -1) return prev; // not loaded locally yet — next fetch picks it up
+        const isMine = msg.sender === userId;
+        const isActive = msg.conversation === conversationId;
+        const updated: ConversationSummary = {
+          ...prev[idx],
+          lastMessage: {
+            text: msg.text || '',
+            sender: msg.sender,
+            createdAt: msg.createdAt,
+            type: msg.type || 'text',
+            call: msg.call || null,
+            hasAttachments: !!(msg.attachments && msg.attachments.length),
+          },
+          lastMessageAt: msg.createdAt,
+          unreadCount: isMine || isActive ? prev[idx].unreadCount : prev[idx].unreadCount + 1,
+        };
+        return [updated, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      });
+    };
+    socket.on('message:new', handleGlobalMessage);
+    return () => { socket.off('message:new', handleGlobalMessage); };
+  }, [socket, userId, conversationId]);
 
   // Real presence, not a decorative always-on dot: a stable key (not the
   // `conversations` array reference itself, which gets a new identity on
@@ -768,6 +1017,7 @@ export function MessagesPage() {
                       active={c._id === conversationId}
                       online={!!onlineMap[c.otherUser._id]}
                       onClick={() => navigate(`/messages/${c._id}`)}
+                      userId={userId}
                     />
                   ))}
                 </div>

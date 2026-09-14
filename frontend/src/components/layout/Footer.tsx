@@ -321,49 +321,52 @@ const Footer: React.FC = () => {
         <FooterTestimonials />
 
         {/* Bottom Bar & Legal Support Links */}
-        <div className="mt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
+        <div className="mt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-5">
 
-          <p>© {new Date().getFullYear()} Star Euro Group. All rights reserved.</p>
+          <p className="text-center md:text-left">© {new Date().getFullYear()} Star Euro Group. All rights reserved.</p>
 
-          <div className="flex flex-wrap items-center gap-6">
+          {/* Even 2-column grid on mobile (was a ragged flex-wrap that let
+              the last row's items end up alone/off-balance) resolving to a
+              single flowing row once there's room, at md:. */}
+          <div className="grid w-full grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6 sm:gap-y-2">
             <button
               type="button"
               onClick={() => navigate('/privacy')}
-              className="flex items-center gap-1 hover:text-slate-300 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
             >
-              <ShieldCheck size={14} />
+              <ShieldCheck size={14} className="flex-shrink-0" />
               <span>Privacy Policy</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/terms')}
-              className="flex items-center gap-1 hover:text-slate-300 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
             >
-              <FileText size={14} />
+              <FileText size={14} className="flex-shrink-0" />
               <span>Terms of Service</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/community-guidelines')}
-              className="flex items-center gap-1 hover:text-slate-300 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
             >
-              <ShieldCheck size={14} />
+              <ShieldCheck size={14} className="flex-shrink-0" />
               <span>Community Guidelines</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/faq')}
-              className="flex items-center gap-1 hover:text-slate-300 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
             >
-              <HelpCircle size={14} />
+              <HelpCircle size={14} className="flex-shrink-0" />
               <span>FAQ</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/career-tips')}
-              className="flex items-center gap-1 hover:text-slate-300 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
             >
-              <FileText size={14} />
+              <FileText size={14} className="flex-shrink-0" />
               <span>Career Tips</span>
             </button>
             {/* Was navigate('/support') — no such top-level route exists
@@ -372,9 +375,9 @@ const Footer: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/contact')}
-              className="flex items-center gap-1 hover:text-slate-300 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
             >
-              <HelpCircle size={14} />
+              <HelpCircle size={14} className="flex-shrink-0" />
               <span>Support</span>
             </button>
           </div>

@@ -222,10 +222,30 @@ export interface CommunityNotification {
   createdAt: string;
 }
 
+export interface CallLogInfo {
+  callType: 'audio' | 'video';
+  status: 'completed' | 'missed' | 'declined';
+  duration: number; // seconds
+}
+
+export interface MessageAttachment {
+  url: string;
+  mimeType?: string;
+  fileName?: string;
+  size?: number;
+}
+
 export interface ConversationSummary {
   _id: string;
   otherUser: AuthorSnapshot;
-  lastMessage: { text: string; sender: string; createdAt: string } | null;
+  lastMessage: {
+    text: string;
+    sender: string;
+    createdAt: string;
+    type?: 'text' | 'call';
+    call?: CallLogInfo | null;
+    hasAttachments?: boolean;
+  } | null;
   lastMessageAt: string;
   unreadCount: number;
 }
@@ -234,6 +254,11 @@ export interface DirectMessage {
   _id: string;
   conversation: string;
   sender: string;
+  senderName?: string;
+  senderAvatar?: string | null;
   text: string;
+  attachments?: MessageAttachment[];
+  type?: 'text' | 'call';
+  call?: CallLogInfo | null;
   createdAt: string;
 }

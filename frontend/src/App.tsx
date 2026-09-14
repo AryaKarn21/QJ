@@ -98,9 +98,12 @@ import Unauthorized from './components/auth/Unauthorized';
 import AuditLogs from './components/admin/audit/AuditLogs';
 import Security from './components/admin/security/Security';
 import Chatbot from './components/common/Chatbot';
+import MessageToastListener from './components/messaging/MessageToastListener';
+import { useCurrentUser } from './utils/currentUser';
 
 function AppWrapper() {
   const location = useLocation();
+  const { isAuthenticated } = useCurrentUser();
 
   const hideHeaderFooter = [
     '/user',
@@ -368,7 +371,20 @@ function AppWrapper() {
       </div>
 
       {!shouldHideHeaderFooter && <Footer />}
+
+      {/* Reserves space for Header.tsx's fixed bottom tab bar (mobile,
+          logged-in only: h-14 + its own safe-area padding), placed as the
+          very last thing on the page. Without it, scrolling to the true end
+          of any page — most visibly Footer's legal-links row — left that
+          fixed bar (and the Chatbot FAB sitting just above it) permanently
+          covering the last ~56px of content, with no further scroll room to
+          reveal it. */}
+      {!shouldHideHeaderFooter && isAuthenticated && (
+        <div className="lg:hidden h-14 flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} aria-hidden="true" />
+      )}
+
       <Chatbot />
+      <MessageToastListener />
     </div>
   );
 }

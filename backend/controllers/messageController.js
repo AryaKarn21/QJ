@@ -3,9 +3,10 @@ const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const sendNotification = require("../utils/sendNotifications");
-const { emitToConversation } = require("../utils/socket");
+const { emitToConversation, emitToUser } = require("../utils/socket");
 const { buildAuthorSnapshot } = require("../utils/userDisplay");
 const { findOrCreateConversation, checkMessagePermission } = require("../utils/conversationHelpers");
+const { persistUpload } = require("../services/media.service");
 
 function parsePagination(req) {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
@@ -71,7 +72,14 @@ const getConversations = async (req, res) => {
         _id: c._id,
         otherUser: buildAuthorSnapshot(userMap.get(String(otherId))),
         lastMessage: c.lastMessage
-          ? { text: c.lastMessage.text, sender: c.lastMessage.sender, createdAt: c.lastMessage.createdAt }
+          ? {
+              text: c.lastMessage.text,
+              sender: c.lastMessage.sender,
+              createdAt: c.lastMessage.createdAt,
+              type: c.lastMessage.type || "text",
+              call: c.lastMessage.call || null,
+              hasAttachments: !!(c.lastMessage.attachments && c.lastMessage.attachments.length),
+            }
           : null,
         lastMessageAt: c.lastMessageAt,
         unreadCount: (c.unreadCounts && c.unreadCounts[String(req.user._id)]) || 0,
@@ -134,9 +142,10 @@ const getMessages = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { text } = req.body;
+    const text = (req.body.text || "").trim();
+    const files = req.files || [];
 
-    if (!text || !text.trim()) {
+    if (!text && files.length === 0) {
       return res.status(400).json({ message: "Message cannot be empty." });
     }
 
@@ -155,10 +164,23 @@ const sendMessage = async (req, res) => {
       return res.status(403).json({ message: permission.reason });
     }
 
+    // Uploaded in parallel, then attached to the message — a failure here
+    // (bad file, Cloudinary hiccup) rejects the whole send rather than
+    // silently dropping the attachment the sender thought they'd included.
+    const attachments = await Promise.all(
+      files.map(async (file) => ({
+        url: await persistUpload(file, "message_attachments", req.user._id),
+        mimeType: file.mimetype,
+        fileName: file.originalname,
+        size: file.size,
+      }))
+    );
+
     const message = await Message.create({
       conversation: conversationId,
       sender: req.user._id,
-      text: text.trim(),
+      text,
+      attachments,
       readBy: [req.user._id],
     });
 
@@ -169,13 +191,26 @@ const sendMessage = async (req, res) => {
     conversation.unreadCounts.set(String(recipientId), currentUnread + 1);
     await conversation.save();
 
-    emitToConversation(conversationId, "message:new", {
+    const payload = {
       _id: message._id,
       conversation: conversationId,
       sender: req.user._id,
+      senderName: req.user.name,
+      senderAvatar: req.user.avatar || null,
       text: message.text,
+      attachments: message.attachments,
       createdAt: message.createdAt,
-    });
+    };
+    // Delivered two ways: to the conversation's room (both sides' open chat
+    // windows, updating the thread live) and directly to the recipient's
+    // personal room. The latter is what makes the message actually visible
+    // to them when they *haven't* opened this conversation — the previous
+    // version only did the former, so a recipient sitting on the Messages
+    // list (or anywhere else in the app) with a different/no conversation
+    // open never saw the new message, unread count, or preview update until
+    // they manually reloaded.
+    emitToConversation(conversationId, "message:new", payload);
+    emitToUser(recipientId, "message:new", payload);
 
     sendNotification({
       recipient: recipientId,
@@ -190,6 +225,76 @@ const sendMessage = async (req, res) => {
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ message: "Failed to send message." });
+  }
+};
+
+// POST /:conversationId/messages/call-log — records a finished voice/video
+// call as a system-style message so it shows up inline in the thread
+// (WhatsApp/Messenger-style "📞 Voice call · 2m 15s" / "Missed call" bubble).
+// Only the caller logs the call (see useWebRTC.ts's onCallEnded) — the
+// callee's side of the same call reaches them via the socket broadcast
+// below, so there's exactly one log entry per call, not two.
+const logCall = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { callType, status, duration } = req.body;
+
+    if (!["audio", "video"].includes(callType)) {
+      return res.status(400).json({ message: "Invalid call type." });
+    }
+    if (!["completed", "missed", "declined"].includes(status)) {
+      return res.status(400).json({ message: "Invalid call status." });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation || !conversation.participants.some((p) => String(p) === String(req.user._id))) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
+
+    const message = await Message.create({
+      conversation: conversationId,
+      sender: req.user._id,
+      type: "call",
+      call: { callType, status, duration: Math.max(0, Number(duration) || 0) },
+      readBy: [req.user._id],
+    });
+
+    conversation.lastMessage = message._id;
+    conversation.lastMessageAt = message.createdAt;
+    const recipientId = conversation.participants.find((p) => String(p) !== String(req.user._id));
+    const currentUnread = conversation.unreadCounts.get(String(recipientId)) || 0;
+    conversation.unreadCounts.set(String(recipientId), currentUnread + 1);
+    await conversation.save();
+
+    const payload = {
+      _id: message._id,
+      conversation: conversationId,
+      sender: req.user._id,
+      senderName: req.user.name,
+      senderAvatar: req.user.avatar || null,
+      type: "call",
+      call: message.call,
+      text: "",
+      createdAt: message.createdAt,
+    };
+    emitToConversation(conversationId, "message:new", payload);
+    emitToUser(recipientId, "message:new", payload);
+
+    if (status !== "completed") {
+      sendNotification({
+        recipient: recipientId,
+        actor: req.user._id,
+        type: "new_message",
+        message: `You missed a ${callType} call from ${req.user.name}.`,
+        relatedConversation: conversation._id,
+        link: `/messages/${conversation._id}`,
+      });
+    }
+
+    res.status(201).json({ message });
+  } catch (error) {
+    console.error("Error logging call:", error);
+    res.status(500).json({ message: "Failed to log call." });
   }
 };
 
@@ -241,4 +346,4 @@ const deleteMessage = async (req, res) => {
   }
 };
 
-module.exports = { getOrCreateConversation, getConversations, getMessages, sendMessage, deleteMessage };
+module.exports = { getOrCreateConversation, getConversations, getMessages, sendMessage, deleteMessage, logCall };
