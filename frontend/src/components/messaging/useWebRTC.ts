@@ -222,12 +222,14 @@ export function useWebRTC(
     localStreamRef.current = null;
     pendingIceRef.current = [];
     // Map the failure reason to a call-log status before remoteUserIdRef is
-    // cleared below. Anything else (permission denied, connection failure
-    // with no time connected, etc.) isn't logged — it either never reached
-    // the callee or isn't meaningfully a "call" from their perspective.
-    if (message === 'No answer.') reportCallEnded('missed', 0);
-    else if (message === 'Call declined.') reportCallEnded('declined', 0);
+    // cleared below. An explicit decline is its own status; everything else
+    // that never actually connected (no answer, offline, already on another
+    // call, connection/signaling failure, …) reads the same to the sender
+    // as a normal missed call — so it logs as one rather than vanishing
+    // silently once the on-screen error banner times out.
+    if (message === 'Call declined.') reportCallEnded('declined', 0);
     else if (duration > 0) reportCallEnded('completed', duration);
+    else reportCallEnded('missed', 0);
     remoteUserIdRef.current = '';
     setLocalStream(null);
     setRemoteStream(null);
