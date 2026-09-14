@@ -26,10 +26,36 @@ export const fetchMessages = async (conversationId: string, page = 1) => {
   return res.data as { messages: DirectMessage[]; hasMore: boolean };
 };
 
-export const sendMessage = async (conversationId: string, text: string) => {
+export const sendMessage = async (conversationId: string, text: string, files?: File[]) => {
+  if (files && files.length > 0) {
+    const form = new FormData();
+    form.append('text', text);
+    files.forEach((f) => form.append('attachments', f));
+    const res = await axios.post(
+      `${API_BASE_URL}/api/community/messages/${conversationId}/messages`,
+      form,
+      { ...getAuthHeader(), headers: { ...getAuthHeader().headers, 'Content-Type': 'multipart/form-data' } }
+    );
+    return res.data.message as DirectMessage;
+  }
   const res = await axios.post(
     `${API_BASE_URL}/api/community/messages/${conversationId}/messages`,
     { text },
+    getAuthHeader()
+  );
+  return res.data.message as DirectMessage;
+};
+
+// Logs a finished voice/video call as an inline message bubble — see
+// backend/controllers/messageController.js's logCall and useWebRTC's
+// onCallEnded (only the caller's side calls this, per that comment).
+export const logCall = async (
+  conversationId: string,
+  info: { callType: 'audio' | 'video'; status: 'completed' | 'missed' | 'declined'; duration: number }
+) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/community/messages/${conversationId}/messages/call-log`,
+    info,
     getAuthHeader()
   );
   return res.data.message as DirectMessage;

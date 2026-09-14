@@ -117,7 +117,12 @@ export default function Chatbot() {
         // reverts to that original tight offset once the bar disappears.
         // z-40 (not 50, matching the bar) so the bar's own controls are
         // never covered even if a future device's safe-area math is off.
-        className="fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[calc(1.25rem+env(safe-area-inset-right))] lg:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
+        // ring-2 ring-white/80 gives the button a hard edge against
+        // whatever's scrolled underneath it (feed cards, footer text, …) —
+        // without it the button could visually blend into busy content it
+        // floats over, especially on mobile where it sits over a
+        // continuously-scrolling feed.
+        className="fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 ring-2 ring-white/80 transition-transform duration-150 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[calc(1.25rem+env(safe-area-inset-right))] lg:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         {open ? <X size={24} /> : <MessageCircle size={24} />}
       </button>

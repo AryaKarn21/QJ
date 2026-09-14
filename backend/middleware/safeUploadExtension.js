@@ -22,6 +22,15 @@ const MIME_TO_EXT = {
   "video/mp4": ".mp4",
   "video/quicktime": ".mov",
   "video/webm": ".webm",
+
+  // Message attachments (see messageUploadMiddleware.js) — Word/Excel/ZIP/
+  // plain text, alongside the image types above.
+  "application/msword": ".doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+  "application/vnd.ms-excel": ".xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+  "application/zip": ".zip",
+  "text/plain": ".txt",
 };
 
 function safeExtensionFor(mimetype) {

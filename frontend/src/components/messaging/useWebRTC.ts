@@ -81,11 +81,28 @@ function friendlyMediaError(err: unknown, type: 'audio' | 'video'): string {
   return 'Could not access your camera/microphone. Please try again.';
 }
 
-export function useWebRTC(socket: Socket | null, currentUserId: string) {
+export interface CallEndedInfo {
+  peerId: string;
+  callType: 'audio' | 'video';
+  status: 'completed' | 'missed' | 'declined';
+  duration: number;
+}
+
+export function useWebRTC(
+  socket: Socket | null,
+  currentUserId: string,
+  onCallEnded?: (info: CallEndedInfo) => void
+) {
   void currentUserId; // kept in the signature for API stability; not needed internally
 
+  // Read via a ref inside the WebRTC callbacks below (registered once, long-
+  // lived) so a caller re-rendering with a fresh callback identity (e.g. an
+  // inline arrow function) doesn't require re-subscribing anything here.
+  const onCallEndedRef = useRef(onCallEnded);
+  useEffect(() => { onCallEndedRef.current = onCallEnded; }, [onCallEnded]);
+
   const [callState, setCallStateState] = useState<CallState>('idle');
-  const [callType, setCallType] = useState<'audio' | 'video'>('audio');
+  const [callType, setCallTypeState] = useState<'audio' | 'video'>('audio');
   const [incomingCall, setIncomingCall] = useState<IncomingCallInfo | null>(null);
   const [localStream, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStreamState] = useState<MediaStream | null>(null);
@@ -109,10 +126,36 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteUserIdRef = useRef<string>('');
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const callTypeRef = useRef<'audio' | 'video'>('audio');
+  const callDurationRef = useRef(0);
+  // Only the party who placed the call (startCall) logs it as a message once
+  // it ends — see onCallEnded's call sites below and the backend comment on
+  // logCall. offerSent additionally gates out failures that happened before
+  // the callee's device was ever actually notified (e.g. a getUserMedia
+  // permission prompt denied before the offer went out), which shouldn't be
+  // logged as a "missed call" nobody's phone rang for.
+  const isCallerRef = useRef(false);
+  const offerSentRef = useRef(false);
+  const callLoggedRef = useRef(false);
 
   const setCallState = useCallback((s: CallState) => {
     callStateRef.current = s;
     setCallStateState(s);
+  }, []);
+
+  const setCallType = useCallback((t: 'audio' | 'video') => {
+    callTypeRef.current = t;
+    setCallTypeState(t);
+  }, []);
+
+  // Fires onCallEnded exactly once per call, only from the caller's side,
+  // and only for a call that actually reached the callee (offer sent).
+  const reportCallEnded = useCallback((status: CallEndedInfo['status'], duration: number) => {
+    if (!isCallerRef.current || !offerSentRef.current || callLoggedRef.current) return;
+    const peerId = remoteUserIdRef.current;
+    if (!peerId) return;
+    callLoggedRef.current = true;
+    onCallEndedRef.current?.({ peerId, callType: callTypeRef.current, status, duration });
   }, []);
 
   const setLocalStream = useCallback((s: MediaStream | null) => {
@@ -132,19 +175,28 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
 
   const startDurationTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    callDurationRef.current = 0;
     setCallDuration(0);
-    timerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
+    timerRef.current = setInterval(() => {
+      callDurationRef.current += 1;
+      setCallDuration((d) => d + 1);
+    }, 1000);
   }, []);
 
   // ── Cleanup — a clean, non-error end of the call (hangup, remote hangup,
   // decline). Always acts on the ACTUAL current refs, never a stale value.
   const cleanup = useCallback(() => {
+    const wasActive = callStateRef.current !== 'idle';
+    const duration = callDurationRef.current;
     clearTimers();
     pcRef.current?.close();
     pcRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     pendingIceRef.current = [];
+    // reportCallEnded (below) needs remoteUserIdRef BEFORE it's cleared —
+    // read it here, clear after.
+    if (wasActive) reportCallEnded(duration > 0 ? 'completed' : 'missed', duration);
     remoteUserIdRef.current = '';
     setLocalStream(null);
     setRemoteStream(null);
@@ -153,13 +205,15 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
     setIsMuted(false);
     setIsCamOff(false);
     setCallDuration(0);
-  }, [clearTimers, setLocalStream, setRemoteStream, setCallState]);
+    callDurationRef.current = 0;
+  }, [clearTimers, setLocalStream, setRemoteStream, setCallState, reportCallEnded]);
 
   // Same teardown, but leaves a user-facing reason on screen for a moment
   // (via the 'failed' state + `error`) instead of silently snapping back to
   // idle — used for no-answer, rejection, permission/device errors, and a
   // broken peer connection, so nobody is left wondering what happened.
   const failCall = useCallback((message: string) => {
+    const duration = callDurationRef.current;
     setError(message);
     clearTimers();
     pcRef.current?.close();
@@ -167,6 +221,13 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     pendingIceRef.current = [];
+    // Map the failure reason to a call-log status before remoteUserIdRef is
+    // cleared below. Anything else (permission denied, connection failure
+    // with no time connected, etc.) isn't logged — it either never reached
+    // the callee or isn't meaningfully a "call" from their perspective.
+    if (message === 'No answer.') reportCallEnded('missed', 0);
+    else if (message === 'Call declined.') reportCallEnded('declined', 0);
+    else if (duration > 0) reportCallEnded('completed', duration);
     remoteUserIdRef.current = '';
     setLocalStream(null);
     setRemoteStream(null);
@@ -174,11 +235,12 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
     setIsMuted(false);
     setIsCamOff(false);
     setCallDuration(0);
+    callDurationRef.current = 0;
     setCallState('failed');
     failureResetRef.current = setTimeout(() => {
       if (callStateRef.current === 'failed') setCallState('idle');
     }, FAILURE_DISPLAY_MS);
-  }, [clearTimers, setLocalStream, setRemoteStream, setCallState]);
+  }, [clearTimers, setLocalStream, setRemoteStream, setCallState, reportCallEnded]);
 
   const dismissError = useCallback(() => {
     setError(null);
@@ -272,6 +334,9 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
       setError(null);
       setCallType(type);
       remoteUserIdRef.current = targetUserId;
+      isCallerRef.current = true;
+      offerSentRef.current = false;
+      callLoggedRef.current = false;
       setCallState('calling');
 
       let stream: MediaStream;
@@ -311,6 +376,7 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
           callerName,
           callerAvatar,
         });
+        offerSentRef.current = true;
 
         callTimeoutRef.current = setTimeout(() => {
           if (callStateRef.current === 'calling') {
@@ -331,6 +397,8 @@ export function useWebRTC(socket: Socket | null, currentUserId: string) {
     if (!socket || !incomingCall) return;
     const { from, offer, callType: type } = incomingCall;
     setError(null);
+    isCallerRef.current = false;
+    callLoggedRef.current = false;
     setCallType(type);
     remoteUserIdRef.current = from;
     setIncomingCall(null);

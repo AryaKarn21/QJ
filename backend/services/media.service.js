@@ -52,7 +52,14 @@ const FOLDER_MAP = {
   cover_photos:  "qj/cover-photos",
   company_logos: "qj/company-logos",
   resumes:       "qj/resumes",      // stored as raw resource
+  message_attachments: "qj/messages",
 };
+
+// Folders whose caller (messageUploadMiddleware.js) already vetted the
+// mimetype against its own allow-list — safe to store as a generic "raw"
+// resource even when it's neither an image nor a PDF (Word/Excel/ZIP/text),
+// unlike the strict image-or-PDF-only rule the rest of this file enforces.
+const ANY_TYPE_FOLDERS = new Set(["message_attachments"]);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -86,12 +93,19 @@ function writeBufferToLocalDisk(buffer, mimetype, folder) {
 async function uploadToCloudinary(buffer, mimetype, folder, ownerId) {
   const isImage   = mimetype.startsWith("image/");
   const isPdf     = mimetype === "application/pdf";
-  if (!isImage && !isPdf) throw new Error("Invalid file type.");
+  if (!isImage && !isPdf && !ANY_TYPE_FOLDERS.has(folder)) throw new Error("Invalid file type.");
 
   const resourceType = isImage ? "image" : "raw";
   const ext          = safeExtensionFor(mimetype);
   const cloudFolder  = FOLDER_MAP[folder] || `qj/${folder}`;
-  const publicId     = `${cloudFolder}/${ownerId || "misc"}/${uuidv4()}`;
+  // Cloudinary auto-detects/appends the right extension for "image"
+  // resources, but NOT for "raw" ones — a raw PDF/DOCX/ZIP without an
+  // extension in its public_id comes back as an extension-less URL that
+  // browsers/Office can't reliably open. Baking it in here fixes that for
+  // every raw upload (resumes included), not just message attachments.
+  const publicId = resourceType === "raw" && ext
+    ? `${cloudFolder}/${ownerId || "misc"}/${uuidv4()}${ext}`
+    : `${cloudFolder}/${ownerId || "misc"}/${uuidv4()}`;
 
   // Cloudinary's upload_stream wraps a callback API — we promisify it here.
   return new Promise((resolve, reject) => {
