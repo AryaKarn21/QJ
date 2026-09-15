@@ -89,6 +89,16 @@ const jobSchema = new mongoose.Schema(
     },
 
     istrending: { type: Boolean, default: false },
+    // Super-admin trending curation (Trending Jobs management screen) —
+    // additive to the existing `istrending` flag, which stays the single
+    // source of truth for "is this job trending at all". These only ever
+    // matter when istrending is true: trendingOrder controls display order
+    // (lower = earlier), trendingStartDate/trendingEndDate let an admin
+    // schedule a trending window instead of it being always-on the moment
+    // the flag flips. Both dates null means "active immediately, no expiry".
+    trendingOrder: { type: Number, default: 0 },
+    trendingStartDate: { type: Date, default: null },
+    trendingEndDate: { type: Date, default: null },
     status: {
   type: String,
   default: "Pending",
@@ -122,5 +132,10 @@ rejectionReason: { type: String, trim: true, default: "" },
     timestamps: true,
   }
 );
+
+jobSchema.path("trendingEndDate").validate(function (value) {
+  if (!value || !this.trendingStartDate) return true;
+  return value > this.trendingStartDate;
+}, "trendingEndDate must be after trendingStartDate");
 
 module.exports = mongoose.model("Job", jobSchema);

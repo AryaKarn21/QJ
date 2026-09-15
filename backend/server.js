@@ -112,6 +112,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/jobseeker", require("./routes/jobseekerRoutes"));
 app.use("/api/employer", require("./routes/employerRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/admin/trending-jobs", require("./routes/trendingJobsRoutes"));
 app.use("/api/jobs", require("./routes/jobRoutes"));
 app.use("/api/jobcategories", require("./routes/jobCategoryRoutes"));
 app.use("/api/stats", require("./routes/statsRoutes"));

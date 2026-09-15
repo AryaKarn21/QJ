@@ -48,6 +48,7 @@ import DashboardLayout from './components/employer/dashboard/DashboardLayout';
 import ApplyPage from './components/jobseeker/apply';
 import UsersProfile from './components/admin/UsersProfile';
 import JobManagement from './components/admin/jobs/JobManagement';
+import TrendingJobsManagement from './components/admin/jobs/TrendingJobsManagement';
 import EmployerSettings from './components/employer/dashboard/Settings';
 import RevenueManagement from './components/admin/RevenueManagement';
 import RolesPermissions from './components/admin/RolesPermissions';
@@ -331,6 +332,14 @@ function AppWrapper() {
             <Route path="employers" element={<CompanyManagement />} />
             <Route path="support" element={<TicketManagement />} />
             <Route path="jobs" element={<JobManagement />} />
+            <Route
+              path="trending-jobs"
+              element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <TrendingJobsManagement />
+                </ProtectedRoute>
+              }
+            />
             <Route path="revenue" element={<RevenueManagement />} />
             <Route path="plans" element={<PlanManagement />} />
             <Route path="advertisements" element={<AdvertisementManagement />} />

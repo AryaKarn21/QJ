@@ -6,6 +6,7 @@ import RecommendedJobs from "./RecommendedJobs";
 import CallToAction from "./CallToAction";
 import RecentJobs from "./RecentJobs";
 import JobCategories from "./JobCategories";
+import ExploreByField from "./ExploreByField";
 import BlogCategoriesSection from "./BlogCategoriesSection";
 import Testimonials from "./Testimonials";
 import { CommunityPostsPreview } from "../../community/CommunityPostsPreview";
@@ -30,6 +31,8 @@ export const HomePageJobSeeker = () => (
           separate systems/APIs — this is intentionally a second, distinct
           category section, not a duplicate of the one above it. */}
       <JobCategories />
+      {/* Renders nothing if no category currently has any active jobs. */}
+      <ExploreByField />
       {/* Renders nothing if no admin has published a blog category yet. */}
       <BlogCategoriesSection />
       {/* Renders nothing if no admin has published a homepage ad. */}

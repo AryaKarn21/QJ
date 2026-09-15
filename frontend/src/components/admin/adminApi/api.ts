@@ -758,3 +758,73 @@ export const getRecentFailedLogins = async (limit = 25): Promise<{ events: Audit
   );
   return res.data;
 };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Trending Jobs curation (superadmin only) — see backend/routes/trendingJobsRoutes.js
+// ─────────────────────────────────────────────────────────────────────────
+
+export type TrendingState = "active" | "scheduled" | "expired" | "unpublished";
+
+export interface TrendingJob extends Job {
+  trendingOrder: number;
+  trendingStartDate?: string | null;
+  trendingEndDate?: string | null;
+  trendingState: TrendingState;
+}
+
+export interface EligibleJob {
+  _id: string;
+  title: string;
+  location: string;
+  jobtype: string;
+  status: string;
+  employer?: { name: string; companyLogo?: string };
+}
+
+const TRENDING_BASE = `${API_BASE_URL}/api/admin/trending-jobs`;
+
+export const searchEligibleTrendingJobs = async (search = ""): Promise<{ jobs: EligibleJob[] }> => {
+  const res = await axios.get(`${TRENDING_BASE}/eligible`, { ...authHeader, params: { search } });
+  return res.data;
+};
+
+export const getTrendingJobsAdmin = async (): Promise<{ jobs: TrendingJob[] }> => {
+  const res = await axios.get(TRENDING_BASE, authHeader);
+  return res.data;
+};
+
+export const addTrendingJob = async (
+  jobId: string,
+  data: { trendingOrder?: number; trendingStartDate?: string | null; trendingEndDate?: string | null }
+) => {
+  const res = await axios.post(`${TRENDING_BASE}/${jobId}`, data, authHeader);
+  return res.data;
+};
+
+export const updateTrendingJob = async (
+  jobId: string,
+  data: { trendingOrder?: number; trendingStartDate?: string | null; trendingEndDate?: string | null }
+) => {
+  const res = await axios.patch(`${TRENDING_BASE}/${jobId}`, data, authHeader);
+  return res.data;
+};
+
+export const removeTrendingJob = async (jobId: string) => {
+  const res = await axios.delete(`${TRENDING_BASE}/${jobId}`, authHeader);
+  return res.data;
+};
+
+export const reorderTrendingJobs = async (order: { jobId: string; trendingOrder: number }[]) => {
+  const res = await axios.patch(`${TRENDING_BASE}/reorder`, { order }, authHeader);
+  return res.data;
+};
+
+export const getTrendingSettings = async (): Promise<{ maxDisplayCount: number }> => {
+  const res = await axios.get(`${TRENDING_BASE}/settings`, authHeader);
+  return res.data;
+};
+
+export const updateTrendingSettings = async (maxDisplayCount: number) => {
+  const res = await axios.put(`${TRENDING_BASE}/settings`, { maxDisplayCount }, authHeader);
+  return res.data;
+};

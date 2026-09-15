@@ -1,23 +1,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Briefcase, DollarSign, ArrowRight, TrendingUp, SearchX } from 'lucide-react';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { TrendingUp, SearchX, ArrowRight } from 'lucide-react';
 import { fetchTrendingJobs, Job } from '../jobseekerApi/api';
+import { JobCard } from './JobCard';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
-
-// A small, deterministic set of accent colors for the logo-fallback
-// square, so cards without a real company logo still look varied and
-// professional instead of every one being the same gray box.
-const LOGO_ACCENTS = [
-  'bg-slate-700', 'bg-violet-500', 'bg-emerald-500', 'bg-blue-500',
-  'bg-rose-500', 'bg-amber-500',
-];
-const accentFor = (id: string) => LOGO_ACCENTS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % LOGO_ACCENTS.length];
+// Staggered card entrance — same pattern Hero.tsx uses, gated off entirely
+// when the user prefers reduced motion (see `prefersReducedMotion` below).
+const containerVariants: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+};
 
 const TrendingJobs: React.FC = () => {
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
 
   const { data: jobs = [], isLoading, isError } = useQuery<Job[]>({
     queryKey: ['trendingJobs'],
@@ -94,63 +96,23 @@ const TrendingJobs: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <motion.div
+            variants={prefersReducedMotion ? undefined : containerVariants}
+            initial={prefersReducedMotion ? undefined : 'hidden'}
+            whileInView={prefersReducedMotion ? undefined : 'show'}
+            viewport={{ once: true, amount: 0.15 }}
+            className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4"
+          >
             {jobs.map((job: Job) => (
-              <article
+              <motion.div
                 key={job._id}
-                className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg"
+                variants={prefersReducedMotion ? undefined : cardVariants}
+                className="w-[82%] shrink-0 snap-center sm:w-auto sm:shrink"
               >
-                <div>
-                  <div className="mb-4 flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      {job.employer?.companyLogo ? (
-                        <img
-                          src={resolveMediaUrl(job.employer.companyLogo)}
-                          alt={`${job.employer.name} logo`}
-                          className="h-11 w-11 shrink-0 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white ${accentFor(job._id)}`}>
-                          {job.employer?.name?.[0] || 'C'}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900">{job.title}</h3>
-                        <p className="truncate text-sm text-slate-500">{job.employer?.name || 'Company'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="mb-4 flex items-center gap-1.5 text-sm text-slate-500">
-                    <MapPin size={14} className="shrink-0 text-slate-400" />
-                    <span className="truncate">{job.location}</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
-                  <div className="min-w-0 space-y-1">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
-                      <Briefcase size={11} /> {job.jobtype}
-                    </span>
-                    {job.salary && (
-                      <p className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                        <DollarSign size={12} className="text-orange-500" />
-                        <span className="truncate">{job.salary}</span>
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/jobs/${job._id}`)}
-                    aria-label={`View details for ${job.title}`}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-transform duration-200 group-hover:scale-105 hover:bg-orange-600 active:scale-95"
-                  >
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              </article>
+                <JobCard job={job} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
     </section>

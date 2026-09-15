@@ -2,6 +2,7 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const User = require("../models/User");
 const Jobseeker = require("../models/Jobseeker");
+const TrendingSettings = require("../models/TrendingSettings");
 const sendNotification = require("../utils/sendNotifications");
 const { COUNTRIES } = require("../data/countries");
 
@@ -59,7 +60,7 @@ const getJobs = async (req, res) => {
     const {
       page = 1, limit = 6, location, jobtype, level, status, search, employer,
       workMode, minSalary, maxSalary, skills, datePosted, sortBy,
-      company, industry, education, minExperience, maxExperience,
+      company, industry, education, minExperience, maxExperience, jobcategory,
     } = req.query;
   const userId = req.user?._id;
 
@@ -71,6 +72,13 @@ const getJobs = async (req, res) => {
     const andConditions = [];
     if (location) { filters.location = { $regex: location, $options: "i" }; }
     if (jobtype) filters.jobtype = jobtype;
+    // Powers the homepage's "Explore Jobs by Field" section — an exact(ish)
+    // category match, distinct from `search` below which fuzzy-matches
+    // across title/description/location too and would pull in unrelated
+    // jobs that merely mention the category name.
+    if (jobcategory) {
+      filters.jobcategory = { $regex: `^${jobcategory.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+    }
         if (level) filters.level = level;
     if (employer) filters.employer = employer; // powers the Company page's Jobs tab
     filters.status = status || "Active"; // public listings only ever show approved jobs
@@ -180,12 +188,29 @@ const getJobs = async (req, res) => {
   }
 };
 
-// Get latest 6 trending jobs
+// Get the super-admin-curated trending jobs — filtered to jobs that are
+// actually published (status "Active") and, if scheduled, currently inside
+// their trending window; ordered by the admin's chosen trendingOrder, and
+// capped at TrendingSettings.maxDisplayCount (default 8 if no settings
+// document exists yet). This is what keeps expired/scheduled/unpublished/
+// deleted jobs from ever leaking onto the public homepage regardless of
+// what the admin panel has stored.
 const getTrendingJobs = async (req, res) => {
   try {
-    const trendingJobs = await Job.find({ istrending: true })
-      .sort({ updatedAt: -1 })
-      .limit(6)
+    const now = new Date();
+    const settings = await TrendingSettings.findById(TrendingSettings.SINGLETON_ID).lean();
+    const limit = settings?.maxDisplayCount || 8;
+
+    const trendingJobs = await Job.find({
+      istrending: true,
+      status: "Active",
+      $and: [
+        { $or: [{ trendingStartDate: null }, { trendingStartDate: { $lte: now } }] },
+        { $or: [{ trendingEndDate: null }, { trendingEndDate: { $gte: now } }] },
+      ],
+    })
+      .sort({ trendingOrder: 1, updatedAt: -1 })
+      .limit(limit)
       .populate("employer", "name companyLogo")
       .lean();
 

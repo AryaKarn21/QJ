@@ -58,6 +58,8 @@ export interface Job {
   jobcategory: string;
   createdAt: string;
   updatedAt?: string;
+  isSaved?: boolean;
+  requiredSkills?: string[];
   employer?: {
     _id: string;
     name: string;
@@ -93,6 +95,10 @@ interface FetchJobsParams {
   education?: string;
   minExperience?: number | string;
   maxExperience?: number | string;
+  // Exact(ish) category match — powers the homepage's "Explore Jobs by
+  // Field" section, distinct from `search` which fuzzy-matches title/
+  // description/location too.
+  jobcategory?: string;
 }
 
 export const getStats = async () => {
@@ -119,6 +125,7 @@ export const fetchJobs = async ({
   education = '',
   minExperience,
   maxExperience,
+  jobcategory = '',
 }: FetchJobsParams) => {
   const response = await api.get('/api/jobs', {
     params: {
@@ -139,6 +146,7 @@ export const fetchJobs = async ({
       education,
       minExperience,
       maxExperience,
+      jobcategory,
     },
   });
   return response.data;

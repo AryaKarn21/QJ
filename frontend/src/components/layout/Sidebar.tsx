@@ -8,6 +8,7 @@ import {
   Briefcase,
   ClipboardList,
   Tags,
+  TrendingUp,
   CreditCard,
   DollarSign,
   Megaphone,
@@ -61,6 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Hiring',
     items: [
       { label: 'Job Management', icon: <Briefcase size={22} />, path: '/admin/jobs' },
+      { label: 'Trending Jobs', icon: <TrendingUp size={22} />, path: '/admin/trending-jobs', superAdminOnly: true },
       { label: 'Application Management', icon: <ClipboardList size={22} />, path: '/admin/applications' },
       { label: 'Categories & Taxonomy', icon: <Tags size={22} />, path: '/admin/jobcategories' },
     ],
