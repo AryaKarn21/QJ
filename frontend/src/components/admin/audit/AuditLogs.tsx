@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollText, ShieldAlert, Users, Activity } from 'lucide-react';
 import { DataTable, DataTableColumn } from '../../ui/DataTable';
 import { StatusBadge } from '../../ui/StatusBadge';
@@ -6,6 +6,7 @@ import { Drawer } from '../../ui/Drawer';
 import { FilterBar, FilterConfig } from '../../ui/FilterBar';
 import { KpiCard } from '../../ui/KpiCard';
 import { getAuditLogs, getAuditLogStats, AuditLogEntry, AuditLogStats } from '../adminApi/api';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 const formatDateTime = (iso: string) =>
   new Date(iso).toLocaleString('en-US', {
@@ -28,8 +29,8 @@ const AuditLogs: React.FC = () => {
   const [filters, setFilters] = useState<Record<string, string>>({ module: 'all', success: 'all' });
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
 
-  const load = async (p = page) => {
-    setLoading(true);
+  const load = useCallback(async (p = page, opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const res = await getAuditLogs({
         page: p,
@@ -43,13 +44,24 @@ const AuditLogs: React.FC = () => {
       setTotalPages(res.totalPages);
       setModules(res.modules);
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
+  }, [page, filters.module, filters.success, search]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await getAuditLogStats();
+      setStats(res);
+    } catch {
+      // keep showing the previous stats rather than blanking them out
+    }
+  }, []);
 
   useEffect(() => {
-    getAuditLogStats().then(setStats).catch(() => {});
-  }, []);
+    fetchStats();
+  }, [fetchStats]);
+
+  useAutoRefresh(() => fetchStats(), 30000);
 
   // Refetch whenever a filter or the search term changes, resetting to page 1.
   useEffect(() => {
@@ -57,6 +69,8 @@ const AuditLogs: React.FC = () => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filters.module, filters.success]);
+
+  useAutoRefresh(() => load(page, { silent: true }), 30000);
 
   const filterConfigs: FilterConfig[] = [
     {

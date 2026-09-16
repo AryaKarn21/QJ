@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Plus, Pencil, Trash2, Star, User as UserIcon } from "lucide-react";
 import { DataTable, DataTableColumn } from "../ui/DataTable";
@@ -12,6 +12,7 @@ import {
   adminDeleteTestimonial,
   type Testimonial,
 } from "../../api/testimonialApi";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 const resolveImage = (url: string) => `${MEDIA_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
@@ -40,8 +41,8 @@ const TestimonialManagement: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const res = await adminGetTestimonials({ page, limit: 10, search });
       setTestimonials(res.testimonials);
@@ -50,14 +51,15 @@ const TestimonialManagement: React.FC = () => {
     } catch {
       toast.error("Failed to load testimonials.");
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
+  }, [page, search]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search]);
+  }, [load]);
+
+  useAutoRefresh(() => load({ silent: true }), 30000, !drawerOpen);
 
   const openCreate = () => {
     setEditing(null);

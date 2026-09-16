@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DataTable, DataTableColumn } from '../ui/DataTable';
 import { StatusBadge, statusToTone } from '../ui/StatusBadge';
 import { adminGetAllSubscriptions, type AdminSubscriptionRow, type Subscription } from '../../api/subscriptionApi';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 // Matches the existing Subscription.status enum (backend/models/
 // Subscription.js) — "pending/active/expired/cancelled/failed" — not the
@@ -23,11 +24,13 @@ export default function AdminSubscriptions() {
   const [status, setStatus] = useState<Subscription['status'] | 'all'>('all');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['adminSubscriptions', status, page],
     queryFn: () => adminGetAllSubscriptions({ status: status === 'all' ? undefined : status, page, limit: 20 }),
     retry: false,
   });
+
+  useAutoRefresh(() => refetch(), 30000);
 
   const totalPages = data ? Math.max(Math.ceil(data.total / data.limit), 1) : 1;
 

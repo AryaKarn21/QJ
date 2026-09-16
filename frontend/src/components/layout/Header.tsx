@@ -364,7 +364,12 @@ const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Mobile top bar right: only search + notification bell */}
+                  {/* Mobile top bar right: search + notifications + profile.
+                      Profile used to be reachable only via the bottom "Me"
+                      tab's slide-up sheet — Dashboard/My Profile/Resume
+                      Builder/Settings had no path from the header itself on
+                      mobile. This reuses that same sheet (isMobileProfileOpen)
+                      so those features open from the header too. */}
                   <div className="flex lg:hidden items-center gap-1">
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
@@ -373,6 +378,15 @@ const Header: React.FC = () => {
                     <div className="p-1 rounded-xl hover:bg-slate-100/80 transition-all duration-200">
                       <NotificationBell />
                     </div>
+                    <button type="button" onClick={() => setIsMobileProfileOpen(true)}
+                      aria-label="Profile menu"
+                      className="ml-0.5 w-8 h-8 rounded-lg overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+                      {userInfo?.avatar ? (
+                        <img src={resolveMediaUrl(userInfo.avatar)} alt={userInfo?.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-white text-xs font-bold">{initial}</span>
+                      )}
+                    </button>
                   </div>
                 </>
               )}

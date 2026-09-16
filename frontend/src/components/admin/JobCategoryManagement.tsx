@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  getJobCategories, 
-  createJobCategory, 
-  updateJobCategory, 
-  deleteJobCategory, 
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  getJobCategories,
+  createJobCategory,
+  updateJobCategory,
+  deleteJobCategory,
   toggleJobCategoryTrending,
   JobCategory
 } from './adminApi/api';
 import { toast } from 'react-toastify';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { 
   FaEdit, 
   FaTrash, 
@@ -56,6 +57,8 @@ const JobCategories = () => {
     fetchCategories();
   }, []);
 
+  useAutoRefresh(() => fetchCategories({ silent: true }), 30000, !isModalOpen);
+
   // Update image preview when formData.icon or currentCategory changes
   useEffect(() => {
     if (formData.icon) {
@@ -69,18 +72,18 @@ const JobCategories = () => {
     }
   }, [formData.icon, currentCategory]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async (opts: { silent?: boolean } = {}) => {
     try {
-      setLoading(true);
+      if (!opts.silent) setLoading(true);
       const data = await getJobCategories();
       setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load categories');
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

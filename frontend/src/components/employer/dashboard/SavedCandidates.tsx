@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSavedCandidates, toggleSavedCandidate } from "../employerApi/api";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import { Bookmark, BookmarkX } from "lucide-react";
 import { toast } from "react-toastify";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 interface SavedCandidate {
     candidateId: string;
@@ -34,15 +35,21 @@ const SavedCandidates = () => {
     const [loading, setLoading] = useState(true);
     const [removingId, setRemovingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        getSavedCandidates()
-            .then(setCandidates)
-            .catch((err) => {
-                console.error("Failed to load saved candidates:", err);
-                toast.error("Failed to load saved candidates.");
-            })
-            .finally(() => setLoading(false));
+    const fetchSavedCandidates = useCallback(async (opts: { silent?: boolean } = {}) => {
+        if (!opts.silent) setLoading(true);
+        try {
+            const data = await getSavedCandidates();
+            setCandidates(data);
+        } catch (err) {
+            console.error("Failed to load saved candidates:", err);
+            toast.error("Failed to load saved candidates.");
+        } finally {
+            if (!opts.silent) setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { fetchSavedCandidates(); }, [fetchSavedCandidates]);
+    useAutoRefresh(() => fetchSavedCandidates({ silent: true }), 30000);
 
     const handleRemove = async (candidateId: string) => {
         setRemovingId(candidateId);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check, CheckCheck, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -9,6 +9,7 @@ import {
   deleteNotification,
 } from '../../api/notificationApi';
 import type { CommunityNotification } from '../../types/community';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -41,8 +42,8 @@ export default function AdminNotificationCenter() {
   const [tab, setTab] = useState<FilterTab>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const load = () => {
-    setLoading(true);
+  const load = useCallback((opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     setError(false);
     fetchMyNotifications(1)
       .then((res) => {
@@ -51,10 +52,16 @@ export default function AdminNotificationCenter() {
         setPage(1);
       })
       .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  };
+      .finally(() => {
+        if (!opts.silent) setLoading(false);
+      });
+  }, []);
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useAutoRefresh(() => load({ silent: true }), 30000);
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -161,7 +168,7 @@ export default function AdminNotificationCenter() {
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
           Couldn't load notifications.{' '}
-          <button onClick={load} className="font-medium underline">Retry</button>
+          <button onClick={() => load()} className="font-medium underline">Retry</button>
         </div>
       ) : loading ? (
         <div className="space-y-2">

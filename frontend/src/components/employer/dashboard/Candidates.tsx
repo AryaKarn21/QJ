@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCandidates, toggleSavedCandidate, updateApplicationStatus } from "../employerApi/api";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import { Bookmark, BookmarkCheck, Pencil, Calendar, Search, Users } from "lucide-react";
 import { toast } from "react-toastify";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 interface Candidate {
     candidateId: string;
@@ -49,15 +50,21 @@ const Candidates = () => {
     const [interviewNotes, setInterviewNotes] = useState("");
     const [scheduling, setScheduling] = useState(false);
 
-    useEffect(() => {
-        getCandidates()
-            .then(setCandidates)
-            .catch((err) => {
-                console.error("Failed to load candidates:", err);
-                toast.error("Failed to load candidates.");
-            })
-            .finally(() => setLoading(false));
+    const fetchCandidates = useCallback(async (opts: { silent?: boolean } = {}) => {
+        if (!opts.silent) setLoading(true);
+        try {
+            const data = await getCandidates();
+            setCandidates(data);
+        } catch (err) {
+            console.error("Failed to load candidates:", err);
+            toast.error("Failed to load candidates.");
+        } finally {
+            if (!opts.silent) setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
+    useAutoRefresh(() => fetchCandidates({ silent: true }), 30000);
 
     const handleToggleSave = async (candidateId: string) => {
         setSavingId(candidateId);

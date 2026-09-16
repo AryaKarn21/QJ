@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getJobApplicants, updateApplicationStatus } from "../employerApi/api";
 import { Eye } from "lucide-react";
 import { resolveResumeUrl } from "../../../utils/mediaUrl";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 interface Applicant {
     applicationId: string;
@@ -36,22 +37,22 @@ const JobApplicants = () => {
     const [loading, setLoading] = useState(true);
     const [selectedCoverLetter, setSelectedCoverLetter] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchApplicants = useCallback(async (opts: { silent?: boolean } = {}) => {
         if (!jobId) return;
 
-        const fetchApplicants = async () => {
-            try {
-                const result = await getJobApplicants(jobId);
-                setData(result);
-            } catch (error) {
-                console.error("Failed to load applicants", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchApplicants();
+        if (!opts.silent) setLoading(true);
+        try {
+            const result = await getJobApplicants(jobId);
+            setData(result);
+        } catch (error) {
+            console.error("Failed to load applicants", error);
+        } finally {
+            if (!opts.silent) setLoading(false);
+        }
     }, [jobId]);
+
+    useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
+    useAutoRefresh(() => fetchApplicants({ silent: true }), 30000);
 
     const handleStatusChange = async (applicationId: string, newStatus: string) => {
         try {

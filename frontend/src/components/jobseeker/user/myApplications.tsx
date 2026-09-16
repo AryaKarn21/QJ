@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Search, MapPin, Clock, Briefcase } from 'lucide-react';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { fetchAppliedJobs } from '../jobseekerApi/api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 interface Employer {
   name: string;
@@ -63,20 +64,21 @@ const UserMyApplications = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadApplications = async () => {
-      try {
-        const jobs = await fetchAppliedJobs();
-        setApplications(jobs as unknown as AppliedJob[]);
-      } catch (err) {
-        console.error('Error loading applications:', err);
-        setError('Could not load your applications. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadApplications();
+  const loadApplications = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
+    try {
+      const jobs = await fetchAppliedJobs();
+      setApplications(jobs as unknown as AppliedJob[]);
+    } catch (err) {
+      console.error('Error loading applications:', err);
+      setError('Could not load your applications. Please try again.');
+    } finally {
+      if (!opts.silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadApplications(); }, [loadApplications]);
+  useAutoRefresh(() => loadApplications({ silent: true }), 30000);
 
   const filteredApplications = applications
     .filter((app) => statusFilter === 'all' || app.applicationStatus === statusFilter)

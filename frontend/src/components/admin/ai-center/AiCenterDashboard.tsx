@@ -13,6 +13,7 @@ import { KpiCard } from '../../ui/KpiCard';
 import { EmptyState } from '../../ui/EmptyState';
 import { SkeletonCard } from '../../ui/Skeleton';
 import { getAiUsageStats } from '../adminApi/api';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   'green-simple': 'Science & Engineering',
@@ -29,11 +30,13 @@ const TEMPLATE_LABELS: Record<string, string> = {
  * more KpiCards/ChartCards once those features exist.
  */
 export const AiCenterDashboard: React.FC = () => {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['aiUsageStats'],
     queryFn: getAiUsageStats,
     retry: false,
   });
+
+  useAutoRefresh(() => refetch(), 30000);
 
   const topTemplate = data?.byTemplate?.[0];
 

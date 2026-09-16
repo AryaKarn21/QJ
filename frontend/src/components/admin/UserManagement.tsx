@@ -70,6 +70,7 @@ const UserManagement: React.FC = () => {
     queryKey: ['adminUsers'],
     queryFn:  getAllUsers,
     staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 
   const deleteMutation = useMutation({

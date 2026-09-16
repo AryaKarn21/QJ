@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { useParams } from "react-router-dom";
 import { getAllUsers } from "./adminApi/api";
 import { AxiosError } from "axios";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 interface Qualification {
     degree: string;
@@ -43,20 +44,19 @@ const UsersProfile = () => {
     const { id } = useParams<{ id: string }>();
     const [user, setUser] = useState<User | null>(null);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const allUsers: User[] = await getAllUsers();
-                const found = allUsers.find((u) => u._id === id);
-                setUser(found || null);
-            } catch (err) {
-                const error = err as AxiosError;
-                console.error("Failed to load user:", error.message);
-            }
-        };
-
-        fetchUser();
+    const fetchUser = useCallback(async () => {
+        try {
+            const allUsers: User[] = await getAllUsers();
+            const found = allUsers.find((u) => u._id === id);
+            setUser(found || null);
+        } catch (err) {
+            const error = err as AxiosError;
+            console.error("Failed to load user:", error.message);
+        }
     }, [id]);
+
+    useEffect(() => { fetchUser(); }, [fetchUser]);
+    useAutoRefresh(() => fetchUser(), 30000);
 
     if (!user) return <div className="p-6">Loading user profile...</div>;
 

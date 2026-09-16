@@ -3,17 +3,20 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { StatusBadge, statusToTone } from '../ui/StatusBadge';
 import { adminGetSubscriptionById } from '../../api/subscriptionApi';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export default function AdminSubscriptionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['adminSubscriptionDetail', id],
     queryFn: () => adminGetSubscriptionById(id as string),
     enabled: !!id,
     retry: false,
   });
+
+  useAutoRefresh(() => refetch(), 30000, !!id);
 
   return (
     <div className="p-6">

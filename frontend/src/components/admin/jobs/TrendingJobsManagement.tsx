@@ -48,6 +48,7 @@ const TrendingJobsManagement: React.FC = () => {
   const { data: trendingData, isLoading: loadingTrending } = useQuery({
     queryKey: ['trendingJobsAdmin'],
     queryFn: getTrendingJobsAdmin,
+    refetchInterval: 30000,
   });
   const jobs: TrendingJob[] = useMemo(() => trendingData?.jobs ?? [], [trendingData]);
 

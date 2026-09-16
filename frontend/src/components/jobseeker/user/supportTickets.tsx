@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LifeBuoy, MessageSquareText, Clock, CheckCircle2, XCircle, Inbox } from 'lucide-react';
 import { fetchMyTickets, SupportTicket } from '../../../api/supportApi';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 const STATUS_STYLES: Record<SupportTicket['status'], { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-blue-50 text-blue-700 border-blue-200', icon: Inbox },
@@ -14,21 +15,21 @@ const UserSupportTickets = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchMyTickets();
-        setTickets(data);
-      } catch (err) {
-        console.error('Failed to load support tickets:', err);
-        setError('Could not load your support tickets. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+  const load = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
+    try {
+      const data = await fetchMyTickets();
+      setTickets(data);
+    } catch (err) {
+      console.error('Failed to load support tickets:', err);
+      setError('Could not load your support tickets. Please try again.');
+    } finally {
+      if (!opts.silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+  useAutoRefresh(() => load({ silent: true }), 30000);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">

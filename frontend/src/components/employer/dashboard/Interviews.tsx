@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getScheduledInterviews, updateApplicationStatus } from "../employerApi/api";
 import { Video, Phone, MapPin, Calendar, Pencil } from "lucide-react";
 import { toast } from "react-toastify";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 interface Interview {
     applicationId: string;
@@ -68,20 +69,21 @@ const Interviews = () => {
     const [editNotes, setEditNotes] = useState("");
     const [savingEdit, setSavingEdit] = useState(false);
 
-    const loadInterviews = () => {
-        setLoading(true);
-        getScheduledInterviews()
-            .then(setInterviews)
-            .catch((err) => {
-                console.error("Failed to load interviews:", err);
-                toast.error("Failed to load interviews.");
-            })
-            .finally(() => setLoading(false));
-    };
-
-    useEffect(() => {
-        loadInterviews();
+    const loadInterviews = useCallback(async (opts: { silent?: boolean } = {}) => {
+        if (!opts.silent) setLoading(true);
+        try {
+            const data = await getScheduledInterviews();
+            setInterviews(data);
+        } catch (err) {
+            console.error("Failed to load interviews:", err);
+            toast.error("Failed to load interviews.");
+        } finally {
+            if (!opts.silent) setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { loadInterviews(); }, [loadInterviews]);
+    useAutoRefresh(() => loadInterviews({ silent: true }), 30000);
 
     const openEdit = (iv: Interview) => {
         setEditingFor(iv.applicationId);

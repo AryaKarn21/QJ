@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { DataTable, DataTableColumn } from '../../ui/DataTable';
 import { StatusBadge, statusToTone } from '../../ui/StatusBadge';
 import { Drawer } from '../../ui/Drawer';
 import { KpiCard } from '../../ui/KpiCard';
 import { getAllCompanies, verifyCompany, rejectCompany, Company } from '../adminApi/api';
 import { CheckCircle2, XCircle, Building2, ShieldCheck, Clock } from 'lucide-react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 const CompanyManagement: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -16,16 +17,17 @@ const CompanyManagement: React.FC = () => {
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
-  const load = async (p = page) => {
-    setLoading(true);
-    const res = await getAllCompanies(p, 10, '');
+  const load = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
+    const res = await getAllCompanies(page, 10, '');
     setCompanies(res.companies);
     setTotal(res.total);
     setTotalPages(res.totalPages);
-    setLoading(false);
-  };
+    if (!opts.silent) setLoading(false);
+  }, [page]);
 
-  useEffect(() => { load(1); }, []);
+  useEffect(() => { load(); }, [load]);
+  useAutoRefresh(() => load({ silent: true }), 30000);
 
   const pendingCount = companies.filter((c) => c.verificationStatus === 'Pending').length;
   const verifiedCount = companies.filter((c) => c.verificationStatus === 'Verified').length;
@@ -33,7 +35,7 @@ const CompanyManagement: React.FC = () => {
   const handleVerify = async (company: Company) => {
     await verifyCompany(company._id);
     setSelected(null);
-    load(page);
+    load();
   };
 
   const handleReject = async (company: Company) => {
@@ -42,7 +44,7 @@ const CompanyManagement: React.FC = () => {
     setRejecting(false);
     setRejectReason('');
     setSelected(null);
-    load(page);
+    load();
   };
 
   const columns: DataTableColumn<Company>[] = [
@@ -93,7 +95,7 @@ const CompanyManagement: React.FC = () => {
         onRowClick={(c) => setSelected(c)}
         page={page}
         totalPages={totalPages}
-        onPageChange={(p) => { setPage(p); load(p); }}
+        onPageChange={(p) => setPage(p)}
         emptyTitle="No companies yet"
         emptyDescription="Employer accounts will show up here once someone signs up as an employer."
       />

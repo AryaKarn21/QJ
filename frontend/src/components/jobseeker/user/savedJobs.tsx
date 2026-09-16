@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Search, MapPin, Clock, Trash2 } from 'lucide-react';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { fetchSavedJobs, toggleSaveJob } from '../jobseekerApi/api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 interface Employer {
   name: string;
@@ -28,19 +29,20 @@ const UserSavedJobs = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadJobs = async () => {
-      try {
-        const jobs = await fetchSavedJobs();
-        setSavedJobs(jobs);
-      } catch (err) {
-        console.error('Error loading saved jobs:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadJobs();
+  const loadJobs = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
+    try {
+      const jobs = await fetchSavedJobs();
+      setSavedJobs(jobs);
+    } catch (err) {
+      console.error('Error loading saved jobs:', err);
+    } finally {
+      if (!opts.silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadJobs(); }, [loadJobs]);
+  useAutoRefresh(() => loadJobs({ silent: true }), 30000);
 
   const handleUnsave = async (id: string) => {
     try {

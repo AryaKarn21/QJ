@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Search, Pencil, Trash2, X } from "lucide-react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { fetchJobs, updateJob, deleteJob } from "./adminApi/api";
 import { fetchJobCategories, PublicJobCategory } from "../../api/jobCategoryApi";
 import { AxiosError } from "axios";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 interface Job {
   _id: string;
@@ -51,7 +52,7 @@ const JobManagement = () => {
       .catch((err) => console.error("Failed to fetch job categories", err));
   }, []);
 
-  const getJobs = async () => {
+  const getJobs = useCallback(async () => {
     try {
       const data = await fetchJobs(page, 6, search);
       setJobs(data.jobs);
@@ -59,7 +60,7 @@ const JobManagement = () => {
     } catch (err) {
       console.error("Failed to fetch jobs", err);
     }
-  };
+  }, [page, search]);
 
   // Debounce search
   useEffect(() => {
@@ -67,7 +68,9 @@ const JobManagement = () => {
       getJobs();
     }, 400);
     return () => clearTimeout(delayDebounce);
-  }, [search, page]);
+  }, [getJobs]);
+
+  useAutoRefresh(() => getJobs(), 30000);
 
   const handleEditClick = (job: Job) => {
     setEditingJob(job);

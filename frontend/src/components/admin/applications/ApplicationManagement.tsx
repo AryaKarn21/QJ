@@ -50,6 +50,7 @@ export const ApplicationManagement: React.FC = () => {
     queryKey: ['adminApplications', status, search, page],
     queryFn: () => getAllApplications({ page, limit: 10, status: status === 'All' ? undefined : status, search }),
     retry: false,
+    refetchInterval: 30000,
   });
 
   const applications = data?.applications ?? [];

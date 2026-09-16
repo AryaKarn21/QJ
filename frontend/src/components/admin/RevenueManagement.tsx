@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { Pencil, Trash2, Plus, DollarSign, TrendingUp, Users, Wallet } from "lucide-react";
 import { DataTable, DataTableColumn } from "../ui/DataTable";
@@ -14,6 +14,7 @@ import {
   deleteRevenue,
   toggleTrendingStatus,
 } from "./adminApi/api";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 interface Revenue {
   _id: string;
@@ -73,8 +74,8 @@ const RevenueManagement: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const [revenueData, employerData] = await Promise.all([
         fetchRevenues(),
@@ -85,13 +86,15 @@ const RevenueManagement: React.FC = () => {
     } catch {
       toast.error("Failed to load revenue records.");
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
+
+  useAutoRefresh(() => fetchAllData({ silent: true }), 30000, !showDrawer);
 
   // Real numbers derived from the actual loaded records — no invented
   // KPIs. Grouped by currency since summing across currencies as one

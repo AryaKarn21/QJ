@@ -1,9 +1,10 @@
 import { MapPin, DollarSign, Users, PenSquare, Trash2, Send, Copy, PlusCircle, Search, Briefcase, CalendarDays } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getEmployerJobs, patchJob, deleteJob } from "../employerApi/api";
 import { toast } from "react-toastify";
 import { FaWhatsapp } from "react-icons/fa";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 interface Job {
   _id: string;
@@ -36,21 +37,21 @@ const JobList = () => {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchJobs = async () => {
-      setLoading(true);
-      try {
-        const data = await getEmployerJobs();
-        setJobs(data);
-        setFilteredJobs(data);
-      } catch (error) {
-        console.error("Error fetching employer jobs:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchJobs();
+  const fetchJobs = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
+    try {
+      const data = await getEmployerJobs();
+      setJobs(data);
+      setFilteredJobs(data);
+    } catch (error) {
+      console.error("Error fetching employer jobs:", error);
+    } finally {
+      if (!opts.silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+  useAutoRefresh(() => fetchJobs({ silent: true }), 30000);
 
   useEffect(() => {
     let filtered = [...jobs];

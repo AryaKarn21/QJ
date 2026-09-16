@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Plus, Pencil, Trash2, FolderOpen, FileText } from "lucide-react";
 import { DataTable, DataTableColumn } from "../ui/DataTable";
@@ -11,6 +11,7 @@ import {
   adminDeleteBlogCategory,
   type BlogCategory,
 } from "../../api/blogCategoryApi";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 const resolveImage = (url: string) => `${MEDIA_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
@@ -33,21 +34,23 @@ const BlogCategoryManagement: React.FC = () => {
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const res = await adminGetBlogCategories();
       setCategories(res);
     } catch {
       toast.error("Failed to load blog categories.");
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
+
+  useAutoRefresh(() => load({ silent: true }), 30000, !drawerOpen);
 
   const filtered = categories.filter(
     (c) =>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
@@ -9,6 +9,7 @@ import {
   deletePlan,
   type Plan,
 } from '../../api/subscriptionApi';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const EMPTY_FORM = {
   name: '',
@@ -29,17 +30,21 @@ export default function PlanManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
-    setLoading(true);
+  const load = useCallback((opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     getPlans()
       .then(setPlans)
       .catch(() => toast.error('Failed to load plans'))
-      .finally(() => setLoading(false));
-  };
+      .finally(() => {
+        if (!opts.silent) setLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
+
+  useAutoRefresh(() => load({ silent: true }), 30000, !modalOpen);
 
   const openCreate = () => {
     setEditing(null);

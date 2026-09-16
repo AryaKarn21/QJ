@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Users2, Search, PlusCircle, Pencil, UserX,
@@ -11,6 +11,7 @@ import {
   type CompanyMember, type UserSearchResult,
 } from "../../../api/companyMemberApi";
 import { useCurrentUser } from "../../../utils/currentUser";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -253,9 +254,9 @@ const EmployeeList = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async (opts: { silent?: boolean } = {}) => {
     if (!companyId) return;
-    setLoading(true);
+    if (!opts.silent) setLoading(true);
     try {
       const data = await getEmployees(companyId, {
         search, status: filterStatus, department: filterDept,
@@ -264,14 +265,12 @@ const EmployeeList = () => {
     } catch {
       showToast("error", "Failed to load employees.");
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchEmployees();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, search, filterStatus, filterDept]);
+
+  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+  useAutoRefresh(() => fetchEmployees({ silent: true }), 30000);
 
   const handleDeactivate = async (member: CompanyMember) => {
     if (!window.confirm(`Deactivate ${member.user?.name}?`)) return;

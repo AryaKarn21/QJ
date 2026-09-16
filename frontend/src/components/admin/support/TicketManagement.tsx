@@ -6,6 +6,7 @@ import { KpiCard } from '../../ui/KpiCard';
 import { Drawer } from '../../ui/Drawer';
 import { FilterBar } from '../../ui/FilterBar';
 import { getAllTickets, replyToTicket, updateTicketStatus, SupportTicket } from '../adminApi/api';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 const STATUS_TONE: Record<SupportTicket['status'], StatusTone> = {
   open: 'info',
@@ -59,8 +60,8 @@ const TicketManagement: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const data = await getAllTickets(page, 15, filters.status, filters.category, search);
       setTickets(data.tickets);
@@ -69,13 +70,15 @@ const TicketManagement: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
   }, [page, filters, search]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load({ silent: true }), 30000, !replyText.trim());
 
   useEffect(() => {
     setPage(1);

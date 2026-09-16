@@ -16,11 +16,12 @@
  * already-computed fields from the same stats endpoint.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import {
   BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -140,18 +141,17 @@ const Dashboard: React.FC = () => {
     queryFn: getEmployerNotifications,
   });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await getEmployerDashboardStats();
-        setStats(data);
-      } catch (err) { console.error('Stats error:', err); }
-    };
-    fetchStats();
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await getEmployerDashboardStats();
+      setStats(data);
+    } catch (err) { console.error('Stats error:', err); }
   }, []);
 
-  useEffect(() => {
-    const fetchApps = async () => {
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useAutoRefresh(fetchStats, 30000);
+
+  const fetchApps = useCallback(async () => {
   try {
     const res = await getAllApplicants(page, limit);
 
@@ -181,9 +181,10 @@ const Dashboard: React.FC = () => {
     setApplications(mapped);
     setTotalPages(res.totalPages || 1);
   } catch (err) { console.error('Applications error:', err); }
-};
-    fetchApps();
   }, [page]);
+
+  useEffect(() => { fetchApps(); }, [fetchApps]);
+  useAutoRefresh(fetchApps, 30000);
 
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';

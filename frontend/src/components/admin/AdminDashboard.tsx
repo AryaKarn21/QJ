@@ -114,21 +114,25 @@ const AdminDashboard = () => {
   const { data: profile } = useQuery<AdminProfile>({
     queryKey: ["adminProfile"],
     queryFn: getAdminProfile,
+    refetchInterval: 30000,
   });
 
   const { data: statsData } = useQuery<AdminStats>({
     queryKey: ["adminStats"],
     queryFn: getAdminStats,
+    refetchInterval: 30000,
   });
 
   const { data: insights } = useQuery<JobInsights>({
     queryKey: ["jobInsights", timeFrame],
     queryFn: getAllJobStatsByDate,
+    refetchInterval: 30000,
   });
 
   const { data: dailyLogins } = useQuery<DailyLoginsResponse>({
     queryKey: ["dailyLogins"],
     queryFn: getDailyLoggedInUsers,
+    refetchInterval: 30000,
   });
 
   const viewsData = insights

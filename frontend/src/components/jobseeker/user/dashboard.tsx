@@ -13,6 +13,7 @@ import {
 } from "../jobseekerApi/api";
 import { fetchConversations } from "../../../api/messageApi";
 import type { ConversationSummary } from "../../../types/community";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -52,7 +53,7 @@ const statusConfig: Record<string, { bg: string; text: string; icon: React.React
 const UserDashboard = () => {
   const navigate = useNavigate();
 
-  const { data: appliedJobs = [], isLoading: loadingJobs } = useQuery({
+  const { data: appliedJobs = [], isLoading: loadingJobs, refetch: refetchAppliedJobs } = useQuery({
     queryKey: ["appliedJobs"],
     queryFn: fetchAppliedJobs,
     select: (jobs: any[]): AppliedJob[] =>
@@ -66,20 +67,27 @@ const UserDashboard = () => {
       })),
   });
 
-  const { data: dashboardStats, isLoading: loadingStats } = useQuery({
+  const { data: dashboardStats, isLoading: loadingStats, refetch: refetchDashboardStats } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: fetchDashboardStats,
   });
 
-  const { data: notifications = [], isLoading: loadingNotifications } = useQuery<JobseekerNotification[]>({
+  const { data: notifications = [], isLoading: loadingNotifications, refetch: refetchNotifications } = useQuery<JobseekerNotification[]>({
     queryKey: ["jobseekerNotifications"],
     queryFn: getJobseekerNotifications,
   });
 
-  const { data: conversations = [], isLoading: loadingMessages } = useQuery<ConversationSummary[]>({
+  const { data: conversations = [], isLoading: loadingMessages, refetch: refetchConversations } = useQuery<ConversationSummary[]>({
     queryKey: ["conversations"],
     queryFn: fetchConversations,
   });
+
+  useAutoRefresh(() => {
+    refetchAppliedJobs();
+    refetchDashboardStats();
+    refetchNotifications();
+    refetchConversations();
+  }, 30000);
 
   const statCards = dashboardStats
     ? [

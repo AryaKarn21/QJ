@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getAllApplicantsForEmployerJobs,
   getEmployerJobs,
@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 import { resolveMediaUrl, resolveResumeUrl } from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
   Pending:              { bg: "bg-amber-50",   text: "text-amber-700",  dot: "bg-amber-400" },
@@ -97,36 +98,36 @@ const Applicants = () => {
     setPage(1);
   }, [debouncedSearch, statusFilter, jobFilter, dateFrom, dateTo]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchApplicants = async () => {
-      setLoading(true);
-      setError(false);
-      try {
-        const res = await getAllApplicantsForEmployerJobs({
-          page,
-          limit: 10,
-          search: debouncedSearch || undefined,
-          status: statusFilter || undefined,
-          jobId: jobFilter || undefined,
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
-        });
-        if (cancelled) return;
-        setApplications(res.applications);
-        setTotalPages(res.totalPages || 1);
-        setTotalApplications(res.totalApplications || 0);
-        setStatusCounts(res.statusCounts || {});
-      } catch (err) {
-        console.error("Error fetching applicants:", err);
-        if (!cancelled) setError(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    fetchApplicants();
-    return () => { cancelled = true; };
+  const fetchIdRef = useRef(0);
+  const fetchApplicants = useCallback(async (opts: { silent?: boolean } = {}) => {
+    const fetchId = ++fetchIdRef.current;
+    if (!opts.silent) setLoading(true);
+    setError(false);
+    try {
+      const res = await getAllApplicantsForEmployerJobs({
+        page,
+        limit: 10,
+        search: debouncedSearch || undefined,
+        status: statusFilter || undefined,
+        jobId: jobFilter || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      if (fetchId !== fetchIdRef.current) return;
+      setApplications(res.applications);
+      setTotalPages(res.totalPages || 1);
+      setTotalApplications(res.totalApplications || 0);
+      setStatusCounts(res.statusCounts || {});
+    } catch (err) {
+      console.error("Error fetching applicants:", err);
+      if (fetchId === fetchIdRef.current) setError(true);
+    } finally {
+      if (fetchId === fetchIdRef.current && !opts.silent) setLoading(false);
+    }
   }, [page, debouncedSearch, statusFilter, jobFilter, dateFrom, dateTo]);
+
+  useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
+  useAutoRefresh(() => fetchApplicants({ silent: true }), 30000);
 
   const clearFilters = () => {
     setStatusFilter("");

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Plus, Pencil, Trash2, Eye, MousePointerClick, Image as ImageIcon } from "lucide-react";
 import { DataTable, DataTableColumn } from "../ui/DataTable";
@@ -13,6 +13,7 @@ import {
   type Advertisement,
   type AdPlacement,
 } from "../../api/advertisementApi";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 const resolveImage = (url: string) => `${MEDIA_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
@@ -58,8 +59,8 @@ const AdvertisementManagement: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const res = await adminGetAdvertisements({ page, limit: 10, search, placement: placementFilter || undefined });
       setAds(res.ads);
@@ -68,14 +69,15 @@ const AdvertisementManagement: React.FC = () => {
     } catch {
       toast.error("Failed to load advertisements.");
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
-  };
+  }, [page, search, placementFilter]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, placementFilter]);
+  }, [load]);
+
+  useAutoRefresh(() => load({ silent: true }), 30000, !drawerOpen);
 
   const openCreate = () => {
     setEditing(null);

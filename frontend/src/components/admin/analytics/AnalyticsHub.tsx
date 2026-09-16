@@ -29,6 +29,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { SkeletonCard } from '../../ui/Skeleton';
 import { StatusBadge, statusToTone } from '../../ui/StatusBadge';
 import { getAnalyticsOverview } from '../adminApi/api';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 type TabId = 'overview' | 'users' | 'jobs' | 'revenue' | 'devices';
 
@@ -63,11 +64,13 @@ const DEVICE_ICON: Record<string, React.ReactNode> = {
 export const AnalyticsHub: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['analyticsOverview'],
     queryFn: getAnalyticsOverview,
     retry: false,
   });
+
+  useAutoRefresh(() => refetch(), 30000);
 
   return (
     <div>

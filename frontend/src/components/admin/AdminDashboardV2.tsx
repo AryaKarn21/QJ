@@ -94,6 +94,7 @@ export const AdminDashboardV2: React.FC = () => {
     queryKey: ['adminProfile'],
     queryFn: getAdminProfile,
     retry: false,
+    refetchInterval: 30000,
   });
 
   const {
@@ -104,18 +105,21 @@ export const AdminDashboardV2: React.FC = () => {
     queryKey: ['analyticsOverview'],
     queryFn: getAnalyticsOverview,
     retry: false,
+    refetchInterval: 30000,
   });
 
   const { data: appsData, isLoading: appsLoading } = useQuery({
     queryKey: ['dashboardRecentApplications'],
     queryFn: () => getAllApplications({ page: 1, limit: 6 }),
     retry: false,
+    refetchInterval: 30000,
   });
 
   const { data: jobsData, isLoading: jobsLoading } = useQuery({
     queryKey: ['dashboardRecentJobs'],
     queryFn: () => fetchJobs(1, 6),
     retry: false,
+    refetchInterval: 30000,
   });
 
   const { data: auditStats } = useQuery({
@@ -123,6 +127,7 @@ export const AdminDashboardV2: React.FC = () => {
     queryFn: getAuditLogStats,
     enabled: isSuperAdmin,
     retry: false,
+    refetchInterval: 30000,
   });
 
   const firstName = profile?.name?.split(' ')[0];

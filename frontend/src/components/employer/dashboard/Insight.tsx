@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { fetchJobStats, fetchConversionRates, fetchJobPostComparison } from "../insightsApi/api";
+import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
@@ -55,25 +56,25 @@ const Insight: React.FC = () => {
   // New ref for the job comparison table section
   const jobComparisonTableRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [jobStatsRes, conversionRes, comparisonRes] = await Promise.all([
-          fetchJobStats(),
-          fetchConversionRates(),
-          fetchJobPostComparison(),
-        ]);
+  const fetchData = useCallback(async () => {
+    try {
+      const [jobStatsRes, conversionRes, comparisonRes] = await Promise.all([
+        fetchJobStats(),
+        fetchConversionRates(),
+        fetchJobPostComparison(),
+      ]);
 
-        setJobStats(jobStatsRes?.data || []);
-        setConversionRates(conversionRes || []);
-        setJobComparison(comparisonRes || []);
+      setJobStats(jobStatsRes?.data || []);
+      setConversionRates(conversionRes || []);
+      setJobComparison(comparisonRes || []);
 
-      } catch (error) {
-        console.error("Failed to load insights:", error);
-      }
-    };
-    fetchData();
+    } catch (error) {
+      console.error("Failed to load insights:", error);
+    }
   }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useAutoRefresh(fetchData, 30000);
 
   const handleDownloadPDF = async () => {
     // Target only the jobComparisonTableRef for PDF download

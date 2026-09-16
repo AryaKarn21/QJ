@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getAllApplicantsForEmployerJobs, updateApplicationStatus } from "./adminApi/api";
 import { Eye } from "lucide-react";
 import { Modal } from "../ui/Modal";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -30,23 +31,21 @@ const EmployerApplicants = () => {
     const [loading, setLoading] = useState(true);
     const [selectedCoverLetter, setSelectedCoverLetter] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchApplicants = useCallback(async (opts: { silent?: boolean } = {}) => {
         if (!employerId) return;
-
-        const fetchApplicants = async () => {
-            try {
-                setLoading(true);
-                const result = await getAllApplicantsForEmployerJobs(employerId);
-                setData(result);
-            } catch (err) {
-                console.error("Error fetching applicants:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchApplicants();
+        if (!opts.silent) setLoading(true);
+        try {
+            const result = await getAllApplicantsForEmployerJobs(employerId);
+            setData(result);
+        } catch (err) {
+            console.error("Error fetching applicants:", err);
+        } finally {
+            if (!opts.silent) setLoading(false);
+        }
     }, [employerId]);
+
+    useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
+    useAutoRefresh(() => fetchApplicants({ silent: true }), 30000);
 
     const handleStatusChange = async (applicationId: string, newStatus: string) => {
         try {
