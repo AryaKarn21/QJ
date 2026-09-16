@@ -30,13 +30,15 @@ const TEMPLATE_LABELS: Record<string, string> = {
  * more KpiCards/ChartCards once those features exist.
  */
 export const AiCenterDashboard: React.FC = () => {
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading: dataLoading, isFetching: dataFetching, isError, refetch } = useQuery({
     queryKey: ['aiUsageStats'],
     queryFn: getAiUsageStats,
     retry: false,
   });
 
   useAutoRefresh(() => refetch(), 30000);
+
+  const isLoading = dataLoading || dataFetching;
 
   const topTemplate = data?.byTemplate?.[0];
 

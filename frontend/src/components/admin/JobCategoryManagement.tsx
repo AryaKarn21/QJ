@@ -57,7 +57,7 @@ const JobCategories = () => {
     fetchCategories();
   }, []);
 
-  useAutoRefresh(() => fetchCategories({ silent: true }), 30000, !isModalOpen);
+  useAutoRefresh(() => fetchCategories(), 30000, !isModalOpen);
 
   // Update image preview when formData.icon or currentCategory changes
   useEffect(() => {

@@ -50,7 +50,7 @@ const BlogCategoryManagement: React.FC = () => {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load({ silent: true }), 30000, !drawerOpen);
+  useAutoRefresh(() => load(), 30000, !drawerOpen);
 
   const filtered = categories.filter(
     (c) =>

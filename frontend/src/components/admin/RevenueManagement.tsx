@@ -94,7 +94,7 @@ const RevenueManagement: React.FC = () => {
     fetchAllData();
   }, [fetchAllData]);
 
-  useAutoRefresh(() => fetchAllData({ silent: true }), 30000, !showDrawer);
+  useAutoRefresh(() => fetchAllData(), 30000, !showDrawer);
 
   // Real numbers derived from the actual loaded records — no invented
   // KPIs. Grouped by currency since summing across currencies as one

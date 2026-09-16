@@ -64,13 +64,15 @@ const DEVICE_ICON: Record<string, React.ReactNode> = {
 export const AnalyticsHub: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading: dataLoading, isFetching: dataFetching, isError, refetch } = useQuery({
     queryKey: ['analyticsOverview'],
     queryFn: getAnalyticsOverview,
     retry: false,
   });
 
   useAutoRefresh(() => refetch(), 30000);
+
+  const isLoading = dataLoading || dataFetching;
 
   return (
     <div>

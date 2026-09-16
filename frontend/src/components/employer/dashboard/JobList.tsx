@@ -51,7 +51,7 @@ const JobList = () => {
   }, []);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
-  useAutoRefresh(() => fetchJobs({ silent: true }), 30000);
+  useAutoRefresh(() => fetchJobs(), 30000);
 
   useEffect(() => {
     let filtered = [...jobs];

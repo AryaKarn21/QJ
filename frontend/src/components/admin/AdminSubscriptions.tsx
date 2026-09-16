@@ -24,13 +24,15 @@ export default function AdminSubscriptions() {
   const [status, setStatus] = useState<Subscription['status'] | 'all'>('all');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading: dataLoading, isFetching: dataFetching, isError, refetch } = useQuery({
     queryKey: ['adminSubscriptions', status, page],
     queryFn: () => adminGetAllSubscriptions({ status: status === 'all' ? undefined : status, page, limit: 20 }),
     retry: false,
   });
 
   useAutoRefresh(() => refetch(), 30000);
+
+  const isLoading = dataLoading || dataFetching;
 
   const totalPages = data ? Math.max(Math.ceil(data.total / data.limit), 1) : 1;
 

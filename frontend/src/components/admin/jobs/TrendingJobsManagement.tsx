@@ -45,7 +45,7 @@ const apiErrorMessage = (err: unknown, fallback: string) =>
 const TrendingJobsManagement: React.FC = () => {
   const queryClient = useQueryClient();
 
-  const { data: trendingData, isLoading: loadingTrending } = useQuery({
+  const { data: trendingData, isLoading: loadingTrending, isFetching: fetchingTrending } = useQuery({
     queryKey: ['trendingJobsAdmin'],
     queryFn: getTrendingJobsAdmin,
     refetchInterval: 30000,
@@ -211,7 +211,7 @@ const TrendingJobsManagement: React.FC = () => {
         </div>
       </div>
 
-      {loadingTrending ? (
+      {(loadingTrending || fetchingTrending) ? (
         <div className="rounded-admin-card border border-adminBorder bg-adminCard p-8 text-center text-sm text-adminTextSecondary shadow-admin-card dark:border-slate-700">
           Loading trending jobs…
         </div>

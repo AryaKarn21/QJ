@@ -77,7 +77,7 @@ const AdvertisementManagement: React.FC = () => {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load({ silent: true }), 30000, !drawerOpen);
+  useAutoRefresh(() => load(), 30000, !drawerOpen);
 
   const openCreate = () => {
     setEditing(null);

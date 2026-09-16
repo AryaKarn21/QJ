@@ -270,7 +270,7 @@ const EmployeeList = () => {
   }, [companyId, search, filterStatus, filterDept]);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
-  useAutoRefresh(() => fetchEmployees({ silent: true }), 30000);
+  useAutoRefresh(() => fetchEmployees(), 30000);
 
   const handleDeactivate = async (member: CompanyMember) => {
     if (!window.confirm(`Deactivate ${member.user?.name}?`)) return;

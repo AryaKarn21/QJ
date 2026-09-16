@@ -9,7 +9,7 @@ export default function AdminSubscriptionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading: dataLoading, isFetching: dataFetching, isError, refetch } = useQuery({
     queryKey: ['adminSubscriptionDetail', id],
     queryFn: () => adminGetSubscriptionById(id as string),
     enabled: !!id,
@@ -17,6 +17,8 @@ export default function AdminSubscriptionDetail() {
   });
 
   useAutoRefresh(() => refetch(), 30000, !!id);
+
+  const isLoading = dataLoading || dataFetching;
 
   return (
     <div className="p-6">

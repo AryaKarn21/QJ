@@ -61,7 +61,7 @@ export default function AdminNotificationCenter() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load({ silent: true }), 30000);
+  useAutoRefresh(() => load(), 30000);
 
   const loadMore = async () => {
     setLoadingMore(true);

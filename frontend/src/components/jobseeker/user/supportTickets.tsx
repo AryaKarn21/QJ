@@ -29,7 +29,7 @@ const UserSupportTickets = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useAutoRefresh(() => load({ silent: true }), 30000);
+  useAutoRefresh(() => load(), 30000);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">

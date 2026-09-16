@@ -44,7 +44,7 @@ export default function PlanManagement() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load({ silent: true }), 30000, !modalOpen);
+  useAutoRefresh(() => load(), 30000, !modalOpen);
 
   const openCreate = () => {
     setEditing(null);

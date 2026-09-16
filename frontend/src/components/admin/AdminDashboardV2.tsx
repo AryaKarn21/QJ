@@ -100,6 +100,7 @@ export const AdminDashboardV2: React.FC = () => {
   const {
     data: overview,
     isLoading: overviewLoading,
+    isFetching: overviewFetching,
     isError: overviewError,
   } = useQuery({
     queryKey: ['analyticsOverview'],
@@ -108,14 +109,14 @@ export const AdminDashboardV2: React.FC = () => {
     refetchInterval: 30000,
   });
 
-  const { data: appsData, isLoading: appsLoading } = useQuery({
+  const { data: appsData, isLoading: appsLoading, isFetching: appsFetching } = useQuery({
     queryKey: ['dashboardRecentApplications'],
     queryFn: () => getAllApplications({ page: 1, limit: 6 }),
     retry: false,
     refetchInterval: 30000,
   });
 
-  const { data: jobsData, isLoading: jobsLoading } = useQuery({
+  const { data: jobsData, isLoading: jobsLoading, isFetching: jobsFetching } = useQuery({
     queryKey: ['dashboardRecentJobs'],
     queryFn: () => fetchJobs(1, 6),
     retry: false,
@@ -131,7 +132,7 @@ export const AdminDashboardV2: React.FC = () => {
   });
 
   const firstName = profile?.name?.split(' ')[0];
-  const isLoading = overviewLoading;
+  const isLoading = overviewLoading || overviewFetching;
 
   const totalUsers = (overview?.users.totalJobseekers ?? 0) + (overview?.users.totalEmployers ?? 0);
   const totalApplications = appsData?.total ?? 0;
@@ -232,7 +233,7 @@ export const AdminDashboardV2: React.FC = () => {
           label="Applications"
           value={totalApplications}
           icon={<ClipboardList size={18} />}
-          loading={appsLoading}
+          loading={appsLoading || appsFetching}
           accent="amber"
           description="Across all open jobs"
         />
@@ -271,7 +272,7 @@ export const AdminDashboardV2: React.FC = () => {
           </ChartCard>
         </div>
 
-        <ChartCard title="Application Status" subtitle="Current pipeline" loading={appsLoading} height={260}>
+        <ChartCard title="Application Status" subtitle="Current pipeline" loading={appsLoading || appsFetching} height={260}>
           {applicationStatusData.length === 0 ? (
             <div className="flex h-[220px] items-center justify-center text-sm text-adminTextSecondary">
               No applications yet.
@@ -376,10 +377,10 @@ export const AdminDashboardV2: React.FC = () => {
             </Link>
           </div>
           <div className="mt-3 space-y-3.5">
-            {appsLoading && (
+            {(appsLoading || appsFetching) && (
               <p className="text-xs text-adminTextSecondary">Loading recent activity…</p>
             )}
-            {!appsLoading && (appsData?.applications.length ?? 0) === 0 && (
+            {!(appsLoading || appsFetching) && (appsData?.applications.length ?? 0) === 0 && (
               <p className="text-xs text-adminTextSecondary">No recent applications yet.</p>
             )}
             {appsData?.applications.slice(0, 5).map((app) => (
@@ -476,7 +477,7 @@ export const AdminDashboardV2: React.FC = () => {
           columns={jobColumns}
           data={jobsData?.jobs ?? []}
           getRowKey={(job) => job._id}
-          loading={jobsLoading}
+          loading={jobsLoading || jobsFetching}
           skeletonRows={5}
           emptyTitle="No jobs yet"
           emptyDescription="Once employers start posting, jobs will show up here."

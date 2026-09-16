@@ -64,7 +64,7 @@ const Candidates = () => {
     }, []);
 
     useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
-    useAutoRefresh(() => fetchCandidates({ silent: true }), 30000);
+    useAutoRefresh(() => fetchCandidates(), 30000);
 
     const handleToggleSave = async (candidateId: string) => {
         setSavingId(candidateId);

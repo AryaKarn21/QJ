@@ -27,7 +27,7 @@ const CompanyManagement: React.FC = () => {
   }, [page]);
 
   useEffect(() => { load(); }, [load]);
-  useAutoRefresh(() => load({ silent: true }), 30000);
+  useAutoRefresh(() => load(), 30000);
 
   const pendingCount = companies.filter((c) => c.verificationStatus === 'Pending').length;
   const verifiedCount = companies.filter((c) => c.verificationStatus === 'Verified').length;

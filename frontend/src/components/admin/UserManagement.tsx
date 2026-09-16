@@ -66,12 +66,13 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => { setPage(1); setSelectedIds([]); }, [activeTab, search, filters]);
 
-  const { data: allUsers = [], isLoading } = useQuery<AdminUser[]>({
+  const { data: allUsers = [], isLoading: usersLoading, isFetching: usersFetching } = useQuery<AdminUser[]>({
     queryKey: ['adminUsers'],
     queryFn:  getAllUsers,
     staleTime: 30_000,
     refetchInterval: 30_000,
   });
+  const isLoading = usersLoading || usersFetching;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteUser(id),

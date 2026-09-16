@@ -78,7 +78,7 @@ const UserMyApplications = () => {
   }, []);
 
   useEffect(() => { loadApplications(); }, [loadApplications]);
-  useAutoRefresh(() => loadApplications({ silent: true }), 30000);
+  useAutoRefresh(() => loadApplications(), 30000);
 
   const filteredApplications = applications
     .filter((app) => statusFilter === 'all' || app.applicationStatus === statusFilter)

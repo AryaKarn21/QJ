@@ -78,7 +78,7 @@ const TicketManagement: React.FC = () => {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load({ silent: true }), 30000, !replyText.trim());
+  useAutoRefresh(() => load(), 30000, !replyText.trim());
 
   useEffect(() => {
     setPage(1);

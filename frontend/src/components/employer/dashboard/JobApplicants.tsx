@@ -52,7 +52,7 @@ const JobApplicants = () => {
     }, [jobId]);
 
     useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
-    useAutoRefresh(() => fetchApplicants({ silent: true }), 30000);
+    useAutoRefresh(() => fetchApplicants(), 30000);
 
     const handleStatusChange = async (applicationId: string, newStatus: string) => {
         try {

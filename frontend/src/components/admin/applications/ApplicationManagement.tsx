@@ -46,12 +46,13 @@ export const ApplicationManagement: React.FC = () => {
   const [selected, setSelected] = useState<AdminApplication | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading: dataLoading, isFetching: dataFetching, isError } = useQuery({
     queryKey: ['adminApplications', status, search, page],
     queryFn: () => getAllApplications({ page, limit: 10, status: status === 'All' ? undefined : status, search }),
     retry: false,
     refetchInterval: 30000,
   });
+  const isLoading = dataLoading || dataFetching;
 
   const applications = data?.applications ?? [];
   const counts = data?.statusCounts;

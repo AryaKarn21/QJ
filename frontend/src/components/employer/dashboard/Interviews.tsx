@@ -83,7 +83,7 @@ const Interviews = () => {
     }, []);
 
     useEffect(() => { loadInterviews(); }, [loadInterviews]);
-    useAutoRefresh(() => loadInterviews({ silent: true }), 30000);
+    useAutoRefresh(() => loadInterviews(), 30000);
 
     const openEdit = (iv: Interview) => {
         setEditingFor(iv.applicationId);

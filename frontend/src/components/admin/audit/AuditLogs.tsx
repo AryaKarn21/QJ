@@ -70,7 +70,7 @@ const AuditLogs: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filters.module, filters.success]);
 
-  useAutoRefresh(() => load(page, { silent: true }), 30000);
+  useAutoRefresh(() => load(page), 30000);
 
   const filterConfigs: FilterConfig[] = [
     {

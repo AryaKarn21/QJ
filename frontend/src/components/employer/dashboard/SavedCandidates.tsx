@@ -49,7 +49,7 @@ const SavedCandidates = () => {
     }, []);
 
     useEffect(() => { fetchSavedCandidates(); }, [fetchSavedCandidates]);
-    useAutoRefresh(() => fetchSavedCandidates({ silent: true }), 30000);
+    useAutoRefresh(() => fetchSavedCandidates(), 30000);
 
     const handleRemove = async (candidateId: string) => {
         setRemovingId(candidateId);

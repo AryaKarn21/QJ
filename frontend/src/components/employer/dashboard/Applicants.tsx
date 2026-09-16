@@ -127,7 +127,7 @@ const Applicants = () => {
   }, [page, debouncedSearch, statusFilter, jobFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
-  useAutoRefresh(() => fetchApplicants({ silent: true }), 30000);
+  useAutoRefresh(() => fetchApplicants(), 30000);
 
   const clearFilters = () => {
     setStatusFilter("");

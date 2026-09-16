@@ -53,7 +53,7 @@ const statusConfig: Record<string, { bg: string; text: string; icon: React.React
 const UserDashboard = () => {
   const navigate = useNavigate();
 
-  const { data: appliedJobs = [], isLoading: loadingJobs, refetch: refetchAppliedJobs } = useQuery({
+  const { data: appliedJobs = [], isLoading: loadingJobs, isFetching: fetchingJobs, refetch: refetchAppliedJobs } = useQuery({
     queryKey: ["appliedJobs"],
     queryFn: fetchAppliedJobs,
     select: (jobs: any[]): AppliedJob[] =>
@@ -67,17 +67,17 @@ const UserDashboard = () => {
       })),
   });
 
-  const { data: dashboardStats, isLoading: loadingStats, refetch: refetchDashboardStats } = useQuery({
+  const { data: dashboardStats, isLoading: loadingStats, isFetching: fetchingStats, refetch: refetchDashboardStats } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: fetchDashboardStats,
   });
 
-  const { data: notifications = [], isLoading: loadingNotifications, refetch: refetchNotifications } = useQuery<JobseekerNotification[]>({
+  const { data: notifications = [], isLoading: loadingNotifications, isFetching: fetchingNotifications, refetch: refetchNotifications } = useQuery<JobseekerNotification[]>({
     queryKey: ["jobseekerNotifications"],
     queryFn: getJobseekerNotifications,
   });
 
-  const { data: conversations = [], isLoading: loadingMessages, refetch: refetchConversations } = useQuery<ConversationSummary[]>({
+  const { data: conversations = [], isLoading: loadingMessages, isFetching: fetchingMessages, refetch: refetchConversations } = useQuery<ConversationSummary[]>({
     queryKey: ["conversations"],
     queryFn: fetchConversations,
   });
@@ -125,7 +125,7 @@ const UserDashboard = () => {
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {loadingStats
+          {(loadingStats || fetchingStats)
             ? [...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl p-5 shadow-sm animate-pulse h-24" />
               ))
@@ -156,7 +156,7 @@ const UserDashboard = () => {
               </button>
             </div>
 
-            {loadingJobs ? (
+            {(loadingJobs || fetchingJobs) ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
@@ -223,7 +223,7 @@ const UserDashboard = () => {
                 </button>
               </div>
 
-              {loadingMessages ? (
+              {(loadingMessages || fetchingMessages) ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="flex items-center gap-2">
@@ -284,7 +284,7 @@ const UserDashboard = () => {
                 <h2 className="font-bold text-gray-900 text-sm">Notifications</h2>
               </div>
 
-              {loadingNotifications ? (
+              {(loadingNotifications || fetchingNotifications) ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="h-10 bg-gray-50 rounded-xl animate-pulse" />

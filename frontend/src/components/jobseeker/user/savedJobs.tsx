@@ -42,7 +42,7 @@ const UserSavedJobs = () => {
   }, []);
 
   useEffect(() => { loadJobs(); }, [loadJobs]);
-  useAutoRefresh(() => loadJobs({ silent: true }), 30000);
+  useAutoRefresh(() => loadJobs(), 30000);
 
   const handleUnsave = async (id: string) => {
     try {
