@@ -7,6 +7,7 @@ const SavedCandidate = require("../models/SavedCandidate");
 const CompanyMember = require("../models/CompanyMember");
 const sendNotification = require("../utils/sendNotifications");
 const sendMail = require("../utils/sendMail");
+const { SYMBOL_BY_CODE } = require("../data/currencies");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
 const {
   EMPLOYER_STATUSES,
@@ -151,7 +152,10 @@ const deriveSalaryString = ({ salary, salaryMin, salaryMax, currency, salaryPeri
   const range = min !== undefined && max !== undefined && min !== max
     ? `${min.toLocaleString()} - ${max.toLocaleString()}`
     : (min ?? max).toLocaleString();
-  return `${cur} ${range} / ${period}`;
+  // Symbol first (what a jobseeker actually scans for), code kept alongside
+  // since a bare "$" is ambiguous across USD/AUD/CAD/SGD/etc.
+  const symbol = SYMBOL_BY_CODE[cur] || "";
+  return `${cur} ${symbol}${range} / ${period}`;
 };
 
 const deriveExperienceString = ({ experience, minExperience, maxExperience }) => {
@@ -761,69 +765,104 @@ const getEmployerDashboardStats = async (req, res) => {
   }
 };
 
-// Get All Applicants for Employer Jobs ,
+// Get All Applicants for Employer Jobs — powers the Applications module
+// (frontend/.../employer/dashboard/Applicants.tsx). Flat, filterable,
+// paginated list (not grouped by job — the old grouped shape had exactly
+// one consumer, which now wants a flat table/card list instead).
+//
+// Query params (all optional): page, limit, search (matches applicant name
+// OR job title), status, jobId, dateFrom, dateTo (both inclusive, compared
+// against Application.createdAt).
 const getAllApplicantsForEmployer = async (req, res) => {
   const employerId = req.user.id;
 
-  // Pagination settings
-  const page = parseInt(req.query.page) || 1;
-  const limit = 10;
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
   const skip = (page - 1) * limit;
+  const { search, status, jobId, dateFrom, dateTo } = req.query;
 
   try {
-    // Get all jobs posted by this employer
     const jobs = await Job.find({ employer: employerId }).select("_id title");
-
-    if (!jobs || jobs.length === 0) {
-      return res.status(404).json({ message: "No jobs found for this employer" });
-    }
-
     const jobIds = jobs.map((job) => job._id);
 
-    // Total count of applications for pagination metadata
-    const totalApplications = await Application.countDocuments({ job: { $in: jobIds } });
-    const totalPages = Math.ceil(totalApplications / limit);
-
-    // Fetch paginated applications sorted by newest
-    const applications = await Application.find({ job: { $in: jobIds } })
-      .populate("applicant", "name profilePic email")
-      .populate("job", "title")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    // Group applications by job
-    const groupedApplications = {};
-
-    applications.forEach((app) => {
-      const jobId = app.job._id.toString();
-
-      if (!groupedApplications[jobId]) {
-        groupedApplications[jobId] = {
-          jobTitle: app.job.title,
-          jobId: app.job._id,
-          applicants: [],
-        };
-      }
-
-      groupedApplications[jobId].applicants.push({
-        applicationId: app._id,
-        applicant: app.applicant,
-        coverLetter: app.coverLetter,
-        resume: app.resume,
-        status: app.status,
-        appliedAt: app.createdAt,
+    // No jobs posted yet is a normal empty state, not an error — matches
+    // getEmployerJobs's own "always 200" convention.
+    if (jobIds.length === 0) {
+      return res.json({
+        applications: [],
+        currentPage: page,
+        totalPages: 0,
+        totalApplications: 0,
+        perPage: limit,
+        statusCounts: { Pending: 0, Reviewed: 0, "Interview Scheduled": 0, Accepted: 0, Rejected: 0 },
       });
+    }
+
+    const scopedJobIds = jobId ? jobIds.filter((id) => id.toString() === jobId) : jobIds;
+
+    const filter = { job: { $in: scopedJobIds } };
+    if (status) filter.status = status;
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        // Inclusive of the whole end day.
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    if (search && search.trim()) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      const [matchingJobIds, matchingApplicantIds] = await Promise.all([
+        Job.find({ _id: { $in: scopedJobIds }, title: regex }).distinct("_id"),
+        User.find({ role: "jobseeker", name: regex }).distinct("_id"),
+      ]);
+      filter.$or = [{ job: { $in: matchingJobIds } }, { applicant: { $in: matchingApplicantIds } }];
+    }
+
+    const [applications, totalApplications, statusCountsRaw] = await Promise.all([
+      Application.find(filter)
+        .populate("applicant", "name email profilePic skills qualifications experiences")
+        .populate("job", "title")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Application.countDocuments(filter),
+      // Status counts always reflect every application across the
+      // employer's jobs (job/search/date filters excluded), so the summary
+      // strip stays a stable "overview," not something that jumps around
+      // as the employer types into the search box.
+      Application.aggregate([
+        { $match: { job: { $in: jobIds } } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const statusCounts = { Pending: 0, Reviewed: 0, "Interview Scheduled": 0, Accepted: 0, Rejected: 0 };
+    statusCountsRaw.forEach(({ _id, count }) => {
+      if (_id in statusCounts) statusCounts[_id] = count;
     });
 
-    const result = Object.values(groupedApplications);
-
     res.json({
+      applications: applications.map((app) => ({
+        applicationId: app._id,
+        applicant: app.applicant,
+        job: app.job,
+        coverLetter: app.coverLetter,
+        resume: app.resume,
+        howDidYouHear: app.howDidYouHear,
+        status: app.status,
+        interview: app.interview,
+        appliedAt: app.createdAt,
+      })),
       currentPage: page,
-      totalPages,
+      totalPages: Math.ceil(totalApplications / limit),
       totalApplications,
       perPage: limit,
-      data: result,
+      statusCounts,
     });
   } catch (error) {
     console.error("Error fetching applicants for employer jobs:", error);

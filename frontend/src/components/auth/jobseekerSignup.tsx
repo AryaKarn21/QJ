@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, Upload, PlusCircle, MinusCircle, UserRoundPlus, XCircle } from 'lucide-react'; //
+import { Eye, EyeOff, Upload, PlusCircle, MinusCircle, UserRoundPlus, XCircle } from 'lucide-react'; //
 import { useMutation } from '@tanstack/react-query';
 import Logo from '../../assets/quickjobs.png';
 import SignUpImage from '../../assets/authImages/Signup.png';
@@ -480,10 +480,10 @@ const JobseekerSignup: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="pointer-events-auto text-gray-500"
-                    aria-label="Toggle password visibility"
+                    className="pointer-events-auto text-gray-500 hover:text-gray-700 transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    <Eye size={20} />
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
@@ -509,9 +509,9 @@ const JobseekerSignup: React.FC = () => {
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors focus:outline-none"
-                  aria-label="Toggle confirm password visibility"
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                 >
-                  <Eye size={20} />
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
               {formErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{formErrors.confirmPassword}</p>}

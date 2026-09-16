@@ -73,32 +73,49 @@ const Hero: React.FC = () => {
   return (
     <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-16 sm:px-6 sm:py-20 lg:min-h-[620px] lg:px-8 lg:py-0">
 
-      {/* ── BACKGROUND ── deliberately restrained: one real photo, one
-          dark scrim for contrast, two soft brand-color glows (orange
-          left, blue right). No floating shapes, no glass panels, no
-          parallax — a corporate job portal, not a design experiment.
-          Darkest over the left/text column for contrast, fading lighter
-          toward the right so the photo actually stays visible instead
-          of disappearing under a flat, overly dark scrim. */}
+      {/* ── BACKGROUND ── one real photo (slow Ken-Burns drift), a dark
+          scrim for contrast, three soft brand-color glows that pulse AND
+          gently drift, and a network-dot texture that slowly pans — still
+          restrained (no glass panels, no shape confetti), just enough
+          continuous motion to read as "alive" rather than a static poster.
+          Everything here is skipped entirely when the user prefers reduced
+          motion — the photo/dots/glows just render in their resting state. */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <img src={jobPhoto} alt="" className="h-full w-full object-cover opacity-[0.35]" />
+        <motion.img
+          src={jobPhoto}
+          alt=""
+          className="h-full w-full object-cover opacity-[0.35]"
+          animate={prefersReducedMotion ? undefined : { scale: [1, 1.07, 1] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-950/45" />
 
         {/* Warm orange glow — left, echoing a lit office */}
         <motion.div
-          animate={prefersReducedMotion ? undefined : { opacity: [0.5, 0.75, 0.5] }}
+          animate={prefersReducedMotion ? undefined : { opacity: [0.5, 0.75, 0.5], x: [0, 24, 0], y: [0, -18, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute -left-40 top-1/3 h-[520px] w-[520px] rounded-full bg-orange-500/25 blur-[110px]"
         />
         {/* Cool blue glow — right, echoing the tech/network side */}
         <motion.div
-          animate={prefersReducedMotion ? undefined : { opacity: [0.4, 0.65, 0.4] }}
+          animate={prefersReducedMotion ? undefined : { opacity: [0.4, 0.65, 0.4], x: [0, -20, 0], y: [0, 22, 0] }}
           transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
           className="absolute -right-32 top-1/4 h-[480px] w-[480px] rounded-full bg-sky-500/20 blur-[110px]"
         />
+        {/* Faint violet glow — lower-center, adds depth behind the content
+            without competing with the orange/blue pair up top. */}
+        <motion.div
+          animate={prefersReducedMotion ? undefined : { opacity: [0.25, 0.45, 0.25], x: [0, 16, 0] }}
+          transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+          className="absolute -bottom-24 left-1/3 h-[420px] w-[420px] rounded-full bg-violet-500/15 blur-[110px]"
+        />
 
-        {/* Faint network-dot texture, right half only */}
-        <div
+        {/* Network-dot texture, right half only — slowly pans one full
+            tile (36px) on a linear loop, which reads as a seamless drift
+            since the pattern repeats at exactly that interval. */}
+        <motion.div
+          animate={prefersReducedMotion ? undefined : { x: [0, -36], y: [0, -36] }}
+          transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
           className="absolute inset-y-0 right-0 w-1/2 opacity-[0.12] [mask-image:linear-gradient(to_left,black,transparent)]"
           style={{ backgroundImage: 'radial-gradient(circle, #38BDF8 1px, transparent 1px)', backgroundSize: '36px 36px' }}
         />

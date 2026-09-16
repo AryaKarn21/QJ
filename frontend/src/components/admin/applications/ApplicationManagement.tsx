@@ -18,13 +18,7 @@ import { Drawer } from '../../ui/Drawer';
 import { StatusBadge, StatusTone } from '../../ui/StatusBadge';
 import { EmptyState } from '../../ui/EmptyState';
 import { AdminApplication, getAllApplications, updateApplicationStatus } from '../adminApi/api';
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
-
-/** Same resume-path normalization already used elsewhere in the app (employer Applicants pages). */
-function resumeUrl(resumePath: string) {
-  return `${MEDIA_URL.replace(/\/$/, '')}/${resumePath.replace(/\\/g, '/').replace(/^.*\/uploads/, 'uploads')}`;
-}
+import { resolveResumeUrl as resumeUrl } from '../../../utils/mediaUrl';
 
 const STATUS_OPTIONS = ['All', 'Pending', 'Reviewed', 'Accepted', 'Rejected'] as const;
 type StatusFilter = typeof STATUS_OPTIONS[number];

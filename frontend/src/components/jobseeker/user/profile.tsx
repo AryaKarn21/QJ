@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { resolveMediaUrl } from "../../../utils/mediaUrl";
+import { resolveMediaUrl, resolveResumeUrl } from "../../../utils/mediaUrl";
 import {
   Linkedin, Github, Twitter, Globe, Download,
   GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2, ImagePlus,
@@ -35,8 +35,6 @@ type JobseekerProfile = {
   socialLinks?: SocialLinks;
   profileStatus?: ProfileStatus | null;
 };
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 const UserProfile = () => {
   const [profile, setProfile] = useState<JobseekerProfile | null>(null);
@@ -213,8 +211,6 @@ const UserProfile = () => {
 
   if (!profile) return <div className="p-6">Loading profile...</div>;
 
-  const mediaUrl = (p?: string) => p ? `${MEDIA_URL.replace(/\/$/, "")}/${p.replace(/^\//, "")}` : "";
-
   // "Recently working" highlight: prefer an experience explicitly marked
   // current; fall back to the most recently added entry so older profiles
   // (saved before the `current` flag existed) still show something useful.
@@ -265,7 +261,7 @@ const UserProfile = () => {
     ? React.createElement(
         "a",
         {
-          href: mediaUrl(profile.resume),
+          href: resolveResumeUrl(profile.resume),
           target: "_blank",
           rel: "noopener noreferrer",
         },
@@ -294,7 +290,7 @@ const UserProfile = () => {
           <div className="h-20 sm:h-28 relative overflow-hidden bg-gradient-to-r from-primary to-orange-400">
             {profile.coverPhoto && (
               <img
-                src={mediaUrl(profile.coverPhoto)}
+                src={resolveMediaUrl(profile.coverPhoto)}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover"
               />
@@ -343,7 +339,7 @@ const UserProfile = () => {
               <div className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto -mt-14 sm:-mt-16 mb-4 z-10 group">
                 <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden flex items-center justify-center ring-4 ring-white shadow-md">
                   {profile.profilePic ? (
-                    <img src={mediaUrl(profile.profilePic)} alt={profile.name} className="w-full h-full object-cover" />
+                    <img src={resolveMediaUrl(profile.profilePic)} alt={profile.name} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-3xl font-bold text-gray-500">{profile.name?.charAt(0).toUpperCase()}</span>
                   )}

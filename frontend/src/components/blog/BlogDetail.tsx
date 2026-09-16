@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, User, Edit, Trash2, Send } from 'lucide-react';
+import { handleImageFallback } from '../../utils/imageFallback';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -254,7 +255,8 @@ const BlogDetail: React.FC = () => {
           <img
             src={blog.featuredImage}
             alt={blog.title}
-            className="w-full max-h-96 object-cover rounded-lg shadow-md mb-6"
+            className="w-full h-48 sm:h-64 md:h-96 object-cover bg-gray-100 rounded-lg shadow-md mb-6"
+            onError={handleImageFallback}
           />
         )}
 

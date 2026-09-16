@@ -1,32 +1,17 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-const { safeExtensionFor } = require('./safeUploadExtension');
 
-// Ensure the upload destination folder exists at startup
-const UPLOAD_DIR = path.join(__dirname, '../uploads/applications');
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+// In-memory storage — same fix as userUploadMiddleware.js (see its comment
+// for the full story): this used to be multer.diskStorage writing straight
+// into backend/uploads/applications/, which saved req.file.path — an
+// absolute filesystem path like /opt/render/project/src/backend/uploads/...
+// — directly onto the Application document. That path is never reachable
+// over HTTP, so "View Resume" on the employer side opened a 404 ("Cannot
+// GET /opt/render/..."). The controller (jobController.js's applyInJob)
+// now runs the buffer through services/media.service.js's persistUpload,
+// same as every other upload in this app, which returns a real public URL.
+const storage = multer.memoryStorage();
 
-// 1. Configure Storage for Applications
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    // Extension is derived from the validated mimetype, never from the
-    // client-supplied original filename — see safeUploadExtension.js.
-    const ext = safeExtensionFor(file.mimetype);
-    if (!ext) {
-      return cb(new Error('Invalid resume type. Only PDF is allowed.'));
-    }
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
-
-// 2. File Filter for Resume Only
+// File Filter for Resume Only
 const fileFilter = (req, file, cb) => {
   const allowedResumeTypes = ['application/pdf'];
 
@@ -41,7 +26,6 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// 3. Export Middleware for Application Uploads
 const applicationUpload = multer({
   storage,
   fileFilter,

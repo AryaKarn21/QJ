@@ -5,6 +5,8 @@ const Jobseeker = require("../models/Jobseeker");
 const TrendingSettings = require("../models/TrendingSettings");
 const sendNotification = require("../utils/sendNotifications");
 const { COUNTRIES } = require("../data/countries");
+const { CURRENCIES, CURRENCY_BY_COUNTRY } = require("../data/currencies");
+const { persistUpload } = require("../services/media.service");
 
 // GET /api/jobs/meta/countries — public. The single list the job-posting
 // form's Country <select> reads (see postjobs.tsx) — the same array
@@ -13,6 +15,13 @@ const { COUNTRIES } = require("../data/countries");
 // means editing data/countries.js once.
 const getCountryList = (req, res) => {
   res.json(COUNTRIES);
+};
+
+// GET /api/jobs/meta/currencies — public. Feeds the Post a Job form's
+// searchable currency selector (see postjobs.tsx) and the country->currency
+// default it suggests when an employer picks a job location.
+const getCurrencyList = (req, res) => {
+  res.json({ currencies: CURRENCIES, countryDefaults: CURRENCY_BY_COUNTRY });
 };
 
 // List views (getJobs/getTrendingJobs/getRecentJobs below) only ever show
@@ -382,8 +391,6 @@ const applyInJob = async (req, res) => {
     return res.status(400).json({ message: "Resume file is required." });
   }
 
-  const resumePath = req.file.path;
-
   try {
     const user = await User.findById(jobseekerId);
     if (!user || user.role !== "jobseeker") {
@@ -411,6 +418,12 @@ const applyInJob = async (req, res) => {
         .status(400)
         .json({ message: "You have already applied for this job" });
     }
+
+    // Same storage path as every other upload in this app (profile pics,
+    // resumes, company logos) — Cloudinary when configured, local disk
+    // fallback in dev — so the saved value is always a fetchable URL, never
+    // the server's own filesystem path (see applicationUploadMiddleware.js).
+    const resumePath = await persistUpload(req.file, "resumes", jobseekerId);
 
     const application = new Application({
       job: jobId,
@@ -594,6 +607,7 @@ module.exports = {
   getTrendingJobs,
   getJobCountsByCountry,
   getCountryList,
+  getCurrencyList,
   getRecentJobs,
   getJobById,
   getJobViews,

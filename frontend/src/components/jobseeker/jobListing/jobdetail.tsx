@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { fetchJobById, fetchJobs, likeJob, dislikeJob, toggleSaveJob } from '../jobseekerApi/api';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
+import { formatSalaryRange } from '../../../utils/currency';
 import { jwtDecode } from 'jwt-decode';
 
 
@@ -74,7 +75,7 @@ interface Job {
   maxExperience?: number;
   salaryMin?: number;
   salaryMax?: number;
-  salaryPeriod?: 'Yearly' | 'Monthly' | 'Hourly';
+  salaryPeriod?: 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Yearly';
   currency?: string;
   overview?: string;
   responsibilities?: string[];
@@ -105,12 +106,7 @@ const formatDeadline = (deadline: string): string =>
 const formatSalary = (job: Job): string => {
   const { salaryMin: min, salaryMax: max } = job;
   if (min !== undefined || max !== undefined) {
-    const cur = job.currency || 'NPR';
-    const period = job.salaryPeriod || 'Yearly';
-    const range = min !== undefined && max !== undefined && min !== max
-      ? `${min.toLocaleString()} - ${max.toLocaleString()}`
-      : (min ?? max)!.toLocaleString();
-    return `${cur} ${range} / ${period}`;
+    return formatSalaryRange(min, max, job.currency, job.salaryPeriod);
   }
   return job.salary;
 };

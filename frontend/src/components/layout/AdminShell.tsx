@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AdminUIProvider } from '../../context/AdminUIContext';
 import AdminErrorBoundary from '../admin/AdminErrorBoundary';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { useScrollRestoration } from '../../hooks/useScrollRestoration';
 
 /**
  * Usage in App.tsx is unchanged:
@@ -23,13 +24,19 @@ import { Topbar } from './Topbar';
  */
 const AdminShellInner: React.FC = () => {
   const location = useLocation();
+  // Window scroll doesn't apply here — this shell is h-dvh/overflow-hidden
+  // and this <main> is the actual scrolling element for every admin route,
+  // so it needs its own entry in the shared scroll-restoration hook rather
+  // than relying on the app-wide window-based <ScrollToTop />.
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollRestoration(mainRef, 'admin-main');
 
   return (
     <div className="flex h-dvh overflow-hidden bg-adminBg dark:bg-slate-950">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {/* key={pathname} remounts the boundary (clearing any caught
               error) whenever the admin navigates to a different page. */}
           <AdminErrorBoundary key={location.pathname}>

@@ -161,34 +161,53 @@ const registerUser = async (req, res) => {
 
     await user.save();
 
-    await sendMail(email, "Verify your email", `Your OTP code is ${otp}`);
+    // From here on, the account already exists in the database — a
+    // transient failure in email delivery, admin notification, or audit
+    // logging must not turn a successful registration into a reported
+    // "registration failed" 500 (the client would retry, hit the 409
+    // "already exists" check above, and be stuck). Each side-effect is
+    // therefore best-effort: log and move on. The OTP email specifically
+    // can always be retried via POST /api/users/resend-otp.
+    try {
+      await sendMail(email, "Verify your email", `Your OTP code is ${otp}`);
+    } catch (mailErr) {
+      console.error("Register: failed to send verification email:", mailErr);
+    }
 
     // Notify admins (and superadmins — see notifyAllAdmins's comment) on
     // every new registration — employers and jobseekers both, mirroring
     // the same pattern (previously employer-only).
     if (role === "employer" || role === "jobseeker") {
-      await sendNotification.notifyAllAdmins({
-        type: role === "employer" ? "employer_registration" : "jobseeker_registration",
-        message:
-          role === "employer"
-            ? `A new employer "${user.name}" has registered and is awaiting verification.`
-            : `A new jobseeker "${user.name}" has registered.`,
-        link: role === "employer" ? "/admin/employers" : "/admin/users",
-      });
+      try {
+        await sendNotification.notifyAllAdmins({
+          type: role === "employer" ? "employer_registration" : "jobseeker_registration",
+          message:
+            role === "employer"
+              ? `A new employer "${user.name}" has registered and is awaiting verification.`
+              : `A new jobseeker "${user.name}" has registered.`,
+          link: role === "employer" ? "/admin/employers" : "/admin/users",
+        });
+      } catch (notifyErr) {
+        console.error("Register: failed to notify admins:", notifyErr);
+      }
     }
 
-    await recordAudit({
-      req,
-      actor: { id: user._id, name: user.name, email: user.email, role: user.role },
-      module: "auth",
-      action: "auth.register",
-      targetType: "User",
-      targetId: user._id,
-      targetLabel: user.email,
-      metadata: { role },
-      success: true,
-      statusCode: 201,
-    });
+    try {
+      await recordAudit({
+        req,
+        actor: { id: user._id, name: user.name, email: user.email, role: user.role },
+        module: "auth",
+        action: "auth.register",
+        targetType: "User",
+        targetId: user._id,
+        targetLabel: user.email,
+        metadata: { role },
+        success: true,
+        statusCode: 201,
+      });
+    } catch (auditErr) {
+      console.error("Register: failed to record audit log:", auditErr);
+    }
 
     res.status(201).json({ message: "User registered successfully!" });
   } catch (error) {

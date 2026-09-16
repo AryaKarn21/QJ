@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
-import { createJob, getSingleJob, editJob, getEmployerProfile, fetchCountries } from "../employerApi/api";
+import { createJob, getSingleJob, editJob, getEmployerProfile, fetchCountries, fetchCurrencies } from "../employerApi/api";
+import { CurrencySelect } from "../../common/CurrencySelect";
+import { formatSalaryRange } from "../../../utils/currency";
 import { fetchJobCategories } from "../../../api/jobCategoryApi";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -104,6 +106,31 @@ const PostJob = () => {
     staleTime: Infinity, // a static reference list — no reason to refetch
   });
 
+  // Feeds the Compensation step's searchable currency selector, plus the
+  // country->currency default it suggests (see the effect below).
+  const { data: currencyData } = useQuery({
+    queryKey: ["currencies"],
+    queryFn: fetchCurrencies,
+    staleTime: Infinity,
+  });
+  const currencies = currencyData?.currencies ?? [];
+
+  // The employer's job posting form's Country -> currency default: only
+  // ever *suggests* a value, and only while they haven't picked one
+  // themselves — flips true the moment they touch the currency selector
+  // directly, or the moment an existing job (edit/duplicate) loads with
+  // its own currency already set, so it never silently overwrites an
+  // intentional choice.
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  useEffect(() => {
+    if (currencyTouched || !currencyData || !formData.country) return;
+    const suggested = currencyData.countryDefaults[formData.country];
+    if (suggested && suggested !== formData.currency) {
+      setFormData((prev) => ({ ...prev, currency: suggested }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.country, currencyData, currencyTouched]);
+
   // The "Company" step previews the employer's own Company Profile
   // (Phase 1/3) so they can see exactly what auto-attaches to this job
   // before deciding whether they need a per-job override.
@@ -115,6 +142,10 @@ const PostJob = () => {
   useEffect(() => {
     if (!jobData) return;
     setSourceStatus(jobData.status);
+    // An existing job (edit/duplicate) already carries a deliberate
+    // currency choice — never let the country-default effect above
+    // silently swap it out from under the employer.
+    if (jobData.currency) setCurrencyTouched(true);
     setFormData((prev) => ({
       ...prev,
       ...jobData,
@@ -225,7 +256,6 @@ const PostJob = () => {
     { field: "level", label: "Job level", step: 0 },
     { field: "deadline", label: "Application deadline", step: 0 },
     { field: "description", label: "Job description", step: 1 },
-    { field: "salary", label: "Salary", step: 3 },
   ];
 
   const handleSaveDraft = () => {
@@ -240,6 +270,15 @@ const PostJob = () => {
     if (formData.deadline && formData.deadline < todayStr) {
       toast.error("Application deadline must be today or a future date.");
       setStep(0);
+      return;
+    }
+    // Accepts either the free-text field (a negotiable-salary description
+    // works fine there) or a structured min/max range — not just the
+    // former, since the currency selector above makes the structured
+    // fields the more natural path now.
+    if (!formData.salary.trim() && !formData.salaryMin && !formData.salaryMax) {
+      toast.error("Salary is required before publishing.");
+      setStep(3);
       return;
     }
     for (const { field, label, step: fieldStep } of REQUIRED_FOR_PUBLISH) {
@@ -259,6 +298,15 @@ const PostJob = () => {
 
   const displayCompanyName = formData.useCompanyOverride && formData.overrideName ? formData.overrideName : companyProfile?.name;
   const displayCompanyTagline = formData.useCompanyOverride && formData.overrideTagline ? formData.overrideTagline : companyProfile?.headline;
+
+  // Mirrors what the backend actually derives on save (employerController.js's
+  // deriveSalaryString) — the free-text field always wins when filled in,
+  // otherwise the structured range is what will actually be published, so
+  // Preview should show that, not a blank "—".
+  const previewSalary = formData.salary
+    || (formData.salaryMin || formData.salaryMax
+      ? formatSalaryRange(toNumberOrUndefined(formData.salaryMin), toNumberOrUndefined(formData.salaryMax), formData.currency, formData.salaryPeriod)
+      : "");
 
   return (
     <div className="min-h-screen overflow-auto bg-gray-50 py-8" style={{ maxHeight: "calc(100dvh - 50px)" }}>
@@ -618,14 +666,23 @@ const PostJob = () => {
                 </div>
                 <div>
                   <label className="block mb-1 text-sm text-gray-600">Currency</label>
-                  <input name="currency" value={formData.currency} onChange={handleChange} className={inputCls} />
+                  <CurrencySelect
+                    value={formData.currency}
+                    currencies={currencies}
+                    onChange={(code) => {
+                      setCurrencyTouched(true);
+                      setFormData((prev) => ({ ...prev, currency: code }));
+                    }}
+                  />
                 </div>
                 <div>
                   <label className="block mb-1 text-sm text-gray-600">Period</label>
                   <select name="salaryPeriod" value={formData.salaryPeriod} onChange={handleChange} className={inputCls}>
-                    <option value="Yearly">Yearly</option>
-                    <option value="Monthly">Monthly</option>
                     <option value="Hourly">Hourly</option>
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Yearly">Yearly</option>
                   </select>
                 </div>
               </div>
@@ -680,7 +737,7 @@ const PostJob = () => {
                   <span>{formData.level || "—"}</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-sm">
-                  <div><p className="text-gray-400 text-xs">Salary</p><p className="font-medium">{formData.salary || "—"}</p></div>
+                  <div><p className="text-gray-400 text-xs">Salary</p><p className="font-medium">{previewSalary || "—"}</p></div>
                   <div><p className="text-gray-400 text-xs">Experience</p><p className="font-medium">{formData.experience || "—"}</p></div>
                   <div><p className="text-gray-400 text-xs">Openings</p><p className="font-medium">{formData.openings}</p></div>
                   <div><p className="text-gray-400 text-xs">Deadline</p><p className="font-medium">{formData.deadline || "—"}</p></div>

@@ -17,6 +17,25 @@ export const fetchCountries = async (): Promise<string[]> => {
   return res.data;
 };
 
+export interface CurrencyOption {
+  code: string;
+  symbol: string;
+  name: string;
+}
+
+export interface CurrencyListResponse {
+  currencies: CurrencyOption[];
+  countryDefaults: Record<string, string>;
+}
+
+// The same list models/Job.js's `currency` field is formatted against —
+// see backend/data/currencies.js. Public, unauthenticated, same as
+// fetchCountries above.
+export const fetchCurrencies = async (): Promise<CurrencyListResponse> => {
+  const res = await axios.get(`${API_BASE_URL}/api/jobs/meta/currencies`);
+  return res.data;
+};
+
 export const createJob = async (jobData: any) => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -235,11 +254,53 @@ export const getJobApplicants = async (jobId: string) => {
 
 
 
-export const getAllApplicantsForEmployerJobs = async (page = 1, limit = 10) => {
+export interface ApplicationListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  jobId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface EmployerApplication {
+  applicationId: string;
+  applicant: { _id: string; name: string; email: string; profilePic?: string; skills?: string[]; qualifications?: { degree: string; institution: string; year?: number }[]; experiences?: { jobPosition: string; institution: string; duration: string }[] } | null;
+  job: { _id: string; title: string } | null;
+  coverLetter: string;
+  resume: string;
+  howDidYouHear?: string;
+  status: "Pending" | "Reviewed" | "Interview Scheduled" | "Accepted" | "Rejected";
+  interview?: { scheduledAt?: string; mode?: string; meetingLink?: string; location?: string; notes?: string };
+  appliedAt: string;
+}
+
+export interface ApplicationListResponse {
+  applications: EmployerApplication[];
+  currentPage: number;
+  totalPages: number;
+  totalApplications: number;
+  perPage: number;
+  statusCounts: Record<string, number>;
+}
+
+export const getAllApplicantsForEmployerJobs = async (
+  params: ApplicationListParams = {}
+): Promise<ApplicationListResponse> => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
 
-  const res = await axios.get(`${API_BASE_URL}/api/employer/my-jobs/applications?page=${page}&limit=${limit}`, {
+  const query = new URLSearchParams();
+  query.set("page", String(params.page ?? 1));
+  query.set("limit", String(params.limit ?? 10));
+  if (params.search) query.set("search", params.search);
+  if (params.status) query.set("status", params.status);
+  if (params.jobId) query.set("jobId", params.jobId);
+  if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+  if (params.dateTo) query.set("dateTo", params.dateTo);
+
+  const res = await axios.get(`${API_BASE_URL}/api/employer/my-jobs/applications?${query.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

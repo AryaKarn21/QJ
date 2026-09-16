@@ -231,7 +231,14 @@ const Header: React.FC = () => {
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isJobsDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
                 </button>
                 {isJobsDropdownOpen && (
-                  <div className="absolute right-0 lg:left-1/2 lg:-translate-x-1/2 mt-3 w-screen max-w-3xl bg-white/95 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 p-5 z-50">
+                  // Anchored to the button's right edge (not centered on it) —
+                  // this button sits near the right end of the nav, so a
+                  // viewport-centered w-screen panel used to overflow past
+                  // the right edge at 1024-1279px widths (before max-w-7xl
+                  // caps the header), forcing a page-wide horizontal
+                  // scrollbar. Capping the width to the actual viewport
+                  // (minus a margin) keeps it fully on-screen at every size.
+                  <div className="absolute right-0 mt-3 w-[min(48rem,calc(100vw-2rem))] bg-white/95 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 p-5 z-50">
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Grid className="w-4 h-4" /></div>

@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getJobApplicants, updateApplicationStatus } from "../employerApi/api";
 import { Eye } from "lucide-react";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
+import { resolveResumeUrl } from "../../../utils/mediaUrl";
 
 interface Applicant {
     applicationId: string;
@@ -127,13 +126,7 @@ const JobApplicants = () => {
                                     <td className="p-3 border">
                                         {applicant.resume ? (
                                             <a
-                                                href={
-                                                    applicant.resume.startsWith('http')
-                                                        ? applicant.resume
-                                                        : `${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume
-                                                            .replace(/\\/g, "/")
-                                                            .replace(/^.*\/uploads/, "uploads")}`
-                                                }
+                                                href={resolveResumeUrl(applicant.resume)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >

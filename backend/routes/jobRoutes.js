@@ -8,6 +8,7 @@ const {
   getRecentJobs,
   getJobCountsByCountry,
   getCountryList,
+  getCurrencyList,
   applyInJob,
   getJobById,
   getJobViews,
@@ -42,6 +43,11 @@ router.get("/counts-by-country", getJobCountsByCountry);
 // The single list of countries a job can target — must be registered
 // before "/:id" below, or Express would match "meta" as an :id param.
 router.get("/meta/countries", getCountryList);
+
+// The full currency list (code/symbol/name) plus a best-effort
+// country->currency default map, for the Post a Job form's searchable
+// currency selector. Same "meta" registration-order reasoning as above.
+router.get("/meta/currencies", getCurrencyList);
 
 // Get saved jobs for a jobseeker
 router.get("/saved-jobs", authenticate, getSavedJobs);

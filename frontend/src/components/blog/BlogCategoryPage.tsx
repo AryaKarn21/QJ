@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, Search, Layers, ArrowLeft, FileText } from 'lucide-react';
 import { getBlogCategoryBySlug, type PublicBlogCategory } from '../../api/blogCategoryApi';
+import { handleImageFallback, BLOG_IMAGE_FALLBACK } from '../../utils/imageFallback';
 
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why a :8000 fallback would be wrong here too.
@@ -159,13 +160,12 @@ const BlogCategoryPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {blogs.map((blog) => (
               <div key={blog._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                {(blog.featuredImage || blog.images[0]?.url) && (
-                  <img
-                    src={blog.featuredImage || blog.images[0].url}
-                    alt={blog.images[0]?.caption || blog.title}
-                    className="w-full h-48 object-cover"
-                  />
-                )}
+                <img
+                  src={blog.featuredImage || blog.images[0]?.url || BLOG_IMAGE_FALLBACK}
+                  alt={blog.images[0]?.caption || blog.title}
+                  className="w-full h-48 object-cover bg-gray-100"
+                  onError={handleImageFallback}
+                />
                 <div className="p-6">
                   <div className="flex items-center mb-3">
                     {blog.authorImage && <img src={blog.authorImage} alt={blog.author.name} className="w-8 h-8 rounded-full mr-3" />}
