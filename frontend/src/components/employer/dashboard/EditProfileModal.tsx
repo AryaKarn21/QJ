@@ -28,8 +28,6 @@ const companySizeOptions = [
    "Large (100+ employees)",
 ];
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
-
 const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) => {
     const [formState, setFormState] = useState({
         name: "",
@@ -86,7 +84,11 @@ const EditProfileModal: React.FC<Props> = ({ show, onClose, onSave, profile }) =
             } else {
                 setCoverPreview(null);
             }
-            setLogoPreview(null);
+            if (profile.companyLogo) {
+                setLogoPreview(resolveMediaUrl(profile.companyLogo));
+            } else {
+                setLogoPreview(null);
+            }
         }
     }, [profile]);
 

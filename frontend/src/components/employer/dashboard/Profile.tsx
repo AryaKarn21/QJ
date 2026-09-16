@@ -29,6 +29,7 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { getEmployerProfile, updateEmployerProfile, getEmployerDashboardStats, updateEmployerHiringStatusApi } from "../employerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import EditProfileModal from "./EditProfileModal";
 import ImageCropModal from "../../common/ImageCropModal";
 import { ProfileStatusBadge } from "../../common/profileStatus/ProfileStatusBadge";
@@ -36,8 +37,6 @@ import { ProfileStatusEditor } from "../../common/profileStatus/ProfileStatusEdi
 import type { ProfileStatus } from "../../../types/profileStatus";
 import PermissionDenied from "../../common/PermissionDenied";
 import { getFriendlyErrorMessage, isForbidden, isUnauthorized } from "../../../utils/apiError";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
@@ -105,8 +104,6 @@ const Profile = () => {
       .then((c) => setFollowCounts({ followers: c.followers, following: c.following }))
       .catch(() => {});
   }, [profile?._id]);
-
-  const mediaUrl = (p?: string) => (p ? `${MEDIA_URL.replace(/\/$/, "")}/${p.replace(/^\//, "")}` : "");
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -242,7 +239,7 @@ const Profile = () => {
          <div className="h-32 sm:h-40 relative overflow-hidden">
   {profile.coverPhoto ? (
     <img
-      src={mediaUrl(profile.coverPhoto)}
+      src={resolveMediaUrl(profile.coverPhoto)}
       alt="Cover"
       className="w-full h-full object-cover"
     />
@@ -285,7 +282,7 @@ const Profile = () => {
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl bg-white p-1.5 shadow-md border border-orange-100 shrink-0 overflow-hidden">
                   {profile.companyLogo ? (
                     <img
-                      src={mediaUrl(profile.companyLogo)}
+                      src={resolveMediaUrl(profile.companyLogo)}
                       alt={profile.name}
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
