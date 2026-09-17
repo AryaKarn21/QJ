@@ -30,3 +30,23 @@ export function resolveResumeUrl(path?: string | null): string {
   const relative = uploadsIndex !== -1 ? normalized.slice(uploadsIndex) : normalized;
   return resolveMediaUrl(relative.startsWith('/') ? relative : `/${relative}`);
 }
+
+/**
+ * True for a resume value that can never resolve to a real file, even
+ * after resolveResumeUrl's /uploads/ recovery — the record was saved as
+ * an absolute filesystem path (Render: "/opt/render/...", or a local dev
+ * Windows path like "C:\\Users\\...") from before the Cloudinary fix, AND
+ * that file no longer exists because Render's disk is wiped on every
+ * redeploy. There's nothing to fetch; the candidate needs to re-apply.
+ * Use this to show a friendly "unavailable" state instead of sending the
+ * employer to a raw 404 page.
+ */
+export function isUnrecoverableResumePath(path?: string | null): boolean {
+  if (!path) return false;
+  if (path.startsWith('http://') || path.startsWith('https://')) return false;
+  const normalized = path.replace(/\\/g, '/');
+  // A healthy stored value is always root-relative: "/uploads/...".
+  // Anything else (a Windows drive letter, or an absolute *nix path with
+  // more segments before "uploads/") is a pre-fix legacy record.
+  return !normalized.startsWith('/uploads/');
+}

@@ -16,7 +16,6 @@ import type { ConversationSummary, DirectMessage, MessageAttachment } from '../.
 import { useWebRTC, type CallEndedInfo } from './useWebRTC';
 import { CallOverlay } from './CallOverlay';
 
-// 15MB/file, 4 files/message — mirrors backend/middleware/messageUploadMiddleware.js.
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 const MAX_ATTACHMENTS = 4;
 const ATTACHMENT_ACCEPT =
@@ -42,8 +41,6 @@ function formatCallDuration(seconds: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-// Short, sender-agnostic summary used both in the chat thread's call bubble
-// and the sidebar's last-message preview.
 function callSummary(callType: 'audio' | 'video', status: 'completed' | 'missed' | 'declined', duration: number, mine: boolean): string {
   const kind = callType === 'video' ? 'Video call' : 'Voice call';
   if (status === 'completed') return `${kind} · ${formatCallDuration(duration)}`;
@@ -55,7 +52,6 @@ function timeLabel(d: string) {
   return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/** LinkedIn-style "Active now / Active Xm ago / Active Xh ago / Active Xd ago" */
 function activeLabel(online: boolean, lastLogin?: string | null): string {
   if (online) return 'Active now';
   if (!lastLogin) return '';
@@ -118,7 +114,6 @@ function ConvItem({
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors relative group min-h-[44px] ${active ? 'bg-blue-50 border-l-[3px] border-blue-600' : 'border-l-[3px] border-transparent'}`}
     >
-      {/* Avatar with online indicator */}
       <div className="relative flex-shrink-0">
         <Avatar user={conv.otherUser} size={12} />
         {online && (
@@ -135,9 +130,6 @@ function ConvItem({
             {conv.lastMessageAt ? relativeLabel(conv.lastMessageAt) : ''}
           </span>
         </div>
-        {/* Active status row — shown instead of the last-message preview
-            only when we have meaningful activity info, otherwise falls
-            through to the message preview exactly as before. */}
         {actLabel ? (
           <p className={`text-[11px] mt-0.5 truncate font-medium ${online ? 'text-green-600' : 'text-slate-400'}`}>
             {actLabel}
@@ -149,13 +141,11 @@ function ConvItem({
             </p>
           </div>
         )}
-        {/* Last message preview shown below activity status */}
         {actLabel && (
           <p className={`text-xs truncate min-w-0 mt-0.5 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
             {preview}
           </p>
         )}
-        {/* Unread badge — always shown regardless of actLabel */}
         {conv.unreadCount > 0 && (
           <span className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
             {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
@@ -179,9 +169,6 @@ function Bubble({
   onRetry: (msg: PendingMessage) => void;
   onDelete: (msg: PendingMessage) => void;
 }) {
-  // Call-log entries render as a centered muted pill (WhatsApp/Messenger
-  // convention) rather than a chat bubble — there's no text to send/retry,
-  // and it belongs to neither side of the conversation visually.
   if (msg.type === 'call' && msg.call) {
     const missed = msg.call.status !== 'completed';
     const CallIcon = msg.call.callType === 'video' ? Video : missed ? PhoneMissed : Phone;
@@ -204,16 +191,10 @@ function Bubble({
 
   return (
     <div className={`group flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
-      {/* Avatar — only shown for last message in a group */}
       <div className="w-8 flex-shrink-0">
         {!mine && showAvatar && <Avatar user={conv.otherUser} size={8} />}
       </div>
 
-      {/* Delete — sender-only (matches the backend's own-messages-only
-          rule). Always visible (not hover-revealed) — a hover-only
-          affordance would simply never be reachable on a touch device,
-          which is most of this app's traffic; kept small/muted instead
-          so it doesn't read as visual clutter. */}
       {mine && (
         <button
           onClick={() => onDelete(msg)}
@@ -226,11 +207,10 @@ function Bubble({
       )}
 
       <div className={`flex min-w-0 flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[68%] ${mine ? 'items-end' : 'items-start'}`}>
-        {/* Image attachments — small thumbnail grid, click opens full size */}
         {images.length > 0 && (
           <div className={`mb-1 grid gap-1 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {images.map((img, idx) => (
-              <a
+              
                 key={idx}
                 href={resolveMediaUrl(img.url)}
                 target="_blank"
@@ -248,11 +228,10 @@ function Bubble({
           </div>
         )}
 
-        {/* Non-image attachments — download chips */}
         {files.length > 0 && (
           <div className="mb-1 flex flex-col gap-1.5">
             {files.map((f, idx) => (
-              <a
+              
                 key={idx}
                 href={resolveMediaUrl(f.url)}
                 target="_blank"
@@ -349,10 +328,6 @@ function ChatPanel({
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
   }, []);
 
-  // Reset all per-conversation transient UI state (including the draft —
-  // previously left in place, so typing a draft in one chat and switching
-  // conversations silently pre-filled the *next* chat's input box with it)
-  // whenever the open conversation changes.
   useEffect(() => {
     setLoading(true);
     setMessages([]);
@@ -384,9 +359,6 @@ function ChatPanel({
     const handleNewMessage = (msg: DirectMessage) => {
       if (msg.conversation !== conv._id) return;
       setMessages((p) => {
-        // The sender's own socket also receives this broadcast — if the
-        // optimistic-send's REST response already landed (or lands right
-        // after), the same message would otherwise be appended twice.
         if (p.some((m) => m._id === msg._id)) return p;
         return [...p, msg];
       });
@@ -398,8 +370,6 @@ function ChatPanel({
       setOtherTyping(isTyping);
       if (otherTypingTimeoutRef.current) { clearTimeout(otherTypingTimeoutRef.current); otherTypingTimeoutRef.current = null; }
       if (isTyping) {
-        // Safety net in case the "stopped typing" event never arrives
-        // (dropped connection, tab closed mid-type).
         otherTypingTimeoutRef.current = setTimeout(() => setOtherTyping(false), TYPING_AUTO_CLEAR_MS);
       }
     };
@@ -409,9 +379,6 @@ function ChatPanel({
       setReadAt(data.readAt);
     };
 
-    // Server-verified deletion (see messageController.deleteMessage) —
-    // removes the message from whichever side currently has this
-    // conversation open, including the deleter's own other tabs/devices.
     const handleDeleted = (data: { conversation: string; messageId: string }) => {
       if (data.conversation !== conv._id) return;
       setMessages((p) => p.filter((m) => m._id !== data.messageId));
@@ -439,7 +406,6 @@ function ChatPanel({
       setMessages((p) => [...res.messages, ...p]);
       setHasMore(res.hasMore);
       setPage((p) => p + 1);
-      // keep scroll position after prepend
       requestAnimationFrame(() => {
         if (containerRef.current) {
           containerRef.current.scrollTop = containerRef.current.scrollHeight - prev;
@@ -461,7 +427,6 @@ function ChatPanel({
     setText(e.target.value);
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-
     if (!socket) return;
     if (!isTypingRef.current) {
       isTypingRef.current = true;
@@ -471,11 +436,6 @@ function ChatPanel({
     typingTimeoutRef.current = setTimeout(stopTyping, TYPING_DEBOUNCE_MS);
   };
 
-  // Sends (or re-sends) `body`/`files` under `id` (a fresh temp id for a new
-  // message, or an existing failed message's id for a retry). Dedupes
-  // against the real-time `message:new` broadcast either order arrives in:
-  // if the socket delivers the saved message before this REST call
-  // resolves, the temp entry is simply dropped instead of duplicated.
   const deliver = async (id: string, body: string, files?: File[]) => {
     setSending(true);
     try {
@@ -487,9 +447,6 @@ function ChatPanel({
       });
     } catch (err) {
       setMessages((p) => p.map((m) => m._id === id ? { ...m, _pending: false, _failed: true } : m));
-      // A 403 here means the messaging-permission check failed (e.g. one
-      // side blocked the other) — worth a specific toast, not just the
-      // silent "failed" bubble, so the sender understands why.
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         toast.error(err.response.data?.message || "You can't send messages in this conversation.");
       } else if (axios.isAxiosError(err) && err.response?.data?.message) {
@@ -514,8 +471,6 @@ function ChatPanel({
       conversation: conv._id,
       sender: userId,
       text: body,
-      // Local object URLs so the optimistic bubble shows the picked
-      // images/files immediately, before the server round-trip resolves.
       attachments: files.map((f) => ({ url: URL.createObjectURL(f), mimeType: f.type, fileName: f.name, size: f.size })),
       createdAt: new Date().toISOString(),
       _pending: true,
@@ -554,17 +509,11 @@ function ChatPanel({
   };
 
   const handleDeleteMessage = async (msg: PendingMessage) => {
-    // A pending/failed optimistic message never made it to the server (its
-    // _id is a locally-generated "tmp-..." placeholder) — just drop it
-    // locally, no API call to make.
     if (msg._pending || msg._failed || msg._id.startsWith('tmp-')) {
       setMessages((p) => p.filter((m) => m._id !== msg._id));
       return;
     }
     if (!window.confirm('Delete this message?')) return;
-    // Optimistic removal, restored on failure — matches the rest of this
-    // file's pattern of updating local state immediately and only
-    // reconciling on error rather than waiting on the round trip.
     setMessages((p) => p.filter((m) => m._id !== msg._id));
     try {
       await deleteMessage(conv._id, msg._id);
@@ -580,7 +529,6 @@ function ChatPanel({
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  // Group messages by day then by sender for avatar display
   type Item = { type: 'divider'; label: string } | { type: 'msg'; msg: PendingMessage; showAvatar: boolean };
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -589,7 +537,6 @@ function ChatPanel({
       const m = messages[i];
       const day = dayLabel(m.createdAt);
       if (day !== lastDay) { out.push({ type: 'divider', label: day }); lastDay = day; }
-      // Show avatar if last message in a sender group
       const next = messages[i + 1];
       const showAvatar = !next || next.sender !== m.sender;
       out.push({ type: 'msg', msg: m, showAvatar });
@@ -604,7 +551,7 @@ function ChatPanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2 sm:px-5 sm:py-3 z-10">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2 sm:px-5 sm:py-3 z-10 flex-shrink-0">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <button
             onClick={onBack}
@@ -645,7 +592,7 @@ function ChatPanel({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} aria-hidden="true" />
                 <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                  <a
+                  
                     href={profileHref}
                     onClick={() => setMoreOpen(false)}
                     className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
@@ -660,15 +607,24 @@ function ChatPanel({
       </div>
 
       {/* ── Messages ── */}
-      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-6 space-y-1" style={{ background: '#f3f2ef' }}>
+      <div
+        ref={containerRef}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-6 space-y-1"
+        style={{ background: '#f3f2ef' }}
+      >
         {loading ? (
-          <div className="flex justify-center pt-10"><Loader2 size={24} className="animate-spin text-slate-300" /></div>
+          <div className="flex justify-center pt-10">
+            <Loader2 size={24} className="animate-spin text-slate-300" />
+          </div>
         ) : (
           <>
             {hasMore && (
               <div className="flex justify-center py-3">
-                <button onClick={loadMore} disabled={loadingMore}
-                  className="flex items-center gap-1.5 text-xs text-slate-500 bg-white border border-slate-200 rounded-full px-4 py-1.5 hover:bg-slate-50 shadow-sm disabled:opacity-60">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 bg-white border border-slate-200 rounded-full px-4 py-1.5 hover:bg-slate-50 shadow-sm disabled:opacity-60"
+                >
                   {loadingMore ? <Loader2 size={11} className="animate-spin" /> : null}
                   {loadingMore ? 'Loading…' : 'Load older messages'}
                 </button>
@@ -686,7 +642,9 @@ function ChatPanel({
               item.type === 'divider' ? (
                 <div key={`d-${i}`} className="flex items-center gap-3 py-4">
                   <div className="flex-1 h-px bg-slate-200" />
-                  <span className="text-[11px] text-slate-400 bg-white rounded-full px-3 py-1 border border-slate-200 shadow-sm">{item.label}</span>
+                  <span className="text-[11px] text-slate-400 bg-white rounded-full px-3 py-1 border border-slate-200 shadow-sm">
+                    {item.label}
+                  </span>
                   <div className="flex-1 h-px bg-slate-200" />
                 </div>
               ) : (
@@ -708,9 +666,9 @@ function ChatPanel({
       </div>
 
       {/* ── Input ── */}
-      <div className="border-t border-slate-100 bg-white px-3 py-2.5 sm:px-4 sm:py-3 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:pb-3">
-        {/* Picked-but-not-yet-sent attachments — shown above the input so
-            the sender can review/remove before hitting send. */}
+      <div className="border-t border-slate-100 bg-white px-3 py-2.5 sm:px-4 sm:py-3 flex-shrink-0"
+        style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom))' }}
+      >
         {pendingFiles.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {pendingFiles.map((f, idx) => {
@@ -767,21 +725,40 @@ function ChatPanel({
             className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-1.5"
             style={{ maxHeight: 120 }}
           />
-          <button onClick={send} disabled={(!text.trim() && pendingFiles.length === 0) || sending} aria-label="Send message"
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${(text.trim() || pendingFiles.length > 0) ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <button
+            onClick={send}
+            disabled={(!text.trim() && pendingFiles.length === 0) || sending}
+            aria-label="Send message"
+            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              (text.trim() || pendingFiles.length > 0)
+                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+          >
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
-        <p className="hidden sm:block text-[10px] text-slate-400 text-center mt-1.5">Enter to send · Shift+Enter for new line</p>
+        <p className="hidden sm:block text-[10px] text-slate-400 text-center mt-1.5">
+          Enter to send · Shift+Enter for new line
+        </p>
       </div>
     </div>
   );
 }
 
-function IconBtn({ icon, label, onClick, hoverColor = 'hover:text-slate-700' }: { icon: React.ReactNode; label: string; onClick: () => void; hoverColor?: string }) {
+function IconBtn({ icon, label, onClick, hoverColor = 'hover:text-slate-700' }: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  hoverColor?: string;
+}) {
   return (
-    <button onClick={onClick} title={label} aria-label={label}
-      className={`flex h-10 w-10 items-center justify-center rounded-full text-slate-400 ${hoverColor} hover:bg-slate-100 transition-colors`}>
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={`flex h-10 w-10 items-center justify-center rounded-full text-slate-400 ${hoverColor} hover:bg-slate-100 transition-colors`}
+    >
       {icon}
     </button>
   );
@@ -800,12 +777,6 @@ export function MessagesPage() {
   const [search, setSearch] = useState('');
   const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
 
-  // Logs the call as a message once it ends (see useWebRTC's onCallEnded
-  // contract) — only fires on the caller's side, so this never double-logs.
-  // Looked up by peer id against the already-loaded conversation list rather
-  // than threading a conversationId through the call itself, since a call
-  // can only be placed from an existing conversation (see call:offer's
-  // permission check in backend/utils/socket.js).
   const handleCallEnded = useCallback((info: CallEndedInfo) => {
     const conv = conversations.find((c) => c.otherUser._id === info.peerId);
     if (!conv) return;
@@ -826,19 +797,12 @@ export function MessagesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Keeps the sidebar itself live: without this, a new message only updated
-  // the currently-open ChatPanel (which explicitly joins that one
-  // conversation's socket room) — the conversation list's unread badge,
-  // preview text, and ordering were frozen until the next full page load.
-  // The recipient's personal room (see messageController.js's emitToUser)
-  // is what makes this fire regardless of which conversation, if any, is
-  // currently open.
   useEffect(() => {
     if (!socket) return;
     const handleGlobalMessage = (msg: DirectMessage) => {
       setConversations((prev) => {
         const idx = prev.findIndex((c) => c._id === msg.conversation);
-        if (idx === -1) return prev; // not loaded locally yet — next fetch picks it up
+        if (idx === -1) return prev;
         const isMine = msg.sender === userId;
         const isActive = msg.conversation === conversationId;
         const updated: ConversationSummary = {
@@ -861,10 +825,6 @@ export function MessagesPage() {
     return () => { socket.off('message:new', handleGlobalMessage); };
   }, [socket, userId, conversationId]);
 
-  // Real presence, not a decorative always-on dot: a stable key (not the
-  // `conversations` array reference itself, which gets a new identity on
-  // every unrelated update like markRead) so this only re-queries when the
-  // actual set of conversation partners changes.
   const partnerIdsKey = useMemo(
     () => [...new Set(conversations.map((c) => c.otherUser._id))].sort().join(','),
     [conversations]
@@ -879,9 +839,6 @@ export function MessagesPage() {
       });
     };
     queryPresence();
-    // presence:update (below) covers changes going forward, but a
-    // reconnect after a network blip can miss some of those — re-ask for
-    // the current snapshot whenever the socket (re)establishes.
     socket.on('connect', queryPresence);
     return () => { socket.off('connect', queryPresence); };
   }, [socket, partnerIdsKey]);
@@ -902,12 +859,6 @@ export function MessagesPage() {
   }, [conversations, search]);
 
   const active = conversations.find((c) => c._id === conversationId);
-  // Which pane mobile shows is derived directly from the route, not a
-  // separately-tracked boolean — the previous `mobileShowChat` state could
-  // desync from the URL (e.g. browser back navigation clearing
-  // `conversationId` without going through the in-app "Back" button),
-  // stranding the UI on an empty chat pane with no way back except leaving
-  // the page entirely.
   const showingChat = !!conversationId;
 
   const markRead = (id: string) =>
@@ -928,7 +879,7 @@ export function MessagesPage() {
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
   return (
-    <div className="min-h-dvh bg-[#f3f2ef]">
+    <div className="fixed inset-0 bg-[#f3f2ef] flex flex-col overflow-hidden">
       {/* Call overlay */}
       {(callState === 'calling' || callState === 'incoming' || callState === 'connected' || callState === 'reconnecting' || callState === 'failed') && (
         <CallOverlay
@@ -944,111 +895,115 @@ export function MessagesPage() {
         />
       )}
 
-       <div className="flex-1 min-h-0 mx-auto w-full max-w-5xl px-0 sm:px-4 sm:py-6 flex flex-col">
-      <div className="flex flex-1 min-h-0 overflow-hidden border-0 border-slate-200 bg-white sm:rounded-xl sm:border sm:shadow-sm">
-          {/* ── LEFT SIDEBAR ── */}
-          <div className={`w-full flex-shrink-0 flex-col border-r border-slate-100 md:flex md:w-[320px] ${showingChat ? 'hidden' : 'flex'}`}>
-            
-            {/* Sidebar header */}
-            <div className="px-4 pt-4 pb-3 border-b border-slate-100">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">Messaging</h2>
-                  {totalUnread > 0 && (
-                    <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
-                      {totalUnread}
-                    </span>
-                  )}
-                </div>
-                <button aria-label="New message" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                  <Edit3 size={16} />
-                </button>
-              </div>
-              {/* Search */}
-              <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-2">
-                <Search size={14} className="text-slate-400 flex-shrink-0" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search messages"
-                  aria-label="Search messages"
-                  className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full min-w-0"
-                />
-                {search && (
-                  <button onClick={() => setSearch('')} aria-label="Clear search">
-                    <X size={13} className="text-slate-400" />
-                  </button>
+      {/* ── Two-pane shell ── */}
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+
+        {/* ── LEFT SIDEBAR ── */}
+        <div className={`flex-shrink-0 flex-col border-r border-slate-100 bg-white w-full md:w-[320px] md:flex ${showingChat ? 'hidden' : 'flex'}`}>
+
+          {/* Sidebar header */}
+          <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">Messaging</h2>
+                {totalUnread > 0 && (
+                  <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                    {totalUnread}
+                  </span>
                 )}
               </div>
+              <button
+                aria-label="New message"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <Edit3 size={16} />
+              </button>
             </div>
-
-            {/* Conversation list */}
-            <div className="flex-1 overflow-y-auto">
-              {loading ? (
-                <div className="p-4 space-y-4">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-slate-100 animate-pulse flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" />
-                        <div className="h-2.5 bg-slate-100 rounded animate-pulse w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-                  <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-3">
-                    <MessageCircle size={22} className="text-blue-500" />
-                  </div>
-                  <p className="text-sm font-semibold text-slate-700">
-                    {search ? 'No results' : 'No conversations yet'}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {search ? `Nothing matched "${search}"` : 'Start chatting from someone\'s profile.'}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  {filtered.map((c) => (
-                    <ConvItem
-                      key={c._id}
-                      conv={c}
-                      active={c._id === conversationId}
-                      online={!!onlineMap[c.otherUser._id]}
-                      onClick={() => navigate(`/messages/${c._id}`)}
-                      userId={userId}
-                    />
-                  ))}
-                </div>
+            {/* Search */}
+            <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-2">
+              <Search size={14} className="text-slate-400 flex-shrink-0" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search messages"
+                aria-label="Search messages"
+                className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full min-w-0"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} aria-label="Clear search">
+                  <X size={13} className="text-slate-400" />
+                </button>
               )}
             </div>
           </div>
 
-          {/* ── RIGHT PANEL ── */}
-          <div className={`min-w-0 flex-1 flex-col md:flex ${showingChat ? 'flex' : 'hidden'}`}>
-            {active ? (
-              <ChatPanel
-                conv={active}
-                online={!!onlineMap[active.otherUser._id]}
-                onVoiceCall={handleVoiceCall}
-                onVideoCall={handleVideoCall}
-                onMarkRead={markRead}
-                onBack={() => navigate('/messages')}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center px-8">
-                <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-5">
-                  <MessageCircle size={40} className="text-blue-500" />
+          {/* Conversation list */}
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="p-4 space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 animate-pulse flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" />
+                      <div className="h-2.5 bg-slate-100 rounded animate-pulse w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                  <MessageCircle size={22} className="text-blue-500" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Your Messages</h3>
-                <p className="text-sm text-slate-500 max-w-xs">
-                  Select a conversation from the left to start reading and replying to messages.
+                <p className="text-sm font-semibold text-slate-700">
+                  {search ? 'No results' : 'No conversations yet'}
                 </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {search ? `Nothing matched "${search}"` : "Start chatting from someone's profile."}
+                </p>
+              </div>
+            ) : (
+              <div>
+                {filtered.map((c) => (
+                  <ConvItem
+                    key={c._id}
+                    conv={c}
+                    active={c._id === conversationId}
+                    online={!!onlineMap[c.otherUser._id]}
+                    onClick={() => navigate(`/messages/${c._id}`)}
+                    userId={userId}
+                  />
+                ))}
               </div>
             )}
           </div>
         </div>
+
+        {/* ── RIGHT PANEL ── */}
+        <div className={`min-w-0 flex-1 flex-col min-h-0 md:flex ${showingChat ? 'flex' : 'hidden'}`}>
+          {active ? (
+            <ChatPanel
+              conv={active}
+              online={!!onlineMap[active.otherUser._id]}
+              onVoiceCall={handleVoiceCall}
+              onVideoCall={handleVideoCall}
+              onMarkRead={markRead}
+              onBack={() => navigate('/messages')}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center px-8 bg-white">
+              <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-5">
+                <MessageCircle size={40} className="text-blue-500" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Your Messages</h3>
+              <p className="text-sm text-slate-500 max-w-xs">
+                Select a conversation from the left to start reading and replying to messages.
+              </p>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

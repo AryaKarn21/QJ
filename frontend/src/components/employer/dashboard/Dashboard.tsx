@@ -18,7 +18,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { resolveMediaUrl, resolveResumeUrl } from '../../../utils/mediaUrl';
+import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath } from '../../../utils/mediaUrl';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
@@ -409,11 +409,15 @@ const Dashboard: React.FC = () => {
                       <Badge status={app.status} />
                     </td>
                     <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
-                      {app.resume ? (
-                        <a href={resolveResumeUrl(app.resume)}target="_blank" rel="noreferrer"
+                      {app.resume && !isUnrecoverableResumePath(app.resume) ? (
+                        <a href={resolveResumeUrl(app.resume)} target="_blank" rel="noreferrer"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}>
                           <Eye size={13} /> View
                         </a>
+                      ) : app.resume ? (
+                        <span title="This resume was uploaded before a storage fix and is no longer available." style={{ fontSize: 12, color: T.muted, cursor: 'default' }}>
+                          Unavailable
+                        </span>
                       ) : (
                         <span style={{ fontSize: 12, color: T.muted }}>—</span>
                       )}

@@ -18,7 +18,7 @@ import { Drawer } from '../../ui/Drawer';
 import { StatusBadge, StatusTone } from '../../ui/StatusBadge';
 import { EmptyState } from '../../ui/EmptyState';
 import { AdminApplication, getAllApplications, updateApplicationStatus } from '../adminApi/api';
-import { resolveResumeUrl as resumeUrl } from '../../../utils/mediaUrl';
+import { resolveResumeUrl as resumeUrl, isUnrecoverableResumePath } from '../../../utils/mediaUrl';
 
 const STATUS_OPTIONS = ['All', 'Pending', 'Reviewed', 'Accepted', 'Rejected'] as const;
 type StatusFilter = typeof STATUS_OPTIONS[number];
@@ -355,6 +355,7 @@ function ApplicationDrawer({
   updating: boolean;
 }) {
   const isPdf = application?.resume?.toLowerCase().endsWith('.pdf');
+  const resumeUnavailable = isUnrecoverableResumePath(application?.resume);
 
   return (
     <Drawer
@@ -412,23 +413,29 @@ function ApplicationDrawer({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Resume</p>
-              <a
-                href={resumeUrl(application.resume)}
-                download
-                className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
-              >
-                <Download size={13} /> Download
-              </a>
+              {!resumeUnavailable && (
+                
+                  href={resumeUrl(application.resume)}
+                  download
+                  className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                >
+                  <Download size={13} /> Download
+                </a>
+              )}
             </div>
 
-            {isPdf ? (
+            {resumeUnavailable ? (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-800/60">
+                This resume was uploaded before a storage fix and is no longer available.
+              </div>
+            ) : isPdf ? (
               <iframe
                 src={resumeUrl(application.resume)}
                 title="Resume preview"
                 className="h-80 w-full rounded-lg border border-slate-200 dark:border-slate-700"
               />
             ) : (
-              <a
+              
                 href={resumeUrl(application.resume)}
                 target="_blank"
                 rel="noreferrer"
