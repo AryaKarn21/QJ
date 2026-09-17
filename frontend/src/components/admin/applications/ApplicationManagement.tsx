@@ -415,6 +415,7 @@ function ApplicationDrawer({
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Resume</p>
               {!resumeUnavailable && (
                 
+                <a
                   href={resumeUrl(application.resume)}
                   download
                   className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
@@ -435,7 +436,7 @@ function ApplicationDrawer({
                 className="h-80 w-full rounded-lg border border-slate-200 dark:border-slate-700"
               />
             ) : (
-              
+              <a
                 href={resumeUrl(application.resume)}
                 target="_blank"
                 rel="noreferrer"
