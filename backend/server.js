@@ -104,7 +104,21 @@ app.use(sanitizeInput);
 app.use(auditTrail());
 
 // Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    // helmet() above sets X-Frame-Options: SAMEORIGIN on every response,
+    // which blocks locally-stored files (pre-Cloudinary fallback uploads)
+    // from rendering in the employer-side resume preview <iframe>, since
+    // the frontend (vercel.app) is a different origin than this backend
+    // (onrender.com). Once CLOUDINARY_* env vars are set, new uploads go
+    // to Cloudinary and never hit this route — this only unblocks any
+    // files still being served from local disk in the meantime.
+    res.removeHeader("X-Frame-Options");
+    next();
+  },
+  express.static(path.join(__dirname, "uploads"))
+);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use("/api/auth", require("./routes/authRoutes"));
