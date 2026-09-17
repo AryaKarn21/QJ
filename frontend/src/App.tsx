@@ -124,6 +124,7 @@ function AppWrapper() {
     '/admin/users',
     '/admin/employer/applicants',
     '/admin/settings',
+    '/messages', 
   ];
 
   const shouldHideHeaderFooter = hideHeaderFooter.some((path) =>

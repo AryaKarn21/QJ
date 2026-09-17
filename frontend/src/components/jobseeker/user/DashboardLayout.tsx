@@ -312,6 +312,9 @@ const UserDashboardLayout = () => {
               <button onClick={() => setShowLogout(false)} style={{ flex: 1, padding: 10, borderRadius: 10, border: '1px solid #E5E7EB', background: BRAND.pageBg, color: '#111827', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Cancel
               </button>
+
+
+              m
               <button onClick={handleLogout} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', background: '#EF4444', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Sign out
               </button>

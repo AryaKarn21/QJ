@@ -44,8 +44,8 @@ const EmployerSignup: React.FC = () => {
 
       // Set cookies for name and email with 10 minutes expiry
       const expires = new Date(new Date().getTime() + 10 * 60 * 1000); // 10 minutes from now
-      Cookies.set('userName', formData.name, { expires: expires, secure: true, sameSite: 'Lax' });
-      Cookies.set('userEmail', formData.email, { expires: expires, secure: true, sameSite: 'Lax' });
+      Cookies.set('userName', formData.name, { expires: expires, sameSite: 'Lax' });
+Cookies.set('userEmail', formData.email, { expires: expires, sameSite: 'Lax' });
 
       navigate('/signup/verify-otp'); // Redirect to OTP verification page
     },

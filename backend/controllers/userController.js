@@ -168,12 +168,17 @@ const registerUser = async (req, res) => {
     // "already exists" check above, and be stuck). Each side-effect is
     // therefore best-effort: log and move on. The OTP email specifically
     // can always be retried via POST /api/users/resend-otp.
-    try {
-      await sendMail(email, "Verify your email", `Your OTP code is ${otp}`);
-    } catch (mailErr) {
-      console.error("Register: failed to send verification email:", mailErr);
-    }
-
+   try {
+  await sendMail(email, "Verify your email", `Your OTP code is ${otp}. It is valid for 10 minutes.`);
+} catch (mailErr) {
+  console.error("Register: failed to send verification email:", mailErr);
+  // Delete the just-created user so the person can retry registration
+  // cleanly instead of being stuck with an unverifiable account.
+  await User.findByIdAndDelete(user._id);
+  return res.status(500).json({
+    message: "Account created but we could not send your verification email. Please try again or contact support.",
+  });
+}
     // Notify admins (and superadmins — see notifyAllAdmins's comment) on
     // every new registration — employers and jobseekers both, mirroring
     // the same pattern (previously employer-only).

@@ -944,11 +944,11 @@ export function MessagesPage() {
         />
       )}
 
-      <div className="mx-auto max-w-5xl px-0 py-0 sm:px-4 sm:py-6">
-        <div className="flex h-[calc(100dvh-4rem)] overflow-hidden border-0 border-slate-200 bg-white sm:h-[calc(100dvh-120px)] sm:min-h-[560px] sm:rounded-xl sm:border sm:shadow-sm">
-
+       <div className="flex-1 min-h-0 mx-auto w-full max-w-5xl px-0 sm:px-4 sm:py-6 flex flex-col">
+      <div className="flex flex-1 min-h-0 overflow-hidden border-0 border-slate-200 bg-white sm:rounded-xl sm:border sm:shadow-sm">
           {/* ── LEFT SIDEBAR ── */}
           <div className={`w-full flex-shrink-0 flex-col border-r border-slate-100 md:flex md:w-[320px] ${showingChat ? 'hidden' : 'flex'}`}>
+            
             {/* Sidebar header */}
             <div className="px-4 pt-4 pb-3 border-b border-slate-100">
               <div className="flex items-center justify-between mb-3">

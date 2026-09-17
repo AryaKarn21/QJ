@@ -660,9 +660,9 @@ const getAppliedJobseekers = async (req, res) => {
 
     // Step 2: Get applications for this job
     const applications = await Application.find({ job: jobId })
-      .populate("applicant", "name email")
-      .sort({ createdAt: -1 });
-
+  .populate("applicant", "name email profilePic skills qualifications experiences")
+  .sort({ createdAt: -1 });
+  
     // Step 3: Format response
     const applicants = applications.map((app) => ({
       applicationId: app._id,
