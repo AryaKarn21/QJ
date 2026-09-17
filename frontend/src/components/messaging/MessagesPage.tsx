@@ -41,7 +41,12 @@ function formatCallDuration(seconds: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-function callSummary(callType: 'audio' | 'video', status: 'completed' | 'missed' | 'declined', duration: number, mine: boolean): string {
+function callSummary(
+  callType: 'audio' | 'video',
+  status: 'completed' | 'missed' | 'declined',
+  duration: number,
+  mine: boolean
+): string {
   const kind = callType === 'video' ? 'Video call' : 'Voice call';
   if (status === 'completed') return `${kind} · ${formatCallDuration(duration)}`;
   if (status === 'declined') return mine ? `${kind} declined` : `You declined this ${kind.toLowerCase()}`;
@@ -81,7 +86,8 @@ function relativeLabel(d: string) {
 function dayLabel(d: string) {
   const date = new Date(d);
   const today = new Date();
-  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
   if (date.toDateString() === today.toDateString()) return 'Today';
   if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
   return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
@@ -106,52 +112,73 @@ function lastMessagePreview(conv: ConversationSummary, userId: string | null): s
 
 function ConvItem({
   conv, active, online, onClick, userId,
-}: { conv: ConversationSummary; active: boolean; online: boolean; onClick: () => void; userId: string | null }) {
+}: {
+  conv: ConversationSummary;
+  active: boolean;
+  online: boolean;
+  onClick: () => void;
+  userId: string | null;
+}) {
   const actLabel = activeLabel(online, (conv.otherUser as any).lastLogin);
   const preview = lastMessagePreview(conv, userId);
+
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors relative group min-h-[44px] ${active ? 'bg-blue-50 border-l-[3px] border-blue-600' : 'border-l-[3px] border-transparent'}`}
+      className={`
+        w-full flex items-center gap-3 px-4 py-3.5 text-left
+        transition-all duration-150 relative group
+        border-l-[3px]
+        ${active
+          ? 'bg-blue-50/80 border-l-blue-600'
+          : 'border-l-transparent hover:bg-slate-50/80'
+        }
+      `}
     >
       <div className="relative flex-shrink-0">
-        <Avatar user={conv.otherUser} size={12} />
+        <Avatar user={conv.otherUser} size={11} />
         {online && (
-          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
+          <span className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <p className={`text-sm truncate leading-snug ${
+            conv.unreadCount > 0 ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'
+          }`}>
             {conv.otherUser.name}
           </p>
-          <span className="text-[10px] text-slate-400 flex-shrink-0">
+          <span className="text-[10px] text-slate-400 flex-shrink-0 tabular-nums">
             {conv.lastMessageAt ? relativeLabel(conv.lastMessageAt) : ''}
           </span>
         </div>
+
         {actLabel ? (
-          <p className={`text-[11px] mt-0.5 truncate font-medium ${online ? 'text-green-600' : 'text-slate-400'}`}>
-            {actLabel}
-          </p>
-        ) : (
-          <div className="flex items-center justify-between gap-2 mt-0.5">
-            <p className={`text-xs truncate min-w-0 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+          <>
+            <p className={`text-[11px] truncate font-medium leading-tight ${online ? 'text-emerald-600' : 'text-slate-400'}`}>
+              {actLabel}
+            </p>
+            <p className={`text-[11px] truncate mt-0.5 leading-tight ${
+              conv.unreadCount > 0 ? 'text-slate-600 font-medium' : 'text-slate-400'
+            }`}>
               {preview}
             </p>
-          </div>
-        )}
-        {actLabel && (
-          <p className={`text-xs truncate min-w-0 mt-0.5 ${conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+          </>
+        ) : (
+          <p className={`text-[11px] truncate leading-tight ${
+            conv.unreadCount > 0 ? 'text-slate-600 font-medium' : 'text-slate-400'
+          }`}>
             {preview}
           </p>
         )}
-        {conv.unreadCount > 0 && (
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-            {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-          </span>
-        )}
       </div>
+
+      {conv.unreadCount > 0 && (
+        <span className="flex-shrink-0 min-w-[18px] h-[18px] rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center px-1 shadow-sm">
+          {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+        </span>
+      )}
     </button>
   );
 }
@@ -173,11 +200,13 @@ function Bubble({
     const missed = msg.call.status !== 'completed';
     const CallIcon = msg.call.callType === 'video' ? Video : missed ? PhoneMissed : Phone;
     return (
-      <div className="flex justify-center py-1">
-        <div className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium ${
-          missed ? 'border-red-100 bg-red-50 text-red-500' : 'border-slate-200 bg-white text-slate-500'
+      <div className="flex justify-center py-2">
+        <div className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-medium shadow-sm ${
+          missed
+            ? 'border-red-100 bg-red-50 text-red-500'
+            : 'border-slate-200 bg-white text-slate-500'
         }`}>
-          <CallIcon size={13} />
+          <CallIcon size={12} />
           <span>{callSummary(msg.call.callType, msg.call.status, msg.call.duration, mine)}</span>
           <span className="text-slate-300">·</span>
           <span className="text-slate-400">{timeLabel(msg.createdAt)}</span>
@@ -191,36 +220,40 @@ function Bubble({
 
   return (
     <div className={`group flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
-      <div className="w-8 flex-shrink-0">
-        {!mine && showAvatar && <Avatar user={conv.otherUser} size={8} />}
+      {/* Avatar slot */}
+      <div className="w-7 flex-shrink-0 self-end">
+        {!mine && showAvatar && (
+          <Avatar user={conv.otherUser} size={7} />
+        )}
       </div>
 
+      {/* Delete btn (mine only, visible on hover) */}
       {mine && (
         <button
           onClick={() => onDelete(msg)}
           aria-label="Delete message"
-          title="Delete"
-          className="mb-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-slate-100 hover:text-red-500"
+          className="mb-1 opacity-0 group-hover:opacity-100 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-300 transition-all hover:bg-slate-100 hover:text-red-500"
         >
-          <Trash2 size={14} />
+          <Trash2 size={13} />
         </button>
       )}
 
-      <div className={`flex min-w-0 flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[68%] ${mine ? 'items-end' : 'items-start'}`}>
+      <div className={`flex min-w-0 flex-col gap-1 max-w-[78%] sm:max-w-[65%] lg:max-w-[55%] ${mine ? 'items-end' : 'items-start'}`}>
+        {/* Image attachments */}
         {images.length > 0 && (
-          <div className={`mb-1 grid gap-1 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`grid gap-1 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {images.map((img, idx) => (
-              
+              <a
                 key={idx}
                 href={resolveMediaUrl(img.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+                className="block overflow-hidden rounded-2xl border border-white/20 shadow-sm hover:opacity-90 transition-opacity"
               >
                 <img
                   src={resolveMediaUrl(img.url)}
                   alt={img.fileName || 'Attachment'}
-                  className="h-40 w-full max-w-[220px] object-cover sm:h-48 sm:max-w-[260px]"
+                  className="h-44 w-full max-w-[240px] object-cover"
                   loading="lazy"
                 />
               </a>
@@ -228,62 +261,76 @@ function Bubble({
           </div>
         )}
 
+        {/* File attachments */}
         {files.length > 0 && (
-          <div className="mb-1 flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 w-full">
             {files.map((f, idx) => (
-              
+              <a
                 key={idx}
                 href={resolveMediaUrl(f.url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 download={f.fileName}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs shadow-sm ${
-                  mine ? 'border-blue-400/40 bg-blue-500/10 text-blue-900' : 'border-slate-200 bg-white text-slate-700'
+                className={`flex items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-xs shadow-sm hover:opacity-80 transition-opacity ${
+                  mine
+                    ? 'border-blue-300/30 bg-blue-500/15 text-blue-900'
+                    : 'border-slate-200 bg-white text-slate-700'
                 }`}
               >
-                <FileText size={16} className="flex-shrink-0 text-slate-400" />
-                <span className="min-w-0 flex-1 truncate font-medium">{f.fileName || 'File'}</span>
-                <span className="flex-shrink-0 text-slate-400">{formatBytes(f.size)}</span>
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <FileText size={15} className="text-slate-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-[11px]">{f.fileName || 'File'}</p>
+                  <p className="text-slate-400 text-[10px]">{formatBytes(f.size)}</p>
+                </div>
                 <Download size={13} className="flex-shrink-0 text-slate-400" />
               </a>
             ))}
           </div>
         )}
 
+        {/* Text bubble */}
         {msg.text && (
           <button
             type="button"
             onClick={() => msg._failed && onRetry(msg)}
             disabled={!msg._failed}
-            className={`min-w-0 max-w-full px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm text-left ${
-              mine
+            className={`
+              min-w-0 max-w-full px-4 py-2.5 text-sm leading-relaxed text-left
+              shadow-sm transition-opacity
+              ${mine
                 ? msg._failed
-                  ? 'bg-red-500 text-white rounded-br-none cursor-pointer'
-                  : 'bg-blue-600 text-white rounded-br-none'
-                : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
-            } ${msg._pending ? 'opacity-60' : ''} ${!msg._failed ? 'cursor-default' : ''}`}
+                  ? 'bg-red-500 text-white rounded-3xl rounded-br-lg cursor-pointer'
+                  : 'bg-blue-600 text-white rounded-3xl rounded-br-lg'
+                : 'bg-white text-slate-800 rounded-3xl rounded-bl-lg border border-slate-100/80'
+              }
+              ${msg._pending ? 'opacity-50' : 'opacity-100'}
+              ${!msg._failed ? 'cursor-default' : ''}
+            `}
           >
             <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.text}</p>
           </button>
         )}
 
-        <div className={`flex items-center gap-1 mt-1 px-1 ${mine ? 'flex-row-reverse' : ''}`}>
-          <span className="text-[10px] text-slate-400">
-            {msg._pending ? 'Sending…' : msg._failed ? 'Failed' : timeLabel(msg.createdAt)}
+        {/* Timestamp + read receipt */}
+        <div className={`flex items-center gap-1 px-1 ${mine ? 'flex-row-reverse' : ''}`}>
+          <span className="text-[10px] text-slate-400 tabular-nums">
+            {msg._pending ? 'Sending…' : msg._failed ? 'Failed · tap to retry' : timeLabel(msg.createdAt)}
           </span>
           {mine && !msg._pending && !msg._failed && (
             read
-              ? <CheckCheck size={12} className="text-blue-500" aria-label="Read" />
-              : <Check size={12} className="text-slate-300" aria-label="Sent" />
+              ? <CheckCheck size={11} className="text-blue-500" />
+              : <Check size={11} className="text-slate-300" />
           )}
         </div>
 
         {msg._failed && (
           <button
             onClick={() => onRetry(msg)}
-            className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5 px-1 hover:underline"
+            className="text-[10px] text-red-500 flex items-center gap-1 px-1 hover:underline"
           >
-            <AlertCircle size={10} /> Tap to retry
+            <AlertCircle size={10} /> Retry
           </button>
         )}
       </div>
@@ -551,53 +598,54 @@ function ChatPanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2 sm:px-5 sm:py-3 z-10 flex-shrink-0">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white/95 backdrop-blur-sm px-4 py-3 sm:px-5 z-10 flex-shrink-0 shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             onClick={onBack}
-            aria-label="Back to conversations"
-            className="md:hidden flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 -ml-1"
+            aria-label="Back"
+            className="md:hidden flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 -ml-1 transition-colors"
           >
-            <ChevronLeft size={22} />
+            <ChevronLeft size={20} />
           </button>
           <div className="relative flex-shrink-0">
             <Avatar user={conv.otherUser} size={10} linkToProfile />
             {online && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-sm text-slate-900 leading-tight truncate">{conv.otherUser.name}</p>
-            <p className="text-xs truncate">
-              {otherTyping
-                ? <span className="text-blue-500 font-medium">typing…</span>
-                : online
-                  ? <span className="text-green-600 font-medium">Active now</span>
-                  : (() => {
-                      const lbl = activeLabel(false, (conv.otherUser as any).lastLogin);
-                      return lbl
-                        ? <span className="text-slate-400">{lbl}</span>
-                        : <span className="text-slate-400">{conv.otherUser.headline || ''}</span>;
-                    })()
-              }
+            <p className="font-semibold text-sm text-slate-900 leading-tight truncate">
+              {conv.otherUser.name}
+            </p>
+            <p className="text-xs truncate leading-tight mt-0.5">
+              {otherTyping ? (
+                <span className="text-blue-500 font-medium">typing…</span>
+              ) : online ? (
+                <span className="text-emerald-600 font-medium">Active now</span>
+              ) : (() => {
+                const lbl = activeLabel(false, (conv.otherUser as any).lastLogin);
+                return lbl
+                  ? <span className="text-slate-400">{lbl}</span>
+                  : <span className="text-slate-400">{conv.otherUser.headline || ''}</span>;
+              })()}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <IconBtn icon={<Phone size={17} />} label="Voice call" onClick={onVoiceCall} hoverColor="hover:text-green-600" />
-          <IconBtn icon={<Video size={17} />} label="Video call" onClick={onVideoCall} hoverColor="hover:text-blue-600" />
+          <IconBtn icon={<Phone size={16} />} label="Voice call" onClick={onVoiceCall} hoverColor="hover:text-emerald-600 hover:bg-emerald-50" />
+          <IconBtn icon={<Video size={16} />} label="Video call" onClick={onVideoCall} hoverColor="hover:text-blue-600 hover:bg-blue-50" />
           <div className="relative">
-            <IconBtn icon={<MoreHorizontal size={17} />} label="More options" onClick={() => setMoreOpen((v) => !v)} />
+            <IconBtn icon={<MoreHorizontal size={16} />} label="More options" onClick={() => setMoreOpen((v) => !v)} />
             {moreOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} aria-hidden="true" />
-                <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                  
+                <div className="absolute right-0 top-full mt-1.5 z-20 w-44 rounded-xl border border-slate-100 bg-white py-1 shadow-xl shadow-slate-200/60 ring-1 ring-black/5">
+                  <a
                     href={profileHref}
                     onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                    className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg mx-1 transition-colors"
                   >
-                    <User size={15} /> View profile
+                    <User size={14} className="text-slate-400" /> View profile
                   </a>
                 </div>
               </>
@@ -609,55 +657,63 @@ function ChatPanel({
       {/* ── Messages ── */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-6 space-y-1"
-        style={{ background: '#f3f2ef' }}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6 space-y-2"
+        style={{ background: 'linear-gradient(to bottom, #f8f9fa, #f1f3f5)' }}
       >
         {loading ? (
-          <div className="flex justify-center pt-10">
-            <Loader2 size={24} className="animate-spin text-slate-300" />
+          <div className="flex justify-center pt-16">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 size={22} className="animate-spin text-blue-400" />
+              <p className="text-xs text-slate-400">Loading messages…</p>
+            </div>
           </div>
         ) : (
           <>
             {hasMore && (
-              <div className="flex justify-center py-3">
+              <div className="flex justify-center pb-2">
                 <button
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="flex items-center gap-1.5 text-xs text-slate-500 bg-white border border-slate-200 rounded-full px-4 py-1.5 hover:bg-slate-50 shadow-sm disabled:opacity-60"
+                  className="flex items-center gap-1.5 text-xs text-slate-500 bg-white border border-slate-200 rounded-full px-4 py-1.5 hover:bg-slate-50 shadow-sm disabled:opacity-60 transition-all"
                 >
-                  {loadingMore ? <Loader2 size={11} className="animate-spin" /> : null}
+                  {loadingMore ? <Loader2 size={10} className="animate-spin" /> : null}
                   {loadingMore ? 'Loading…' : 'Load older messages'}
                 </button>
               </div>
             )}
+
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-20 text-center">
-                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-                  <MessageCircle size={28} className="text-blue-500" />
+              <div className="flex flex-col items-center justify-center h-full py-24 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4 shadow-sm">
+                  <MessageCircle size={26} className="text-blue-500" />
                 </div>
                 <p className="text-sm font-semibold text-slate-700">Start the conversation</p>
-                <p className="text-xs text-slate-400 mt-1">Say hello to {conv.otherUser.name} 👋</p>
+                <p className="text-xs text-slate-400 mt-1.5">
+                  Say hello to {conv.otherUser.name} 👋
+                </p>
               </div>
-            ) : items.map((item, i) =>
-              item.type === 'divider' ? (
-                <div key={`d-${i}`} className="flex items-center gap-3 py-4">
-                  <div className="flex-1 h-px bg-slate-200" />
-                  <span className="text-[11px] text-slate-400 bg-white rounded-full px-3 py-1 border border-slate-200 shadow-sm">
-                    {item.label}
-                  </span>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-              ) : (
-                <Bubble
-                  key={item.msg._id}
-                  msg={item.msg}
-                  mine={item.msg.sender === userId}
-                  showAvatar={item.showAvatar}
-                  conv={conv}
-                  read={!!readAt && item.msg.createdAt <= readAt}
-                  onRetry={retry}
-                  onDelete={handleDeleteMessage}
-                />
+            ) : (
+              items.map((item, i) =>
+                item.type === 'divider' ? (
+                  <div key={`d-${i}`} className="flex items-center gap-3 py-3">
+                    <div className="flex-1 h-px bg-slate-200/70" />
+                    <span className="text-[10px] text-slate-400 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 border border-slate-200/80 shadow-sm font-medium">
+                      {item.label}
+                    </span>
+                    <div className="flex-1 h-px bg-slate-200/70" />
+                  </div>
+                ) : (
+                  <Bubble
+                    key={item.msg._id}
+                    msg={item.msg}
+                    mine={item.msg.sender === userId}
+                    showAvatar={item.showAvatar}
+                    conv={conv}
+                    read={!!readAt && item.msg.createdAt <= readAt}
+                    onRetry={retry}
+                    onDelete={handleDeleteMessage}
+                  />
+                )
               )
             )}
             <div ref={bottomRef} />
@@ -665,36 +721,42 @@ function ChatPanel({
         )}
       </div>
 
-      {/* ── Input ── */}
-      <div className="border-t border-slate-100 bg-white px-3 py-2.5 sm:px-4 sm:py-3 flex-shrink-0"
-        style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom))' }}
+      {/* ── Input area ── */}
+      <div
+        className="border-t border-slate-100 bg-white px-3 py-3 sm:px-4 flex-shrink-0"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
+        {/* Pending file previews */}
         {pendingFiles.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-2.5 flex flex-wrap gap-2">
             {pendingFiles.map((f, idx) => {
               const isImg = f.type.startsWith('image/');
               return (
-                <div key={idx} className="relative flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2 text-xs text-slate-600">
+                <div key={idx} className="relative flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-1.5 pr-2 text-xs text-slate-600 shadow-sm">
                   {isImg ? (
-                    <img src={URL.createObjectURL(f)} alt="" className="h-8 w-8 rounded object-cover" />
+                    <img src={URL.createObjectURL(f)} alt="" className="h-9 w-9 rounded-lg object-cover" />
                   ) : (
-                    <FileText size={16} className="text-slate-400" />
+                    <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                      <FileText size={15} className="text-slate-400" />
+                    </div>
                   )}
-                  <span className="max-w-[110px] truncate">{f.name}</span>
+                  <span className="max-w-[100px] truncate font-medium">{f.name}</span>
                   <button
                     type="button"
                     onClick={() => removePendingFile(idx)}
                     aria-label={`Remove ${f.name}`}
-                    className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-300 text-white hover:bg-slate-400"
+                    className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-400 text-white hover:bg-slate-500 transition-colors"
                   >
-                    <X size={10} />
+                    <X size={9} />
                   </button>
                 </div>
               );
             })}
           </div>
         )}
-        <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 px-3 py-1.5 sm:px-4 sm:py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+
+        {/* Input row */}
+        <div className="flex items-end gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -703,50 +765,62 @@ function ChatPanel({
             onChange={(e) => handleFilesPicked(e.target.files)}
             className="hidden"
           />
+
+          {/* Attach button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={pendingFiles.length >= MAX_ATTACHMENTS}
-            aria-label="Attach photo or file"
-            title="Attach photo or file"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Attach file"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40 mb-0.5"
           >
-            <Paperclip size={18} />
+            <Paperclip size={17} />
           </button>
-          <textarea
-            ref={inputRef}
-            value={text}
-            onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
-            onBlur={stopTyping}
-            placeholder={`Message ${conv.otherUser.name}…`}
-            rows={1}
-            aria-label="Type a message"
-            className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-1.5"
-            style={{ maxHeight: 120 }}
-          />
+
+          {/* Text input */}
+          <div className="flex-1 flex items-end gap-2 bg-slate-50 rounded-3xl border border-slate-200 px-4 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/70 focus-within:bg-white transition-all shadow-sm">
+            <textarea
+              ref={inputRef}
+              value={text}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onBlur={stopTyping}
+              placeholder={`Message ${conv.otherUser.name}…`}
+              rows={1}
+              aria-label="Type a message"
+              className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-0.5"
+              style={{ maxHeight: 120 }}
+            />
+          </div>
+
+          {/* Send button */}
           <button
             onClick={send}
             disabled={(!text.trim() && pendingFiles.length === 0) || sending}
             aria-label="Send message"
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-              (text.trim() || pendingFiles.length > 0)
-                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-            }`}
+            className={`
+              flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm mb-0.5
+              ${(text.trim() || pendingFiles.length > 0)
+                ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-95'
+                : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+              }
+            `}
           >
-            {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           </button>
         </div>
-        <p className="hidden sm:block text-[10px] text-slate-400 text-center mt-1.5">
-          Enter to send · Shift+Enter for new line
+
+        <p className="hidden sm:block text-[10px] text-slate-400 text-center mt-2 select-none">
+          Enter to send · Shift + Enter for new line
         </p>
       </div>
     </div>
   );
 }
 
-function IconBtn({ icon, label, onClick, hoverColor = 'hover:text-slate-700' }: {
+function IconBtn({
+  icon, label, onClick, hoverColor = 'hover:text-slate-700 hover:bg-slate-100',
+}: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
@@ -757,14 +831,29 @@ function IconBtn({ icon, label, onClick, hoverColor = 'hover:text-slate-700' }: 
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`flex h-10 w-10 items-center justify-center rounded-full text-slate-400 ${hoverColor} hover:bg-slate-100 transition-colors`}
+      className={`flex h-9 w-9 items-center justify-center rounded-full text-slate-400 ${hoverColor} transition-all`}
     >
       {icon}
     </button>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main MessagesPage ────────────────────────────────────────────────────────
+//
+// IMPORTANT — Layout fix:
+//   Use  className="contents"  on whatever wrapper your router/layout
+//   wraps this page in, OR make sure the parent is NOT setting
+//   overflow:hidden / max-width / padding that clips this component.
+//
+//   This component uses  style={{ position:'fixed', inset:0 }}
+//   which is equivalent to  className="fixed inset-0"  and will fill
+//   the entire viewport regardless of the DOM hierarchy.
+//
+//   If your layout has a <main> like:
+//     <main className="max-w-6xl mx-auto px-4 py-8"> ... </main>
+//   the fixed child will still escape it and cover the full screen correctly.
+//   The only thing that breaks fixed positioning is a parent with
+//   transform / perspective / filter / will-change set — remove those.
 
 export function MessagesPage() {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -818,7 +907,9 @@ export function MessagesPage() {
           lastMessageAt: msg.createdAt,
           unreadCount: isMine || isActive ? prev[idx].unreadCount : prev[idx].unreadCount + 1,
         };
-        return [updated, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+        // Remove old entry, prepend updated (no duplicates)
+        const withoutOld = prev.filter((_, i) => i !== idx);
+        return [updated, ...withoutOld];
       });
     };
     socket.on('message:new', handleGlobalMessage);
@@ -875,11 +966,28 @@ export function MessagesPage() {
 
   const callRemoteName = incomingCall?.callerName || active?.otherUser.name || 'Unknown';
   const callRemoteAvatar = incomingCall?.callerAvatar || resolveMediaUrl(active?.otherUser.avatar);
-
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
   return (
-    <div className="fixed inset-0 bg-[#f3f2ef] flex flex-col overflow-hidden">
+    /*
+     * ── KEY FIX ──────────────────────────────────────────────────────────────
+     * Use style={{ position:'fixed', inset:0 }} instead of Tailwind's
+     * className="fixed inset-0" so the specificity cannot be overridden by
+     * a parent layout's stylesheet. If your app shell wraps pages in a
+     * <div className="overflow-hidden"> or adds a CSS transform, move this
+     * component outside that wrapper using a React Portal:
+     *
+     *   import { createPortal } from 'react-dom';
+     *   return createPortal(<MessagesPage />, document.body);
+     *
+     * OR add  data-no-layout="true"  to this route so your layout skips
+     * wrapping it.
+     * ─────────────────────────────────────────────────────────────────────────
+     */
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+      className="bg-slate-100 flex flex-col overflow-hidden"
+    >
       {/* Call overlay */}
       {(callState === 'calling' || callState === 'incoming' || callState === 'connected' || callState === 'reconnecting' || callState === 'failed') && (
         <CallOverlay
@@ -899,39 +1007,42 @@ export function MessagesPage() {
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
 
         {/* ── LEFT SIDEBAR ── */}
-        <div className={`flex-shrink-0 flex-col border-r border-slate-100 bg-white w-full md:w-[320px] md:flex ${showingChat ? 'hidden' : 'flex'}`}>
-
+        <aside className={`
+          flex-shrink-0 flex-col border-r border-slate-200/80 bg-white
+          w-full md:w-[300px] lg:w-[340px] md:flex
+          ${showingChat ? 'hidden' : 'flex'}
+        `}>
           {/* Sidebar header */}
-          <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900">Messaging</h2>
+          <div className="px-4 pt-5 pb-3 border-b border-slate-100 flex-shrink-0 bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">Messages</h2>
                 {totalUnread > 0 && (
-                  <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
-                    {totalUnread}
+                  <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full px-2 py-0.5 shadow-sm">
+                    {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
               </div>
               <button
                 aria-label="New message"
-                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
               >
-                <Edit3 size={16} />
+                <Edit3 size={15} />
               </button>
             </div>
             {/* Search */}
-            <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-2">
-              <Search size={14} className="text-slate-400 flex-shrink-0" />
+            <div className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3 py-2.5 focus-within:bg-slate-50 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border focus-within:border-blue-200 transition-all">
+              <Search size={13} className="text-slate-400 flex-shrink-0" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search messages"
-                aria-label="Search messages"
+                placeholder="Search conversations"
+                aria-label="Search conversations"
                 className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full min-w-0"
               />
               {search && (
-                <button onClick={() => setSearch('')} aria-label="Clear search">
-                  <X size={13} className="text-slate-400" />
+                <button onClick={() => setSearch('')} aria-label="Clear search" className="flex-shrink-0">
+                  <X size={12} className="text-slate-400 hover:text-slate-600 transition-colors" />
                 </button>
               )}
             </div>
@@ -940,31 +1051,34 @@ export function MessagesPage() {
           {/* Conversation list */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="p-4 space-y-4">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 animate-pulse flex-shrink-0" />
+              <div className="p-4 space-y-3">
+                {[...Array(7)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-1">
+                    <div className="w-11 h-11 rounded-full bg-slate-100 animate-pulse flex-shrink-0" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" />
-                      <div className="h-2.5 bg-slate-100 rounded animate-pulse w-1/2" />
+                      <div className="h-3 bg-slate-100 rounded-full animate-pulse w-3/5" />
+                      <div className="h-2.5 bg-slate-100 rounded-full animate-pulse w-2/5" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-                <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-3 shadow-sm">
                   <MessageCircle size={22} className="text-blue-500" />
                 </div>
                 <p className="text-sm font-semibold text-slate-700">
-                  {search ? 'No results' : 'No conversations yet'}
+                  {search ? 'No results found' : 'No conversations yet'}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {search ? `Nothing matched "${search}"` : "Start chatting from someone's profile."}
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                  {search
+                    ? `Nothing matched "${search}"`
+                    : 'Start a chat from someone\'s profile page.'
+                  }
                 </p>
               </div>
             ) : (
-              <div>
+              <div className="py-1">
                 {filtered.map((c) => (
                   <ConvItem
                     key={c._id}
@@ -978,10 +1092,10 @@ export function MessagesPage() {
               </div>
             )}
           </div>
-        </div>
+        </aside>
 
         {/* ── RIGHT PANEL ── */}
-        <div className={`min-w-0 flex-1 flex-col min-h-0 md:flex ${showingChat ? 'flex' : 'hidden'}`}>
+        <main className={`min-w-0 flex-1 flex-col min-h-0 md:flex ${showingChat ? 'flex' : 'hidden'}`}>
           {active ? (
             <ChatPanel
               conv={active}
@@ -993,17 +1107,16 @@ export function MessagesPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-8 bg-white">
-              <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-5">
-                <MessageCircle size={40} className="text-blue-500" />
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center mb-5 shadow-sm">
+                <MessageCircle size={34} className="text-blue-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Your Messages</h3>
-              <p className="text-sm text-slate-500 max-w-xs">
-                Select a conversation from the left to start reading and replying to messages.
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Your Messages</h3>
+              <p className="text-sm text-slate-400 max-w-[220px] leading-relaxed">
+                Pick a conversation from the left to read and reply.
               </p>
             </div>
           )}
-        </div>
-
+        </main>
       </div>
     </div>
   );

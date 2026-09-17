@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getJobApplicants, updateApplicationStatus } from "../employerApi/api";
 import { Eye } from "lucide-react";
-import { resolveResumeUrl } from "../../../utils/mediaUrl";
+import { resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
 interface Applicant {
@@ -125,9 +125,9 @@ const JobApplicants = () => {
                                         </button>
                                     </td>
                                     <td className="p-3 border">
-                                        {applicant.resume ? (
-                                            <a
-                                                href={resolveResumeUrl(applicant.resume)}
+                                        {applicant.resume && !isUnrecoverableResumePath(applicant.resume) ? (
+                                            
+                                              <a  href={resolveResumeUrl(applicant.resume)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -136,6 +136,8 @@ const JobApplicants = () => {
                                                     Resume
                                                 </button>
                                             </a>
+                                        ) : applicant.resume ? (
+                                            <span className="text-gray-500 text-xs">Resume unavailable</span>
                                         ) : (
                                             <span className="text-gray-500 text-xs">No resume</span>
                                         )}

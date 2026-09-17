@@ -288,6 +288,7 @@ export interface ApplicationListResponse {
 export const getAllApplicantsForEmployerJobs = async (
   params: ApplicationListParams = {}
 ): Promise<ApplicationListResponse> => {
+  
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
 
