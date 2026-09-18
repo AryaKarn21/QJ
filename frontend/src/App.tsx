@@ -134,16 +134,18 @@ function AppWrapper() {
   return (
     <div className="min-h-screen bg-secondary flex flex-col">
       <ScrollToTop />
-      {!shouldHideHeaderFooter && <Header />}
+            {!shouldHideHeaderFooter && <Header />}
 
-      {/* Spacer that matches the fixed header height so content doesn't
-          hide behind it: 3.5rem (56px) mobile, 4rem (64px) sm, 5rem (80px)
-          lg+ — must stay in sync with Header.tsx's own h-14 sm:h-16 lg:h-20.
-          (Previously h-16 sm:h-20, taller than the real header at every
-          breakpoint below lg, which left an extra 8-16px gap under the
-          navbar on mobile/tablet.) Hidden on pages where the Header is
-          suppressed (dashboard layouts with their own nav). */}
-      {!shouldHideHeaderFooter && <div className="h-14 sm:h-16 lg:h-20 flex-shrink-0" aria-hidden="true" />}
+      {/* No spacer needed here: Header.tsx renders as `position: sticky`,
+          which (unlike the `fixed` positioning this app used previously)
+          stays in normal document flow and already reserves its own
+          height at the top of the page. A manual height-matching spacer
+          was required for the old `fixed` header (removed from flow, so
+          content needed compensating push-down) — with `sticky` it's pure
+          redundant extra gap. Removed rather than kept "just in case": a
+          height-matching spacer that silently drifts out of sync with the
+          header's actual height (as this one had, more than once) is a
+          maintenance trap for a component that no longer needs it. */}
 
       <div className="flex-1">
         <Suspense

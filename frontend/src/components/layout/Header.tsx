@@ -190,19 +190,38 @@ const Header: React.FC = () => {
               </div>
             </Link>
 
+            {/* Search — desktop. Fixed, safe widths below xl (never
+                fights the nav for space, since nav is now hidden below
+                xl too — see the nav breakpoint change below). Only
+                becomes elastic at xl, where max-w-7xl caps the container
+                at exactly the xl breakpoint (1280px) — so "elastic" only
+                ever activates when the full available width is already
+                known and sufficient, never in an ambiguous in-between
+                zone. This replaces two earlier attempts that used
+                flex-1/min-w-0 without a real floor — both collapsed the
+                search box toward invisible under exactly the kind of
+                pressure this fixes. */}
             {isLoggedIn && (
-              <HeaderSearch className="flex-1 min-w-0 max-w-[160px] sm:max-w-xs lg:max-w-sm xl:max-w-md mx-2" suggestionSeeds={jobCategories} />
+              <HeaderSearch className="hidden md:block md:w-40 lg:w-56 xl:flex-1 xl:min-w-[220px] xl:max-w-md mx-2" suggestionSeeds={jobCategories} />
             )}
-            
-            {/* Desktop Nav */}
-            <nav className="hidden lg:flex shrink min-w-0 items-center space-x-0.5 xl:space-x-1.5 bg-slate-100/60 p-1 xl:p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
+
+            {/* Desktop Nav — gated to xl (1280px), not lg. lg-only widths
+                (1024-1279px) were the recurring source of every layout bug
+                fixed in this pass: nav's un-wrappable item text has no
+                room to compress, so anything less than a hard cutoff at a
+                width where room is actually guaranteed just relocates the
+                same overflow somewhere else. Below xl, nav links live in
+                the hamburger drawer instead (see the compact icon row and
+                shared drawer further down). */}
+            <nav className="hidden xl:flex shrink-0 items-center space-x-1.5 bg-slate-100/60 p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
                 return (
                   <Link key={item.name} to={item.path}
-                    className={`px-2 lg:px-2.5 xl:px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 xl:gap-2 group relative whitespace-nowrap ${isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-                      }`}>
+                    className={`px-3.5 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 group relative whitespace-nowrap ${
+                      isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    }`}>
                     <span className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-700'}`}>
                       {item.icon}
                     </span>
@@ -214,8 +233,9 @@ const Header: React.FC = () => {
               {/* Categories Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button type="button" onClick={() => setIsJobsDropdownOpen(!isJobsDropdownOpen)}
-                  className={`px-2 lg:px-2.5 xl:px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 xl:gap-2 border whitespace-nowrap ${isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
-                    }`}>
+                  className={`px-3.5 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 border whitespace-nowrap ${
+                    isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
+                  }`}>
                   <SparkleIcon size={18} className="text-amber-500 fill-amber-400/20 animate-pulse" />
                   <span>Categories</span>
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isJobsDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
@@ -261,7 +281,7 @@ const Header: React.FC = () => {
                   </div>
                   {/* Mobile: hamburger for not-logged-in */}
                   <button type="button" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="lg:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
+                    className="xl:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
                     aria-label="Toggle Mobile Menu">
                     {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                   </button>
@@ -269,7 +289,7 @@ const Header: React.FC = () => {
               ) : (
                 <>
                   {/* Desktop: messages + notifications + profile */}
-                  <div className="hidden lg:flex items-center space-x-1.5">
+                  <div className="hidden xl:flex items-center space-x-1.5">
                     <Link to="/messages" aria-label="Messages"
                       className="p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <MessageCircle size={20} />
@@ -289,7 +309,7 @@ const Header: React.FC = () => {
                             <span className="text-white text-sm font-bold">{initial}</span>
                           )}
                         </div>
-                        <div className="hidden lg:block text-left">
+                        <div className="hidden xl:block text-left">
                           <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] xl:max-w-[150px] truncate">{userInfo?.name}</p>
                         </div>
                         <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
@@ -347,8 +367,15 @@ const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Mobile top bar right: search + notifications + profile */}
-                  <div className="flex lg:hidden items-center gap-1">
+                  {/* Compact icons (md through lg — the range that no
+                      longer shows the full text nav now that it's gated
+                      to xl:flex). Search, notifications and the profile
+                      avatar are always reachable here; a hamburger opens
+                      the same nav-links drawer guests get below, since
+                      logged-in users previously had no way to reach
+                      Home/Blog/About/Contact/Categories in this range at
+                      all — only the bottom tab bar's four shortcuts. */}
+                  <div className="flex xl:hidden items-center gap-1">
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <Search size={20} />
@@ -356,6 +383,11 @@ const Header: React.FC = () => {
                     <div className="p-1 rounded-xl hover:bg-slate-100/80 transition-all duration-200">
                       <NotificationBell />
                     </div>
+                    <button type="button" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                      className="hidden md:inline-flex p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95"
+                      aria-label="Toggle menu">
+                      {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
                     <button type="button" onClick={() => setIsMobileProfileOpen(true)}
                       aria-label="Profile menu"
                       className="ml-0.5 w-8 h-8 rounded-lg overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -372,9 +404,14 @@ const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile hamburger menu — only for NOT logged-in users */}
-        {isMobileMenuOpen && !isLoggedIn && (
-          <div className="lg:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+        {/* Mobile hamburger menu — nav links only; sign-in/register CTAs
+            only make sense for guests, so that section is conditional.
+            Reachable for BOTH guests (button lives in the !isLoggedIn
+            branch above) and logged-in users (button added just above, in
+            the md-xl compact icon row) — previously this drawer, and its
+            toggle button, only existed for guests at all. */}
+        {isMobileMenuOpen && (
+          <div className="xl:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
             <div className="px-4 pt-3 pb-6 space-y-1.5">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
@@ -388,12 +425,14 @@ const Header: React.FC = () => {
                   </Link>
                 );
               })}
-              <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col gap-2.5">
-                <Link to="/login" className="w-full text-center py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100/80 rounded-xl transition-all duration-150">Log In</Link>
-                <Link to="/signup" className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/20 transition-all duration-150 active:scale-95">
-                  <span>Register Account</span><ArrowRight size={16} />
-                </Link>
-              </div>
+              {!isLoggedIn && (
+                <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col gap-2.5">
+                  <Link to="/login" className="w-full text-center py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100/80 rounded-xl transition-all duration-150">Log In</Link>
+                  <Link to="/signup" className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/20 transition-all duration-150 active:scale-95">
+                    <span>Register Account</span><ArrowRight size={16} />
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -402,7 +441,7 @@ const Header: React.FC = () => {
       {/* ── LINKEDIN-STYLE BOTTOM TAB BAR (mobile, logged-in only) ── */}
       {isLoggedIn && (
         <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200"
+          className="xl:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           aria-label="Mobile navigation"
         >
@@ -451,7 +490,7 @@ const Header: React.FC = () => {
       {/* ── MOBILE PROFILE SLIDE-UP SHEET ── */}
       {isMobileProfileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-[60] flex flex-col justify-end"
+          className="xl:hidden fixed inset-0 z-[60] flex flex-col justify-end"
           onClick={() => setIsMobileProfileOpen(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
