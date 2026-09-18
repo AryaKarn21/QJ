@@ -182,11 +182,11 @@ const Header: React.FC = () => {
   return (
     <>
       {/* ── TOP HEADER (visible on all screens, but minimal on mobile) ── */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${scrolled
+      <header className={`fixed top-0 left-0 right-0 z-50 overflow-x-hidden transition-all duration-300 ease-in-out ${scrolled
           ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
           : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'
         }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden">
           <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 transition-all duration-300">
 
             {/* Logo */}
@@ -206,19 +206,17 @@ const Header: React.FC = () => {
                 got shoved past the edge of the screen with no way to
                 reach it, since nothing upstream of it was willing to
                 shrink. */}
-
-      // AFTER:
             {isLoggedIn && (
               <HeaderSearch className="flex-1 min-w-0 max-w-[160px] sm:max-w-xs lg:max-w-sm xl:max-w-md mx-2" suggestionSeeds={jobCategories} />
             )}
             {/* Desktop Nav */}
-            <nav className="hidden lg:flex shrink-0 items-center space-x-1 xl:space-x-1.5 bg-slate-100/60 p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
+            <nav className="hidden lg:flex shrink min-w-0 items-center space-x-0.5 xl:space-x-1.5 bg-slate-100/60 p-1 xl:p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm overflow-x-auto">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
                 return (
                   <Link key={item.name} to={item.path}
-                    className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 group relative ${isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    className={`px-2 lg:px-2.5 xl:px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 xl:gap-2 group relative whitespace-nowrap ${isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                       }`}>
                     <span className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-700'}`}>
                       {item.icon}
@@ -231,7 +229,7 @@ const Header: React.FC = () => {
               {/* Categories Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button type="button" onClick={() => setIsJobsDropdownOpen(!isJobsDropdownOpen)}
-                  className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 border ${isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
+                  className={`px-2 lg:px-2.5 xl:px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 xl:gap-2 border whitespace-nowrap ${isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
                     }`}>
                   <SparkleIcon size={18} className="text-amber-500 fill-amber-400/20 animate-pulse" />
                   <span>Categories</span>
@@ -268,7 +266,7 @@ const Header: React.FC = () => {
             </nav>
 
             {/* Right side — desktop */}
-            <div className="flex shrink-0 items-center space-x-2">
+            <div className="flex shrink-0 items-center space-x-1 xl:space-x-2 min-w-0">
               {!isLoggedIn ? (
                 <>
                   {/* Desktop login/register */}
@@ -313,8 +311,8 @@ const Header: React.FC = () => {
                             <span className="text-white text-sm font-bold">{initial}</span>
                           )}
                         </div>
-                        <div className="hidden xl:block text-left">
-                          <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[100px] truncate">{userInfo?.name}</p>
+                        <div className="hidden lg:block text-left">
+                          <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] xl:max-w-[150px] truncate">{userInfo?.name}</p>
                         </div>
                         <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
@@ -378,7 +376,6 @@ const Header: React.FC = () => {
                       mobile. This reuses that same sheet (isMobileProfileOpen)
                       so those features open from the header too. */}
                   <div className="flex lg:hidden items-center gap-1">
-                   // REMOVE these lines (the plain search icon link for mobile):
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <Search size={20} />

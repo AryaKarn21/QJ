@@ -12,9 +12,7 @@ import {
   type BlogCategory,
 } from "../../api/blogCategoryApi";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
-const resolveImage = (url: string) => `${MEDIA_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const EMPTY_FORM = {
   name: "",
@@ -70,7 +68,7 @@ const BlogCategoryManagement: React.FC = () => {
     setEditing(c);
     setForm({ name: c.name, description: c.description || "", isActive: c.isActive });
     setIconFile(null);
-    setIconPreview(c.icon ? resolveImage(c.icon) : null);
+    setIconPreview(c.icon ? resolveMediaUrl(c.icon) : null);
     setDrawerOpen(true);
   };
 
@@ -138,7 +136,7 @@ const BlogCategoryManagement: React.FC = () => {
       render: (c) => (
         <div className="flex items-center gap-3">
           {c.icon ? (
-            <img src={resolveImage(c.icon)} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover bg-slate-50" />
+            <img src={resolveMediaUrl(c.icon)} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover bg-slate-50" />
           ) : (
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
               <FolderOpen size={16} />
