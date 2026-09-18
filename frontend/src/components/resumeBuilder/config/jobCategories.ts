@@ -1,27 +1,5 @@
 import type { TemplateCategory } from '../templates/registry';
 
-/**
- * Manpower/recruitment job categories.
- *
- * This file is intentionally separate from the backend's existing
- * `JobCategory` model (backend/models/JobCategory.js), which categorizes
- * job *listings* and is unrelated to this — don't mix the two up. This
- * file only exists on the frontend, as plain config, not a database model.
- *
- * This is also deliberately separate from `TemplateCategory` (registry.ts).
- * `TemplateCategory` groups *layout components* (ATS, Worker, Technology...).
- * `JobCategory` groups *what the candidate does* (Electrician, Driver, Cleaner...).
- *
- * Many JobCategories map to the same TemplateCategory ("Worker") because they
- * share the same simplified, low-literacy-friendly layout family — that's the
- * point of the layout × theme system in themePresets.ts: we don't need a
- * bespoke component per job title, just a sensible default template per job
- * category, which staff can still override in Step 2 of the builder.
- *
- * To add a new job category later: add one entry here. Nothing else in the
- * app needs to change — TemplateGallery, the category filter dropdown, and
- * the builder's Step 1 all read from this array.
- */
 
 export interface JobCategory {
   /** Stable slug, used as the DB value and in URLs/filters. Never rename once in use — add a new id instead. */

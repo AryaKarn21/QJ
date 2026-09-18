@@ -133,9 +133,10 @@ const HeaderSearch: React.FC<HeaderSearchProps> = ({ className = '', autoFocus, 
           />
         </div>
       </form>
-
-      {(showLiveResults || showEmptyState) && (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.375rem)] z-50 max-h-[28rem] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-2xl">
+   
+            {(showLiveResults || showEmptyState) && (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.375rem)] z-50 max-h-[28rem] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-2xl min-w-[min(20rem,calc(100vw-1rem))]">
+      
           {showLiveResults ? (
             loading ? (
               <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400">
@@ -167,7 +168,9 @@ const HeaderSearch: React.FC<HeaderSearchProps> = ({ className = '', autoFocus, 
                   onClick={() => goToFullResults(query)}
                   className="mt-1 w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-primary hover:bg-primary/5"
                 >
-                  See all results for "{trimmedQuery}"
+                  // AFTER:
+                  See all results for &quot;{trimmedQuery}&quot;
+                  
                 </button>
               </>
             )

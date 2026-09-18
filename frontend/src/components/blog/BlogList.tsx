@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, Search, Plus } from 'lucide-react';
 import { BlogCategoriesExplore } from './BlogCategoriesExplore';
 import { handleImageFallback, BLOG_IMAGE_FALLBACK } from '../../utils/imageFallback';
+// ADD this import at the top (after the existing imports):
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -47,7 +49,7 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
   const urlParams = new URLSearchParams(window.location.search);
   const isUserBlogsFromUrl = urlParams.get('user') === 'true';
   const actualShowUserBlogs = showUserBlogs || isUserBlogsFromUrl;
-  
+
   // Check if user is logged in
   const isLoggedIn = !!localStorage.getItem('token');
 
@@ -60,7 +62,7 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
     fetch(`${API_BASE_URL}/api/blogs/categories`)
       .then((res) => res.json())
       .then((data) => setCategories(data.categories || []))
-      .catch(() => {});
+      .catch(() => { });
   }, [actualShowUserBlogs]);
 
   const fetchBlogs = async () => {
@@ -144,7 +146,7 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
             </Link>
           )}
         </div>
-        
+
         {!actualShowUserBlogs && (
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="w-full relative">
@@ -200,7 +202,8 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
             {blogs.map((blog) => (
               <div key={blog._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                 <img
-                  src={blog.featuredImage || blog.images[0]?.url || BLOG_IMAGE_FALLBACK}
+                  // AFTER:
+                  src={resolveMediaUrl(blog.featuredImage || blog.images[0]?.url) || BLOG_IMAGE_FALLBACK}
                   alt={blog.images[0]?.caption || blog.title}
                   className="w-full h-48 object-cover bg-gray-100"
                   onError={handleImageFallback}
@@ -210,7 +213,8 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
                   <div className="flex items-center mb-3">
                     {blog.authorImage && (
                       <img
-                        src={blog.authorImage}
+                        // AFTER:
+                        src={resolveMediaUrl(blog.authorImage)}
                         alt={blog.author.name}
                         className="w-8 h-8 rounded-full mr-3"
                       />
@@ -281,11 +285,11 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
               >
                 Previous
               </button>
-              
+
               <span className="px-4 py-2 bg-blue-600 text-white rounded-lg">
                 {currentPage} of {totalPages}
               </span>
-              
+
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}

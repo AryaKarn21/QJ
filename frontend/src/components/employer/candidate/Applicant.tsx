@@ -10,7 +10,7 @@ import {
   X, Download, Eye, ExternalLink, GraduationCap, Sparkles, Filter, RotateCcw,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
+import { resolveMediaUrl, resolveResumeUrl } from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
@@ -35,9 +35,6 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// Tailwind's JIT scanner needs literal class strings, not `h-${size}`
-// template interpolation — an explicit map keeps every size class actually
-// present in source so it gets generated.
 const AVATAR_SIZE_CLASSES: Record<number, string> = {
   8: "h-8 w-8",
   10: "h-10 w-10",
@@ -200,10 +197,6 @@ const Applicants = () => {
 
   const handleDownloadResume = async (applicant: EmployerApplication) => {
     if (!applicant.resume) return;
-    if (isUnrecoverableResumePath(applicant.resume)) {
-      toast.error("This resume was uploaded before a storage fix and is no longer available. Ask the candidate to re-apply or re-upload their resume.");
-      return;
-    }
     setDownloadingResume(true);
     try {
       await downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name));
@@ -510,7 +503,7 @@ const Applicants = () => {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><FileText size={12} /> Resume</p>
-                  {selected.resume && !isUnrecoverableResumePath(selected.resume) && (
+                  {selected.resume && (
                     <button
                       onClick={() => handleDownloadResume(selected)}
                       disabled={downloadingResume}
@@ -525,17 +518,25 @@ const Applicants = () => {
                   <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-400">
                     This applicant didn't attach a resume.
                   </div>
-                ) : isUnrecoverableResumePath(selected.resume) ? (
-                  <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-400">
-                    This resume was uploaded before a storage fix and is no longer available. Ask the candidate to re-apply or re-upload their resume.
-                  </div>
                 ) : (
                   <>
-                    <iframe
-                      src={resolveResumeUrl(selected.resume)}
-                      title="Resume preview"
+                    <object
+                      data={resolveResumeUrl(selected.resume)}
+                      type="application/pdf"
                       className="h-80 w-full rounded-xl border border-gray-200"
-                    />
+                    >
+                      <p className="p-4 text-sm text-gray-400 text-center">
+                        Preview blocked by browser.{' '}
+                        <a
+                          href={resolveResumeUrl(selected.resume)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline"
+                        >
+                          Open resume in a new tab
+                        </a>
+                      </p>
+                    </object>
                     <a
                       href={resolveResumeUrl(selected.resume)}
                       target="_blank"

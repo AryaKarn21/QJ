@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { UserRole } from '../types/community';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
@@ -12,7 +13,7 @@ export type SearchResultType = 'people' | 'companies';
 export interface SearchResult {
   _id: string;
   name: string;
-  role: string;
+  role: UserRole;
   avatar: string | null;
   headline: string;
   isVerified: boolean;

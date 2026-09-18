@@ -66,7 +66,8 @@ export function BlogCategoriesExplore() {
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${accent.bg}`}>
                   {cat.icon ? (
                     <img
-                      src={`${MEDIA_URL.replace(/\/$/, '')}/${cat.icon.replace(/^\//, '')}`}
+                      // AFTER:
+                      src={cat.icon.startsWith('http') ? cat.icon : `${MEDIA_URL.replace(/\/$/, '')}/${cat.icon.replace(/^\//, '')}`}
                       alt=""
                       className="h-6 w-6 object-contain"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

@@ -20,7 +20,7 @@ let cachedClient = null;
 // contained entirely inside this shim, so every one of the ~8 controllers
 // that already call `getGeminiModel().generateContent(prompt)` and read
 // `result.response.text()` keeps working unchanged.
-function getGeminiModel(modelName = "gemini-3.6-flash") {
+function getGeminiModel(modelName = "gemini-2.0-flash") {
   if (!process.env.GEMINI_API_KEY) {
     const err = new Error(
       "GEMINI_API_KEY is not set. AI features (caption generation, grammar " +

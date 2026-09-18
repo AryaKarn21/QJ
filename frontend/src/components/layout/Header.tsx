@@ -22,13 +22,13 @@ interface DecodedToken {
 }
 
 const NAV_ITEMS = [
-  { name: 'Home',           icon: <Home size={18} />,          path: '/'        },
-  { name: 'Job Listings',   icon: <BriefcaseIcon size={18} />, path: '/jobs'    },
-  { name: 'Community',      icon: <Users size={18} />,         path: '/community'},
-  { name: 'Resume Builder', icon: <FileText size={18} />,      path: '/resume'  },
-  { name: 'Blog',           icon: <Newspaper size={18} />,     path: '/blog'    },
-  { name: 'About Us',       icon: <Info size={18} />,          path: '/about'   },
-  { name: 'Contact',        icon: <Mail size={18} />,          path: '/contact' },
+  { name: 'Home', icon: <Home size={18} />, path: '/' },
+  { name: 'Job Listings', icon: <BriefcaseIcon size={18} />, path: '/jobs' },
+  { name: 'Community', icon: <Users size={18} />, path: '/community' },
+  { name: 'Resume Builder', icon: <FileText size={18} />, path: '/resume' },
+  { name: 'Blog', icon: <Newspaper size={18} />, path: '/blog' },
+  { name: 'About Us', icon: <Info size={18} />, path: '/about' },
+  { name: 'Contact', icon: <Mail size={18} />, path: '/contact' },
 ];
 
 // Bottom tab bar — Community is the primary jobseeker destination (default
@@ -38,10 +38,10 @@ const NAV_ITEMS = [
 // '/' route — this only changes what the mobile tab bar surfaces.
 // Resume Builder excluded here (shown in non-sticky nav only per requirement).
 const BOTTOM_TABS = [
-  { name: 'Community', icon: Users,          path: '/community' },
-  { name: 'Jobs',      icon: BriefcaseIcon,  path: '/jobs'      },
-  { name: 'Messages',  icon: MessageCircle,  path: '/messages'  },
-  { name: 'Profile',   icon: User,           path: null         }, // opens profile menu
+  { name: 'Community', icon: Users, path: '/community' },
+  { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
+  { name: 'Messages', icon: MessageCircle, path: '/messages' },
+  { name: 'Profile', icon: User, path: null }, // opens profile menu
 ];
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
@@ -177,16 +177,15 @@ const Header: React.FC = () => {
   const initial = userInfo?.name?.charAt(0)?.toUpperCase() || '?';
   const roleLabel = userInfo?.role === 'jobseeker' ? 'Job Seeker'
     : userInfo?.role === 'employer' ? 'Employer'
-    : userInfo?.role === 'admin' ? 'Admin' : '';
+      : userInfo?.role === 'admin' ? 'Admin' : '';
 
   return (
     <>
       {/* ── TOP HEADER (visible on all screens, but minimal on mobile) ── */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-        scrolled
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${scrolled
           ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
           : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'
-      }`}>
+        }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 transition-all duration-300">
 
@@ -197,21 +196,30 @@ const Header: React.FC = () => {
               </div>
             </Link>
 
-            {/* Search — desktop */}
-            {isLoggedIn && (
-              <HeaderSearch className="hidden md:block md:w-52 lg:w-64 xl:w-80 mx-2" suggestionSeeds={jobCategories} />
-            )}
+            {/* Search — desktop. min-w-0 + a max-width cap (instead of a
+                fixed lg:w-64/xl:w-80) lets this compress under pressure
+                rather than holding a rigid minimum width — without this,
+                at viewport widths where the nav + search + profile chip's
+                combined natural width was juuust over the available space
+                (e.g. a laptop at >100% browser zoom, or exactly around the
+                lg/xl breakpoint), the profile name/chip on the far right
+                got shoved past the edge of the screen with no way to
+                reach it, since nothing upstream of it was willing to
+                shrink. */}
 
+      // AFTER:
+            {isLoggedIn && (
+              <HeaderSearch className="flex-1 min-w-0 max-w-[160px] sm:max-w-xs lg:max-w-sm xl:max-w-md mx-2" suggestionSeeds={jobCategories} />
+            )}
             {/* Desktop Nav */}
-            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 bg-slate-100/60 p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
+            <nav className="hidden lg:flex shrink-0 items-center space-x-1 xl:space-x-1.5 bg-slate-100/60 p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
                 return (
                   <Link key={item.name} to={item.path}
-                    className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 group relative ${
-                      isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-                    }`}>
+                    className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 group relative ${isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                      }`}>
                     <span className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-700'}`}>
                       {item.icon}
                     </span>
@@ -223,9 +231,8 @@ const Header: React.FC = () => {
               {/* Categories Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button type="button" onClick={() => setIsJobsDropdownOpen(!isJobsDropdownOpen)}
-                  className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 border ${
-                    isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
-                  }`}>
+                  className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 border ${isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
+                    }`}>
                   <SparkleIcon size={18} className="text-amber-500 fill-amber-400/20 animate-pulse" />
                   <span>Categories</span>
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isJobsDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
@@ -261,7 +268,7 @@ const Header: React.FC = () => {
             </nav>
 
             {/* Right side — desktop */}
-            <div className="flex items-center space-x-2">
+            <div className="flex shrink-0 items-center space-x-2">
               {!isLoggedIn ? (
                 <>
                   {/* Desktop login/register */}
@@ -371,6 +378,7 @@ const Header: React.FC = () => {
                       mobile. This reuses that same sheet (isMobileProfileOpen)
                       so those features open from the header too. */}
                   <div className="flex lg:hidden items-center gap-1">
+                   // REMOVE these lines (the plain search icon link for mobile):
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <Search size={20} />
@@ -403,9 +411,8 @@ const Header: React.FC = () => {
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
                 return (
                   <Link key={item.name} to={item.path}
-                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${
-                      isActive ? 'bg-primary/10 text-primary font-semibold shadow-sm' : 'text-slate-700 hover:bg-slate-100/80'
-                    }`}>
+                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${isActive ? 'bg-primary/10 text-primary font-semibold shadow-sm' : 'text-slate-700 hover:bg-slate-100/80'
+                      }`}>
                     <span className={isActive ? 'text-primary' : 'text-slate-400'}>{item.icon}</span>
                     <span>{item.name}</span>
                   </Link>
@@ -458,9 +465,8 @@ const Header: React.FC = () => {
                 <Link
                   key={tab.name}
                   to={tab.path}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors active:bg-slate-50 ${
-                    isActive ? 'text-primary' : 'text-slate-500'
-                  }`}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors active:bg-slate-50 ${isActive ? 'text-primary' : 'text-slate-500'
+                    }`}
                   aria-label={tab.name}
                 >
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
@@ -507,18 +513,18 @@ const Header: React.FC = () => {
             {/* actions */}
             <div className="py-2">
               {[
-                { icon: LayoutDashboard, label: 'Dashboard',      action: () => { navigate(getDashboardPath()); setIsMobileProfileOpen(false); } },
-                { icon: User,           label: 'My Profile',      action: () => { navigate(getProfilePath()); setIsMobileProfileOpen(false); } },
-                { icon: FileText,       label: 'Resume Builder',  action: () => { navigate('/resume'); setIsMobileProfileOpen(false); }, jobseekerOnly: true },
-                { icon: Settings,       label: 'Settings',        action: () => { navigate(getSettingsPath()); setIsMobileProfileOpen(false); } },
+                { icon: LayoutDashboard, label: 'Dashboard', action: () => { navigate(getDashboardPath()); setIsMobileProfileOpen(false); } },
+                { icon: User, label: 'My Profile', action: () => { navigate(getProfilePath()); setIsMobileProfileOpen(false); } },
+                { icon: FileText, label: 'Resume Builder', action: () => { navigate('/resume'); setIsMobileProfileOpen(false); }, jobseekerOnly: true },
+                { icon: Settings, label: 'Settings', action: () => { navigate(getSettingsPath()); setIsMobileProfileOpen(false); } },
               ].filter(item => !('jobseekerOnly' in item && item.jobseekerOnly) || userInfo?.role === 'jobseeker')
-               .map(({ icon: Icon, label, action }) => (
-                <button key={label} onClick={action}
-                  className="w-full flex items-center gap-4 px-5 py-3.5 text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left">
-                  <Icon size={20} className="text-slate-400 shrink-0" />
-                  <span className="font-medium text-[15px]">{label}</span>
-                </button>
-              ))}
+                .map(({ icon: Icon, label, action }) => (
+                  <button key={label} onClick={action}
+                    className="w-full flex items-center gap-4 px-5 py-3.5 text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left">
+                    <Icon size={20} className="text-slate-400 shrink-0" />
+                    <span className="font-medium text-[15px]">{label}</span>
+                  </button>
+                ))}
             </div>
 
             <div className="border-t border-slate-100 py-2">

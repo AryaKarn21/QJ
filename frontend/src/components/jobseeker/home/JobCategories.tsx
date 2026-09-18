@@ -148,7 +148,8 @@ const JobCategories = () => {
                   <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${accent.bg}`}>
                     {category.icon ? (
                       <img
-                        src={`${(import.meta.env.VITE_MEDIA_URL || API_BASE_URL).replace(/\/$/, '')}/uploads/icons/${category.icon.replace(/^\//, '')}`}
+                      // AFTER:
+src={category.icon.startsWith('http') ? category.icon : `${(import.meta.env.VITE_MEDIA_URL || API_BASE_URL).replace(/\/$/, '')}${category.icon.startsWith('/') ? '' : '/'}${category.icon}`}
                         alt=""
                         className="h-6 w-6 object-contain"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
