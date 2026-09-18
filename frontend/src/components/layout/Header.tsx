@@ -31,17 +31,11 @@ const NAV_ITEMS = [
   { name: 'Contact', icon: <Mail size={18} />, path: '/contact' },
 ];
 
-// Bottom tab bar — Community is the primary jobseeker destination (default
-// post-login landing page, see Login.tsx/OAuthCallback.tsx), so it leads the
-// bar and Home has been dropped from it entirely. Home is still reachable
-// via the logo and the full desktop nav (NAV_ITEMS above) at its existing
-// '/' route — this only changes what the mobile tab bar surfaces.
-// Resume Builder excluded here (shown in non-sticky nav only per requirement).
 const BOTTOM_TABS = [
   { name: 'Community', icon: Users, path: '/community' },
   { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
   { name: 'Messages', icon: MessageCircle, path: '/messages' },
-  { name: 'Profile', icon: User, path: null }, // opens profile menu
+  { name: 'Profile', icon: User, path: null },
 ];
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
@@ -182,11 +176,11 @@ const Header: React.FC = () => {
   return (
     <>
       {/* ── TOP HEADER (visible on all screens, but minimal on mobile) ── */}
-      <header className={`fixed top-0 left-0 right-0 z-50 overflow-x-hidden transition-all duration-300 ease-in-out ${scrolled
+      <header className={`sticky top-0 z-50 w-full transition-all duration-300 ease-in-out ${scrolled
           ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
           : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'
         }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 transition-all duration-300">
 
             {/* Logo */}
@@ -196,21 +190,12 @@ const Header: React.FC = () => {
               </div>
             </Link>
 
-            {/* Search — desktop. min-w-0 + a max-width cap (instead of a
-                fixed lg:w-64/xl:w-80) lets this compress under pressure
-                rather than holding a rigid minimum width — without this,
-                at viewport widths where the nav + search + profile chip's
-                combined natural width was juuust over the available space
-                (e.g. a laptop at >100% browser zoom, or exactly around the
-                lg/xl breakpoint), the profile name/chip on the far right
-                got shoved past the edge of the screen with no way to
-                reach it, since nothing upstream of it was willing to
-                shrink. */}
             {isLoggedIn && (
               <HeaderSearch className="flex-1 min-w-0 max-w-[160px] sm:max-w-xs lg:max-w-sm xl:max-w-md mx-2" suggestionSeeds={jobCategories} />
             )}
+            
             {/* Desktop Nav */}
-            <nav className="hidden lg:flex shrink min-w-0 items-center space-x-0.5 xl:space-x-1.5 bg-slate-100/60 p-1 xl:p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm overflow-x-auto">
+            <nav className="hidden lg:flex shrink min-w-0 items-center space-x-0.5 xl:space-x-1.5 bg-slate-100/60 p-1 xl:p-1.5 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
@@ -236,13 +221,6 @@ const Header: React.FC = () => {
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isJobsDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
                 </button>
                 {isJobsDropdownOpen && (
-                  // Anchored to the button's right edge (not centered on it) —
-                  // this button sits near the right end of the nav, so a
-                  // viewport-centered w-screen panel used to overflow past
-                  // the right edge at 1024-1279px widths (before max-w-7xl
-                  // caps the header), forcing a page-wide horizontal
-                  // scrollbar. Capping the width to the actual viewport
-                  // (minus a margin) keeps it fully on-screen at every size.
                   <div className="absolute right-0 mt-3 w-[min(48rem,calc(100vw-2rem))] bg-white/95 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 p-5 z-50">
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
                       <div className="flex items-center gap-2">
@@ -369,12 +347,7 @@ const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Mobile top bar right: search + notifications + profile.
-                      Profile used to be reachable only via the bottom "Me"
-                      tab's slide-up sheet — Dashboard/My Profile/Resume
-                      Builder/Settings had no path from the header itself on
-                      mobile. This reuses that same sheet (isMobileProfileOpen)
-                      so those features open from the header too. */}
+                  {/* Mobile top bar right: search + notifications + profile */}
                   <div className="flex lg:hidden items-center gap-1">
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
