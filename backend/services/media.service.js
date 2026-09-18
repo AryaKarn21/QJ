@@ -23,7 +23,6 @@ const { v4: uuidv4 } = require("uuid");
 const cloudinary = require("cloudinary").v2;
 const { safeExtensionFor } = require("../middleware/safeUploadExtension");
 
-// ── Configuration check ───────────────────────────────────────────────────────
 const IS_CONFIGURED = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY    &&
@@ -35,7 +34,7 @@ if (IS_CONFIGURED) {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key:    process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,   // always https://
+    secure: true,
   });
 } else {
   console.warn(
@@ -44,24 +43,23 @@ if (IS_CONFIGURED) {
   );
 }
 
-// ── Folder mapping ────────────────────────────────────────────────────────────
-// Organises uploads inside your Cloudinary account by type.
-// Resumes (PDFs) go to a separate raw folder since they are not images.
 const FOLDER_MAP = {
   profile_pics:  "qj/profiles",
   cover_photos:  "qj/cover-photos",
   company_logos: "qj/company-logos",
-  resumes:       "qj/resumes",      // stored as raw resource
+  resumes:       "qj/resumes",
   message_attachments: "qj/messages",
+  // Job/blog category icons and blog post images used to be saved with
+  // multer's plain disk storage straight into backend/uploads/ — which,
+  // like every other upload before the Cloudinary migration, disappears
+  // the moment Render's ephemeral filesystem restarts. Routed through
+  // persistUpload() below like everything else now.
+  job_category_icons:  "qj/job-category-icons",
+  blog_category_icons: "qj/blog-category-icons",
+  blog_images:          "qj/blog-images",
 };
 
-// Folders whose caller (messageUploadMiddleware.js) already vetted the
-// mimetype against its own allow-list — safe to store as a generic "raw"
-// resource even when it's neither an image nor a PDF (Word/Excel/ZIP/text),
-// unlike the strict image-or-PDF-only rule the rest of this file enforces.
 const ANY_TYPE_FOLDERS = new Set(["message_attachments"]);
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isCloudinaryUrl(stored) {
   return typeof stored === "string" && stored.startsWith("https://res.cloudinary.com/");
@@ -71,7 +69,6 @@ function isSupabaseUrl(stored) {
   return typeof stored === "string" && stored.includes(".supabase.co/storage/");
 }
 
-/** Local disk fallback — used in dev when Cloudinary env vars are absent. */
 function writeBufferToLocalDisk(buffer, mimetype, folder) {
   const ext = safeExtensionFor(mimetype);
   if (!ext) throw new Error("Invalid file type.");
@@ -82,14 +79,6 @@ function writeBufferToLocalDisk(buffer, mimetype, folder) {
   return `/uploads/${folder}/${filename}`;
 }
 
-/**
- * Upload a buffer to Cloudinary and return the secure URL.
- *
- * Images  → resource_type "image" (Cloudinary auto-optimises them)
- * PDFs    → resource_type "raw"   (Cloudinary stores them untouched)
- *
- * public_id is namespaced per owner so no two users can overwrite each other.
- */
 async function uploadToCloudinary(buffer, mimetype, folder, ownerId) {
   const isImage   = mimetype.startsWith("image/");
   const isPdf     = mimetype === "application/pdf";
@@ -98,22 +87,15 @@ async function uploadToCloudinary(buffer, mimetype, folder, ownerId) {
   const resourceType = isImage ? "image" : "raw";
   const ext          = safeExtensionFor(mimetype);
   const cloudFolder  = FOLDER_MAP[folder] || `qj/${folder}`;
-  // Cloudinary auto-detects/appends the right extension for "image"
-  // resources, but NOT for "raw" ones — a raw PDF/DOCX/ZIP without an
-  // extension in its public_id comes back as an extension-less URL that
-  // browsers/Office can't reliably open. Baking it in here fixes that for
-  // every raw upload (resumes included), not just message attachments.
   const publicId = resourceType === "raw" && ext
     ? `${cloudFolder}/${ownerId || "misc"}/${uuidv4()}${ext}`
     : `${cloudFolder}/${ownerId || "misc"}/${uuidv4()}`;
 
-  // Cloudinary's upload_stream wraps a callback API — we promisify it here.
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         resource_type: resourceType,
         public_id:     publicId,
-        // Don't append the extension twice — Cloudinary handles it.
         use_filename:  false,
         overwrite:     false,
       },
@@ -126,25 +108,14 @@ async function uploadToCloudinary(buffer, mimetype, folder, ownerId) {
   });
 }
 
-/**
- * Extract the Cloudinary public_id from a secure_url so we can delete it.
- *
- * Example URL:
- *   https://res.cloudinary.com/<cloud>/image/upload/v1234/qj/profiles/uid/uuid.jpg
- * Extracted public_id:
- *   qj/profiles/uid/uuid
- */
 function publicIdFromCloudinaryUrl(url) {
   try {
-    // Strip query-string, then take the path after "/upload/"
     const clean    = url.split("?")[0];
     const marker   = "/upload/";
     const idx      = clean.indexOf(marker);
     if (idx === -1) return null;
     let rest = clean.slice(idx + marker.length);
-    // Remove the version segment if present (v1234567890/)
     rest = rest.replace(/^v\d+\//, "");
-    // Remove the file extension
     const dotIdx = rest.lastIndexOf(".");
     if (dotIdx !== -1) rest = rest.slice(0, dotIdx);
     return rest;
@@ -153,17 +124,6 @@ function publicIdFromCloudinaryUrl(url) {
   }
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-/**
- * Upload one multer memoryStorage file and return the URL/path to store
- * on the Mongoose document.  All controllers call this — signature unchanged.
- *
- * @param {Express.Multer.File} file
- * @param {string} folder   e.g. "profile_pics" | "company_logos" | "cover_photos" | "resumes"
- * @param {string} ownerId  the uploading user's _id (namespaces the storage path)
- * @returns {Promise<string>}
- */
 async function persistUpload(file, folder, ownerId) {
   if (IS_CONFIGURED) {
     return uploadToCloudinary(file.buffer, file.mimetype, folder, ownerId);
@@ -171,35 +131,21 @@ async function persistUpload(file, folder, ownerId) {
   return writeBufferToLocalDisk(file.buffer, file.mimetype, folder);
 }
 
-/**
- * Delete a previously-stored file.  Never throws — a failed cleanup should
- * never block a successful new upload from saving.
- *
- * Handles:
- *   • Cloudinary URLs  → delete via API
- *   • Supabase URLs    → skip (orphaned, no credentials)
- *   • Local disk paths → unlink
- *
- * @param {string} stored  the value previously returned by persistUpload
- */
 async function deleteStoredFile(stored) {
   if (!stored) return;
   try {
     if (isCloudinaryUrl(stored)) {
-      if (!IS_CONFIGURED) return; // can't delete without credentials
+      if (!IS_CONFIGURED) return;
       const publicId = publicIdFromCloudinaryUrl(stored);
       if (!publicId) return;
 
-      // Determine resource type from the URL path
       const resourceType = stored.includes("/raw/upload/") ? "raw" : "image";
       await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
 
     } else if (isSupabaseUrl(stored)) {
-      // Orphaned Supabase URL — no credentials anymore, skip silently.
       console.info(`[media.service] Skipping legacy Supabase file: ${stored}`);
 
     } else {
-      // Local disk path e.g. "/uploads/profile_pics/uuid.jpg"
       const filePath = path.join(__dirname, "..", stored);
       await fs.promises.unlink(filePath);
     }

@@ -1,21 +1,7 @@
-const fs = require("fs");
-const path = require("path");
 const BlogCategory = require("../models/BlogCategory");
 const Blog = require("../models/Blog");
+const { persistUpload, deleteStoredFile } = require("../services/media.service");
 
-// Same "delete a previously stored upload file" pattern used by
-// jobCategoryController.js/advertisementController.js.
-const deleteFile = (storedPath) => {
-  if (!storedPath) return;
-  const filePath = path.join(__dirname, "..", storedPath);
-  fs.unlink(filePath, (err) => {
-    if (err) console.error(`Failed to delete file: ${filePath}`, err.message);
-  });
-};
-
-// Turns a name into a URL-safe slug — same shape as blogController.js's
-// own slugify (kept separate rather than shared; every controller in this
-// codebase that needs one has its own small copy, see cmsController.js).
 const slugify = (text) =>
   (text || "")
     .toString()
@@ -37,15 +23,10 @@ const generateUniqueSlug = async (name, excludeId) => {
   return candidate;
 };
 
-// ── Admin: list/create/update/delete/toggle ────────────────────────────────
-
-/** GET /api/blog-categories/admin — admin only. */
 exports.adminListBlogCategories = async (req, res) => {
   try {
     const categories = await BlogCategory.find().sort({ name: 1 }).lean();
 
-    // Real per-category blog counts, computed in one aggregation rather
-    // than N queries — never a fabricated/estimated number.
     const counts = await Blog.aggregate([
       { $match: { isPublished: true } },
       { $group: { _id: "$category", count: { $sum: 1 } } },
@@ -59,7 +40,6 @@ exports.adminListBlogCategories = async (req, res) => {
   }
 };
 
-/** POST /api/blog-categories/admin — admin only. */
 exports.adminCreateBlogCategory = async (req, res) => {
   try {
     const { name, description, isActive } = req.body;
@@ -77,7 +57,7 @@ exports.adminCreateBlogCategory = async (req, res) => {
       name: trimmedName,
       slug: await generateUniqueSlug(trimmedName),
       description: (description || "").trim(),
-      icon: req.file ? `/uploads/icons/${req.file.filename}` : "",
+      icon: req.file ? await persistUpload(req.file, "blog_category_icons", req.user.id) : "",
       isActive: isActive === undefined ? true : isActive === "true" || isActive === true,
       createdBy: req.user.id,
     });
@@ -92,7 +72,6 @@ exports.adminCreateBlogCategory = async (req, res) => {
   }
 };
 
-/** PUT /api/blog-categories/admin/:id — admin only. */
 exports.adminUpdateBlogCategory = async (req, res) => {
   try {
     const category = await BlogCategory.findById(req.params.id);
@@ -109,11 +88,6 @@ exports.adminUpdateBlogCategory = async (req, res) => {
         return res.status(409).json({ message: `A category named "${existing.name}" already exists` });
       }
 
-      // Renaming does NOT retag existing blogs (Blog.category is a plain
-      // string snapshot, same as every other free-text field in this
-      // app) — the slug is regenerated so /blog/category/:slug keeps
-      // matching the new name, but old blogs keep their original
-      // category text until someone re-saves them with the new name.
       if (trimmedName !== category.name) {
         category.slug = await generateUniqueSlug(trimmedName, category._id);
       }
@@ -123,8 +97,9 @@ exports.adminUpdateBlogCategory = async (req, res) => {
     if (isActive !== undefined) category.isActive = isActive === "true" || isActive === true;
 
     if (req.file) {
-      if (category.icon) deleteFile(category.icon);
-      category.icon = `/uploads/icons/${req.file.filename}`;
+      const previousIcon = category.icon;
+      category.icon = await persistUpload(req.file, "blog_category_icons", req.user.id);
+      if (previousIcon) deleteStoredFile(previousIcon);
     }
 
     await category.save();
@@ -138,15 +113,11 @@ exports.adminUpdateBlogCategory = async (req, res) => {
   }
 };
 
-/** DELETE /api/blog-categories/admin/:id — admin only. */
 exports.adminDeleteBlogCategory = async (req, res) => {
   try {
     const category = await BlogCategory.findByIdAndDelete(req.params.id);
     if (!category) return res.status(404).json({ message: "Category not found" });
-    if (category.icon) deleteFile(category.icon);
-    // Blogs already tagged with this category name keep that text — same
-    // "orphaned label, not a broken reference" behavior JobCategory
-    // deletion already has for jobs (see jobCategoryController.js).
+    if (category.icon) deleteStoredFile(category.icon);
     res.json({ message: "Category deleted" });
   } catch (error) {
     console.error("Error deleting blog category:", error);
@@ -154,14 +125,6 @@ exports.adminDeleteBlogCategory = async (req, res) => {
   }
 };
 
-// ── Public ───────────────────────────────────────────────────────────────
-
-/**
- * GET /api/blog-categories/active — public. Only ever returns active
- * categories, each with a REAL published-blog count (never shown as
- * available to browse if it would just be an empty page) — used by the
- * homepage/blog page's "Explore Categories" section.
- */
 exports.getActiveBlogCategories = async (req, res) => {
   try {
     const categories = await BlogCategory.find({ isActive: true }).sort({ name: 1 }).lean();
@@ -188,12 +151,6 @@ exports.getActiveBlogCategories = async (req, res) => {
   }
 };
 
-/**
- * GET /api/blog-categories/slug/:slug — public. Looks up one active
- * category by its slug for the /blog/category/:slug page's header (title
- * + description) — the blog list itself is fetched separately via the
- * existing GET /api/blogs?category=<name>, no new blog endpoint needed.
- */
 exports.getBlogCategoryBySlug = async (req, res) => {
   try {
     const category = await BlogCategory.findOne({ slug: req.params.slug, isActive: true }).lean();

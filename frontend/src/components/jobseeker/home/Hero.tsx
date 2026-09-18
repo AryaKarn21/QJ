@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
   ArrowRight,
   FileText,
   Zap,
+  X,
+  TrendingUp,
 } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { getHomepageContent } from '../../../api/cmsPublicApi';
@@ -43,6 +45,8 @@ const Hero: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
   const [searchInput, setSearchInput] = useState('');
   const [cms, setCms] = useState<typeof DEFAULTS | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getHomepageContent()
@@ -59,6 +63,7 @@ const Hero: React.FC = () => {
 
   const handleSearch = () => {
     const trimmed = searchInput.trim();
+    setIsFocused(false);
     if (trimmed) navigate(`/jobs?q=${encodeURIComponent(trimmed)}`);
   };
 
@@ -69,6 +74,34 @@ const Hero: React.FC = () => {
   const handlePopularJobClick = (job: string) => {
     navigate(`/jobs?q=${encodeURIComponent(job)}`);
   };
+
+  // Suggestions dropdown: shows the full popular-searches list on focus
+  // with nothing typed yet, then narrows to whichever of those terms
+  // match what's been typed so far — a lightweight "did you mean" without
+  // needing a live API call for something this small.
+  const suggestions = staticPopularJobs.filter((job) =>
+    job.toLowerCase().includes(searchInput.trim().toLowerCase())
+  );
+  const showSuggestions = isFocused && suggestions.length > 0;
+
+  const handleSuggestionClick = (job: string) => {
+    setSearchInput(job);
+    setIsFocused(false);
+    navigate(`/jobs?q=${encodeURIComponent(job)}`);
+  };
+
+  // Closes the dropdown on an outside click (not just on blur — blur alone
+  // would fire before a suggestion's onClick registers and close the list
+  // out from under the click).
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setIsFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-16 sm:px-6 sm:py-20 lg:min-h-[620px] lg:px-8 lg:py-0">
@@ -161,19 +194,36 @@ const Hero: React.FC = () => {
         {/* Search bar — one integrated pill on tablet+, stacks to a
             full-width input then a full-width button on phones so the
             button keeps a comfortable touch target instead of squeezing
-            into the same row. */}
-        <motion.div variants={itemVariants} className="mx-auto mb-6 max-w-xl lg:mx-0">
-          <div className="flex flex-col gap-2 rounded-2xl bg-white p-1.5 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.4)] sm:flex-row sm:items-center sm:gap-0">
+            into the same row. Focusing it lifts the pill with a soft
+            orange glow and opens a lightweight suggestions dropdown
+            filtered against the popular-search terms. */}
+        <motion.div variants={itemVariants} className="relative mx-auto mb-6 max-w-xl lg:mx-0" ref={searchWrapRef}>
+          <div
+            className={`flex flex-col gap-2 rounded-2xl bg-white p-1.5 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.4)] transition-all duration-300 sm:flex-row sm:items-center sm:gap-0 ${
+              isFocused ? 'ring-4 ring-orange-500/25 shadow-[0_14px_36px_-6px_rgba(249,115,22,0.45)]' : ''
+            }`}
+          >
             <div className="flex min-w-0 flex-1 items-center gap-2 pl-4">
-              <Search size={19} className="shrink-0 text-slate-400" />
+              <Search size={19} className={`shrink-0 transition-colors duration-200 ${isFocused ? 'text-orange-500' : 'text-slate-400'}`} />
               <input
                 type="text"
                 placeholder="Search for jobs or internships..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onFocus={() => setIsFocused(true)}
                 className="w-full min-w-0 border-none bg-transparent py-3 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
               />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  aria-label="Clear search"
+                  className="shrink-0 rounded-full p-1 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-500"
+                >
+                  <X size={15} />
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -183,6 +233,35 @@ const Hero: React.FC = () => {
               Search <ArrowRight size={15} />
             </button>
           </div>
+
+          {/* Suggestions dropdown */}
+          {showSuggestions && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-slate-100 bg-white text-left shadow-[0_16px_40px_-8px_rgba(0,0,0,0.3)]"
+            >
+              <p className="px-4 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                {searchInput.trim() ? 'Matching searches' : 'Popular searches'}
+              </p>
+              <ul className="max-h-64 overflow-y-auto py-1.5">
+                {suggestions.map((job, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleSuggestionClick(job)}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                    >
+                      <TrendingUp size={14} className="shrink-0 text-slate-300" />
+                      {job}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Popular searches */}

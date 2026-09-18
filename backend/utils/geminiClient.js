@@ -1,23 +1,26 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 // Single shared factory for the Gemini client, following the same
 // model/version already used in controllers/blogController.js. Centralized
 // here so every AI feature (caption generation, grammar correction,
 // summarization, moderation, hiring detection, job recommendations) reads
 // GEMINI_API_KEY from the same place and fails the same, readable way if
-// it's missing — instead of five copies of `new GoogleGenerativeAI(...)`.
+// it's missing — instead of five copies of `new GoogleGenAI(...)`.
 let cachedClient = null;
 
-// Model pinned to "gemini-2.5-flash" used to work, but Google has since
-// retired it for this project: generateContent on it now returns 404
-// "This model models/gemini-2.5-flash is no longer available to new
-// users. Please update your code to use models/gemini-3.6-flash" — verified
-// directly against the Generative Language API with the configured key.
-// Every caller of this shared client (chatbot, community AI, resume AI,
-// cover letter AI, blog AI, moderation) was silently falling back to its
-// non-AI path because of this. Confirmed gemini-3.6-flash generates
-// successfully with the same key.
-function getGeminiModel(modelName = "gemini-3.6-flash")   {
+// SDK: this used to run on @google/generative-ai, which Google fully
+// retired — that package's repo is archived and its support window (ended
+// Nov 30, 2025) is long closed. Every AI feature in this app (autofill,
+// captions, moderation, etc.) was failing with 500/503s in production
+// because of it, not because of the model name. Migrated to the current
+// official package, @google/genai. Its generateContent call shape is
+// different (ai.models.generateContent({ model, contents }) instead of a
+// stateful model.generateContent(prompt), and response.text is a plain
+// property instead of a response.text() method) — that difference is
+// contained entirely inside this shim, so every one of the ~8 controllers
+// that already call `getGeminiModel().generateContent(prompt)` and read
+// `result.response.text()` keeps working unchanged.
+function getGeminiModel(modelName = "gemini-3.6-flash") {
   if (!process.env.GEMINI_API_KEY) {
     const err = new Error(
       "GEMINI_API_KEY is not set. AI features (caption generation, grammar " +
@@ -28,10 +31,18 @@ function getGeminiModel(modelName = "gemini-3.6-flash")   {
     throw err;
   }
   if (!cachedClient) {
-    cachedClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    cachedClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
 
-  return cachedClient.getGenerativeModel({ model: modelName });
+  return {
+    generateContent: async (prompt) => {
+      const response = await cachedClient.models.generateContent({
+        model: modelName,
+        contents: prompt,
+      });
+      return { response: { text: () => response.text } };
+    },
+  };
 }
 
 // Gemini sometimes wraps JSON replies in ```json ... ``` fences even when
