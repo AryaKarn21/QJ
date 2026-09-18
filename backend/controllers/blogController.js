@@ -2,42 +2,137 @@ const mongoose = require("mongoose");
 const Blog = require("../models/Blog");
 const User = require("../models/User");
 const Jobseeker = require("../models/Jobseeker");
-const { getGeminiModel } = require("../utils/geminiClient");
+const {
+  getGeminiModel,
+  classifyGeminiError,
+} = require("../utils/geminiClient");
 const Employer = require("../models/Employer");
 
-// Same pattern communityAiController.js already uses for every other AI
-// feature: a missing API key is a 503 with a clear, actionable message,
-// not a 500 with a raw SDK error leaked to the client. Structured
-// {success, message, errorCode} shape so the frontend can branch on
-// errorCode instead of string-matching `message` — and the raw SDK
-// error (which can carry request/response details) never reaches the
-// client, only the server log.
+// ============================================================
+// AI ERROR HANDLER
+// ============================================================
+
 function friendlyAiError(res, error, fallbackMessage) {
-  if (error.code === "GEMINI_NOT_CONFIGURED") {
-    console.error("Blog AI generation unavailable: GEMINI_API_KEY not set.");
+  // Always log the real error on the backend.
+  // This is extremely useful for Render logs/debugging.
+  console.error("======================================");
+  console.error("AI GENERATION ERROR");
+  console.error("Message:", error?.message);
+  console.error("Code:", error?.code);
+  console.error("Status:", error?.status);
+  console.error("Response:", error?.response);
+  console.error("Stack:", error?.stack);
+  console.error("======================================");
+
+  const classifiedCode = classifyGeminiError(error);
+
+  // ----------------------------------------------------------
+  // Gemini API key is missing
+  // ----------------------------------------------------------
+  if (classifiedCode === "GEMINI_NOT_CONFIGURED") {
     return res.status(503).json({
       success: false,
-      message: "AI features aren't configured yet. Add GEMINI_API_KEY to the backend .env file.",
+      message:
+        "AI features aren't configured yet. Add GEMINI_API_KEY to the backend environment variables.",
       errorCode: "AI_NOT_CONFIGURED",
     });
   }
-  console.error(fallbackMessage, error);
+
+  // ----------------------------------------------------------
+  // Invalid Gemini API key
+  // ----------------------------------------------------------
+  if (classifiedCode === "GEMINI_INVALID_KEY") {
+    return res.status(503).json({
+      success: false,
+      message: "The Gemini API key is invalid or unauthorized.",
+      errorCode: "AI_INVALID_KEY",
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Gemini quota/rate limit exceeded
+  // ----------------------------------------------------------
+  if (classifiedCode === "GEMINI_QUOTA_EXCEEDED") {
+    return res.status(429).json({
+      success: false,
+      message:
+        "Gemini API quota has been exceeded. Please try again later.",
+      errorCode: "AI_QUOTA_EXCEEDED",
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Gemini temporarily unavailable
+  // ----------------------------------------------------------
+  if (classifiedCode === "GEMINI_UNAVAILABLE") {
+    return res.status(503).json({
+      success: false,
+      message:
+        "The AI service is temporarily unavailable. Please try again.",
+      errorCode: "AI_UNAVAILABLE",
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Network error while connecting to Gemini
+  // ----------------------------------------------------------
+  if (classifiedCode === "GEMINI_NETWORK_ERROR") {
+    return res.status(503).json({
+      success: false,
+      message:
+        "Unable to connect to the AI service. Please try again.",
+      errorCode: "AI_NETWORK_ERROR",
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Gemini returned invalid/unexpected JSON
+  // ----------------------------------------------------------
+  if (classifiedCode === "AI_BAD_RESPONSE") {
+    return res.status(502).json({
+      success: false,
+      message:
+        "The AI returned an unexpected response. Please try again.",
+      errorCode: "AI_BAD_RESPONSE",
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Unknown AI error
+  // ----------------------------------------------------------
   return res.status(500).json({
     success: false,
     message: fallbackMessage,
-    errorCode: "AI_GENERATION_FAILED",
+    errorCode: classifiedCode || "AI_GENERATION_FAILED",
   });
 }
-// NOTE: Blog.content is stored and rendered as plain text (BlogDetail.tsx
-// renders it via a plain text node, not dangerouslySetInnerHTML — there's
-// no rich text editor here), so it's inherently XSS-safe via React's
-// default escaping and deliberately NOT run through sanitizeHtml.js's
-// HTML sanitizer, which would mangle legitimate text containing "<"/">".
-// That sanitizer is used by the CMS Pages module instead, which actually
-// stores/renders HTML from ReactQuill.
 
-// Turns a title into a URL-safe slug: lowercase, non-alphanumerics to
-// hyphens, no leading/trailing/duplicate hyphens.
+// ============================================================
+// BLOG SECURITY / NOTES
+// ============================================================
+
+// Blog.content is stored and rendered as plain text.
+// BlogDetail.tsx renders it via a plain text node rather than
+// dangerouslySetInnerHTML.
+//
+// React automatically escapes text content, so normal blog
+// content is protected from HTML injection/XSS.
+//
+// CMS Pages are different because they store/render HTML and
+// therefore use the HTML sanitizer.
+
+// ============================================================
+// SLUG HELPERS
+// ============================================================
+
+// Turns a title into a URL-safe slug.
+//
+// Example:
+// "How to Get a Software Job in 2026!"
+//
+// becomes:
+// "how-to-get-a-software-job-in-2026"
+//
 const slugify = (text) =>
   (text || "")
     .toString()
@@ -47,437 +142,1088 @@ const slugify = (text) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "post";
 
-// Ensures uniqueness by appending -2, -3, ... on collision. `excludeId` lets
-// updateBlog re-check a slug without colliding with the document itself.
+// ============================================================
+// GENERATE UNIQUE SLUG
+// ============================================================
+
 const generateUniqueSlug = async (title, excludeId) => {
   const base = slugify(title);
+
   let candidate = base;
   let suffix = 2;
+
   while (
-    await Blog.exists({ slug: candidate, ...(excludeId ? { _id: { $ne: excludeId } } : {}) })
+    await Blog.exists({
+      slug: candidate,
+      ...(excludeId
+        ? {
+            _id: {
+              $ne: excludeId,
+            },
+          }
+        : {}),
+    })
   ) {
     candidate = `${base}-${suffix++}`;
   }
+
   return candidate;
 };
 
-// Blog._id is always a valid ObjectId; a slug never is — this lets a
-// single param support both without a second route.
-const isObjectId = (id) => mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === id;
+// ============================================================
+// OBJECT ID CHECK
+// ============================================================
 
-// Generate blog content using Gemini
+// Blog._id is always a valid MongoDB ObjectId.
+// A slug is not.
+//
+// This allows the same route to accept either:
+//
+// /api/blogs/66abc123...
+//
+// OR:
+//
+// /api/blogs/my-first-blog
+//
+const isObjectId = (id) =>
+  mongoose.Types.ObjectId.isValid(id) &&
+  String(new mongoose.Types.ObjectId(id)) === id;
+
+// ============================================================
+// GENERATE BLOG CONTENT USING GEMINI
+// ============================================================
 
 const generateBlogContent = async (req, res) => {
   try {
+    // --------------------------------------------------------
+    // Get title from request
+    // --------------------------------------------------------
+
     const { title } = req.body;
 
+    // --------------------------------------------------------
+    // Validate title
+    // --------------------------------------------------------
+
     if (!title) {
-      return res.status(400).json({ success: false, message: "Title is required", errorCode: "TITLE_REQUIRED" });
+      return res.status(400).json({
+        success: false,
+        message: "Title is required",
+        errorCode: "TITLE_REQUIRED",
+      });
     }
 
-    // Shared client (utils/geminiClient.js) — same model/config every
-    // other AI feature in the app uses, instead of this being the one
-    // place with its own separate GoogleGenerativeAI instance and a
-    // different (and previously mismatched) model name.
+    // --------------------------------------------------------
+    // Get shared Gemini client
+    // --------------------------------------------------------
+
     const model = getGeminiModel();
 
-    // Build the prompt
+    // --------------------------------------------------------
+    // Build Gemini prompt
+    // --------------------------------------------------------
+
     const prompt = `
       You are a professional blog writer.
-      Create engaging, informative blog content based on the given title.
-      The content should be well-structured with clear paragraphs and professional tone.
+
+      Create engaging, informative blog content based on the
+      given title.
+
+      The content should be:
+      - Well-structured
+      - Informative
+      - Professional
+      - Easy to read
+      - Divided into clear paragraphs
+      - Suitable for a professional job portal
+
+      Do not return HTML.
+      Do not return Markdown code fences.
+
       Title: ${title}
     `;
 
+    // --------------------------------------------------------
     // Generate content
+    // --------------------------------------------------------
+
     const result = await model.generateContent(prompt);
+
+    // --------------------------------------------------------
+    // Extract generated text
+    // --------------------------------------------------------
+
     const generatedContent = result.response.text();
 
-    res.status(200).json({
+    // --------------------------------------------------------
+    // Validate response
+    // --------------------------------------------------------
+
+    if (!generatedContent || !generatedContent.trim()) {
+      const error = new Error(
+        "Gemini returned an empty response."
+      );
+
+      error.code = "AI_BAD_RESPONSE";
+
+      throw error;
+    }
+
+    // --------------------------------------------------------
+    // Send successful response
+    // --------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
-      content: generatedContent,
+      content: generatedContent.trim(),
     });
   } catch (error) {
-    return friendlyAiError(res, error, "Failed to generate blog content");
+    return friendlyAiError(
+      res,
+      error,
+      "Failed to generate blog content"
+    );
   }
 };
 
+// ============================================================
+// CREATE A NEW BLOG
+// ============================================================
 
-
-// Create a new blog
 const createBlog = async (req, res) => {
   try {
-    const { title, content, images, tags, isAIGenerated, category, excerpt, featuredImage, isPublished } = req.body;
-    // `author` is always the authenticated user — never trust a frontend-
-    // supplied author id here.
+    const {
+      title,
+      content,
+      images,
+      tags,
+      isAIGenerated,
+      category,
+      excerpt,
+      featuredImage,
+      isPublished,
+    } = req.body;
+
+    // Always use authenticated user.
+    // Never trust author ID supplied by frontend.
     const userId = req.user.id;
 
-    // Get user details to set author image
+    // --------------------------------------------------------
+    // Get user details
+    // --------------------------------------------------------
+
     let authorImage = "";
+
     const user = await User.findById(userId);
 
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Jobseeker profile image
+    // --------------------------------------------------------
+
     if (user.role === "jobseeker") {
-      const jobseeker = await Jobseeker.findOne({ _id: userId });
+      const jobseeker = await Jobseeker.findOne({
+        _id: userId,
+      });
+
       authorImage = jobseeker?.profilepic || "";
-    } else if (user.role === "employer") {
-      const employer = await Employer.findOne({ _id: userId });
+    }
+
+    // --------------------------------------------------------
+    // Employer company logo
+    // --------------------------------------------------------
+
+    else if (user.role === "employer") {
+      const employer = await Employer.findOne({
+        _id: userId,
+      });
+
       authorImage = employer?.companylogo || "";
     }
 
+    // --------------------------------------------------------
+    // Generate unique slug
+    // --------------------------------------------------------
+
     const slug = await generateUniqueSlug(title);
+
+    // --------------------------------------------------------
+    // Create blog
+    // --------------------------------------------------------
 
     const blog = new Blog({
       title,
       slug,
       content,
-      category: (category || "General").toString().trim() || "General",
-      excerpt: (excerpt || "").toString().trim().slice(0, 300),
-      featuredImage: featuredImage || (Array.isArray(images) && images[0]?.url) || "",
+
+      category:
+        (category || "General").toString().trim() ||
+        "General",
+
+      excerpt:
+        (excerpt || "")
+          .toString()
+          .trim()
+          .slice(0, 300),
+
+      featuredImage:
+        featuredImage ||
+        (Array.isArray(images) && images[0]?.url) ||
+        "",
+
       author: userId,
+
       authorImage,
+
       images: images || [],
+
       tags: tags || [],
-      isAIGenerated: isAIGenerated || false,
-      // Defaults to true (the schema's existing default, and prior
-      // behavior) so any caller not passing this — e.g. the AI-generated
-      // flow — keeps publishing immediately. An author who explicitly
-      // wants to "Save as Draft" passes isPublished:false.
-      ...(isPublished !== undefined ? { isPublished: !!isPublished } : {}),
+
+      isAIGenerated:
+        isAIGenerated || false,
+
+      // Keep existing behavior.
+      //
+      // If isPublished is explicitly provided,
+      // convert it to boolean.
+      //
+      // Otherwise schema default is used.
+      ...(isPublished !== undefined
+        ? {
+            isPublished: !!isPublished,
+          }
+        : {}),
     });
 
-    await blog.save();
-    await blog.populate("author", "name email role");
+    // --------------------------------------------------------
+    // Save blog
+    // --------------------------------------------------------
 
-    res.status(201).json({
+    await blog.save();
+
+    // --------------------------------------------------------
+    // Populate author information
+    // --------------------------------------------------------
+
+    await blog.populate(
+      "author",
+      "name email role"
+    );
+
+    // --------------------------------------------------------
+    // Success response
+    // --------------------------------------------------------
+
+    return res.status(201).json({
       success: true,
       message: "Blog created successfully",
       blog,
     });
   } catch (error) {
     console.error("Error creating blog:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to create blog",
     });
   }
 };
 
-// Get all blogs with pagination
+// ============================================================
+// GET ALL BLOGS
+// ============================================================
+
 const getAllBlogs = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-    const search = req.query.search || "";
-    const category = req.query.category || "";
+    const page =
+      parseInt(req.query.page) || 1;
 
-    let query = { isPublished: true };
+    const limit =
+      parseInt(req.query.limit) || 10;
+
+    const skip =
+      (page - 1) * limit;
+
+    const search =
+      req.query.search || "";
+
+    const category =
+      req.query.category || "";
+
+    // --------------------------------------------------------
+    // Only published blogs are public
+    // --------------------------------------------------------
+
+    let query = {
+      isPublished: true,
+    };
+
+    // --------------------------------------------------------
+    // Search
+    // --------------------------------------------------------
 
     if (search) {
-      query.$text = { $search: search };
+      query.$text = {
+        $search: search,
+      };
     }
+
+    // --------------------------------------------------------
+    // Category filter
+    // --------------------------------------------------------
+
     if (category) {
       query.category = category;
     }
 
+    // --------------------------------------------------------
+    // Fetch blogs
+    // --------------------------------------------------------
+
     const blogs = await Blog.find(query)
-      .populate("author", "name email role")
-      .sort({ publishedAt: -1 })
+      .populate(
+        "author",
+        "name email role"
+      )
+      .sort({
+        publishedAt: -1,
+      })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    // Older posts predate `featuredImage` — fall back to the first gallery
-    // image so the public list/cards always have something to show.
-    blogs.forEach((b) => {
-      if (!b.featuredImage) b.featuredImage = b.images?.[0]?.url || "";
+    // --------------------------------------------------------
+    // Featured image fallback
+    // --------------------------------------------------------
+
+    blogs.forEach((blog) => {
+      if (!blog.featuredImage) {
+        blog.featuredImage =
+          blog.images?.[0]?.url || "";
+      }
     });
 
-    const total = await Blog.countDocuments(query);
+    // --------------------------------------------------------
+    // Total count
+    // --------------------------------------------------------
 
-    res.status(200).json({
+    const total =
+      await Blog.countDocuments(query);
+
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
       blogs,
+
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(total / limit),
+
+        totalPages:
+          Math.ceil(total / limit),
+
         totalBlogs: total,
-        hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1,
+
+        hasNext:
+          page < Math.ceil(total / limit),
+
+        hasPrev:
+          page > 1,
       },
     });
   } catch (error) {
-    console.error("Error fetching blogs:", error);
-    res.status(500).json({
+    console.error(
+      "Error fetching blogs:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to fetch blogs",
     });
   }
 };
 
-// Get single blog by ID
+// ============================================================
+// GET SINGLE BLOG
+// ============================================================
+
 const getBlogById = async (req, res) => {
   try {
     const { id } = req.params;
-    const clientIp = req.ip || req.connection.remoteAddress;
 
-    // Accepts either the Mongo _id or the slug, so /api/blogs/:id serves
-    // both the legacy id-based links and new slug-based ones without a
-    // second route.
-    const lookup = isObjectId(id) ? { _id: id } : { slug: id };
+    const clientIp =
+      req.ip ||
+      req.connection.remoteAddress;
+
+    // --------------------------------------------------------
+    // Support MongoDB ObjectId OR slug
+    // --------------------------------------------------------
+
+    const lookup = isObjectId(id)
+      ? { _id: id }
+      : { slug: id };
+
+    // --------------------------------------------------------
+    // Fetch blog
+    // --------------------------------------------------------
+
     const blog = await Blog.findOne(lookup)
-      .populate("author", "name email role")
-      .populate("comments.author", "name email role");
+      .populate(
+        "author",
+        "name email role"
+      )
+      .populate(
+        "comments.author",
+        "name email role"
+      );
+
+    // --------------------------------------------------------
+    // Blog not found
+    // --------------------------------------------------------
 
     if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
+      return res.status(404).json({
+        message: "Blog not found",
+      });
     }
 
-    // Draft/unpublished posts are only visible to their author or an
-    // admin — everyone else (including anonymous requests) gets the same
-    // 404 a nonexistent post would, so a draft's existence isn't leaked.
-    const isOwner = req.user && String(blog.author._id ?? blog.author) === String(req.user.id);
-    const isPrivileged = req.user && ["admin", "superadmin"].includes(req.user.role);
-    if (!blog.isPublished && !isOwner && !isPrivileged) {
-      return res.status(404).json({ message: "Blog not found" });
+    // --------------------------------------------------------
+    // Draft visibility
+    // --------------------------------------------------------
+
+    const isOwner =
+      req.user &&
+      String(
+        blog.author._id ??
+          blog.author
+      ) === String(req.user.id);
+
+    const isPrivileged =
+      req.user &&
+      ["admin", "superadmin"].includes(
+        req.user.role
+      );
+
+    if (
+      !blog.isPublished &&
+      !isOwner &&
+      !isPrivileged
+    ) {
+      return res.status(404).json({
+        message: "Blog not found",
+      });
     }
 
-    // Add view if not already viewed by this IP today
+    // --------------------------------------------------------
+    // Track unique daily view by IP
+    // --------------------------------------------------------
+
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
-    const existingView = blog.views.find(
-      view => view.ip === clientIp && view.date >= today
+    today.setHours(
+      0,
+      0,
+      0,
+      0
     );
 
+    const existingView =
+      blog.views.find(
+        (view) =>
+          view.ip === clientIp &&
+          view.date >= today
+      );
+
     if (!existingView) {
-      blog.views.push({ ip: clientIp, date: new Date() });
+      blog.views.push({
+        ip: clientIp,
+        date: new Date(),
+      });
+
       await blog.save();
     }
 
-    // Fallback computed for the response only — not persisted, so it
-    // doesn't get bundled into the view-tracking save above.
-    const responseBlog = blog.toObject();
+    // --------------------------------------------------------
+    // Response-only featured image fallback
+    // --------------------------------------------------------
+
+    const responseBlog =
+      blog.toObject();
+
     if (!responseBlog.featuredImage) {
-      responseBlog.featuredImage = responseBlog.images?.[0]?.url || "";
+      responseBlog.featuredImage =
+        responseBlog.images?.[0]?.url ||
+        "";
     }
 
-    res.status(200).json({
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
       blog: responseBlog,
     });
   } catch (error) {
-    console.error("Error fetching blog:", error);
-    res.status(500).json({
+    console.error(
+      "Error fetching blog:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to fetch blog",
     });
   }
 };
 
-// Update blog
+// ============================================================
+// UPDATE BLOG
+// ============================================================
+
 const updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, images, tags, category, excerpt, featuredImage, isPublished } = req.body;
-    const userId = req.user.id;
 
-    const blog = await Blog.findById(id);
+    const {
+      title,
+      content,
+      images,
+      tags,
+      category,
+      excerpt,
+      featuredImage,
+      isPublished,
+    } = req.body;
+
+    const userId =
+      req.user.id;
+
+    // --------------------------------------------------------
+    // Find blog
+    // --------------------------------------------------------
+
+    const blog =
+      await Blog.findById(id);
 
     if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
+      return res.status(404).json({
+        message: "Blog not found",
+      });
     }
 
-    // Check if user is the author
-    if (blog.author.toString() !== userId) {
-      return res.status(403).json({ message: "Not authorized to update this blog" });
+    // --------------------------------------------------------
+    // Authorization
+    // --------------------------------------------------------
+
+    if (
+      blog.author.toString() !==
+      userId
+    ) {
+      return res.status(403).json({
+        message:
+          "Not authorized to update this blog",
+      });
     }
 
-    if (title && title !== blog.title) {
+    // --------------------------------------------------------
+    // Update title + slug
+    // --------------------------------------------------------
+
+    if (
+      title &&
+      title !== blog.title
+    ) {
       blog.title = title;
-      blog.slug = await generateUniqueSlug(title, blog._id);
+
+      blog.slug =
+        await generateUniqueSlug(
+          title,
+          blog._id
+        );
     }
-    if (content !== undefined) blog.content = content;
-    blog.images = images || blog.images;
-    blog.tags = tags || blog.tags;
-    if (category !== undefined) blog.category = category.toString().trim() || "General";
-    if (excerpt !== undefined) blog.excerpt = excerpt.toString().trim().slice(0, 300);
-    if (featuredImage !== undefined) blog.featuredImage = featuredImage;
-    // Author-controlled draft/publish toggle — the admin-only moderation
-    // toggle in cmsController.js (adminTogglePublishBlog) is separate and
-    // unaffected by this.
-    if (isPublished !== undefined) blog.isPublished = !!isPublished;
+
+    // --------------------------------------------------------
+    // Update fields
+    // --------------------------------------------------------
+
+    if (
+      content !== undefined
+    ) {
+      blog.content = content;
+    }
+
+    blog.images =
+      images || blog.images;
+
+    blog.tags =
+      tags || blog.tags;
+
+    if (
+      category !== undefined
+    ) {
+      blog.category =
+        category
+          .toString()
+          .trim() ||
+        "General";
+    }
+
+    if (
+      excerpt !== undefined
+    ) {
+      blog.excerpt =
+        excerpt
+          .toString()
+          .trim()
+          .slice(0, 300);
+    }
+
+    if (
+      featuredImage !== undefined
+    ) {
+      blog.featuredImage =
+        featuredImage;
+    }
+
+    if (
+      isPublished !== undefined
+    ) {
+      blog.isPublished =
+        !!isPublished;
+    }
+
+    // --------------------------------------------------------
+    // Save
+    // --------------------------------------------------------
 
     await blog.save();
-    await blog.populate("author", "name email role");
 
-    res.status(200).json({
+    await blog.populate(
+      "author",
+      "name email role"
+    );
+
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
-      message: "Blog updated successfully",
+      message:
+        "Blog updated successfully",
       blog,
     });
   } catch (error) {
-    console.error("Error updating blog:", error);
-    res.status(500).json({
+    console.error(
+      "Error updating blog:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to update blog",
     });
   }
 };
 
-// Delete blog
+// ============================================================
+// DELETE BLOG
+// ============================================================
+
 const deleteBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
 
-    const blog = await Blog.findById(id);
+    const userId =
+      req.user.id;
+
+    // --------------------------------------------------------
+    // Find blog
+    // --------------------------------------------------------
+
+    const blog =
+      await Blog.findById(id);
 
     if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
+      return res.status(404).json({
+        message: "Blog not found",
+      });
     }
 
-    // Check if user is the author
-    if (blog.author.toString() !== userId) {
-      return res.status(403).json({ message: "Not authorized to delete this blog" });
+    // --------------------------------------------------------
+    // Authorization
+    // --------------------------------------------------------
+
+    if (
+      blog.author.toString() !==
+      userId
+    ) {
+      return res.status(403).json({
+        message:
+          "Not authorized to delete this blog",
+      });
     }
+
+    // --------------------------------------------------------
+    // Delete
+    // --------------------------------------------------------
 
     await Blog.findByIdAndDelete(id);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Blog deleted successfully",
+      message:
+        "Blog deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting blog:", error);
-    res.status(500).json({
+    console.error(
+      "Error deleting blog:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to delete blog",
     });
   }
 };
 
-// Like/Unlike blog
-const toggleLikeBlog = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
+// ============================================================
+// LIKE / UNLIKE BLOG
+// ============================================================
 
-    const blog = await Blog.findById(id);
+const toggleLikeBlog = async (
+  req,
+  res
+) => {
+  try {
+    const { id } =
+      req.params;
+
+    const userId =
+      req.user.id;
+
+    // --------------------------------------------------------
+    // Find blog
+    // --------------------------------------------------------
+
+    const blog =
+      await Blog.findById(id);
 
     if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
+      return res.status(404).json({
+        message: "Blog not found",
+      });
     }
 
-    const likeIndex = blog.likes.indexOf(userId);
+    // --------------------------------------------------------
+    // Find existing like
+    // --------------------------------------------------------
+
+    const likeIndex =
+      blog.likes.indexOf(
+        userId
+      );
+
+    // --------------------------------------------------------
+    // Unlike
+    // --------------------------------------------------------
 
     if (likeIndex > -1) {
-      // Unlike
-      blog.likes.splice(likeIndex, 1);
-    } else {
-      // Like
-      blog.likes.push(userId);
+      blog.likes.splice(
+        likeIndex,
+        1
+      );
     }
+
+    // --------------------------------------------------------
+    // Like
+    // --------------------------------------------------------
+
+    else {
+      blog.likes.push(
+        userId
+      );
+    }
+
+    // --------------------------------------------------------
+    // Save
+    // --------------------------------------------------------
 
     await blog.save();
 
-    res.status(200).json({
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
-      message: likeIndex > -1 ? "Blog unliked" : "Blog liked",
-      likesCount: blog.likes.length,
-      isLiked: likeIndex === -1,
+
+      message:
+        likeIndex > -1
+          ? "Blog unliked"
+          : "Blog liked",
+
+      likesCount:
+        blog.likes.length,
+
+      isLiked:
+        likeIndex === -1,
     });
   } catch (error) {
-    console.error("Error toggling like:", error);
-    res.status(500).json({
+    console.error(
+      "Error toggling like:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to toggle like",
     });
   }
 };
 
-// Add comment to blog
-const addComment = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { content } = req.body;
-    const userId = req.user.id;
+// ============================================================
+// ADD COMMENT
+// ============================================================
 
-    if (!content || content.trim() === "") {
-      return res.status(400).json({ message: "Comment content is required" });
+const addComment = async (
+  req,
+  res
+) => {
+  try {
+    const { id } =
+      req.params;
+
+    const { content } =
+      req.body;
+
+    const userId =
+      req.user.id;
+
+    // --------------------------------------------------------
+    // Validate comment
+    // --------------------------------------------------------
+
+    if (
+      !content ||
+      content.trim() === ""
+    ) {
+      return res.status(400).json({
+        message:
+          "Comment content is required",
+      });
     }
 
-    const blog = await Blog.findById(id);
+    // --------------------------------------------------------
+    // Find blog
+    // --------------------------------------------------------
+
+    const blog =
+      await Blog.findById(id);
 
     if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
+      return res.status(404).json({
+        message: "Blog not found",
+      });
     }
+
+    // --------------------------------------------------------
+    // Add comment
+    // --------------------------------------------------------
 
     blog.comments.push({
       author: userId,
-      content: content.trim(),
+      content:
+        content.trim(),
     });
 
+    // --------------------------------------------------------
+    // Save
+    // --------------------------------------------------------
+
     await blog.save();
-    await blog.populate("comments.author", "name email role");
 
-    const newComment = blog.comments[blog.comments.length - 1];
+    await blog.populate(
+      "comments.author",
+      "name email role"
+    );
 
-    res.status(201).json({
+    const newComment =
+      blog.comments[
+        blog.comments.length - 1
+      ];
+
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(201).json({
       success: true,
-      message: "Comment added successfully",
+      message:
+        "Comment added successfully",
       comment: newComment,
     });
   } catch (error) {
-    console.error("Error adding comment:", error);
-    res.status(500).json({
+    console.error(
+      "Error adding comment:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to add comment",
     });
   }
 };
 
-// Get user's blogs
-const getUserBlogs = async (req, res) => {
+// ============================================================
+// GET USER BLOGS
+// ============================================================
+
+const getUserBlogs = async (
+  req,
+  res
+) => {
   try {
-    const userId = req.user.id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const userId =
+      req.user.id;
 
-    const blogs = await Blog.find({ author: userId })
-      .populate("author", "name email role")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const page =
+      parseInt(req.query.page) ||
+      1;
 
-    const total = await Blog.countDocuments({ author: userId });
+    const limit =
+      parseInt(req.query.limit) ||
+      10;
 
-    res.status(200).json({
+    const skip =
+      (page - 1) * limit;
+
+    // --------------------------------------------------------
+    // Fetch user's blogs
+    // --------------------------------------------------------
+
+    const blogs =
+      await Blog.find({
+        author: userId,
+      })
+        .populate(
+          "author",
+          "name email role"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit);
+
+    // --------------------------------------------------------
+    // Total
+    // --------------------------------------------------------
+
+    const total =
+      await Blog.countDocuments({
+        author: userId,
+      });
+
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
       blogs,
+
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(total / limit),
+
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+
         totalBlogs: total,
-        hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1,
+
+        hasNext:
+          page <
+          Math.ceil(
+            total / limit
+          ),
+
+        hasPrev:
+          page > 1,
       },
     });
   } catch (error) {
-    console.error("Error fetching user blogs:", error);
-    res.status(500).json({
-      message: "Failed to fetch user blogs",
+    console.error(
+      "Error fetching user blogs:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch user blogs",
     });
   }
 };
 
-// Distinct categories in use among published posts, for the public blog
-// listing's filter dropdown — real data, not a hardcoded list.
-const getBlogCategories = async (req, res) => {
+// ============================================================
+// GET BLOG CATEGORIES
+// ============================================================
+
+// Distinct categories currently used by published blogs.
+// This keeps the public filter based on actual database data.
+
+const getBlogCategories = async (
+  req,
+  res
+) => {
   try {
-    const categories = await Blog.distinct("category", { isPublished: true });
-    res.status(200).json({ success: true, categories: categories.filter(Boolean).sort() });
+    const categories =
+      await Blog.distinct(
+        "category",
+        {
+          isPublished: true,
+        }
+      );
+
+    return res.status(200).json({
+      success: true,
+
+      categories:
+        categories
+          .filter(Boolean)
+          .sort(),
+    });
   } catch (error) {
-    console.error("Error fetching blog categories:", error);
-    // Never echo error.message back to the client — same convention as
-    // every other catch block in this file (see friendlyAiError above).
-    res.status(500).json({ success: false, message: "Failed to fetch categories" });
+    console.error(
+      "Error fetching blog categories:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch categories",
+    });
   }
 };
+
+// ============================================================
+// EXPORT CONTROLLERS
+// ============================================================
 
 module.exports = {
   generateBlogContent,
