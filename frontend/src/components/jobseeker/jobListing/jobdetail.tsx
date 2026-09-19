@@ -683,21 +683,21 @@ const JobDetailPage = () => {
                         <div>
                           <div className="flex items-start mb-4">
                             <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border bg-gray-200">
-                              {sJob.employer?.companyLogo ? (
+                              {(sJob.companyOverride?.logo || sJob.employer?.companyLogo) ? (
                                 <img
-                                  src={resolveMediaUrl(sJob.employer.companyLogo)}
-                                  alt={sJob.employer.name}
+                                  src={resolveMediaUrl(sJob.companyOverride?.logo || sJob.employer!.companyLogo!)}
+                                  alt={sJob.companyOverride?.name || sJob.employer?.name || 'Company'}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-500 text-xl font-bold">
-                                  {sJob.employer?.name?.[0] || 'C'}
+                                  {(sJob.companyOverride?.name || sJob.employer?.name)?.[0] || 'C'}
                                 </div>
                               )}
                             </div>
                             <div className="ml-4 flex-grow">
                               <h3 className="font-semibold text-lg">{sJob.title}</h3>
-                              <p className="text-primary text-sm">{sJob.employer?.name}</p>
+                              <p className="text-primary text-sm">{sJob.companyOverride?.name || sJob.employer?.name}</p>
                             </div>
                           </div>
 

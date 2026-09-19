@@ -134,8 +134,13 @@ const HeaderSearch: React.FC<HeaderSearchProps> = ({ className = '', autoFocus, 
         </div>
       </form>
 
+      {/* Fully opaque (no /95 alpha) — this floats directly over the Hero
+          section on the home page, and a translucent background let its
+          content (the "Next-Generation Career Platform" badge, etc.)
+          visibly bleed through underneath the dropdown, which read as
+          broken/half-hidden rather than a deliberate frosted-glass look. */}
       {(showLiveResults || showEmptyState) && (
-        <div className="absolute left-0 right-0 sm:right-auto top-[calc(100%+0.375rem)] z-50 max-h-[28rem] w-full sm:w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-2xl">
+        <div className="absolute left-0 right-0 sm:right-auto top-[calc(100%+0.375rem)] z-50 max-h-[28rem] w-full sm:w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-3 shadow-2xl shadow-slate-900/10">
           {showLiveResults ? (
             loading ? (
               <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400">

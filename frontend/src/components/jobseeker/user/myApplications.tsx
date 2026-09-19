@@ -16,12 +16,19 @@ interface AppliedJob {
   _id: string;
   title: string;
   employer?: Employer;
+  // Per-job display identity (backend/models/Job.js) — falls back to the
+  // populated `employer` above, and is the only display name left once
+  // `employer` is null (account since deleted).
+  companyOverride?: { name?: string; logo?: string };
   location: string;
   jobtype: string;
   createdAt: string;
   applicationStatus: 'Pending' | 'Reviewed' | 'Accepted' | 'Rejected' | 'Interview Scheduled';
   appliedAt: string;
 }
+
+const displayNameFor = (app: AppliedJob) => app.companyOverride?.name || app.employer?.name;
+const displayLogoFor = (app: AppliedJob) => app.companyOverride?.logo || app.employer?.companyLogo;
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
@@ -38,18 +45,20 @@ const STATUS_STYLES: Record<AppliedJob['applicationStatus'], { label: string; cl
   Rejected: { label: 'Not Selected', className: 'bg-red-100 text-red-700' },
 };
 
-const CompanyAvatar = ({ app }: { app: AppliedJob }) =>
-  app.employer?.companyLogo ? (
+const CompanyAvatar = ({ app }: { app: AppliedJob }) => {
+  const logo = displayLogoFor(app);
+  return logo ? (
     <img
-      src={resolveMediaUrl(app.employer.companyLogo)}
-      alt={app.employer.name}
+      src={resolveMediaUrl(logo)}
+      alt={displayNameFor(app) || 'Company'}
       className="h-10 w-10 shrink-0 rounded-lg object-cover"
     />
   ) : (
     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-bold text-slate-500">
-      {app.employer?.name?.[0] || 'C'}
+      {displayNameFor(app)?.[0] || 'C'}
     </div>
   );
+};
 
 const StatusBadge = ({ status }: { status: AppliedJob['applicationStatus'] }) => {
   const s = STATUS_STYLES[status] ?? STATUS_STYLES.Pending;
@@ -85,7 +94,7 @@ const UserMyApplications = () => {
     .filter(
       (app) =>
         app.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.employer?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        displayNameFor(app)?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
 
@@ -180,7 +189,7 @@ const UserMyApplications = () => {
                             <CompanyAvatar app={app} />
                             <div className="ml-3">
                               <div className="font-medium">{app.title}</div>
-                              <div className="text-sm text-gray-500">{app.employer?.name}</div>
+                              <div className="text-sm text-gray-500">{displayNameFor(app)}</div>
                             </div>
                           </div>
                         </td>
@@ -217,7 +226,7 @@ const UserMyApplications = () => {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-gray-900">{app.title}</p>
-                            <p className="truncate text-sm text-gray-500">{app.employer?.name}</p>
+                            <p className="truncate text-sm text-gray-500">{displayNameFor(app)}</p>
                           </div>
                           <StatusBadge status={app.applicationStatus} />
                         </div>

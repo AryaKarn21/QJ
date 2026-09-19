@@ -563,6 +563,12 @@ const AllJobListing = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sortedJobs.map((job) => {
                 const expired = isJobExpired(job.deadline);
+                // companyOverride lets an employer show different company
+                // identity on this specific posting, and is also the only
+                // display name left once `employer` is null (account since
+                // deleted) — same fallback jobdetail.tsx already uses.
+                const displayName = job.companyOverride?.name || job.employer?.name || 'Company';
+                const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
                 return (
                 <div
                   key={job._id}
@@ -572,9 +578,9 @@ const AllJobListing = () => {
                 >
                   <div className="flex justify-between items-start gap-2 mb-4">
                     <div className="flex gap-3 items-start min-w-0">
-                      {job.employer?.companyLogo && (
+                      {displayLogo && (
                         <img
-                          src={resolveMediaUrl(job.employer.companyLogo)}
+                          src={resolveMediaUrl(displayLogo)}
                           alt="Company Logo"
                           className="w-10 h-10 rounded object-cover flex-shrink-0"
                         />
@@ -588,7 +594,7 @@ const AllJobListing = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-gray-600 text-sm break-words">{job.employer?.name}</p>
+                        <p className="text-gray-600 text-sm break-words">{displayName}</p>
                       </div>
                     </div>
                     <button onClick={() => handleToggleSave(job._id)} className="p-1 flex-shrink-0">

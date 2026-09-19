@@ -16,6 +16,10 @@ interface Job {
   _id: string;
   title: string;
   employer?: Employer;
+  // Per-job display identity (backend/models/Job.js) — falls back to the
+  // populated `employer` above, and is the only display name left once
+  // `employer` is null (account since deleted).
+  companyOverride?: { name?: string; logo?: string };
   location: string;
   jobtype: string;
   createdAt: string;
@@ -63,6 +67,9 @@ const UserSavedJobs = () => {
         ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
+
+  const displayNameFor = (job: Job) => job.companyOverride?.name || job.employer?.name;
+  const displayLogoFor = (job: Job) => job.companyOverride?.logo || job.employer?.companyLogo;
 
   return (
     <div className="min-h-screen overflow-auto bg-gray-50 p-4 sm:p-6" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
@@ -125,20 +132,20 @@ const UserSavedJobs = () => {
                       <tr key={job._id} className="border-b">
                         <td className="px-6 py-4">
                           <div className="flex items-center">
-                            {job.employer?.companyLogo ? (
+                            {displayLogoFor(job) ? (
                               <img
-                                src={resolveMediaUrl(job.employer.companyLogo)}
-                                alt={job.employer.name}
+                                src={resolveMediaUrl(displayLogoFor(job)!)}
+                                alt={displayNameFor(job) || 'Company'}
                                 className="w-10 h-10 rounded-lg mr-3 object-cover"
                               />
                             ) : (
                               <div className="w-10 h-10 rounded-lg mr-3 bg-gray-200 flex items-center justify-center font-bold text-sm text-gray-600">
-                                {job.employer?.name?.[0] || 'C'}
+                                {displayNameFor(job)?.[0] || 'C'}
                               </div>
                             )}
                             <div>
                               <div className="font-medium">{job.title}</div>
-                              <div className="text-sm text-gray-500">{job.employer?.name}</div>
+                              <div className="text-sm text-gray-500">{displayNameFor(job)}</div>
                             </div>
                           </div>
                         </td>
@@ -182,22 +189,22 @@ const UserSavedJobs = () => {
                 {filteredJobs.map((job) => (
                   <div key={job._id} className="rounded-xl border border-gray-100 p-4">
                     <div className="flex items-start gap-3">
-                      {job.employer?.companyLogo ? (
+                      {displayLogoFor(job) ? (
                         <img
-                          src={resolveMediaUrl(job.employer.companyLogo)}
-                          alt={job.employer.name}
+                          src={resolveMediaUrl(displayLogoFor(job)!)}
+                          alt={displayNameFor(job) || 'Company'}
                           className="h-10 w-10 shrink-0 rounded-lg object-cover"
                         />
                       ) : (
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-200 text-sm font-bold text-gray-600">
-                          {job.employer?.name?.[0] || 'C'}
+                          {displayNameFor(job)?.[0] || 'C'}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate font-medium text-gray-900">{job.title}</p>
-                            <p className="truncate text-sm text-gray-500">{job.employer?.name}</p>
+                            <p className="truncate text-sm text-gray-500">{displayNameFor(job)}</p>
                           </div>
                           <button
                             className="shrink-0 text-red-500 hover:text-red-600"

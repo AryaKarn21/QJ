@@ -66,6 +66,10 @@ export interface Job {
     email?: string;
     companyLogo?: string;
   };
+  // Per-job display identity (backend/models/Job.js) — falls back to the
+  // populated `employer` above. Also covers jobs whose employer account
+  // was since deleted, leaving `employer: null` with nothing else to show.
+  companyOverride?: { name?: string; logo?: string; tagline?: string };
 }
 
 

@@ -78,7 +78,10 @@ const RecommendedJobs: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {(data || []).slice(0, 8).map(({ job, reason }) => (
+            {(data || []).slice(0, 8).map(({ job, reason }) => {
+              const displayName = job.companyOverride?.name || job.employer?.name;
+              const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
+              return (
               <article
                 key={job._id}
                 className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg"
@@ -86,20 +89,20 @@ const RecommendedJobs: React.FC = () => {
                 <div>
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-3">
-                      {job.employer?.companyLogo ? (
+                      {displayLogo ? (
                         <img
-                          src={resolveMediaUrl(job.employer.companyLogo)}
-                          alt={`${job.employer.name} logo`}
+                          src={resolveMediaUrl(displayLogo)}
+                          alt={`${displayName || 'Company'} logo`}
                           className="h-11 w-11 shrink-0 rounded-xl object-cover"
                         />
                       ) : (
                         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white ${accentFor(job._id)}`}>
-                          {job.employer?.name?.[0] || 'C'}
+                          {displayName?.[0] || 'C'}
                         </div>
                       )}
                       <div className="min-w-0">
                         <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900">{job.title}</h3>
-                        <p className="truncate text-sm text-slate-500">{job.employer?.name || 'Company'}</p>
+                        <p className="truncate text-sm text-slate-500">{displayName || 'Company'}</p>
                       </div>
                     </div>
                   </div>
@@ -139,7 +142,8 @@ const RecommendedJobs: React.FC = () => {
                   </button>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

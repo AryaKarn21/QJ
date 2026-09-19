@@ -3,7 +3,7 @@ import {
   Menu, Home, BriefcaseIcon, Info, FileText, Mail, Users,
   ChevronDown, SparkleIcon, MessageCircle, X, ArrowRight,
   Grid, LogOut, LayoutDashboard, User, Settings, Newspaper, Search,
-  Bell,
+  Bell, Bot,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import StarLogo from '../../assets/quickjobs.png';
@@ -13,6 +13,7 @@ import { fetchJobCategories } from '../../api/jobCategoryApi';
 import { fetchPublicProfile } from '../../api/followApi';
 import HeaderSearch from './HeaderSearch';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { OPEN_CHATBOT_EVENT } from '../common/Chatbot';
 
 interface DecodedToken {
   id: string;
@@ -131,6 +132,8 @@ const Header: React.FC = () => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
+  const openAssistant = () => window.dispatchEvent(new Event(OPEN_CHATBOT_EVENT));
+
   const handleCategoryClick = (categoryName: string) => {
     const query = encodeURIComponent(categoryName);
     setIsJobsDropdownOpen(false);
@@ -241,7 +244,10 @@ const Header: React.FC = () => {
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isJobsDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
                 </button>
                 {isJobsDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-[min(48rem,calc(100vw-2rem))] bg-white/95 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 p-5 z-50">
+                  // Fully opaque — same "content bleeding through a
+                  // translucent dropdown over the Hero" fix as HeaderSearch's
+                  // suggestions panel; this one floats over the same spot.
+                  <div className="absolute right-0 mt-3 w-[min(48rem,calc(100vw-2rem))] bg-white rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 p-5 z-50">
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Grid className="w-4 h-4" /></div>
@@ -265,6 +271,20 @@ const Header: React.FC = () => {
 
             {/* Right side — desktop */}
             <div className="flex shrink-0 items-center space-x-1 xl:space-x-2 min-w-0">
+              {/* QuickJobs Assistant — always visible regardless of auth
+                  state (the chatbot itself is public, see Chatbot.tsx),
+                  opens the panel anchored under this header instead of the
+                  page-bottom FAB it used to be. Hidden below sm: to keep
+                  the smallest phones' header row (logo + hamburger) tight —
+                  reachable there from the hamburger drawer instead. */}
+              <button
+                type="button"
+                onClick={openAssistant}
+                aria-label="Open QuickJobs Assistant"
+                className="hidden sm:inline-flex p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95"
+              >
+                <Bot size={20} />
+              </button>
               {!isLoggedIn ? (
                 <>
                   {/* Desktop login/register */}
@@ -411,7 +431,10 @@ const Header: React.FC = () => {
             the md-xl compact icon row) — previously this drawer, and its
             toggle button, only existed for guests at all. */}
         {isMobileMenuOpen && (
-          <div className="xl:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+          // Fully opaque — same "content bleeding through a translucent
+          // panel over the Hero" fix as the dropdowns above; this drawer
+          // sits directly over the home page's Hero section too.
+          <div className="xl:hidden bg-white border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
             <div className="px-4 pt-3 pb-6 space-y-1.5">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
@@ -425,6 +448,18 @@ const Header: React.FC = () => {
                   </Link>
                 );
               })}
+              {/* Reachable here too — this drawer's toggle button is
+                  hidden below sm: (see the compact icon row / guest
+                  hamburger above), which is exactly the width range the
+                  header's own Assistant button disappears at. */}
+              <button
+                type="button"
+                onClick={() => { openAssistant(); setIsMobileMenuOpen(false); }}
+                className="flex w-full items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100/80 transition-all duration-150"
+              >
+                <Bot size={18} className="text-slate-400" />
+                <span>Ask QuickJobs Assistant</span>
+              </button>
               {!isLoggedIn && (
                 <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col gap-2.5">
                   <Link to="/login" className="w-full text-center py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100/80 rounded-xl transition-all duration-150">Log In</Link>
@@ -526,6 +561,12 @@ const Header: React.FC = () => {
                 { icon: User, label: 'My Profile', action: () => { navigate(getProfilePath()); setIsMobileProfileOpen(false); } },
                 { icon: FileText, label: 'Resume Builder', action: () => { navigate('/resume'); setIsMobileProfileOpen(false); }, jobseekerOnly: true },
                 { icon: Settings, label: 'Settings', action: () => { navigate(getSettingsPath()); setIsMobileProfileOpen(false); } },
+                // Reachable here too — logged-in users below `md` have
+                // neither the header's Assistant button (hidden below sm:)
+                // nor a hamburger drawer (only appears at md-xl for them),
+                // so this profile sheet is their only route to it at that
+                // width.
+                { icon: Bot, label: 'Ask QuickJobs Assistant', action: () => { openAssistant(); setIsMobileProfileOpen(false); } },
               ].filter(item => !('jobseekerOnly' in item && item.jobseekerOnly) || userInfo?.role === 'jobseeker')
                 .map(({ icon: Icon, label, action }) => (
                   <button key={label} onClick={action}

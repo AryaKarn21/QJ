@@ -45,6 +45,10 @@ interface Job {
     companyLogo?: string;
     isVerified?: boolean;
   };
+  // Per-job display identity (backend/models/Job.js) — falls back to the
+  // populated `employer` above, and is the only display name left once
+  // `employer` is null (account since deleted).
+  companyOverride?: { name?: string; logo?: string };
 }
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
@@ -218,6 +222,8 @@ const RecentJobs: React.FC = () => {
                 job.employer?.isVerified || job.isVerified;
               const workMode = job.workMode || (job.location?.toLowerCase().includes('remote') ? 'Remote' : 'On-site');
               const isBookmarked = !!bookmarkedJobs[job._id];
+              const displayName = job.companyOverride?.name || job.employer?.name;
+              const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
 
               return (
                 <article
@@ -228,21 +234,21 @@ const RecentJobs: React.FC = () => {
                     {/* Top Section: Logo, Employer Name, Bookmark */}
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3.5 min-w-0">
-                        {job.employer?.companyLogo ? (
+                        {displayLogo ? (
                           <img
-                            src={resolveMediaUrl(job.employer.companyLogo)}
-                            alt={`${job.employer.name} Logo`}
+                            src={resolveMediaUrl(displayLogo)}
+                            alt={`${displayName || 'Company'} Logo`}
                             className="w-14 h-14 rounded-2xl object-cover bg-slate-100 border border-slate-200/60 shrink-0 group-hover:scale-105 transition-transform duration-300"
                           />
                         ) : (
                           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform duration-300">
-                            {job.employer?.name?.[0] || 'C'}
+                            {displayName?.[0] || 'C'}
                           </div>
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="font-semibold text-slate-700 text-sm truncate">
-                              {job.employer?.name || 'Top Company'}
+                              {displayName || 'Top Company'}
                             </span>
                             {isVerifiedEmployer && (
                               <CheckCircle2

@@ -21,6 +21,10 @@ export interface JobCardData {
     name?: string;
     companyLogo?: string;
   };
+  // Per-job display identity (backend/models/Job.js) — falls back to the
+  // populated `employer` above, and is the only display name left once
+  // `employer` is null (account since deleted).
+  companyOverride?: { name?: string; logo?: string };
 }
 
 // Small, deterministic accent set for the logo-fallback square so cards
@@ -61,6 +65,9 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
     if (!readOnly) navigate(`/jobs/${job._id}`);
   };
 
+  const displayName = job.companyOverride?.name || job.employer?.name;
+  const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
+
   return (
     <article
       className={`group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg ${className}`}
@@ -68,20 +75,20 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
       <div>
         <div className="mb-4 flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
-            {job.employer?.companyLogo ? (
+            {displayLogo ? (
               <img
-                src={resolveMediaUrl(job.employer.companyLogo)}
-                alt={`${job.employer.name} logo`}
+                src={resolveMediaUrl(displayLogo)}
+                alt={`${displayName || 'Company'} logo`}
                 className="h-11 w-11 shrink-0 rounded-xl object-cover"
               />
             ) : (
               <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white ${accentFor(job._id)}`}>
-                {job.employer?.name?.[0] || 'C'}
+                {displayName?.[0] || 'C'}
               </div>
             )}
             <div className="min-w-0">
               <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900">{job.title}</h3>
-              <p className="truncate text-sm text-slate-500">{job.employer?.name || 'Company'}</p>
+              <p className="truncate text-sm text-slate-500">{displayName || 'Company'}</p>
             </div>
           </div>
 
