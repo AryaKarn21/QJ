@@ -452,6 +452,14 @@ const applyInJob = async (req, res) => {
 
     res.status(201).json({ message: "Application submitted successfully" });
   } catch (error) {
+    if (error.code === "CLOUD_STORAGE_NOT_CONFIGURED") {
+      // Not the applicant's fault, and not a generic server bug — file
+      // storage is genuinely unavailable right now. 503 (with the same
+      // safe, secret-free message persistUpload already produced) so the
+      // frontend/support can tell this apart from a real failure.
+      console.error("Apply error: resume storage not configured", error);
+      return res.status(503).json({ message: error.message });
+    }
     console.error("Apply error:", error);
     res.status(500).json({ message: "Server error" });
   }

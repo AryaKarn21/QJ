@@ -29,6 +29,16 @@ const IS_CONFIGURED = Boolean(
   process.env.CLOUDINARY_API_SECRET
 );
 
+// Render's filesystem is ephemeral — anything written to local disk is
+// gone the moment the service restarts or redeploys (this is exactly what
+// happened to resumes/icons/images uploaded while these vars were unset:
+// they returned 200 at upload time, then 404'd after the next deploy).
+// Local disk is a legitimate fallback for development, where nobody
+// expects an upload to outlive `nodemon` restarting — it is never a safe
+// fallback in production, so that combination fails loudly at upload time
+// instead of silently accepting a file it can't actually keep.
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 if (IS_CONFIGURED) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -36,6 +46,16 @@ if (IS_CONFIGURED) {
     api_secret: process.env.CLOUDINARY_API_SECRET,
     secure: true,
   });
+} else if (IS_PRODUCTION) {
+  console.error(
+    "[media.service] FATAL: Cloudinary is not configured in production. " +
+    "Uploads (resumes, profile pics, company logos, icons, images) would " +
+    "silently fall back to this service's local disk, which Render wipes " +
+    "on every restart/redeploy — files would 404 shortly after being " +
+    "uploaded. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and " +
+    "CLOUDINARY_API_SECRET in the Render dashboard. Every persistUpload() " +
+    "call will fail until this is fixed, by design — see persistUpload()."
+  );
 } else {
   console.warn(
     "[media.service] Cloudinary is not configured — uploads fall back to local disk.\n" +
@@ -128,6 +148,18 @@ async function persistUpload(file, folder, ownerId) {
   if (IS_CONFIGURED) {
     return uploadToCloudinary(file.buffer, file.mimetype, folder, ownerId);
   }
+  if (IS_PRODUCTION) {
+    // Refuse rather than accept a file onto ephemeral disk and hand back a
+    // URL that looks successful today and 404s after the next deploy —
+    // see the FATAL log at module load for the operator-facing version of
+    // this. `.code` lets callers (e.g. applyInJob) give a specific 503
+    // instead of a generic 500.
+    const err = new Error(
+      "File storage is not configured for production. Please contact support."
+    );
+    err.code = "CLOUD_STORAGE_NOT_CONFIGURED";
+    throw err;
+  }
   return writeBufferToLocalDisk(file.buffer, file.mimetype, folder);
 }
 
@@ -156,6 +188,7 @@ async function deleteStoredFile(stored) {
 
 module.exports = {
   IS_CONFIGURED,
+  IS_PRODUCTION,
   persistUpload,
   deleteStoredFile,
   isCloudinaryUrl,
