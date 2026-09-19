@@ -16,21 +16,25 @@ interface Blog {
   featuredImage?: string;
   tags?: string[];
   isPublished: boolean;
+  // Nullable: populated from the author's User account, which the backend
+  // returns as null once that account has been deleted.
   author: {
     _id: string;
     name: string;
     role: string;
-  };
+  } | null;
   authorImage: string;
   images: Array<{ url: string; caption?: string }>;
   likes: string[];
   comments: Array<{
     _id: string;
+    // Same nullability as the top-level author — a commenter's account
+    // can be deleted independently of the blog itself.
     author: {
       _id: string;
       name: string;
       role: string;
-    };
+    } | null;
     content: string;
     createdAt: string;
   }>;
@@ -209,7 +213,7 @@ const BlogDetail: React.FC = () => {
     );
   }
 
-  const isAuthor = user && blog.author._id === user.id;
+  const isAuthor = user && blog.author?._id === user.id;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -268,12 +272,12 @@ const BlogDetail: React.FC = () => {
           {blog.authorImage && (
             <img
               src={blog.authorImage}
-              alt={blog.author.name}
+              alt={blog.author?.name || 'Deleted user'}
               className="w-12 h-12 rounded-full mr-4"
             />
           )}
           <div className="flex-1">
-            <p className="text-lg font-medium text-gray-900">{blog.author.name}</p>
+            <p className="text-lg font-medium text-gray-900">{blog.author?.name || 'Deleted user'}</p>
             <div className="flex items-center text-sm text-gray-500">
               <Calendar className="h-4 w-4 mr-1" />
               {formatDate(blog.publishedAt)}
@@ -385,7 +389,7 @@ const BlogDetail: React.FC = () => {
               <div className="flex items-center mb-2">
                 <User className="h-8 w-8 text-gray-400 mr-3" />
                 <div>
-                  <p className="font-medium text-gray-900">{comment.author.name}</p>
+                  <p className="font-medium text-gray-900">{comment.author?.name || 'Deleted user'}</p>
                   <p className="text-sm text-gray-500">
                     {formatDate(comment.createdAt)}
                   </p>

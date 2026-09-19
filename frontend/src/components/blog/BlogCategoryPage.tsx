@@ -17,7 +17,9 @@ interface Blog {
   content: string;
   excerpt?: string;
   featuredImage?: string;
-  author: { _id: string; name: string; role: string };
+  // Nullable: populated from the author's User account, which the backend
+  // returns as null once that account has been deleted.
+  author: { _id: string; name: string; role: string } | null;
   authorImage: string;
   images: Array<{ url: string; caption?: string }>;
   likes: string[];
@@ -187,9 +189,9 @@ const BlogCategoryPage: React.FC = () => {
                 />
                 <div className="p-6">
                   <div className="flex items-center mb-3">
-                    {blog.authorImage && <img src={blog.authorImage} alt={blog.author.name} className="w-8 h-8 rounded-full mr-3" />}
+                    {blog.authorImage && <img src={blog.authorImage} alt={blog.author?.name || 'Deleted user'} className="w-8 h-8 rounded-full mr-3" />}
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{blog.author.name}</p>
+                      <p className="text-sm font-medium text-gray-900">{blog.author?.name || 'Deleted user'}</p>
                       <div className="flex items-center text-xs text-gray-500">
                         <Calendar className="h-3 w-3 mr-1" /> {formatDate(blog.publishedAt)}
                       </div>

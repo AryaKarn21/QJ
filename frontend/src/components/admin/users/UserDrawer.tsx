@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Trash2, Mail, Calendar, Briefcase, FileText } from 'lucide-react';
 import { Drawer } from '../../ui/Drawer';
 import { StatusBadge } from '../../ui/StatusBadge';
@@ -47,6 +48,7 @@ export const UserDrawer: React.FC<UserDrawerProps> = ({
   onClose,
   onUserDeleted,
 }) => {
+  const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -163,10 +165,13 @@ export const UserDrawer: React.FC<UserDrawerProps> = ({
           )}
 
           {/* Actions */}
-          {user.role === 'employer' && (
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Verification decisions are handled in Company Management.
-            </p>
+          {user.role === 'employer' && !user.isVerified && (
+            <button
+              onClick={() => { onClose(); navigate('/admin/employers'); }}
+              className="w-full rounded-lg border border-green-200 bg-green-50 py-2 text-sm font-medium text-green-700 hover:bg-green-100 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
+            >
+              Review &amp; verify in Company Management
+            </button>
           )}
           <div className="flex gap-2 pt-2">
             <button

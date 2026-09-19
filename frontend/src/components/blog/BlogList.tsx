@@ -18,11 +18,14 @@ interface Blog {
   excerpt?: string;
   category?: string;
   featuredImage?: string;
+  // Nullable: the backend populates this from the author's User account,
+  // which returns null if that account has since been deleted — a blog
+  // whose author is gone must still render, not crash the whole list.
   author: {
     _id: string;
     name: string;
     role: string;
-  };
+  } | null;
   authorImage: string;
   images: Array<{ url: string; caption?: string }>;
   likes: string[];
@@ -228,12 +231,12 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
                       <img
                         // AFTER:
                         src={resolveMediaUrl(blog.authorImage)}
-                        alt={blog.author.name}
+                        alt={blog.author?.name || 'Deleted user'}
                         className="w-8 h-8 rounded-full mr-3"
                       />
                     )}
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{blog.author.name}</p>
+                      <p className="text-sm font-medium text-gray-900">{blog.author?.name || 'Deleted user'}</p>
                       <div className="flex items-center text-xs text-gray-500">
                         <Calendar className="h-3 w-3 mr-1" />
                         {formatDate(blog.publishedAt)}

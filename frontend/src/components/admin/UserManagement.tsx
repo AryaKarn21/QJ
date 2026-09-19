@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { FileDown, Trash2, CheckCircle2, UserCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -54,6 +55,7 @@ const UserAvatar: React.FC<{ user: AdminUser; size?: 'sm' | 'md' }> = ({ user, s
 
 const UserManagement: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [activeTab,       setActiveTab]       = useState<TabKey>('employer');
   const [search,          setSearch]          = useState('');
@@ -352,8 +354,15 @@ const UserManagement: React.FC = () => {
                     <div className="flex items-center justify-end gap-2">
                       {activeTab === 'employer' && !user.isVerified && (
                         <button
-                          onClick={() => openDrawer(user)}
-                          title="Verify employer"
+                          // Verification is a KYC-style review (industry,
+                          // PAN, address, description) that lives in Company
+                          // Management (verifyCompany), not a bare boolean
+                          // flip here — this used to open UserDrawer, which
+                          // has no verify action at all (just a note
+                          // pointing here with no way to actually get here),
+                          // so the button did nothing.
+                          onClick={() => navigate('/admin/employers')}
+                          title="Verify employer in Company Management"
                           className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
                         >
                           <CheckCircle2 size={12} /> Verify
