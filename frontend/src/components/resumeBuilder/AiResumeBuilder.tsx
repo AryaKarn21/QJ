@@ -70,6 +70,12 @@ const AiResumeBuilder: React.FC = () => {
   const [error, setError] = useState('');
   const [builtResumeId, setBuiltResumeId] = useState('');
   const [buildingMsg, setBuildingMsg] = useState('Reading your information…');
+  // Set once createResume() succeeds, even if the autofill call after it
+  // fails — so a Gemini hiccup never silently orphans the resume the user
+  // already has: retrying reuses this id instead of creating a duplicate,
+  // and "Continue Manually" can jump straight into editing it.
+  const [pendingResumeId, setPendingResumeId] = useState('');
+  const [lastInput, setLastInput] = useState<{ rawInput: string; targetRole: string } | null>(null);
 
   // Photo isn't part of CandidateForm (which is all plain strings sent as
   // raw text to the AI) — it's kept separate and attached to the resume
@@ -107,32 +113,76 @@ const AiResumeBuilder: React.FC = () => {
   const buildResume = async (rawInput: string, targetRole: string) => {
     setStep('building');
     setError('');
+    setLastInput({ rawInput, targetRole });
     const interval = startBuildingMessages();
-    try {
-      // 1. Create a blank resume with a neutral ATS template
-      const resume = await createResume({ layout: 'ats-minimal', theme: 'violet', title: 'My Resume', targetRole });
 
+    // 1. Create a blank resume with a neutral ATS template — skipped on
+    // retry, since a previous attempt already created one (pendingResumeId).
+    let resumeId = pendingResumeId;
+    if (!resumeId) {
+      try {
+        const resume = await createResume({ layout: 'ats-minimal', theme: 'violet', title: 'My Resume', targetRole });
+        resumeId = resume._id;
+        setPendingResumeId(resumeId);
+      } catch (err: any) {
+        clearInterval(interval);
+        setError(err?.response?.data?.message || 'Failed to create your resume. Please try again.');
+        setStep(method === 'paste' ? 'paste' : 'form');
+        return;
+      }
+    }
+
+    try {
       // 2. Auto-fill it using Gemini
-      const autofillRes = await api.post(`/api/resumes/ai/${resume._id}/autofill`, { rawInput, targetRole });
+      const autofillRes = await api.post(`/api/resumes/ai/${resumeId}/autofill`, { rawInput, targetRole });
 
       // 3. Attach the photo, if one was uploaded — autofill only works from
       // text, so the photo has to be saved separately, merged with whatever
       // personalInfo autofill just wrote (name/email/phone/location).
       if (photo) {
         const filledPersonalInfo = autofillRes.data?.resume?.personalInfo || {};
-        await updateResume(resume._id, {
+        await updateResume(resumeId, {
           personalInfo: { ...filledPersonalInfo, photo },
         });
       }
 
       clearInterval(interval);
-      setBuiltResumeId(resume._id);
+      setBuiltResumeId(resumeId);
+      setPendingResumeId('');
       setStep('done');
     } catch (err: any) {
       clearInterval(interval);
-      setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
+      // The resume itself was already created (resumeId is set) — never
+      // discard it. Let the user retry AI against the same resume or jump
+      // straight into editing it manually.
+      const reason = err?.response?.data?.message;
+      setError(
+        reason
+          ? `We created your resume, but AI could not complete the automatic filling: ${reason}`
+          : 'We created your resume, but AI could not complete the automatic filling. You can retry AI or continue editing manually.'
+      );
       setStep(method === 'paste' ? 'paste' : 'form');
     }
+  };
+
+  const retryAi = () => {
+    if (!lastInput) return;
+    buildResume(lastInput.rawInput, lastInput.targetRole);
+  };
+
+  const continueManually = () => {
+    if (!pendingResumeId) return;
+    navigate(`/resume/${pendingResumeId}/edit`);
+  };
+
+  const resetBuilder = () => {
+    setStep('method');
+    setForm(EMPTY_FORM);
+    setPasteText('');
+    setError('');
+    setPendingResumeId('');
+    setLastInput(null);
+    setBuiltResumeId('');
   };
 
   // Convert structured form to a readable paragraph for the AI
@@ -258,6 +308,30 @@ const AiResumeBuilder: React.FC = () => {
     </div>
   );
 
+  const errorBanner = error && (
+    <div className="mt-3 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">
+      <p>{error}</p>
+      {pendingResumeId && (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={retryAi}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
+          >
+            <Sparkles size={12} /> Retry AI
+          </button>
+          <button
+            type="button"
+            onClick={continueManually}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors"
+          >
+            Continue Manually
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   // ── STEP: Method selection ────────────────────────────────────────────────
 
   if (step === 'method') {
@@ -333,7 +407,7 @@ const AiResumeBuilder: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl">
           <button
-            onClick={() => { setStep('method'); setError(''); }}
+            onClick={resetBuilder}
             className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
           >
             <ArrowLeft size={15} /> Back
@@ -385,9 +459,7 @@ Certifications: Forklift Operator Certificate – 2021.`}
               />
             </div>
 
-            {error && (
-              <div className="mt-3 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>
-            )}
+            {errorBanner}
 
             <button
               onClick={handlePasteSubmit}
@@ -408,7 +480,7 @@ Certifications: Forklift Operator Certificate – 2021.`}
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 py-10 px-4">
         <div className="mx-auto max-w-2xl">
           <button
-            onClick={() => { setStep('method'); setError(''); }}
+            onClick={resetBuilder}
             className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
           >
             <ArrowLeft size={15} /> Back
@@ -591,9 +663,7 @@ Delivered packages, maintained vehicle logs, and met daily delivery targets.`,
             </div>
           </div>
 
-          {error && (
-            <div className="mt-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>
-          )}
+          {errorBanner}
 
           <button
             onClick={handleFormSubmit}
@@ -652,7 +722,7 @@ Delivered packages, maintained vehicle logs, and met daily delivery targets.`,
               <FileText size={16} /> Open &amp; Edit My Resume
             </button>
             <button
-              onClick={() => { setStep('method'); setForm(EMPTY_FORM); setPasteText(''); setError(''); }}
+              onClick={resetBuilder}
               className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
             >
               Build Another Resume

@@ -20,7 +20,13 @@ let cachedClient = null;
 // contained entirely inside this shim, so every one of the ~8 controllers
 // that already call `getGeminiModel().generateContent(prompt)` and read
 // `result.response.text()` keeps working unchanged.
-function getGeminiModel(modelName = "gemini-2.0-flash") {
+// "-latest" alias instead of a pinned version (e.g. "gemini-2.0-flash") —
+// Google periodically retires pinned model versions outright (they stop
+// resolving with a 404 "no longer available" instead of degrading), which
+// silently broke every AI feature in this app until diagnosed. The
+// "-latest" alias always resolves to whatever current model Google points
+// it at, so this file never needs a manual bump when a version is retired.
+function getGeminiModel(modelName = "gemini-flash-latest") {
   if (!process.env.GEMINI_API_KEY) {
     const err = new Error(
       "GEMINI_API_KEY is not set. AI features (caption generation, grammar " +
@@ -91,6 +97,11 @@ function classifyGeminiError(error) {
   if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(message)) return "GEMINI_INVALID_KEY";
   if (status === 401 || status === 403) return "GEMINI_INVALID_KEY";
   if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(message)) return "GEMINI_QUOTA_EXCEEDED";
+  // Google retires pinned model versions outright — the API then 404s with
+  // "model ... is no longer available" instead of degrading gracefully.
+  // Surfaced as "unavailable" rather than a generic 500 so it's honest
+  // about the cause (and distinct from "the AI response was malformed").
+  if (status === 404 || /is no longer available|model not found|NOT_FOUND/i.test(message)) return "GEMINI_UNAVAILABLE";
   if (status === 503 || /UNAVAILABLE|overloaded/i.test(message)) return "GEMINI_UNAVAILABLE";
   if (typeof status === "number" && status >= 500) return "GEMINI_UNAVAILABLE";
 

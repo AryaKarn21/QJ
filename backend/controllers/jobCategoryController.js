@@ -5,10 +5,6 @@ const { persistUpload, deleteStoredFile } = require('../services/media.service')
 // Create
 exports.createJobCategory = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'Icon file is required' });
-    }
-
     const name = (req.body.name || '').trim();
     if (!name) {
       return res.status(400).json({ error: 'Category name is required' });
@@ -19,12 +15,12 @@ exports.createJobCategory = async (req, res) => {
       return res.status(409).json({ error: `A category named "${existing.name}" already exists` });
     }
 
-    const icon = await persistUpload(req.file, 'job_category_icons', req.user?.id || 'system');
+    const icon = req.file ? await persistUpload(req.file, 'job_category_icons', req.user?.id || 'system') : '';
 
     const jobCategory = await JobCategory.create({
       name,
       icon,
-      isTrending: req.body.isTrending || false,
+      isTrending: req.body.isTrending === 'true' || req.body.isTrending === true,
     });
 
     res.status(201).json(jobCategory);
