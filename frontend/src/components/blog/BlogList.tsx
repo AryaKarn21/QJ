@@ -5,6 +5,7 @@ import { BlogCategoriesExplore } from './BlogCategoriesExplore';
 import { handleImageFallback, BLOG_IMAGE_FALLBACK } from '../../utils/imageFallback';
 // ADD this import at the top (after the existing imports):
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { SkeletonBlock, SkeletonText, SkeletonAvatarLine } from '../ui/Skeleton';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -114,8 +115,20 @@ const BlogList: React.FC<BlogListProps> = ({ showUserBlogs = false }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" aria-busy="true" aria-label="Loading blogs">
+        <SkeletonText width="w-48" height="h-8" className="mb-8" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <SkeletonBlock className="w-full h-48 rounded-none" />
+              <div className="p-6 space-y-4">
+                <SkeletonAvatarLine avatarSize="h-8 w-8" />
+                <SkeletonText width="w-3/4" height="h-5" />
+                <SkeletonText width="w-full" height="h-9" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

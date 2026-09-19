@@ -14,6 +14,7 @@ import {
 import { fetchJobs, fetchSavedJobs, toggleSaveJob, fetchJobCountsByCountry, type Job } from '../jobseekerApi/api';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { AdBanner } from '../../common/AdBanner';
+import { SkeletonText, SkeletonAvatarLine } from '../../ui/Skeleton';
 
 
 const getTimeAgo = (dateString: string): string => {
@@ -203,7 +204,23 @@ const AllJobListing = () => {
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
 
-  if (isLoading) return <div className="p-8 text-center">Loading jobs...</div>;
+  if (isLoading) return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8 py-8" aria-busy="true" aria-label="Loading jobs">
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-6">
+          <SkeletonText width="w-full" height="h-12" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-sm p-6 space-y-3">
+              <SkeletonAvatarLine avatarSize="h-12 w-12" />
+              <SkeletonText width="w-1/3" height="h-3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
   if (isError)
     return (
       <div className="p-8 text-center text-red-600">Failed to load jobs</div>

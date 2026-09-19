@@ -12,6 +12,7 @@ import ImageCropModal from "../../common/ImageCropModal";
 import { ProfileStatusBadge } from "../../common/profileStatus/ProfileStatusBadge";
 import { ProfileStatusEditor } from "../../common/profileStatus/ProfileStatusEditor";
 import type { ProfileStatus } from "../../../types/profileStatus";
+import { SkeletonCircle, SkeletonText, SkeletonParagraph } from "../../ui/Skeleton";
 
 type Qualification = { degree: string; institution: string; year: number };
 type Experience = { jobPosition: string; institution: string; duration: string; companyId?: string | null; current?: boolean };
@@ -209,7 +210,20 @@ const UserProfile = () => {
   const handleCertificationChange = (index: number, updated: Certification) =>
     setFormState((p) => { const list = [...p.certifications]; list[index] = updated; return { ...p, certifications: list }; });
 
-  if (!profile) return <div className="p-6">Loading profile...</div>;
+  if (!profile) return (
+    <div className="p-6 max-w-4xl mx-auto space-y-6" aria-busy="true" aria-label="Loading profile">
+      <div className="bg-white rounded-lg shadow-sm p-6 flex items-center gap-6">
+        <SkeletonCircle size="h-24 w-24" />
+        <div className="flex-1 space-y-2">
+          <SkeletonText width="w-1/3" height="h-6" />
+          <SkeletonText width="w-1/4" height="h-4" />
+        </div>
+      </div>
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <SkeletonParagraph lines={5} />
+      </div>
+    </div>
+  );
 
   // "Recently working" highlight: prefer an experience explicitly marked
   // current; fall back to the most recently added entry so older profiles

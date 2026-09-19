@@ -13,6 +13,7 @@ import { FeedFilters } from './FeedFilters';
 import { PostComposer } from './PostComposer';
 import { PostCard } from './PostCard';
 import { TrendingSidebar } from './TrendingSidebar';
+import { SkeletonText, SkeletonAvatarLine } from '../ui/Skeleton';
 import { EmployeeSection } from './EmployeeSection';
 import { CompanyAbout } from './CompanyAbout';
 import { CompanyJobs } from './CompanyJobs';
@@ -88,7 +89,8 @@ export function CompanyFeed() {
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="flex items-center gap-1.5 truncate text-lg font-bold text-dark">
-              <Building2 size={17} className="text-primary" /> {profile?.name || 'Loading…'}
+              <Building2 size={17} className="text-primary" />
+              {profile?.name || <SkeletonText width="w-40" height="h-5" />}
             </h1>
             {profile?.industryType ? (
               <p className="text-sm text-gray-500">{profile.industryType}</p>
@@ -213,7 +215,15 @@ export function CompanyFeed() {
               />
             )}
             {loading ? (
-              <p className="py-8 text-center text-sm text-gray-400">Loading posts…</p>
+              <div className="space-y-4" aria-busy="true" aria-label="Loading posts">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-card space-y-3">
+                    <SkeletonAvatarLine />
+                    <SkeletonText width="w-full" height="h-3" />
+                    <SkeletonText width="w-4/5" height="h-3" />
+                  </div>
+                ))}
+              </div>
             ) : posts.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center">
                 <p className="text-sm text-gray-500">This company hasn't posted anything yet.</p>

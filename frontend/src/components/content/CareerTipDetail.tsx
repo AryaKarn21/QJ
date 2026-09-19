@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Lightbulb, Loader2 } from 'lucide-react';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
 import { getCareerTipById, type CareerTip } from '../../api/cmsPublicApi';
+import { SkeletonText, SkeletonParagraph } from '../ui/Skeleton';
 
 export default function CareerTipDetail() {
   const { id } = useParams<{ id: string }>();
@@ -36,8 +37,11 @@ export default function CareerTipDetail() {
       </Link>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-16 text-gray-400">
-          <Loader2 size={18} className="animate-spin" /> Loading…
+        <div aria-busy="true" aria-label="Loading career tip">
+          <SkeletonText width="w-24" height="h-6" className="mb-3 rounded-full" />
+          <SkeletonText width="w-3/4" height="h-8" className="mb-2" />
+          <SkeletonText width="w-40" height="h-3" className="mb-6" />
+          <SkeletonParagraph lines={6} />
         </div>
       ) : error || !tip ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 py-16 text-center">

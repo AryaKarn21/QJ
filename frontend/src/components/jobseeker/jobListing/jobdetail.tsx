@@ -11,6 +11,7 @@ import { fetchJobById, fetchJobs, likeJob, dislikeJob, toggleSaveJob } from '../
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { formatSalaryRange } from '../../../utils/currency';
 import { jwtDecode } from 'jwt-decode';
+import { SkeletonCircle, SkeletonText, SkeletonParagraph, SkeletonCard } from '../../ui/Skeleton';
 
 
 interface DecodedToken {
@@ -267,7 +268,31 @@ const JobDetailPage = () => {
     }
   };
 
-  if (loadingJob) return <div className="text-center py-10 text-gray-500">Loading job details...</div>;
+  if (loadingJob) return (
+    <div className="min-h-screen bg-gray-100 py-8" aria-busy="true" aria-label="Loading job details">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-lg p-6 shadow">
+              <div className="flex items-start gap-4 mb-4 border-b pb-4">
+                <SkeletonCircle size="h-16 w-16" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <SkeletonText width="w-2/3" height="h-7" />
+                  <SkeletonText width="w-1/3" />
+                  <SkeletonText width="w-1/2" height="h-3" />
+                </div>
+              </div>
+              <SkeletonParagraph lines={4} />
+            </div>
+            <div className="bg-white rounded-lg p-6 shadow">
+              <SkeletonParagraph lines={5} />
+            </div>
+          </div>
+          <SkeletonCard className="h-80" />
+        </div>
+      </div>
+    </div>
+  );
   if (!job) return <div className="text-center py-10 text-red-500">Job not found.</div>;
 
   // companyOverride lets an employer show different company identity on
@@ -672,7 +697,15 @@ const JobDetailPage = () => {
 
               <div className="space-y-4 py-4">
                 {loadingSimilarJobs ? (
-                  <p className="text-gray-500 text-sm">Loading...</p>
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-lg shadow-md p-4 flex items-start gap-4" aria-busy="true" aria-label="Loading similar jobs">
+                      <SkeletonCircle size="h-16 w-16" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <SkeletonText width="w-3/4" />
+                        <SkeletonText width="w-1/2" height="h-3" />
+                      </div>
+                    </div>
+                  ))
                 ) : latestJobs.length > 0 ? (
                   latestJobs.map((sJob) => (
                     <div

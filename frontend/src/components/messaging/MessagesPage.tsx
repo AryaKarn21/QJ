@@ -661,11 +661,18 @@ function ChatPanel({
         style={{ background: 'linear-gradient(to bottom, #f8f9fa, #f1f3f5)' }}
       >
         {loading ? (
-          <div className="flex justify-center pt-16">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 size={22} className="animate-spin text-blue-400" />
-              <p className="text-xs text-slate-400">Loading messages…</p>
-            </div>
+          // Alternating left/right bubble shapes, matching the real thread
+          // below, instead of a bare spinner — same animate-pulse
+          // convention as the conversation list skeleton in the sidebar.
+          <div className="space-y-3 pt-2" aria-busy="true" aria-label="Loading messages">
+            {[68, 45, 80, 55, 40, 72].map((widthPct, i) => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                <div
+                  className={`h-9 animate-pulse rounded-2xl bg-slate-200 ${i % 2 === 0 ? 'rounded-bl-sm' : 'rounded-br-sm'}`}
+                  style={{ width: `${widthPct}%`, maxWidth: '320px' }}
+                />
+              </div>
+            ))}
           </div>
         ) : (
           <>

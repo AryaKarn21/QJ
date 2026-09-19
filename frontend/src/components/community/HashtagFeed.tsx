@@ -4,6 +4,7 @@ import { Hash } from 'lucide-react';
 import { fetchHashtagFeed } from '../../api/communityApi';
 import { PostCard } from './PostCard';
 import { TrendingSidebar } from './TrendingSidebar';
+import { SkeletonText, SkeletonAvatarLine } from '../ui/Skeleton';
 import type { CommunityPost } from '../../types/community';
 
 export function HashtagFeed() {
@@ -42,7 +43,15 @@ export function HashtagFeed() {
             <Hash size={19} className="text-primary" /> {tag}
           </h1>
           {loading ? (
-            <p className="py-8 text-center text-sm text-gray-400">Loading posts…</p>
+            <div className="space-y-4" aria-busy="true" aria-label="Loading posts">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-card space-y-3">
+                  <SkeletonAvatarLine />
+                  <SkeletonText width="w-full" height="h-3" />
+                  <SkeletonText width="w-4/5" height="h-3" />
+                </div>
+              ))}
+            </div>
           ) : posts.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-500">No posts with #{tag} yet.</p>
           ) : (

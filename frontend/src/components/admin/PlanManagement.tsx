@@ -10,6 +10,7 @@ import {
   type Plan,
 } from '../../api/subscriptionApi';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { SkeletonRow } from '../ui/Skeleton';
 
 const EMPTY_FORM = {
   name: '',
@@ -148,11 +149,7 @@ export default function PlanManagement() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={6} className="text-center py-10 text-slate-400">
-                  Loading…
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} columns={6} />)
             ) : plans.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center py-10 text-slate-400">

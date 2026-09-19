@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import AdminShell from './components/layout/AdminShell';
+import { SkeletonText, SkeletonBlock, SkeletonParagraph } from './components/ui/Skeleton';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import Login from './components/auth/Login';
@@ -150,7 +151,18 @@ function AppWrapper() {
       <div className="flex-1">
         <Suspense
           fallback={
-            <div className="flex min-h-[60vh] items-center justify-center text-slate-400">Loading…</div>
+            // Route-level fallback — only shown while a lazy-loaded page
+            // chunk (resume builder, etc.) is still downloading, so it
+            // can't know that page's real shape. A generic page-shell
+            // skeleton reads far less jarring than plain text during that
+            // brief flash.
+            <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6" aria-busy="true" aria-label="Loading page">
+              <SkeletonText width="w-1/3" height="h-8" className="mb-6" />
+              <div className="space-y-4">
+                <SkeletonBlock className="h-40 w-full" />
+                <SkeletonParagraph lines={4} />
+              </div>
+            </div>
           }
         >
         <Routes>

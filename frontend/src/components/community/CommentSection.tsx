@@ -6,6 +6,7 @@ import { useCurrentUser } from '../../utils/currentUser';
 import { Avatar } from './Avatar';
 import { RichText } from './RichText';
 import { MentionTextarea } from './MentionTextarea';
+import { SkeletonAvatarLine } from '../ui/Skeleton';
 import type { CommunityComment } from '../../types/community';
 
 function timeAgo(dateStr: string): string {
@@ -206,7 +207,11 @@ export function CommentSection({ postId, onCommentCountChange }: { postId: strin
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading comments…</p>
+        <div className="space-y-3" aria-busy="true" aria-label="Loading comments">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonAvatarLine key={i} avatarSize="h-8 w-8" />
+          ))}
+        </div>
       ) : comments.length === 0 ? (
         <p className="text-sm text-gray-400">No comments yet. Be the first to say something.</p>
       ) : (

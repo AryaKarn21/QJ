@@ -4,6 +4,7 @@ import { getJobApplicants, updateApplicationStatus } from "../employerApi/api";
 import { Eye } from "lucide-react";
 import { resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
+import { SkeletonText, SkeletonRow } from "../../ui/Skeleton";
 
 interface Applicant {
     applicationId: string;
@@ -73,7 +74,16 @@ const JobApplicants = () => {
         }
     };
 
-    if (loading) return <div className="p-6">Loading...</div>;
+    if (loading) return (
+        <div className="min-h-screen overflow-auto p-6 max-w-6xl mx-auto" aria-busy="true" aria-label="Loading applicants">
+            <SkeletonText width="w-72" height="h-8" className="mb-6" />
+            <table className="w-full table-auto border-collapse text-sm">
+                <tbody>
+                    {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} columns={7} />)}
+                </tbody>
+            </table>
+        </div>
+    );
 
     if (!data) return <div className="p-6">No applicants found.</div>;
 

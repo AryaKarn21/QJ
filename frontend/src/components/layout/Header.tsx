@@ -22,15 +22,27 @@ interface DecodedToken {
   name?: string;
 }
 
-const NAV_ITEMS = [
+// Always visible as their own pill in the desktop nav — the four links a
+// visitor reaches for most. Blog/About Us/Contact are real, full-text
+// links too, just grouped into the "More" dropdown below instead (see
+// MORE_NAV_ITEMS) so the full desktop nav actually fits laptop-width
+// screens (~1440px+) instead of needing 7 always-visible text pills.
+const PRIMARY_NAV_ITEMS = [
   { name: 'Home', icon: <Home size={18} />, path: '/' },
   { name: 'Job Listings', icon: <BriefcaseIcon size={18} />, path: '/jobs' },
   { name: 'Community', icon: <Users size={18} />, path: '/community' },
   { name: 'Resume Builder', icon: <FileText size={18} />, path: '/resume' },
+];
+
+const MORE_NAV_ITEMS = [
   { name: 'Blog', icon: <Newspaper size={18} />, path: '/blog' },
   { name: 'About Us', icon: <Info size={18} />, path: '/about' },
   { name: 'Contact', icon: <Mail size={18} />, path: '/contact' },
 ];
+
+// Mobile hamburger drawer has plenty of vertical room, so it just lists
+// every link (primary + the ones grouped under "More" on desktop) flat.
+const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 
 const BOTTOM_TABS = [
   { name: 'Community', icon: Users, path: '/community' },
@@ -43,6 +55,7 @@ const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 const Header: React.FC = () => {
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
+  const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
@@ -54,6 +67,7 @@ const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const moreDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,6 +115,7 @@ const Header: React.FC = () => {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsJobsDropdownOpen(false);
+    setIsMoreDropdownOpen(false);
     setIsProfileDropdownOpen(false);
     setIsMobileProfileOpen(false);
   }, [location.pathname]);
@@ -108,6 +123,8 @@ const Header: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node))
         setIsJobsDropdownOpen(false);
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node))
+        setIsMoreDropdownOpen(false);
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node))
         setIsProfileDropdownOpen(false);
     };
@@ -125,6 +142,7 @@ const Header: React.FC = () => {
       if (e.key !== 'Escape') return;
       setIsMobileMenuOpen(false);
       setIsJobsDropdownOpen(false);
+      setIsMoreDropdownOpen(false);
       setIsProfileDropdownOpen(false);
       setIsMobileProfileOpen(false);
     };
@@ -183,19 +201,17 @@ const Header: React.FC = () => {
           ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
           : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'
         }`}>
-        {/* max-w-[1760px], not max-w-7xl (1280px) — the nav below activates
-            at a custom 1760px breakpoint (Tailwind's built-in xl=1280px and
-            2xl=1536px both landed short once the real content was measured:
-            logo + 7 full-text links + Categories + search + account
-            controls needs roughly 1450-1600px depending on auth state).
-            max-w-7xl capped the container at exactly the same 1280px the
-            old xl-gated nav activated at, leaving ZERO spare width the
-            instant it appeared — the nav's own content silently overflowed
-            past the container (and past the browser viewport itself, since
-            html/body has overflow-x:hidden — see index.css), permanently
-            clipping Register/Categories/Messages/Notifications/Profile
-            off-screen with no scrollbar to reach them. 1760px keeps a real
-            ~150-250px margin instead of a razor's-edge fit. */}
+        {/* max-w-[1760px], not max-w-7xl (1280px) — max-w-7xl capped the
+            container at exactly 1280px, leaving ZERO spare width once
+            content filled it. Since html/body has overflow-x:hidden
+            globally (see index.css), that overflow wasn't scrollable — it
+            permanently clipped Register/Categories/Messages/Notifications/
+            Profile off-screen with no way to reach them. The nav itself now
+            activates at `lg` (1024px, see below); this container is capped
+            wider still (1760px) purely so it keeps growing with the
+            viewport well past that instead of going fluid-then-flat right
+            at the activation point — extra margin, not the binding
+            constraint. */}
         <div className="max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 transition-all duration-300">
 
@@ -206,35 +222,37 @@ const Header: React.FC = () => {
               </div>
             </Link>
 
-            {/* Search — desktop. Fixed, safe widths below the nav's 1760px
-                breakpoint (never fights the nav for space, since nav is
-                hidden below that width too — see below). Only becomes
-                elastic once past it, matched to the container's own cap
-                above so "elastic" only ever activates once the full
-                available width is already known and sufficient. */}
+            {/* Search — desktop. Hidden through `lg` (the compact search
+                icon in the icon row covers that range instead) so it never
+                fights the nav pills for space in the tightest range
+                (1024-1279px) — appears at `xl` (1280px), the same tier the
+                full messages/notifications/profile row appears at, and goes
+                elastic at 1440px+ once the full available width is already
+                known and sufficient. min-w trimmed to 160px so every px
+                here stays budgeted against the logged-in case's real
+                content width. */}
             {isLoggedIn && (
-              <HeaderSearch className="hidden md:block md:w-40 lg:w-56 min-[1760px]:flex-1 min-[1760px]:min-w-[200px] min-[1760px]:max-w-md mx-2" suggestionSeeds={jobCategories} />
+              <HeaderSearch className="hidden xl:block xl:w-56 min-[1440px]:flex-1 min-[1440px]:min-w-[160px] min-[1440px]:max-w-md mx-2" suggestionSeeds={jobCategories} />
             )}
 
-            {/* Desktop Nav — gated to a custom 1760px breakpoint, not xl
-                (1280px) or 2xl (1536px). Both of Tailwind's built-in
-                breakpoints looked "guaranteed" on paper but were never
-                actually measured against this nav's real content width
-                once Community/Resume Builder/Blog/Categories were all
-                added — xl silently overflowed on every single xl+ screen,
-                and even 2xl left the logged-in case (search + full nav +
-                Messages/Notifications/Profile) with only a few px to
-                spare. 1760px (paired with max-w-[1760px] above)
-                is sized with real margin to spare. Below 2xl, nav links
-                live in the hamburger drawer instead (see the compact icon
-                row and shared drawer further down). */}
-            <nav className="hidden min-[1760px]:flex shrink-0 items-center space-x-1 bg-slate-100/60 p-1 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
-              {NAV_ITEMS.map((item) => {
+            {/* Desktop Nav — gated to `lg` (1024px, standard tablet-landscape
+                /laptop width) instead of a custom 1440px breakpoint. 1440px
+                left every laptop and tablet screen — the vast majority of
+                "desktop" traffic — stuck in the mobile hamburger/bottom-tab
+                UI, which is exactly backwards. Fitting content at 1024px
+                instead required shrinking it further, not just moving the
+                breakpoint: pills use tighter padding/gap below `xl`, and
+                Blog/About Us/Contact stay grouped in the "More" dropdown
+                next to Categories so only 4 links + 2 dropdowns need to fit.
+                Below `lg`, nav links live in the hamburger drawer instead
+                (see the compact icon row and shared drawer further down). */}
+            <nav className="hidden lg:flex shrink-0 items-center gap-0.5 xl:space-x-1 bg-slate-100/60 p-1 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
+              {PRIMARY_NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
                 return (
                   <Link key={item.name} to={item.path}
-                    className={`px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 group relative whitespace-nowrap ${
+                    className={`px-2 xl:px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 group relative whitespace-nowrap ${
                       isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                     }`}>
                     <span className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-700'}`}>
@@ -245,10 +263,37 @@ const Header: React.FC = () => {
                 );
               })}
 
+              {/* More Dropdown — Blog / About Us / Contact */}
+              <div className="relative" ref={moreDropdownRef}>
+                <button type="button" onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
+                  className={`px-2 xl:px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 border whitespace-nowrap ${
+                    isMoreDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
+                  }`}>
+                  <span>More</span>
+                  <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isMoreDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+                </button>
+                {isMoreDropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 p-2 z-50">
+                    {MORE_NAV_ITEMS.map((item) => {
+                      const isActive = location.pathname.startsWith(item.path);
+                      return (
+                        <Link key={item.name} to={item.path} onClick={() => setIsMoreDropdownOpen(false)}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+                            isActive ? 'bg-primary/5 text-primary' : 'text-slate-700 hover:bg-slate-50'
+                          }`}>
+                          <span className={isActive ? 'text-primary' : 'text-slate-400'}>{item.icon}</span>
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Categories Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button type="button" onClick={() => setIsJobsDropdownOpen(!isJobsDropdownOpen)}
-                  className={`px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 border whitespace-nowrap ${
+                  className={`px-2 xl:px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 border whitespace-nowrap ${
                     isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
                   }`}>
                   <SparkleIcon size={18} className="text-amber-500 fill-amber-400/20 animate-pulse" />
@@ -282,7 +327,7 @@ const Header: React.FC = () => {
             </nav>
 
             {/* Right side — desktop */}
-            <div className="flex shrink-0 items-center space-x-1 min-[1760px]:space-x-2 min-w-0">
+            <div className="flex shrink-0 items-center space-x-1 lg:space-x-2 min-w-0">
               {/* QuickJobs Assistant — always visible regardless of auth
                   state (the chatbot itself is public, see Chatbot.tsx),
                   opens the panel anchored under this header instead of the
@@ -301,10 +346,10 @@ const Header: React.FC = () => {
                 <>
                   {/* Desktop login/register */}
                   <div className="hidden sm:flex items-center space-x-2">
-                    <Link to="/login" className="px-4 py-2.5 text-xs min-[1760px]:text-sm font-semibold text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200">
+                    <Link to="/login" className="px-4 py-2.5 text-xs min-[1440px]:text-sm font-semibold text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200">
                       Log In
                     </Link>
-                    <Link to="/signup" className="relative group inline-flex items-center justify-center px-4 sm:px-5 py-2.5 text-xs min-[1760px]:text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/25 transition-all duration-200 active:scale-95">
+                    <Link to="/signup" className="relative group inline-flex items-center justify-center px-4 sm:px-5 py-2.5 text-xs min-[1440px]:text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/25 transition-all duration-200 active:scale-95">
                       <span className="relative z-10 flex items-center gap-1.5">
                         <span>Register</span>
                         <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -313,15 +358,21 @@ const Header: React.FC = () => {
                   </div>
                   {/* Mobile: hamburger for not-logged-in */}
                   <button type="button" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="min-[1760px]:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
+                    className="lg:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
                     aria-label="Toggle Mobile Menu">
                     {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                   </button>
                 </>
               ) : (
                 <>
-                  {/* Desktop: messages + notifications + profile */}
-                  <div className="hidden min-[1760px]:flex items-center space-x-1.5">
+                  {/* Desktop: messages + notifications + profile. Deferred
+                      to `xl` (1280px), one tier past the nav's own `lg` —
+                      at lg-xl this full cluster plus the full search bar
+                      would outweigh what the nav pills leave free, so that
+                      range keeps the compact icon row below instead
+                      (search icon, notifications, avatar) and only gains
+                      the full row/search bar once there's real room. */}
+                  <div className="hidden xl:flex items-center space-x-1.5">
                     <Link to="/messages" aria-label="Messages"
                       className="p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <MessageCircle size={20} />
@@ -341,7 +392,12 @@ const Header: React.FC = () => {
                             <span className="text-white text-sm font-bold">{initial}</span>
                           )}
                         </div>
-                        <div className="hidden min-[1760px]:block text-left">
+                        {/* Name text deliberately gated to a higher tier
+                            than the rest of this cluster (xl, not lg) — at
+                            lg-xl every px is needed for search+nav+icons; an
+                            avatar-only profile button (still has the
+                            chevron/tooltip) is enough there. */}
+                        <div className="hidden xl:block text-left">
                           <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] min-[1760px]:max-w-[150px] truncate">{userInfo?.name}</p>
                         </div>
                         <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
@@ -399,15 +455,15 @@ const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Compact icons (md through 1760px — the range that
-                      doesn't show the full text nav). Search, notifications
-                      and the profile avatar are
-                      always reachable here; a hamburger opens the same
-                      nav-links drawer guests get below, since logged-in
-                      users otherwise have no way to reach Home/Blog/About/
-                      Contact/Categories in this range — only the bottom
-                      tab bar's four shortcuts. */}
-                  <div className="flex min-[1760px]:hidden items-center gap-1">
+                  {/* Compact icons (md through xl — spans both "no nav yet"
+                      (md-lg) and "nav pills but no room for the full
+                      icon row/search bar yet" (lg-xl)). Search and
+                      notifications are always reachable here. The hamburger
+                      only matters in the md-lg part of that range — once
+                      the nav pills appear at `lg`, Home/Blog/About/Contact/
+                      Categories are already reachable there directly, so
+                      it's hidden again from `lg` on. */}
+                  <div className="flex xl:hidden items-center gap-1">
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <Search size={20} />
@@ -416,7 +472,7 @@ const Header: React.FC = () => {
                       <NotificationBell />
                     </div>
                     <button type="button" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                      className="hidden md:inline-flex p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95"
+                      className="hidden md:inline-flex lg:hidden p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95"
                       aria-label="Toggle menu">
                       {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
@@ -446,7 +502,7 @@ const Header: React.FC = () => {
           // Fully opaque — same "content bleeding through a translucent
           // panel over the Hero" fix as the dropdowns above; this drawer
           // sits directly over the home page's Hero section too.
-          <div className="min-[1760px]:hidden bg-white border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+          <div className="lg:hidden bg-white border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
             <div className="px-4 pt-3 pb-6 space-y-1.5">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
@@ -488,7 +544,7 @@ const Header: React.FC = () => {
       {/* ── LINKEDIN-STYLE BOTTOM TAB BAR (mobile, logged-in only) ── */}
       {isLoggedIn && (
         <nav
-          className="min-[1760px]:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200"
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           aria-label="Mobile navigation"
         >
@@ -537,7 +593,7 @@ const Header: React.FC = () => {
       {/* ── MOBILE PROFILE SLIDE-UP SHEET ── */}
       {isMobileProfileOpen && (
         <div
-          className="min-[1760px]:hidden fixed inset-0 z-[60] flex flex-col justify-end"
+          className="lg:hidden fixed inset-0 z-[60] flex flex-col justify-end"
           onClick={() => setIsMobileProfileOpen(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />

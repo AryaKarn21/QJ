@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { fetchPostById } from '../../api/communityApi';
 import { PostCard } from './PostCard';
 import type { CommunityPost } from '../../types/community';
+import { SkeletonAvatarLine, SkeletonParagraph, SkeletonBlock } from '../ui/Skeleton';
 
 export function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -27,7 +28,11 @@ export function PostDetailPage() {
       {notFound ? (
         <p className="py-12 text-center text-sm text-gray-500">This post doesn't exist or was removed.</p>
       ) : !post ? (
-        <p className="py-12 text-center text-sm text-gray-400">Loading…</p>
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-card space-y-4" aria-busy="true" aria-label="Loading post">
+          <SkeletonAvatarLine />
+          <SkeletonParagraph lines={3} />
+          <SkeletonBlock className="h-48 w-full" />
+        </div>
       ) : (
         <PostCard post={post} onDeleted={() => navigate('/community')} />
       )}

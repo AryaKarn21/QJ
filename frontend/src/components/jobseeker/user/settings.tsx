@@ -3,6 +3,7 @@ import { Eye } from 'lucide-react';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { getJobseekerProfile } from '../jobseekerApi/api';
 import { changePassword } from '../../auth/authApi/authApi';
+import { SkeletonCircle, SkeletonText } from '../../ui/Skeleton';
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -69,18 +70,27 @@ const UserSettings = () => {
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold">Settings</h1>
             <div className="flex items-center space-x-3">
-              {user?.profilePic ? (
-                <img
-                  src={resolveMediaUrl(user.profilePic)}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
+              {!user ? (
+                <>
+                  <SkeletonCircle size="h-8 w-8" />
+                  <SkeletonText width="w-24" />
+                </>
               ) : (
-                <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-300 text-3xl font-bold text-gray-500">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
-                </span>
+                <>
+                  {user.profilePic ? (
+                    <img
+                      src={resolveMediaUrl(user.profilePic)}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-300 text-3xl font-bold text-gray-500">
+                      {user.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  )}
+                  <span>{user.name}</span>
+                </>
               )}
-              <span>{user?.name || 'Loading...'}</span>
             </div>
           </div>
 

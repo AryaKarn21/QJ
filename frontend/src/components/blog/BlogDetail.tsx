@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, User, Edit, Trash2, Send } from 'lucide-react';
 import { handleImageFallback } from '../../utils/imageFallback';
+import { SkeletonText, SkeletonBlock, SkeletonAvatarLine, SkeletonParagraph } from '../ui/Skeleton';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -188,8 +189,11 @@ const BlogDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-5" aria-busy="true" aria-label="Loading blog post">
+        <SkeletonText width="w-2/3" height="h-9" />
+        <SkeletonAvatarLine />
+        <SkeletonBlock className="w-full h-72" />
+        <SkeletonParagraph lines={6} />
       </div>
     );
   }

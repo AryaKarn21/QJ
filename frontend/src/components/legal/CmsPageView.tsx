@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { getPublicCmsPage, type CmsGenericPage } from '../../api/cmsPublicApi';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 
 /**
  * Public renderer for admin-authored generic CMS pages (the "Pages" tab
@@ -45,8 +46,10 @@ export function CmsPageView() {
     <div className="flex min-h-screen flex-col bg-white text-gray-800">
       <div className="mx-auto w-full max-w-4xl px-6 py-12">
         {loading ? (
-          <div className="flex items-center gap-2 py-16 text-gray-400">
-            <Loader2 size={18} className="animate-spin" /> Loading…
+          <div aria-busy="true" aria-label="Loading page">
+            <SkeletonText width="w-2/3" height="h-9" className="mb-6" />
+            <SkeletonBlock className="mb-6 h-64 w-full" />
+            <SkeletonParagraph lines={6} />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-600">

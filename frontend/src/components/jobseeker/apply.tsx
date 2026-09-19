@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { fetchJobById, applyToJob } from "./jobseekerApi/api";
 import { Lock, CheckCircle2 } from "lucide-react";
 import CoverLetterEditor, { htmlToPlainText } from "./coverLetter/CoverLetterEditor";
+import { SkeletonText, SkeletonParagraph } from "../ui/Skeleton";
 
 interface Job {
   _id: string;
@@ -90,7 +91,14 @@ const ApplyPage: React.FC = () => {
     }
   };
 
-  if (!job) return <div>Loading job details...</div>;
+  if (!job) return (
+    <div className="mx-auto mb-10 mt-6 w-full max-w-5xl px-4 sm:mt-10 sm:px-6" aria-busy="true" aria-label="Loading job details">
+      <div className="rounded-2xl bg-white p-4 shadow sm:p-6 md:p-8 space-y-5">
+        <SkeletonText width="w-2/3" height="h-7" />
+        <SkeletonParagraph lines={5} />
+      </div>
+    </div>
+  );
 
   if (isExpired) {
     return (

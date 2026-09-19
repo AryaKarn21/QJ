@@ -35,6 +35,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { KpiCard } from '../ui/KpiCard';
+import { SkeletonAvatarLine } from '../ui/Skeleton';
 import { ChartCard } from '../ui/ChartCard';
 import { StatusBadge, statusToTone } from '../ui/StatusBadge';
 import { DataTable, type DataTableColumn } from '../ui/DataTable';
@@ -378,7 +379,11 @@ export const AdminDashboardV2: React.FC = () => {
           </div>
           <div className="mt-3 space-y-3.5">
             {(appsLoading || appsFetching) && (
-              <p className="text-xs text-adminTextSecondary">Loading recent activity…</p>
+              <div className="space-y-3.5" aria-busy="true" aria-label="Loading recent activity">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonAvatarLine key={i} avatarSize="h-4 w-4" />
+                ))}
+              </div>
             )}
             {!(appsLoading || appsFetching) && (appsData?.applications.length ?? 0) === 0 && (
               <p className="text-xs text-adminTextSecondary">No recent applications yet.</p>

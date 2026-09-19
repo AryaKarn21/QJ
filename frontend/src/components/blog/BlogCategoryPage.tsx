@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, Search, Layers, ArrowLeft, FileText } from 'lucide-react';
 import { getBlogCategoryBySlug, type PublicBlogCategory } from '../../api/blogCategoryApi';
 import { handleImageFallback, BLOG_IMAGE_FALLBACK } from '../../utils/imageFallback';
+import { SkeletonBlock, SkeletonText, SkeletonAvatarLine } from '../ui/Skeleton';
 
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why a :8000 fallback would be wrong here too.
@@ -103,7 +104,14 @@ const BlogCategoryPage: React.FC = () => {
   }
 
   if (!category) {
-    return <div className="flex justify-center items-center min-h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" aria-busy="true" aria-label="Loading category">
+        <SkeletonText width="w-40" height="h-5" className="mb-4" />
+        <div className="mb-8 rounded-2xl border border-gray-100 p-6 sm:p-8">
+          <SkeletonAvatarLine avatarSize="h-14 w-14" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -142,7 +150,18 @@ const BlogCategoryPage: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" aria-busy="true" aria-label="Loading articles">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <SkeletonBlock className="w-full h-48 rounded-none" />
+              <div className="p-6 space-y-4">
+                <SkeletonAvatarLine avatarSize="h-8 w-8" />
+                <SkeletonText width="w-3/4" height="h-5" />
+                <SkeletonText width="w-full" height="h-9" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : error ? (
         <div className="text-center py-12">
           <p className="text-red-500 text-lg">Couldn't load articles. Please try again.</p>

@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { getAllUsers } from "./adminApi/api";
 import { AxiosError } from "axios";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
+import { SkeletonCircle, SkeletonText, SkeletonParagraph } from "../ui/Skeleton";
 
 interface Qualification {
     degree: string;
@@ -58,7 +59,22 @@ const UsersProfile = () => {
     useEffect(() => { fetchUser(); }, [fetchUser]);
     useAutoRefresh(() => fetchUser(), 30000);
 
-    if (!user) return <div className="p-6">Loading user profile...</div>;
+    if (!user) return (
+        <div className="p-6" aria-busy="true" aria-label="Loading user profile">
+            <SkeletonText width="w-40" height="h-8" className="mb-4" />
+            <div className="bg-white rounded-lg shadow-sm p-6 flex space-x-6">
+                <SkeletonCircle size="h-24 w-24" />
+                <div className="flex-1 space-y-2 pt-1">
+                    <SkeletonText width="w-1/3" height="h-5" />
+                    <SkeletonText width="w-1/2" height="h-4" />
+                    <SkeletonText width="w-1/4" height="h-4" />
+                </div>
+            </div>
+            <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
+                <SkeletonParagraph lines={4} />
+            </div>
+        </div>
+    );
 
     const avatar = user.profilePic || user.companyLogo;
     const imageSrc = avatar

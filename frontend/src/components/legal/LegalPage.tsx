@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { getLegalPage } from '../../api/legalApi';
+import { SkeletonParagraph } from '../ui/Skeleton';
 
 interface LegalPageProps {
   slug: string;
@@ -57,8 +58,8 @@ export function LegalPage({ slug, defaultTitle, fallback }: LegalPageProps) {
         <h1 className="mb-6 text-3xl font-bold text-gray-900">{page?.title || defaultTitle}</h1>
 
         {loading ? (
-          <div className="flex items-center gap-2 py-16 text-gray-400">
-            <Loader2 size={18} className="animate-spin" /> Loading…
+          <div aria-busy="true" aria-label="Loading page">
+            <SkeletonParagraph lines={8} />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-600">

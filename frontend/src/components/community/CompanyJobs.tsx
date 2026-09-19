@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, DollarSign, Clock, Briefcase } from 'lucide-react';
 import { fetchCompanyJobs, type CompanyJob } from '../../api/communityApi';
+import { SkeletonText } from '../ui/Skeleton';
 
 export function CompanyJobs({ companyId }: { companyId: string }) {
   const navigate = useNavigate();
@@ -14,7 +15,16 @@ export function CompanyJobs({ companyId }: { companyId: string }) {
       .finally(() => setLoading(false));
   }, [companyId]);
 
-  if (loading) return <div className="py-8 text-center text-sm text-gray-400">Loading jobs…</div>;
+  if (loading) return (
+    <div className="space-y-3" aria-busy="true" aria-label="Loading jobs">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-card space-y-2">
+          <SkeletonText width="w-2/3" height="h-4" />
+          <SkeletonText width="w-1/2" height="h-3" />
+        </div>
+      ))}
+    </div>
+  );
 
   if (jobs.length === 0) {
     return (

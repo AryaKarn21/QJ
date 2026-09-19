@@ -8,6 +8,7 @@ import { fetchJobCategories } from "../../../api/jobCategoryApi";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReactQuill from "react-quill";
+import { SkeletonText, SkeletonBlock } from "../../ui/Skeleton";
 import "react-quill/dist/quill.snow.css";
 import { TagInput } from "../../common/TagInput";
 import {
@@ -294,7 +295,20 @@ const PostJob = () => {
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  if ((isEdit || duplicateFrom) && isFetching) return <div className="p-10 text-center text-gray-500">Loading job data...</div>;
+  if ((isEdit || duplicateFrom) && isFetching) return (
+    <div className="max-w-3xl mx-auto p-6 space-y-5" aria-busy="true" aria-label="Loading job data">
+      <SkeletonText width="w-1/2" height="h-8" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SkeletonText height="h-10" />
+        <SkeletonText height="h-10" />
+      </div>
+      <SkeletonBlock className="h-40 w-full" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SkeletonText height="h-10" />
+        <SkeletonText height="h-10" />
+      </div>
+    </div>
+  );
 
   const displayCompanyName = formData.useCompanyOverride && formData.overrideName ? formData.overrideName : companyProfile?.name;
   const displayCompanyTagline = formData.useCompanyOverride && formData.overrideTagline ? formData.overrideTagline : companyProfile?.headline;

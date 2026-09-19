@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { StatusBadge, statusToTone } from '../ui/StatusBadge';
 import { adminGetSubscriptionById } from '../../api/subscriptionApi';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { SkeletonCard } from '../ui/Skeleton';
 
 export default function AdminSubscriptionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -30,8 +31,12 @@ export default function AdminSubscriptionDetail() {
       </button>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-16 text-slate-400">
-          <Loader2 size={18} className="animate-spin" /> Loading…
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3" aria-busy="true" aria-label="Loading subscription">
+          <div className="space-y-6 lg:col-span-2">
+            <SkeletonCard className="h-40" />
+            <SkeletonCard className="h-40" />
+          </div>
+          <SkeletonCard className="h-64" />
         </div>
       ) : isError || !data ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">

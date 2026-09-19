@@ -22,6 +22,7 @@ import { DataTable, DataTableColumn } from '../../ui/DataTable';
 import { Drawer } from '../../ui/Drawer';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { EmptyState } from '../../ui/EmptyState';
+import { SkeletonText } from '../../ui/Skeleton';
 import {
   AdminBlog,
   CareerTip,
@@ -1156,7 +1157,16 @@ function HomepageTab() {
     setForm((f) => ({ ...f, cta: { ...f.cta, ...patch } }));
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />;
+    return (
+      <div className="space-y-6" aria-busy="true" aria-label="Loading homepage content">
+        <SkeletonText width="w-full" height="h-14" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonText key={i} width="w-full" height="h-9" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

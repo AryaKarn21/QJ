@@ -4,6 +4,7 @@ import { getAllApplicantsForEmployerJobs, updateApplicationStatus } from "./admi
 import { Eye } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
+import { SkeletonRow, SkeletonText } from "../ui/Skeleton";
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -67,7 +68,20 @@ const EmployerApplicants = () => {
         return <p className="p-4 text-red-600">Employer ID not provided in URL.</p>;
     }
 
-    if (loading) return <p className="p-4">Loading applicants...</p>;
+    if (loading) return (
+        <div className="min-h-screen overflow-auto p-4 sm:p-6" aria-busy="true" aria-label="Loading applicants">
+            <SkeletonText width="w-48" height="h-8" className="mb-4" />
+            <div className="bg-white p-4 rounded shadow-sm overflow-x-auto">
+                <table className="w-full table-auto border-collapse">
+                    <tbody>
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <SkeletonRow key={i} columns={7} />
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
 
     return (
         <div

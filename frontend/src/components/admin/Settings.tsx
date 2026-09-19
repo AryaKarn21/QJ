@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock, KeyRound, Megaphone, ShieldCheck, Send, Loader2 } fr
 import { getAdminProfile, makeAnnouncement } from './adminApi/api';
 import { changePassword } from '../auth/authApi/authApi';
 import { useAdminAuth } from '../../context/useAdminAuth';
+import { SkeletonCircle, SkeletonText } from '../ui/Skeleton';
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
@@ -113,20 +114,29 @@ const AdminSettings = () => {
           </div>
 
           <div className="flex items-center gap-3 bg-white border border-slate-200/80 rounded-xl px-3 py-2 shadow-sm shrink-0 self-start sm:self-auto">
-            {user?.profilePic ? (
-              <img
-                src={resolveMediaUrl(user.profilePic)}
-                alt={user.name}
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-orange-100"
-              />
+            {!user ? (
+              <>
+                <SkeletonCircle size="h-9 w-9" />
+                <SkeletonText width="w-24" />
+              </>
             ) : (
-              <span className="w-9 h-9 flex items-center justify-center rounded-full bg-orange-50 text-[#F97316] text-sm font-bold ring-2 ring-orange-100">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
-              </span>
+              <>
+                {user.profilePic ? (
+                  <img
+                    src={resolveMediaUrl(user.profilePic)}
+                    alt={user.name}
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-orange-100"
+                  />
+                ) : (
+                  <span className="w-9 h-9 flex items-center justify-center rounded-full bg-orange-50 text-[#F97316] text-sm font-bold ring-2 ring-orange-100">
+                    {user.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                )}
+                <span className="text-sm font-semibold text-slate-700 truncate max-w-[9rem]">
+                  {user.name}
+                </span>
+              </>
             )}
-            <span className="text-sm font-semibold text-slate-700 truncate max-w-[9rem]">
-              {user?.name || 'Loading...'}
-            </span>
           </div>
         </div>
 

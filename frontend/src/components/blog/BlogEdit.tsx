@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Save, Plus, X } from 'lucide-react';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
 import { TagInput } from '../common/TagInput';
+import { SkeletonText, SkeletonBlock } from '../ui/Skeleton';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -160,8 +161,11 @@ const BlogEdit: React.FC = () => {
 
   if (fetchingBlog) {
     return (
-      <div className="flex justify-center items-center min-h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-5" aria-busy="true" aria-label="Loading blog">
+        <SkeletonText width="w-1/3" height="h-8" />
+        <SkeletonText width="w-full" height="h-11" />
+        <SkeletonBlock className="w-full h-56" />
+        <SkeletonText width="w-full" height="h-48" />
       </div>
     );
   }

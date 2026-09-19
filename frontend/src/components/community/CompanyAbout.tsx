@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Globe, Building2, Users2, MapPin, Calendar, Linkedin, Target, Heart, Gift } from 'lucide-react';
 import { fetchCompanyAbout } from '../../api/communityApi';
 import type { CompanyAbout as CompanyAboutData } from '../../api/communityApi';
+import { SkeletonParagraph, SkeletonText } from '../ui/Skeleton';
 
 export function CompanyAbout({ companyId }: { companyId: string }) {
   const [about, setAbout] = useState<CompanyAboutData | null>(null);
@@ -14,7 +15,15 @@ export function CompanyAbout({ companyId }: { companyId: string }) {
   }, [companyId]);
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-gray-400">Loading…</div>;
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-card space-y-4" aria-busy="true" aria-label="Loading company info">
+        <SkeletonParagraph lines={2} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SkeletonText width="w-2/3" />
+          <SkeletonText width="w-2/3" />
+        </div>
+      </div>
+    );
   }
   if (!about) {
     return null;

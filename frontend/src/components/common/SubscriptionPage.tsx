@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, CreditCard, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, CreditCard } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useCurrentUser } from '../../utils/currentUser';
+import { SkeletonText, SkeletonParagraph } from '../ui/Skeleton';
 import {
   getPlans,
   getMySubscription,
@@ -74,8 +75,20 @@ export default function SubscriptionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-slate-400">
-        <Loader2 className="animate-spin mr-2" size={20} /> Loading subscription…
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-10" aria-busy="true" aria-label="Loading subscription">
+        <div>
+          <SkeletonText width="w-48" height="h-8" className="mb-2" />
+          <SkeletonText width="w-64" height="h-4" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-slate-200 p-6">
+              <SkeletonText width="w-1/2" height="h-6" className="mb-3" />
+              <SkeletonText width="w-1/3" height="h-9" className="mb-4" />
+              <SkeletonParagraph lines={3} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

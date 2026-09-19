@@ -38,6 +38,7 @@ import {
 import { generatePDF, generateAtsSafePDF } from './utils/pdfGenerator';
 import ImageUpload from './components/ImageUpload';
 import { AtsAnalysisPanel } from './components/AtsAnalysisPanel';
+import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -574,7 +575,16 @@ const ResumeEditor: React.FC = () => {
   };
 
   if (loading || !resume) {
-    return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading resume…</div>;
+    return (
+      <div className="flex min-h-screen gap-6 p-6" aria-busy="true" aria-label="Loading resume">
+        <div className="w-full max-w-sm space-y-4">
+          <SkeletonText width="w-1/2" height="h-7" />
+          <SkeletonParagraph lines={4} />
+          <SkeletonParagraph lines={4} />
+        </div>
+        <SkeletonBlock className="hidden flex-1 lg:block" />
+      </div>
+    );
   }
 
   const currentTemplateDef = getTemplateById(resume.layout);

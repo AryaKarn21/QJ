@@ -5,6 +5,7 @@ import { fetchSavedJobs, toggleSaveJob } from '../jobseekerApi/api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
+import { SkeletonRow } from '../../ui/Skeleton';
 
 interface Employer {
   name: string;
@@ -105,7 +106,15 @@ const UserSavedJobs = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-10 text-gray-500">Loading saved jobs...</div>
+            <div className="hidden overflow-x-auto md:block" aria-busy="true" aria-label="Loading saved jobs">
+              <table className="w-full">
+                <tbody>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <SkeletonRow key={i} columns={5} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : filteredJobs.length === 0 ? (
             <div className="text-center py-10 text-gray-500">No saved jobs found.</div>
           ) : (
