@@ -2,25 +2,42 @@ const JobCategory = require('../models/JobCategory');
 const Job = require('../models/Job');
 const { persistUpload, deleteStoredFile } = require('../services/media.service');
 
-// Create
+// Create — always an admin/superadmin (system) category. Employer-created
+// categories go through createEmployerJobCategory below, which explicitly
+// sets scope: 'employer'; this one relies on the schema's scope: 'system'
+// default and additionally stamps createdBy with the authenticated admin
+// so "who created this" is traceable, same as employer categories already are.
 exports.createJobCategory = async (req, res) => {
-  try {
-    const name = (req.body.name || '').trim();
-    if (!name) {
-      return res.status(400).json({ error: 'Category name is required' });
-    }
+  const name = (req.body.name || '').trim();
+  if (!name) {
+    return res.status(400).json({ error: 'Category name is required' });
+  }
 
+  let icon = '';
+  if (req.file) {
+    try {
+      icon = await persistUpload(req.file, 'job_category_icons', req.user?.id || 'system');
+    } catch (uploadError) {
+      // A bad/unsupported file or a failure talking to the storage backend
+      // is a client-actionable "your upload didn't work" — not a server
+      // crash — so it gets a 400 with the real reason, not an opaque 500.
+      console.error(`[jobCategoryController.createJobCategory] icon upload failed (user=${req.user?.id}):`, uploadError);
+      return res.status(400).json({ error: uploadError.message || 'Failed to upload icon. Please try a different image.' });
+    }
+  }
+
+  try {
     const existing = await JobCategory.findOne({ name }).collation({ locale: 'en', strength: 2 });
     if (existing) {
       return res.status(409).json({ error: `A category named "${existing.name}" already exists` });
     }
 
-    const icon = req.file ? await persistUpload(req.file, 'job_category_icons', req.user?.id || 'system') : '';
-
     const jobCategory = await JobCategory.create({
       name,
       icon,
       isTrending: req.body.isTrending === 'true' || req.body.isTrending === true,
+      scope: 'system',
+      createdBy: req.user?.id || null,
     });
 
     res.status(201).json(jobCategory);
@@ -28,8 +45,11 @@ exports.createJobCategory = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'A category with this name already exists' });
     }
-    console.error('Error creating job category:', error);
-    res.status(400).json({ error: 'Failed to create category' });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error(`[jobCategoryController.createJobCategory] unexpected error (user=${req.user?.id}):`, error);
+    res.status(500).json({ error: 'Failed to create category due to a server error. Please try again.' });
   }
 };
 
@@ -77,7 +97,12 @@ exports.updateJobCategory = async (req, res) => {
     if (req.file) {
       const current = await JobCategory.findById(req.params.id).select('icon').lean();
       previousIcon = current?.icon || null;
-      updateData.icon = await persistUpload(req.file, 'job_category_icons', req.user?.id || req.params.id);
+      try {
+        updateData.icon = await persistUpload(req.file, 'job_category_icons', req.user?.id || req.params.id);
+      } catch (uploadError) {
+        console.error(`[jobCategoryController.updateJobCategory] icon upload failed (id=${req.params.id}):`, uploadError);
+        return res.status(400).json({ error: uploadError.message || 'Failed to upload icon. Please try a different image.' });
+      }
     }
 
     const category = await JobCategory.findByIdAndUpdate(
@@ -93,8 +118,11 @@ exports.updateJobCategory = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'A category with this name already exists' });
     }
-    console.error('Error updating job category:', error);
-    res.status(400).json({ error: 'Failed to update category' });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error(`[jobCategoryController.updateJobCategory] unexpected error (id=${req.params.id}):`, error);
+    res.status(500).json({ error: 'Failed to update category due to a server error. Please try again.' });
   }
 };
 

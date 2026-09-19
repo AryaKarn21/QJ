@@ -1,4 +1,5 @@
 const Resume = require("../models/Resume");
+const { SKILL_CATEGORIES, SKILL_LEVELS } = Resume;
 const AiUsageLog = require("../models/AiUsageLog");
 const {
   generateProfessionalSummary,
@@ -92,6 +93,51 @@ const generateSummary = async (req, res) => {
     friendlyAiError(res, error, "Failed to generate summary.");
   }
 };
+
+// Gemini is prompted to use the exact SKILL_CATEGORIES/SKILL_LEVELS enum
+// values and to always include an array for each list field, but an LLM
+// isn't a validator — it can (and, in testing, does) drift: a skill with a
+// category like "Technical Skills" instead of one of the real enum
+// values, a skill missing `name` (required on SkillSchema), or a field
+// coming back as a string/object instead of an array. Any of those hits
+// Mongoose's schema validation on resume.save() and, unnormalized, that
+// ValidationError isn't a Gemini-shaped error classifyGeminiError()
+// recognizes — it fell through to a generic 500 with no indication the
+// AI's output was the actual cause. Normalizing here means autofill either
+// succeeds with clamped/dropped-invalid data, or a genuinely unparseable
+// shape still fails validation but is now classified explicitly (see the
+// save()-specific catch in autoFillResume) instead of masquerading as a
+// server bug.
+function toArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeAutofillPayload(parsed) {
+  const normalized = { ...parsed };
+
+  normalized.skills = toArray(parsed.skills)
+    .filter((s) => s && typeof s === "object" && String(s.name || "").trim())
+    .map((s) => ({
+      name: String(s.name).trim(),
+      category: SKILL_CATEGORIES.includes(s.category) ? s.category : "Other",
+      level: SKILL_LEVELS.includes(s.level) ? s.level : "Intermediate",
+    }));
+
+  normalized.experience = toArray(parsed.experience).map((e) => ({
+    ...e,
+    current: Boolean(e?.current),
+  }));
+
+  normalized.education = toArray(parsed.education);
+  normalized.certifications = toArray(parsed.certifications);
+  normalized.projects = toArray(parsed.projects);
+
+  if (parsed.personalInfo && typeof parsed.personalInfo !== "object") {
+    normalized.personalInfo = {};
+  }
+
+  return normalized;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/:resumeId/autofill
@@ -202,7 +248,7 @@ Return this exact JSON shape:
     // stripping right, and a parse failure now throws a classifiable
     // `AI_BAD_RESPONSE` error that flows through the same friendlyAiError()
     // path as every other AI failure, rather than a bespoke inline 500.
-    const parsed = extractJson(result.response.text());
+    const parsed = normalizeAutofillPayload(extractJson(result.response.text()));
 
     const updatableFields = [
       "targetRole", "personalInfo", "summary", "experience",
@@ -219,7 +265,21 @@ Return this exact JSON shape:
       }
     }
 
-    await resume.save();
+    try {
+      await resume.save();
+    } catch (saveError) {
+      // Normalization above handles the known drift patterns (bad skill
+      // enum, non-array fields, ...) — if Mongoose *still* rejects the
+      // result, that's the AI producing a shape this resume genuinely
+      // can't store, not a server bug. 502, not 500, and the resume
+      // fetched at the top of this handler was never overwritten in the
+      // DB (only the in-memory document was mutated), so the resume
+      // created in step 1 is untouched and still fully usable.
+      console.error("Autofill produced data that failed Mongoose validation:", saveError);
+      return res.status(502).json({
+        message: "The AI's response couldn't be saved to your resume. Please try again, or fill in that section manually.",
+      });
+    }
 
     logAiUsage("resume_autofill", req.user?._id);
     res.json({ resume });

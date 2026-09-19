@@ -297,8 +297,10 @@ const JobDetailPage = () => {
 
   // companyOverride lets an employer show different company identity on
   // THIS specific posting than their profile (Phase 1's models/Job.js) —
-  // falls back to the auto-attached, populated employer otherwise.
-  const displayName = job.companyOverride?.name || job.employer?.name || 'Company';
+  // falls back to the auto-attached, populated employer otherwise. The
+  // final fallback is an honest "not available", not a generic "Company"
+  // that would read as if it were the real name.
+  const displayName = job.companyOverride?.name || job.employer?.name || 'Company not available';
   const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
   const displayTagline = job.companyOverride?.tagline || job.employer?.headline;
 

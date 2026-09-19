@@ -287,6 +287,38 @@ const generateBlogContent = async (req, res) => {
 };
 
 // ============================================================
+// BLOG SAVE ERROR HANDLER
+// ============================================================
+
+// Mongoose ValidationError (missing/invalid field — e.g. a manual-save
+// blog with no title, or an images[] entry missing its required url) is a
+// 400: the client's fault, with a specific reason. Everything else (DB
+// connection drop, unexpected driver error, ...) is a genuine 500 — but
+// always with the real error logged server-side, never swallowed, so a
+// future failure shows up in Render logs instead of just "Failed to
+// create blog" with no trace of why.
+function respondBlogSaveError(res, error, { action, fallbackMessage, errorCode }) {
+  console.error(`Error ${action} blog:`, error);
+
+  if (error.name === "ValidationError") {
+    const details = Object.values(error.errors || {}).map((e) => e.message);
+    return res.status(400).json({
+      success: false,
+      message: details[0] || "Invalid blog data.",
+      errorCode: "BLOG_VALIDATION_FAILED",
+      details,
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: fallbackMessage,
+    errorCode,
+    ...(process.env.NODE_ENV !== "production" ? { debug: error.message } : {}),
+  });
+}
+
+// ============================================================
 // CREATE A NEW BLOG
 // ============================================================
 
@@ -303,6 +335,25 @@ const createBlog = async (req, res) => {
       featuredImage,
       isPublished,
     } = req.body;
+
+    // Manual blog creation must work even if AI was never used — validate
+    // the two actually-required fields up front instead of letting a
+    // missing title/content fall through to Mongoose and come back as an
+    // opaque 500.
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Title is required",
+        errorCode: "TITLE_REQUIRED",
+      });
+    }
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Content is required",
+        errorCode: "CONTENT_REQUIRED",
+      });
+    }
 
     // Always use authenticated user.
     // Never trust author ID supplied by frontend.
@@ -332,7 +383,7 @@ const createBlog = async (req, res) => {
         _id: userId,
       });
 
-      authorImage = jobseeker?.profilepic || "";
+      authorImage = jobseeker?.profilePic || "";
     }
 
     // --------------------------------------------------------
@@ -344,7 +395,7 @@ const createBlog = async (req, res) => {
         _id: userId,
       });
 
-      authorImage = employer?.companylogo || "";
+      authorImage = employer?.companyLogo || "";
     }
 
     // --------------------------------------------------------
@@ -426,11 +477,10 @@ const createBlog = async (req, res) => {
       blog,
     });
   } catch (error) {
-    console.error("Error creating blog:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create blog",
+    return respondBlogSaveError(res, error, {
+      action: "creating",
+      fallbackMessage: "Failed to create blog",
+      errorCode: "BLOG_CREATE_FAILED",
     });
   }
 };
@@ -824,14 +874,10 @@ const updateBlog = async (req, res) => {
       blog,
     });
   } catch (error) {
-    console.error(
-      "Error updating blog:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update blog",
+    return respondBlogSaveError(res, error, {
+      action: "updating",
+      fallbackMessage: "Failed to update blog",
+      errorCode: "BLOG_UPDATE_FAILED",
     });
   }
 };

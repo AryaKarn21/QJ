@@ -19,12 +19,16 @@ router.put('/employer/:id', authenticate, authorizeRoles('employer'), iconUpload
 router.patch('/employer/:id/status', authenticate, authorizeRoles('employer'), jobCategoryController.patchEmployerJobCategoryStatus);
 router.delete('/employer/:id', authenticate, authorizeRoles('employer'), jobCategoryController.deleteEmployerJobCategory);
 
+// All other static routes MUST be declared before the generic "/:id"
+// routes below — Express matches routes in declaration order, and "/:id"
+// matches ANY single path segment, so "/trending/all" (and "/:id/trending"
+// below it) were being swallowed by "GET /:id" (id="trending") before this
+// reorder, permanently 404/500-ing GET /api/jobcategories/trending/all.
+router.get('/trending/all', jobCategoryController.getTrendingCategories);
+
 router.get('/:id', jobCategoryController.getJobCategoryById);
 router.put('/:id', authenticate, authorizeAdmin, iconUpload, jobCategoryController.updateJobCategory);
 router.delete('/:id', authenticate, authorizeAdmin, jobCategoryController.deleteJobCategory);
-
-// Extra Routes
 router.patch('/:id/trending', authenticate, authorizeAdmin, jobCategoryController.patchTrending);
-router.get('/trending/all', jobCategoryController.getTrendingCategories);
 
 module.exports = router;

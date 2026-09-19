@@ -1,5 +1,18 @@
 const Resume = require("../models/Resume");
 
+// Mongoose ValidationError/CastError (bad enum value, malformed ObjectId,
+// ...) is the client's fault — 400, with the real reason. Anything else
+// (DB connection drop, unexpected driver error) is a genuine 500, always
+// logged server-side with the stack so it's traceable in Render logs
+// instead of a bare "Server error" with no context.
+function respondResumeError(res, error, action) {
+  console.error(`Error ${action} resume:`, error);
+  if (error.name === "ValidationError" || error.name === "CastError") {
+    return res.status(400).json({ message: error.message });
+  }
+  return res.status(500).json({ message: "Server error" });
+}
+
 // List the logged-in user's resumes (most recently edited first) —
 // summary fields only, used for the "My Resumes" / template gallery view.
 const getMyResumes = async (req, res) => {
@@ -9,8 +22,7 @@ const getMyResumes = async (req, res) => {
       .sort({ updatedAt: -1 });
     res.json(resumes);
   } catch (error) {
-    console.error("Error fetching resumes:", error);
-    res.status(500).json({ message: "Server error" });
+    respondResumeError(res, error, "fetching");
   }
 };
 
@@ -21,8 +33,7 @@ const getResumeById = async (req, res) => {
     if (!resume) return res.status(404).json({ message: "Resume not found" });
     res.json(resume);
   } catch (error) {
-    console.error("Error fetching resume:", error);
-    res.status(500).json({ message: "Server error" });
+    respondResumeError(res, error, "fetching");
   }
 };
 
@@ -42,8 +53,7 @@ const createResume = async (req, res) => {
 
     res.status(201).json(resume);
   } catch (error) {
-    console.error("Error creating resume:", error);
-    res.status(500).json({ message: "Server error" });
+    respondResumeError(res, error, "creating");
   }
 };
 
@@ -98,8 +108,7 @@ const updateResume = async (req, res) => {
     await resume.save();
     res.json(resume);
   } catch (error) {
-    console.error("Error updating resume:", error);
-    res.status(500).json({ message: "Server error" });
+    respondResumeError(res, error, "updating");
   }
 };
 
@@ -109,8 +118,7 @@ const deleteResume = async (req, res) => {
     if (!resume) return res.status(404).json({ message: "Resume not found" });
     res.json({ message: "Resume deleted successfully" });
   } catch (error) {
-    console.error("Error deleting resume:", error);
-    res.status(500).json({ message: "Server error" });
+    respondResumeError(res, error, "deleting");
   }
 };
 

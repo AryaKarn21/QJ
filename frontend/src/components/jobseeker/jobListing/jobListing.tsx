@@ -583,8 +583,11 @@ const AllJobListing = () => {
                 // companyOverride lets an employer show different company
                 // identity on this specific posting, and is also the only
                 // display name left once `employer` is null (account since
-                // deleted) — same fallback jobdetail.tsx already uses.
-                const displayName = job.companyOverride?.name || job.employer?.name || 'Company';
+                // deleted) — same fallback jobdetail.tsx already uses. The
+                // final fallback is deliberately an honest "not available"
+                // rather than a generic "Company" — that reads as if it
+                // were the actual name, not a missing-data placeholder.
+                const displayName = job.companyOverride?.name || job.employer?.name || 'Company not available';
                 const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
                 return (
                 <div

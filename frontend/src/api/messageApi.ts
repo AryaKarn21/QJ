@@ -31,10 +31,14 @@ export const sendMessage = async (conversationId: string, text: string, files?: 
     const form = new FormData();
     form.append('text', text);
     files.forEach((f) => form.append('attachments', f));
+    // No explicit Content-Type — axios/the browser must generate it so it
+    // includes the required `boundary=...` parameter; a hand-set
+    // 'multipart/form-data' (no boundary) makes busboy/multer throw
+    // "Multipart: Boundary not found" on every attachment send.
     const res = await axios.post(
       `${API_BASE_URL}/api/community/messages/${conversationId}/messages`,
       form,
-      { ...getAuthHeader(), headers: { ...getAuthHeader().headers, 'Content-Type': 'multipart/form-data' } }
+      getAuthHeader()
     );
     return res.data.message as DirectMessage;
   }

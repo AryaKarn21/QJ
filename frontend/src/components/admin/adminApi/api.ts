@@ -2,12 +2,24 @@ import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
-const token = localStorage.getItem("token");
-
-const authHeader = {
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
+// Read the token fresh on every call instead of once at module load —
+// this module is imported once and kept alive for the lifetime of the SPA
+// session, so a module-level `const token = localStorage.getItem(...)`
+// would silently freeze whatever token happened to be in localStorage the
+// first time this module was imported. Any later login/logout/role change
+// (e.g. logging out of one role and into an admin account without a full
+// page reload) then keeps sending that stale-but-still-valid token, which
+// passes `authenticate` but fails `authorizeAdmin` — a real, valid token
+// for the wrong account, producing 403s that look like a permissions bug.
+const getAuthConfig = () => {
+  const token = localStorage.getItem("token");
+  return token
+    ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    : {};
 };
 
 export interface JobCategory {
@@ -46,12 +58,12 @@ export interface Job {
 }
 
 export const getAdminProfile = async () => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/profile`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/profile`, getAuthConfig());
   return res.data;
 };
 
 export const getAdminStats = async () => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/admin-stats`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/admin-stats`, getAuthConfig());
   return res.data;
 };
 
@@ -70,7 +82,7 @@ export interface AiUsageStats {
 
 // Mounted separately at /api/ai-usage (not under /api/admin) — see backend/server.js.
 export const getAiUsageStats = async (): Promise<AiUsageStats> => {
-  const res = await axios.get(`${API_BASE_URL}/api/ai-usage/stats`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/ai-usage/stats`, getAuthConfig());
   return res.data;
 };
 
@@ -98,7 +110,7 @@ export interface AnalyticsOverview {
 }
 
 export const getAnalyticsOverview = async (): Promise<AnalyticsOverview> => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/analytics`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/analytics`, getAuthConfig());
   return res.data;
 };
 
@@ -146,7 +158,7 @@ export const getAllApplications = async (params: {
   if (params.status) query.set('status', params.status);
   if (params.search) query.set('search', params.search);
 
-  const res = await axios.get(`${API_BASE_URL}/api/admin/applications?${query.toString()}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/applications?${query.toString()}`, getAuthConfig());
   return res.data;
 };
 
@@ -170,17 +182,17 @@ export const getAdminBlogs = async (params: { page?: number; limit?: number; sea
   if (params.page) query.set('page', String(params.page));
   if (params.limit) query.set('limit', String(params.limit));
   if (params.search) query.set('search', params.search);
-  const res = await axios.get(`${API_BASE_URL}/api/cms/blogs?${query.toString()}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/blogs?${query.toString()}`, getAuthConfig());
   return res.data as { blogs: AdminBlog[]; total: number; page: number; totalPages: number };
 };
 
 export const toggleBlogPublish = async (id: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/cms/blogs/${id}/publish`, {}, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/cms/blogs/${id}/publish`, {}, getAuthConfig());
   return res.data;
 };
 
 export const adminDeleteBlog = async (id: string) => {
-  const res = await axios.delete(`${API_BASE_URL}/api/cms/blogs/${id}`, authHeader);
+  const res = await axios.delete(`${API_BASE_URL}/api/cms/blogs/${id}`, getAuthConfig());
   return res.data;
 };
 
@@ -194,22 +206,22 @@ export interface Faq {
 }
 
 export const getFaqs = async (all = true) => {
-  const res = await axios.get(`${API_BASE_URL}/api/cms/faqs${all ? '?all=true' : ''}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/faqs${all ? '?all=true' : ''}`, getAuthConfig());
   return res.data as Faq[];
 };
 
 export const createFaq = async (data: Partial<Faq>) => {
-  const res = await axios.post(`${API_BASE_URL}/api/cms/faqs`, data, authHeader);
+  const res = await axios.post(`${API_BASE_URL}/api/cms/faqs`, data, getAuthConfig());
   return res.data as Faq;
 };
 
 export const updateFaq = async (id: string, data: Partial<Faq>) => {
-  const res = await axios.put(`${API_BASE_URL}/api/cms/faqs/${id}`, data, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/cms/faqs/${id}`, data, getAuthConfig());
   return res.data as Faq;
 };
 
 export const deleteFaq = async (id: string) => {
-  const res = await axios.delete(`${API_BASE_URL}/api/cms/faqs/${id}`, authHeader);
+  const res = await axios.delete(`${API_BASE_URL}/api/cms/faqs/${id}`, getAuthConfig());
   return res.data;
 };
 
@@ -223,22 +235,22 @@ export interface CareerTip {
 }
 
 export const getCareerTips = async (all = true) => {
-  const res = await axios.get(`${API_BASE_URL}/api/cms/career-tips${all ? '?all=true' : ''}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/career-tips${all ? '?all=true' : ''}`, getAuthConfig());
   return res.data as CareerTip[];
 };
 
 export const createCareerTip = async (data: Partial<CareerTip>) => {
-  const res = await axios.post(`${API_BASE_URL}/api/cms/career-tips`, data, authHeader);
+  const res = await axios.post(`${API_BASE_URL}/api/cms/career-tips`, data, getAuthConfig());
   return res.data as CareerTip;
 };
 
 export const updateCareerTip = async (id: string, data: Partial<CareerTip>) => {
-  const res = await axios.put(`${API_BASE_URL}/api/cms/career-tips/${id}`, data, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/cms/career-tips/${id}`, data, getAuthConfig());
   return res.data as CareerTip;
 };
 
 export const deleteCareerTip = async (id: string) => {
-  const res = await axios.delete(`${API_BASE_URL}/api/cms/career-tips/${id}`, authHeader);
+  const res = await axios.delete(`${API_BASE_URL}/api/cms/career-tips/${id}`, getAuthConfig());
   return res.data;
 };
 
@@ -261,7 +273,7 @@ export const uploadCmsImage = async (file: File) => {
   // an opaque 500 (this is what was breaking every FormData upload in
   // this file: uploadCmsImage, updateUser, createJobCategory,
   // updateJobCategory).
-  const res = await axios.post(`${API_BASE_URL}/api/cms/upload-image`, formData, authHeader);
+  const res = await axios.post(`${API_BASE_URL}/api/cms/upload-image`, formData, getAuthConfig());
   const relativeUrl = (res.data as { url: string }).url;
   return { url: `${API_BASE_URL}${relativeUrl}` };
 };
@@ -274,12 +286,12 @@ export interface CmsPage {
 }
 
 export const getCmsPage = async (slug: string) => {
-  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/${slug}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/${slug}`, getAuthConfig());
   return res.data as CmsPage;
 };
 
 export const saveCmsPage = async (slug: string, data: { title: string; content: string }) => {
-  const res = await axios.put(`${API_BASE_URL}/api/cms/pages/${slug}`, data, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/cms/pages/${slug}`, data, getAuthConfig());
   return res.data as CmsPage;
 };
 
@@ -306,32 +318,32 @@ export const getCmsPages = async (params: { page?: number; limit?: number; searc
   if (params.page) query.set('page', String(params.page));
   if (params.limit) query.set('limit', String(params.limit));
   if (params.search) query.set('search', params.search);
-  const res = await axios.get(`${API_BASE_URL}/api/cms/pages?${query.toString()}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/pages?${query.toString()}`, getAuthConfig());
   return res.data as { pages: CmsGenericPage[]; total: number; page: number; totalPages: number };
 };
 
 export const getCmsPageById = async (id: string) => {
-  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/id/${id}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/id/${id}`, getAuthConfig());
   return res.data as CmsGenericPage;
 };
 
 export const createCmsGenericPage = async (data: { title: string; content: string; featuredImage?: string; status?: 'draft' | 'published' }) => {
-  const res = await axios.post(`${API_BASE_URL}/api/cms/pages`, data, authHeader);
+  const res = await axios.post(`${API_BASE_URL}/api/cms/pages`, data, getAuthConfig());
   return res.data as CmsGenericPage;
 };
 
 export const updateCmsGenericPage = async (id: string, data: Partial<{ title: string; content: string; featuredImage: string; status: 'draft' | 'published' }>) => {
-  const res = await axios.put(`${API_BASE_URL}/api/cms/pages/id/${id}`, data, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/cms/pages/id/${id}`, data, getAuthConfig());
   return res.data as CmsGenericPage;
 };
 
 export const toggleCmsPagePublish = async (id: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/cms/pages/id/${id}/publish`, {}, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/cms/pages/id/${id}/publish`, {}, getAuthConfig());
   return res.data as { message: string; status: 'draft' | 'published' };
 };
 
 export const deleteCmsGenericPage = async (id: string) => {
-  const res = await axios.delete(`${API_BASE_URL}/api/cms/pages/id/${id}`, authHeader);
+  const res = await axios.delete(`${API_BASE_URL}/api/cms/pages/id/${id}`, getAuthConfig());
   return res.data;
 };
 
@@ -370,40 +382,40 @@ export interface HomepageContentAdmin {
 // impossible for the admin form to resume editing a draft or see what's
 // live right after unpublishing.
 export const getHomepageContentAdmin = async (): Promise<HomepageContentAdmin> => {
-  const res = await axios.get(`${API_BASE_URL}/api/cms/homepage/admin`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/homepage/admin`, getAuthConfig());
   return res.data;
 };
 
 export const saveHomepageContent = async (
   data: Partial<HomepageContentAdmin>
 ): Promise<HomepageContentAdmin> => {
-  const res = await axios.put(`${API_BASE_URL}/api/cms/homepage`, data, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/cms/homepage`, data, getAuthConfig());
   return res.data;
 };
 
 
 export const getDailyLoggedInUsers = async () => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/daily-logins`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/daily-logins`, getAuthConfig());
   return res.data;
 };
 
 export const getAllJobStatsByDate = async () => {
-  const res = await axios.get(`${API_BASE_URL}/api/insights/all-job-stats`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/insights/all-job-stats`, getAuthConfig());
   return res.data;
 };
 
 export const getAllUsers = async () => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/users`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/users`, getAuthConfig());
   return res.data;
 };
 
 export const updateUser = async (userId: string, data: FormData) => {
-  const res = await axios.put(`${API_BASE_URL}/api/admin/user/${userId}`, data, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/admin/user/${userId}`, data, getAuthConfig());
   return res.data;
 };
 
 export const deleteUser = async (userId: any) => {
-  const res = await axios.delete(`${API_BASE_URL}/api/admin/user/${userId}`, authHeader);
+  const res = await axios.delete(`${API_BASE_URL}/api/admin/user/${userId}`, getAuthConfig());
   return res.data;
 };
 
@@ -414,20 +426,20 @@ export const updateUserRole = async (userId: string, action: 'promote' | 'demote
   const res = await axios.patch(
     `${API_BASE_URL}/api/admin/users/${userId}/role`,
     { action },
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
 
 export const verifyEmployer = async (userId: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/admin/verify-employer/${userId}`, {}, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/verify-employer/${userId}`, {}, getAuthConfig());
   return res.data;
 };
 
 export const getAllApplicantsForEmployerJobs = async (employerId: string) => {
   const res = await axios.get(
     `${API_BASE_URL}/api/admin/employer/${employerId}/applicants`,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -437,7 +449,7 @@ export const updateApplicationStatus = async (applicationId: string, status: str
   const res = await axios.patch(
     `${API_BASE_URL}/api/admin/applications/${applicationId}/status`,
     { status },
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -446,7 +458,7 @@ export const updateApplicationStatus = async (applicationId: string, status: str
 export const fetchJobs = async (page = 1, limit = 6, search = "", status = "all") => {
   const res = await axios.get(
     `${API_BASE_URL}/api/admin/jobs?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}`,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -456,7 +468,7 @@ export const updateJob = async (jobId: string, updatedData: Partial<Job>) => {
   const res = await axios.put(
     `${API_BASE_URL}/api/admin/job/${jobId}`,
     updatedData,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -469,7 +481,7 @@ export const makeAnnouncement = async (data: {
   const res = await axios.post(
     `${API_BASE_URL}/api/notification/announcement`,
     data,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -478,7 +490,7 @@ export const toggleTrendingStatus = async (jobId: string, istrending: boolean) =
   const res = await axios.patch(
     `${API_BASE_URL}/api/admin/jobs/${jobId}/trending`,
     { istrending },
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -486,37 +498,37 @@ export const toggleTrendingStatus = async (jobId: string, istrending: boolean) =
 
 
 export const deleteJob = async (jobId: any) => {
-  const res = await axios.delete(`${API_BASE_URL}/api/admin/job/${jobId}`, authHeader);
+  const res = await axios.delete(`${API_BASE_URL}/api/admin/job/${jobId}`, getAuthConfig());
   return res.data;
 };
 
 
 export const fetchRevenues = () =>
-  axios.get(`${API_BASE_URL}/api/revenue`, authHeader).then(res => res.data);
+  axios.get(`${API_BASE_URL}/api/revenue`, getAuthConfig()).then(res => res.data);
 
 export const fetchEmployers = () =>
-  axios.get(`${API_BASE_URL}/api/revenue/allemployers`, authHeader).then(res => res.data);
+  axios.get(`${API_BASE_URL}/api/revenue/allemployers`, getAuthConfig()).then(res => res.data);
 
 export const fetchJobsByEmployer = (employerId: string) =>
-  axios.get(`${API_BASE_URL}/api/revenue/employer/${employerId}/jobs`, authHeader).then(res => res.data);
+  axios.get(`${API_BASE_URL}/api/revenue/employer/${employerId}/jobs`, getAuthConfig()).then(res => res.data);
 
 export const addRevenue = (payload: any) =>
-  axios.post(`${API_BASE_URL}/api/revenue`, payload, authHeader).then(res => res.data);
+  axios.post(`${API_BASE_URL}/api/revenue`, payload, getAuthConfig()).then(res => res.data);
 
 export const updateRevenue = (id: string, payload: any) =>
-  axios.put(`${API_BASE_URL}/api/revenue/${id}`, payload, authHeader).then(res => res.data);
+  axios.put(`${API_BASE_URL}/api/revenue/${id}`, payload, getAuthConfig()).then(res => res.data);
 
 export const deleteRevenue = (id: string) =>
-  axios.delete(`${API_BASE_URL}/api/revenue/${id}`, authHeader).then(res => res.data);
+  axios.delete(`${API_BASE_URL}/api/revenue/${id}`, getAuthConfig()).then(res => res.data);
 
 
 export const approveJob = async (jobId: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/admin/jobs/${jobId}/approve`, {}, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/jobs/${jobId}/approve`, {}, getAuthConfig());
   return res.data;
 };
 
 export const rejectJob = async (jobId: string, reason: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/admin/jobs/${jobId}/reject`, { reason }, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/jobs/${jobId}/reject`, { reason }, getAuthConfig());
   return res.data;
 };
 
@@ -527,19 +539,19 @@ export const getJobCategories = async () => {
 };
 
 export const createJobCategory = async (formData: FormData) => {
-  const res = await axios.post(`${API_BASE_URL}/api/jobcategories`, formData, authHeader);
+  const res = await axios.post(`${API_BASE_URL}/api/jobcategories`, formData, getAuthConfig());
   return res.data;
 };
 
 export const updateJobCategory = async (id: string, formData: FormData) => {
-  const res = await axios.put(`${API_BASE_URL}/api/jobcategories/${id}`, formData, authHeader);
+  const res = await axios.put(`${API_BASE_URL}/api/jobcategories/${id}`, formData, getAuthConfig());
   return res.data;
 };
 
 export const deleteJobCategory = async (id: string, force = false) => {
   const res = await axios.delete(
     `${API_BASE_URL}/api/jobcategories/${id}${force ? '?force=true' : ''}`,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -548,7 +560,7 @@ export const toggleJobCategoryTrending = async (id: string, isTrending: boolean)
   const res = await axios.patch(
     `${API_BASE_URL}/api/jobcategories/${id}/trending`,
     { isTrending },
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -579,18 +591,18 @@ export interface Company {
 export const getAllCompanies = async (page = 1, limit = 10, search = "") => {
   const res = await axios.get(
     `${API_BASE_URL}/api/admin/companies?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
 
 export const verifyCompany = async (companyId: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/admin/companies/${companyId}/verify`, {}, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/companies/${companyId}/verify`, {}, getAuthConfig());
   return res.data;
 };
 
 export const rejectCompany = async (companyId: string, reason: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/admin/companies/${companyId}/reject`, { reason }, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/companies/${companyId}/reject`, { reason }, getAuthConfig());
   return res.data;
 };
 
@@ -625,7 +637,7 @@ export const getAllTickets = async (
 ): Promise<TicketsResponse> => {
   const res = await axios.get(
     `${API_BASE_URL}/api/support/admin/tickets?page=${page}&limit=${limit}&status=${status}&category=${category}&search=${encodeURIComponent(search)}`,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -634,7 +646,7 @@ export const replyToTicket = async (ticketId: string, reply: string) => {
   const res = await axios.patch(
     `${API_BASE_URL}/api/support/admin/tickets/${ticketId}/reply`,
     { reply },
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -643,7 +655,7 @@ export const updateTicketStatus = async (ticketId: string, status: string) => {
   const res = await axios.patch(
     `${API_BASE_URL}/api/support/admin/tickets/${ticketId}/status`,
     { status },
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -697,7 +709,7 @@ export const getAuditLogs = async (params: {
   if (params.success) query.set('success', params.success);
   if (params.search) query.set('search', params.search);
 
-  const res = await axios.get(`${API_BASE_URL}/api/admin/audit-logs?${query.toString()}`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/audit-logs?${query.toString()}`, getAuthConfig());
   return res.data;
 };
 
@@ -709,7 +721,7 @@ export interface AuditLogStats {
 }
 
 export const getAuditLogStats = async (): Promise<AuditLogStats> => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/audit-logs/stats`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/audit-logs/stats`, getAuthConfig());
   return res.data;
 };
 
@@ -727,7 +739,7 @@ export interface SecurityOverview {
 }
 
 export const getSecurityOverview = async (): Promise<SecurityOverview> => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/security/overview`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/security/overview`, getAuthConfig());
   return res.data;
 };
 
@@ -742,19 +754,19 @@ export interface LockedAccount {
 }
 
 export const getLockedAccounts = async (): Promise<{ accounts: LockedAccount[] }> => {
-  const res = await axios.get(`${API_BASE_URL}/api/admin/security/locked-accounts`, authHeader);
+  const res = await axios.get(`${API_BASE_URL}/api/admin/security/locked-accounts`, getAuthConfig());
   return res.data;
 };
 
 export const unlockAccount = async (id: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/admin/security/users/${id}/unlock`, {}, authHeader);
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/security/users/${id}/unlock`, {}, getAuthConfig());
   return res.data;
 };
 
 export const getRecentFailedLogins = async (limit = 25): Promise<{ events: AuditLogEntry[] }> => {
   const res = await axios.get(
     `${API_BASE_URL}/api/admin/security/failed-logins?limit=${limit}`,
-    authHeader
+    getAuthConfig()
   );
   return res.data;
 };
@@ -784,12 +796,12 @@ export interface EligibleJob {
 const TRENDING_BASE = `${API_BASE_URL}/api/admin/trending-jobs`;
 
 export const searchEligibleTrendingJobs = async (search = ""): Promise<{ jobs: EligibleJob[] }> => {
-  const res = await axios.get(`${TRENDING_BASE}/eligible`, { ...authHeader, params: { search } });
+  const res = await axios.get(`${TRENDING_BASE}/eligible`, { ...getAuthConfig(), params: { search } });
   return res.data;
 };
 
 export const getTrendingJobsAdmin = async (): Promise<{ jobs: TrendingJob[] }> => {
-  const res = await axios.get(TRENDING_BASE, authHeader);
+  const res = await axios.get(TRENDING_BASE, getAuthConfig());
   return res.data;
 };
 
@@ -797,7 +809,7 @@ export const addTrendingJob = async (
   jobId: string,
   data: { trendingOrder?: number; trendingStartDate?: string | null; trendingEndDate?: string | null }
 ) => {
-  const res = await axios.post(`${TRENDING_BASE}/${jobId}`, data, authHeader);
+  const res = await axios.post(`${TRENDING_BASE}/${jobId}`, data, getAuthConfig());
   return res.data;
 };
 
@@ -805,26 +817,26 @@ export const updateTrendingJob = async (
   jobId: string,
   data: { trendingOrder?: number; trendingStartDate?: string | null; trendingEndDate?: string | null }
 ) => {
-  const res = await axios.patch(`${TRENDING_BASE}/${jobId}`, data, authHeader);
+  const res = await axios.patch(`${TRENDING_BASE}/${jobId}`, data, getAuthConfig());
   return res.data;
 };
 
 export const removeTrendingJob = async (jobId: string) => {
-  const res = await axios.delete(`${TRENDING_BASE}/${jobId}`, authHeader);
+  const res = await axios.delete(`${TRENDING_BASE}/${jobId}`, getAuthConfig());
   return res.data;
 };
 
 export const reorderTrendingJobs = async (order: { jobId: string; trendingOrder: number }[]) => {
-  const res = await axios.patch(`${TRENDING_BASE}/reorder`, { order }, authHeader);
+  const res = await axios.patch(`${TRENDING_BASE}/reorder`, { order }, getAuthConfig());
   return res.data;
 };
 
 export const getTrendingSettings = async (): Promise<{ maxDisplayCount: number }> => {
-  const res = await axios.get(`${TRENDING_BASE}/settings`, authHeader);
+  const res = await axios.get(`${TRENDING_BASE}/settings`, getAuthConfig());
   return res.data;
 };
 
 export const updateTrendingSettings = async (maxDisplayCount: number) => {
-  const res = await axios.put(`${TRENDING_BASE}/settings`, { maxDisplayCount }, authHeader);
+  const res = await axios.put(`${TRENDING_BASE}/settings`, { maxDisplayCount }, getAuthConfig());
   return res.data;
 };
