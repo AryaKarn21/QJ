@@ -24,9 +24,9 @@ interface DecodedToken {
 
 const NAV_ITEMS = [
   { name: 'Home', icon: <Home size={18} />, path: '/' },
-  { name: 'Jobs', icon: <BriefcaseIcon size={18} />, path: '/jobs' },
+  { name: 'Job Listings', icon: <BriefcaseIcon size={18} />, path: '/jobs' },
   { name: 'Community', icon: <Users size={18} />, path: '/community' },
-  { name: 'Resume', icon: <FileText size={18} />, path: '/resume' },
+  { name: 'Resume Builder', icon: <FileText size={18} />, path: '/resume' },
   { name: 'Blog', icon: <Newspaper size={18} />, path: '/blog' },
   { name: 'About Us', icon: <Info size={18} />, path: '/about' },
   { name: 'Contact', icon: <Mail size={18} />, path: '/contact' },
@@ -183,19 +183,20 @@ const Header: React.FC = () => {
           ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
           : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'
         }`}>
-        {/* max-w-[100rem] (1600px), not max-w-7xl (1280px) — the nav below
-            activates at 2xl (1536px) and its real content width (logo +
-            7 links + Categories + search + account controls) measures to
-            roughly 1450-1600px depending on auth state. max-w-7xl capped
-            the container at exactly the same 1280px the old xl-gated nav
-            activated at, leaving ZERO spare width the instant it appeared —
-            the nav's own content silently overflowed past the container
-            (and past the browser viewport itself, since html/body has
-            overflow-x:hidden — see index.css), permanently clipping
-            Register/Categories/Messages/Notifications/Profile off-screen
-            with no scrollbar to reach them. Verified against real rendered
-            widths, not just breakpoint numbers, before picking 100rem. */}
-        <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* max-w-[1760px], not max-w-7xl (1280px) — the nav below activates
+            at a custom 1760px breakpoint (Tailwind's built-in xl=1280px and
+            2xl=1536px both landed short once the real content was measured:
+            logo + 7 full-text links + Categories + search + account
+            controls needs roughly 1450-1600px depending on auth state).
+            max-w-7xl capped the container at exactly the same 1280px the
+            old xl-gated nav activated at, leaving ZERO spare width the
+            instant it appeared — the nav's own content silently overflowed
+            past the container (and past the browser viewport itself, since
+            html/body has overflow-x:hidden — see index.css), permanently
+            clipping Register/Categories/Messages/Notifications/Profile
+            off-screen with no scrollbar to reach them. 1760px keeps a real
+            ~150-250px margin instead of a razor's-edge fit. */}
+        <div className="max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 transition-all duration-300">
 
             {/* Logo */}
@@ -205,26 +206,29 @@ const Header: React.FC = () => {
               </div>
             </Link>
 
-            {/* Search — desktop. Fixed, safe widths below 2xl (never
-                fights the nav for space, since nav is hidden below 2xl
-                too — see the nav breakpoint below). Only becomes elastic
-                at 2xl, matched to the container's own cap above so
-                "elastic" only ever activates once the full available
-                width is already known and sufficient. */}
+            {/* Search — desktop. Fixed, safe widths below the nav's 1760px
+                breakpoint (never fights the nav for space, since nav is
+                hidden below that width too — see below). Only becomes
+                elastic once past it, matched to the container's own cap
+                above so "elastic" only ever activates once the full
+                available width is already known and sufficient. */}
             {isLoggedIn && (
-              <HeaderSearch className="hidden md:block md:w-40 lg:w-56 2xl:flex-1 2xl:min-w-[200px] 2xl:max-w-md mx-2" suggestionSeeds={jobCategories} />
+              <HeaderSearch className="hidden md:block md:w-40 lg:w-56 min-[1760px]:flex-1 min-[1760px]:min-w-[200px] min-[1760px]:max-w-md mx-2" suggestionSeeds={jobCategories} />
             )}
 
-            {/* Desktop Nav — gated to 2xl (1536px), not xl (1280px). xl
-                looked "guaranteed" on paper (it's where max-w-7xl caps the
-                container too) but was never actually measured against this
-                nav's real content width once Community/Resume/Blog/
-                Categories were all added — it silently overflowed on every
-                single xl+ screen. 2xl (paired with max-w-[100rem] above)
+            {/* Desktop Nav — gated to a custom 1760px breakpoint, not xl
+                (1280px) or 2xl (1536px). Both of Tailwind's built-in
+                breakpoints looked "guaranteed" on paper but were never
+                actually measured against this nav's real content width
+                once Community/Resume Builder/Blog/Categories were all
+                added — xl silently overflowed on every single xl+ screen,
+                and even 2xl left the logged-in case (search + full nav +
+                Messages/Notifications/Profile) with only a few px to
+                spare. 1760px (paired with max-w-[1760px] above)
                 is sized with real margin to spare. Below 2xl, nav links
                 live in the hamburger drawer instead (see the compact icon
                 row and shared drawer further down). */}
-            <nav className="hidden 2xl:flex shrink-0 items-center space-x-1 bg-slate-100/60 p-1 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
+            <nav className="hidden min-[1760px]:flex shrink-0 items-center space-x-1 bg-slate-100/60 p-1 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
@@ -278,7 +282,7 @@ const Header: React.FC = () => {
             </nav>
 
             {/* Right side — desktop */}
-            <div className="flex shrink-0 items-center space-x-1 2xl:space-x-2 min-w-0">
+            <div className="flex shrink-0 items-center space-x-1 min-[1760px]:space-x-2 min-w-0">
               {/* QuickJobs Assistant — always visible regardless of auth
                   state (the chatbot itself is public, see Chatbot.tsx),
                   opens the panel anchored under this header instead of the
@@ -297,10 +301,10 @@ const Header: React.FC = () => {
                 <>
                   {/* Desktop login/register */}
                   <div className="hidden sm:flex items-center space-x-2">
-                    <Link to="/login" className="px-4 py-2.5 text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200">
+                    <Link to="/login" className="px-4 py-2.5 text-xs min-[1760px]:text-sm font-semibold text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200">
                       Log In
                     </Link>
-                    <Link to="/signup" className="relative group inline-flex items-center justify-center px-4 sm:px-5 py-2.5 text-xs 2xl:text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/25 transition-all duration-200 active:scale-95">
+                    <Link to="/signup" className="relative group inline-flex items-center justify-center px-4 sm:px-5 py-2.5 text-xs min-[1760px]:text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/25 transition-all duration-200 active:scale-95">
                       <span className="relative z-10 flex items-center gap-1.5">
                         <span>Register</span>
                         <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -309,7 +313,7 @@ const Header: React.FC = () => {
                   </div>
                   {/* Mobile: hamburger for not-logged-in */}
                   <button type="button" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="2xl:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
+                    className="min-[1760px]:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
                     aria-label="Toggle Mobile Menu">
                     {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                   </button>
@@ -317,7 +321,7 @@ const Header: React.FC = () => {
               ) : (
                 <>
                   {/* Desktop: messages + notifications + profile */}
-                  <div className="hidden 2xl:flex items-center space-x-1.5">
+                  <div className="hidden min-[1760px]:flex items-center space-x-1.5">
                     <Link to="/messages" aria-label="Messages"
                       className="p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <MessageCircle size={20} />
@@ -337,8 +341,8 @@ const Header: React.FC = () => {
                             <span className="text-white text-sm font-bold">{initial}</span>
                           )}
                         </div>
-                        <div className="hidden 2xl:block text-left">
-                          <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] 2xl:max-w-[150px] truncate">{userInfo?.name}</p>
+                        <div className="hidden min-[1760px]:block text-left">
+                          <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] min-[1760px]:max-w-[150px] truncate">{userInfo?.name}</p>
                         </div>
                         <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
@@ -395,15 +399,15 @@ const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Compact icons (md through xl — the range that doesn't
-                      show the full text nav, now gated to 2xl:flex).
-                      Search, notifications and the profile avatar are
+                  {/* Compact icons (md through 1760px — the range that
+                      doesn't show the full text nav). Search, notifications
+                      and the profile avatar are
                       always reachable here; a hamburger opens the same
                       nav-links drawer guests get below, since logged-in
                       users otherwise have no way to reach Home/Blog/About/
                       Contact/Categories in this range — only the bottom
                       tab bar's four shortcuts. */}
-                  <div className="flex 2xl:hidden items-center gap-1">
+                  <div className="flex min-[1760px]:hidden items-center gap-1">
                     <Link to="/community/search" aria-label="Search"
                       className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
                       <Search size={20} />
@@ -442,7 +446,7 @@ const Header: React.FC = () => {
           // Fully opaque — same "content bleeding through a translucent
           // panel over the Hero" fix as the dropdowns above; this drawer
           // sits directly over the home page's Hero section too.
-          <div className="2xl:hidden bg-white border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+          <div className="min-[1760px]:hidden bg-white border-b border-slate-200/80 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
             <div className="px-4 pt-3 pb-6 space-y-1.5">
               {NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
@@ -484,7 +488,7 @@ const Header: React.FC = () => {
       {/* ── LINKEDIN-STYLE BOTTOM TAB BAR (mobile, logged-in only) ── */}
       {isLoggedIn && (
         <nav
-          className="2xl:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200"
+          className="min-[1760px]:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           aria-label="Mobile navigation"
         >
@@ -533,7 +537,7 @@ const Header: React.FC = () => {
       {/* ── MOBILE PROFILE SLIDE-UP SHEET ── */}
       {isMobileProfileOpen && (
         <div
-          className="2xl:hidden fixed inset-0 z-[60] flex flex-col justify-end"
+          className="min-[1760px]:hidden fixed inset-0 z-[60] flex flex-col justify-end"
           onClick={() => setIsMobileProfileOpen(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
