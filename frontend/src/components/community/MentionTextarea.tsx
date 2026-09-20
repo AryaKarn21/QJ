@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { Building2 } from 'lucide-react';
 import { searchMentionableUsers } from '../../api/followApi';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import type { AuthorSnapshot } from '../../types/community';
+
+export interface MentionTextareaHandle {
+  triggerMention: () => void;
+  focus: () => void;
+}
 
 interface MentionTextareaProps {
   value: string;
@@ -23,10 +28,33 @@ interface MentionTextareaProps {
 // person-vs-company branch in this app (PeopleSearch.tsx, PostCard.tsx).
 // Hashtags need no special input handling — the user just types #word and
 // the backend extracts it from the raw text.
-export function MentionTextarea({ value, onChange, placeholder, rows = 4, className = '', autoFocus }: MentionTextareaProps) {
-  const [suggestions, setSuggestions] = useState<AuthorSnapshot[]>([]);
-  const [mentionQuery, setMentionQuery] = useState<{ start: number; text: string } | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export const MentionTextarea = forwardRef<MentionTextareaHandle, MentionTextareaProps>(
+  function MentionTextarea({ value, onChange, placeholder, rows = 4, className = '', autoFocus }, ref) {
+    const [suggestions, setSuggestions] = useState<AuthorSnapshot[]>([]);
+    const [mentionQuery, setMentionQuery] = useState<{ start: number; text: string } | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const triggerMention = () => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const cursor = el.selectionStart ?? value.length;
+      const separator = cursor === 0 || value[cursor - 1] === ' ' || value[cursor - 1] === '\n' ? '' : ' ';
+      const before = value.slice(0, cursor);
+      const after = value.slice(cursor);
+      const nextVal = `${before}${separator}@${after}`;
+      onChange(nextVal);
+      const newPos = cursor + separator.length + 1;
+      setMentionQuery({ start: newPos - 1, text: '' });
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(newPos, newPos);
+      });
+    };
+
+    useImperativeHandle(ref, () => ({
+      triggerMention,
+      focus: () => textareaRef.current?.focus(),
+    }));
 
   useEffect(() => {
     if (!mentionQuery) {
@@ -134,4 +162,4 @@ export function MentionTextarea({ value, onChange, placeholder, rows = 4, classN
       )}
     </div>
   );
-}
+});

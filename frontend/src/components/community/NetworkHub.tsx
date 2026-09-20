@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Users2, UserCheck, Inbox, Check, X } from 'lucide-react';
+import { Users2, UserCheck, Inbox, Check, X, Eye } from 'lucide-react';
 import {
   getMyConnections,
   getPendingReceived,
@@ -12,6 +12,7 @@ import {
   type PendingPerson,
   type ConnectionSuggestion,
 } from '../../api/connectionApi';
+import { getMyProfileViewCount } from '../../api/profileViewApi';
 import { PersonCard } from './FollowersPage';
 import { EmptyState } from '../ui/EmptyState';
 
@@ -29,6 +30,7 @@ const SUGGESTION_LIMIT = 12;
  */
 export function NetworkHub() {
   const [connectionsTotal, setConnectionsTotal] = useState<number | null>(null);
+  const [profileViewsTotal, setProfileViewsTotal] = useState<number | null>(null);
   const [invitations, setInvitations] = useState<PendingPerson[]>([]);
   const [invitationsTotal, setInvitationsTotal] = useState(0);
   const [suggestions, setSuggestions] = useState<ConnectionSuggestion[]>([]);
@@ -41,9 +43,11 @@ export function NetworkHub() {
       getMyConnections({ page: 1 }),
       getPendingReceived(1),
       getConnectionSuggestions(SUGGESTION_LIMIT),
+      getMyProfileViewCount().catch(() => 0),
     ])
-      .then(([connections, pending, people]) => {
+      .then(([connections, pending, people, views]) => {
         setConnectionsTotal(connections.total);
+        setProfileViewsTotal(views);
         setInvitations(pending.people.slice(0, INVITATION_PREVIEW));
         setInvitationsTotal(pending.total);
         setSuggestions(people);
@@ -121,6 +125,15 @@ export function NetworkHub() {
                 <Inbox size={16} /> Invitations
               </span>
               <span className="text-xs font-semibold text-gray-400">{invitationsTotal}</span>
+            </Link>
+            <Link
+              to="/community/profile-views"
+              className="flex items-center justify-between rounded-lg px-2 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-primary"
+            >
+              <span className="flex items-center gap-2">
+                <Eye size={16} /> Profile Views
+              </span>
+              <span className="text-xs font-semibold text-gray-400">{profileViewsTotal ?? '0'}</span>
             </Link>
           </div>
         </aside>

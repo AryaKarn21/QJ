@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Image, Video, FileText, Briefcase, BarChart3, Megaphone, Type, Sparkles, SpellCheck, X, Plus, Globe2, Hash } from 'lucide-react';
+import { Image, Video, FileText, Briefcase, BarChart3, Megaphone, Type, Sparkles, SpellCheck, X, Plus, Globe2, Hash, AtSign } from 'lucide-react';
 import { createPost, type CreatePostInput } from '../../api/communityApi';
 import { generateCaption, correctGrammar, detectHiringIntent } from '../../api/communityAiApi';
 import { useCurrentUser } from '../../utils/currentUser';
-import { MentionTextarea } from './MentionTextarea';
+import { MentionTextarea, type MentionTextareaHandle } from './MentionTextarea';
 import { Avatar } from './Avatar';
 import { TagInput } from '../common/TagInput';
 import type { CommunityPost, PostTopic, PostType } from '../../types/community';
@@ -56,6 +56,7 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mentionRef = useRef<MentionTextareaHandle>(null);
 
   const SUGGESTED_HASHTAGS = ['hiring', 'developer', 'react', 'nepaljobs', 'tech', 'jobopportunity'];
 
@@ -251,7 +252,14 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
         ))}
       </div>
 
-      <MentionTextarea value={content} onChange={setContent} placeholder="What's on your mind?" rows={4} autoFocus />
+      <MentionTextarea
+        ref={mentionRef}
+        value={content}
+        onChange={setContent}
+        placeholder="What's on your mind? Type @ to tag people or companies, # for hashtags..."
+        rows={4}
+        autoFocus
+      />
 
       {hiringHint && type === 'text' && (
         <div className="mt-2 flex items-center justify-between rounded-lg bg-accent/10 px-3 py-2 text-xs text-accent">
@@ -260,21 +268,36 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
         </div>
       )}
 
-      {/* AI toolbar */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setShowCaptionPrompt((v) => !v)}
-          className="flex items-center gap-1 rounded-full border border-accent/30 px-3 py-1 text-xs font-medium text-accent hover:bg-accent/10"
-        >
-          <Sparkles size={13} /> AI caption
-        </button>
-        <button
-          onClick={handleFixGrammar}
-          disabled={checkingGrammar || !content.trim()}
-          className="flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-secondary disabled:opacity-50"
-        >
-          <SpellCheck size={13} /> {checkingGrammar ? 'Checking…' : 'Fix grammar'}
-        </button>
+      {/* Action & AI toolbar */}
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => mentionRef.current?.triggerMention()}
+            className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/80 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all active:scale-95 shadow-xs dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+            title="Tag candidates, employers, or companies"
+          >
+            <AtSign size={13} className="text-blue-600 dark:text-blue-400" /> Tag People / Company
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCaptionPrompt((v) => !v)}
+            className="flex items-center gap-1 rounded-full border border-accent/30 px-3 py-1 text-xs font-medium text-accent hover:bg-accent/10 transition-colors"
+          >
+            <Sparkles size={13} /> AI caption
+          </button>
+          <button
+            type="button"
+            onClick={handleFixGrammar}
+            disabled={checkingGrammar || !content.trim()}
+            className="flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-secondary disabled:opacity-50 transition-colors dark:border-slate-700 dark:text-slate-300"
+          >
+            <SpellCheck size={13} /> {checkingGrammar ? 'Checking…' : 'Fix grammar'}
+          </button>
+        </div>
+        <span className="text-[11px] text-gray-400 dark:text-slate-500">
+          Tip: Type <span className="font-semibold text-blue-600 dark:text-blue-400">@</span> to tag &bull; <span className="font-semibold text-primary">#</span> for hashtags
+        </span>
       </div>
 
       {showCaptionPrompt && (

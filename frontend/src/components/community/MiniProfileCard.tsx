@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, UserPlus } from 'lucide-react';
+import { Users, UserPlus, Eye } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { fetchPublicProfile, fetchFollowCounts } from '../../api/followApi';
 import { getMyConnections } from '../../api/connectionApi';
+import { getMyProfileViewCount } from '../../api/profileViewApi';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { useCurrentUser } from '../../utils/currentUser';
 import type { AuthorSnapshot } from '../../types/community';
@@ -20,12 +21,14 @@ export function MiniProfileCard() {
   const [profile, setProfile] = useState<AuthorSnapshot | null>(null);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [connectionsTotal, setConnectionsTotal] = useState<number | null>(null);
+  const [profileViewsTotal, setProfileViewsTotal] = useState<number | null>(null);
 
   useEffect(() => {
     if (!userId) return;
     fetchPublicProfile(userId).then(setProfile).catch(() => setProfile(null));
     fetchFollowCounts(userId).then(setCounts).catch(() => {});
     getMyConnections({ page: 1 }).then((res) => setConnectionsTotal(res.total)).catch(() => {});
+    getMyProfileViewCount().then(setProfileViewsTotal).catch(() => {});
   }, [userId]);
 
   if (!isAuthenticated || !userId) return null;
@@ -69,6 +72,12 @@ export function MiniProfileCard() {
               <Users size={13} /> Followers
             </span>
             <span className="font-semibold text-gray-700">{counts.followers}</span>
+          </Link>
+          <Link to="/community/profile-views" className="flex items-center justify-between text-gray-500 hover:text-primary transition-colors">
+            <span className="flex items-center gap-1.5">
+              <Eye size={13} /> Profile Views
+            </span>
+            <span className="font-semibold text-gray-700">{profileViewsTotal ?? '0'}</span>
           </Link>
         </div>
 

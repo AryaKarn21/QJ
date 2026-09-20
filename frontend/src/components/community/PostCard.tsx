@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -16,6 +16,7 @@ import {
   X,
   Hash,
   Settings,
+  AtSign,
 } from 'lucide-react';
 import { toggleLikePost, toggleBookmarkPost, deletePost, updatePost } from '../../api/communityApi';
 import { summarizePost } from '../../api/communityAiApi';
@@ -23,7 +24,7 @@ import { useCurrentUser } from '../../utils/currentUser';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from './Avatar';
 import { RichText } from './RichText';
-import { MentionTextarea } from './MentionTextarea';
+import { MentionTextarea, type MentionTextareaHandle } from './MentionTextarea';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { PollWidget } from './PollWidget';
 import { CommentSection } from './CommentSection';
@@ -77,6 +78,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   const [saving, setSaving] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const editMentionRef = useRef<MentionTextareaHandle>(null);
 
   const isOwner = userId === post.author._id;
   const isSuperAdmin = role === 'superadmin' || role === 'admin';
@@ -311,12 +313,28 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
       {editing ? (
         <div className="mt-3 space-y-3">
           <MentionTextarea
+            ref={editMentionRef}
             value={editDraft}
             onChange={setEditDraft}
+            placeholder="Edit post... Type @ to tag people or companies, # for hashtags..."
             rows={4}
             autoFocus
             className="w-full"
           />
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => editMentionRef.current?.triggerMention()}
+              className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/80 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all active:scale-95 shadow-xs dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+              title="Tag candidates, employers, or companies"
+            >
+              <AtSign size={13} className="text-blue-600 dark:text-blue-400" /> Tag People / Company
+            </button>
+            <span className="text-[11px] text-gray-400 dark:text-slate-500">
+              Tip: Type <span className="font-semibold text-blue-600 dark:text-blue-400">@</span> to tag &bull; <span className="font-semibold text-primary">#</span> for hashtags
+            </span>
+          </div>
 
           {/* Edit Hashtags */}
           <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-2.5 dark:border-slate-800 dark:bg-slate-850">

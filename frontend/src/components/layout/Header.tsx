@@ -3,7 +3,7 @@ import {
   Menu, Home, BriefcaseIcon, Info, FileText, Mail, Users,
   ChevronDown, SparkleIcon, MessageCircle, X, ArrowRight,
   Grid, LogOut, LayoutDashboard, User, Settings, Newspaper, Search,
-  Bell, Bot,
+  Bell, Bot, Eye,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import StarLogo from '../../assets/quickjobs.png';
@@ -427,6 +427,10 @@ const Header: React.FC = () => {
                             <button onClick={() => { navigate(getProfilePath()); setIsProfileDropdownOpen(false); }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
                               <User size={16} className="text-slate-400" /><span className="font-medium">My Profile</span>
+                            </button>
+                            <button onClick={() => { navigate('/community/profile-views'); setIsProfileDropdownOpen(false); }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
+                              <Eye size={16} className="text-slate-400" /><span className="font-medium">Who Viewed My Profile</span>
                             </button>
                             <button onClick={() => { navigate('/messages'); setIsProfileDropdownOpen(false); }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">

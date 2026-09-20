@@ -33,6 +33,9 @@ import {
   LifeBuoy,
   ChevronRight,
   Sparkles,
+  Share2,
+  Plus,
+  ArrowUpRight,
 } from 'lucide-react';
 import { KpiCard } from '../ui/KpiCard';
 import { SkeletonAvatarLine } from '../ui/Skeleton';
@@ -71,21 +74,23 @@ const STATUS_COLORS: Record<string, string> = {
 
 /** Quick Actions — the highest-frequency admin tasks, one click away. */
 const QUICK_ACTIONS = [
+  { label: 'Manage Jobs', icon: <Briefcase size={18} />, path: '/admin/jobs', accent: 'amber' },
+  { label: 'Community Feed', icon: <Share2 size={18} />, path: '/community', accent: 'violet' },
   { label: 'Review Applications', icon: <ClipboardCheck size={18} />, path: '/admin/applications', accent: 'blue' },
   { label: 'Verify Companies', icon: <UserCheck size={18} />, path: '/admin/employers', accent: 'teal' },
-  { label: 'Manage Categories', icon: <Tags size={18} />, path: '/admin/jobcategories', accent: 'amber' },
-  { label: 'Post Announcement', icon: <Megaphone size={18} />, path: '/admin/cms', accent: 'violet' },
-  { label: 'Support Tickets', icon: <LifeBuoy size={18} />, path: '/admin/support', accent: 'rose' },
-  { label: 'AI Center', icon: <Sparkles size={18} />, path: '/admin/ai-center', accent: 'green' },
+  { label: 'Audit Log Trail', icon: <ShieldAlert size={18} />, path: '/admin/audit-logs', accent: 'rose' },
+  { label: 'Categories & Tags', icon: <Tags size={18} />, path: '/admin/jobcategories', accent: 'green' },
+  { label: 'CMS & Blogs', icon: <Megaphone size={18} />, path: '/admin/cms', accent: 'blue' },
+  { label: 'Support Tickets', icon: <LifeBuoy size={18} />, path: '/admin/support', accent: 'amber' },
 ] as const;
 
 const QUICK_ACTION_STYLES: Record<string, string> = {
-  blue: 'bg-blue-50 text-adminBlue',
-  teal: 'bg-adminActive text-adminAccent',
-  amber: 'bg-amber-50 text-adminWarning',
-  violet: 'bg-violet-50 text-violet-600',
-  rose: 'bg-rose-50 text-adminDanger',
-  green: 'bg-emerald-50 text-adminSuccess',
+  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  teal: 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
+  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+  violet: 'bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+  rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
+  green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
 };
 
 export const AdminDashboardV2: React.FC = () => {
@@ -179,22 +184,49 @@ export const AdminDashboardV2: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Welcome card */}
-      <div className="flex flex-col items-start justify-between gap-4 rounded-admin-card border border-adminBorder bg-gradient-to-br from-white to-adminActive/30 p-6 shadow-admin-card sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-bold text-adminText sm:text-2xl">
-            {getGreeting()}, {firstName || 'Admin'} 👋
-          </h1>
-          <p className="mt-1 text-sm text-adminTextSecondary">
-            Here's what's happening across Quick Jobs today.
-          </p>
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-orange-50/20 to-slate-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              {isSuperAdmin && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 px-3 py-0.5 text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+                  <ShieldAlert size={12} /> Super Admin Privilege Active
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                All Services Healthy
+              </span>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl tracking-tight">
+              {getGreeting()}, {firstName || 'Administrator'} 👋
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Welcome to the QuickJobs Super Admin Console. Moderate community content, manage all jobs, oversee users, and track platform health.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link
+              to="/admin/jobs"
+              className="flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-2 text-xs font-semibold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95"
+            >
+              <Plus size={14} /> Post Job
+            </Link>
+            <Link
+              to="/community"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-750 transition-all shadow-xs"
+            >
+              <Share2 size={13} className="text-orange-500" /> Community
+            </Link>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-750 transition-all shadow-xs"
+            >
+              <Download size={13} /> Export
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="flex shrink-0 items-center gap-2 rounded-xl border border-adminBorder bg-white px-4 py-2.5 text-sm font-semibold text-adminText shadow-admin-sm hover:bg-adminHover"
-        >
-          <Download size={15} />
-          Export report
-        </button>
       </div>
 
       {overviewError && (

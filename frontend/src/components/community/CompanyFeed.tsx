@@ -4,6 +4,7 @@ import { Building2, Users2, MapPin } from 'lucide-react';
 import { fetchCompanyFeed } from '../../api/communityApi';
 import { fetchPublicProfile, fetchFollowCounts } from '../../api/followApi';
 import { getEmployeeCount } from '../../api/companyMemberApi';
+import { recordProfileView } from '../../api/profileViewApi';
 import { useCurrentUser } from '../../utils/currentUser';
 import { addRecentlyViewedProfile } from '../../utils/recentSearches';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
@@ -44,6 +45,7 @@ export function CompanyFeed() {
   useEffect(() => {
     if (!companyId || companyId === userId) return;
     addRecentlyViewedProfile(companyId);
+    if (userId) recordProfileView(companyId);
   }, [companyId, userId]);
 
   useEffect(() => {
