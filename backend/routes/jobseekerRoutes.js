@@ -8,6 +8,8 @@ const {
   getAppliedJobs,
   getDashboardStats,
   updateJobseekerStatus,
+  updateNotificationPreferences,
+  deactivateAccount,
 } = require("../controllers/jobseekerController");
 const {
   getMyMemberships,
@@ -26,6 +28,12 @@ router.put("/profile", authenticate, userUpload, updateJobseekerProfile);
 // jobseekerController.js's updateJobseekerStatus for why. No `/profile/:id`
 // param route exists on this router, so there's no ordering hazard here.
 router.put("/profile/status", authenticate, updateJobseekerStatus);
+
+// Notification preferences
+router.patch("/notification-preferences", authenticate, updateNotificationPreferences);
+
+// Deactivate account
+router.post("/deactivate", authenticate, deactivateAccount);
 
 // Get applied jobs
 router.get("/applied-jobs", authenticate, getAppliedJobs);

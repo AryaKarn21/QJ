@@ -10,6 +10,8 @@ const {
   VISIBILITY_OPTIONS,
   sanitizeStringList,
 } = require("../utils/profileStatus");
+const bcrypt = require("bcryptjs");
+const sendNotification = require("../utils/sendNotifications");
 
 // Get Jobseeker Profile
 const getJobseekerProfile = async (req, res) => {
@@ -310,10 +312,97 @@ const updateJobseekerStatus = async (req, res) => {
   }
 };
 
+// Update notification preferences
+const updateNotificationPreferences = async (req, res) => {
+  const jobseekerId = req.user._id || req.user.id;
+  const { allNotifications, applicationStatus, newJobs, community } = req.body;
+
+  try {
+    const user = await User.findById(jobseekerId);
+    if (!user || user.role !== "jobseeker") {
+      return res.status(404).json({ message: "Jobseeker not found" });
+    }
+
+    if (!user.notificationPreferences) {
+      user.notificationPreferences = {};
+    }
+    if (allNotifications !== undefined) {
+      user.notificationPreferences.allNotifications = Boolean(allNotifications);
+    }
+    if (applicationStatus !== undefined) {
+      user.notificationPreferences.applicationStatus = Boolean(applicationStatus);
+    }
+    if (newJobs !== undefined) {
+      user.notificationPreferences.newJobs = Boolean(newJobs);
+    }
+    if (community !== undefined) {
+      user.notificationPreferences.community = Boolean(community);
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Notification preferences updated",
+      notificationPreferences: user.notificationPreferences,
+    });
+  } catch (error) {
+    console.error("Update notification preferences error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Deactivate Jobseeker Account
+const deactivateAccount = async (req, res) => {
+  const jobseekerId = req.user._id || req.user.id;
+  const { password } = req.body;
+
+  if (!password) {
+    return res
+      .status(400)
+      .json({ message: "Please enter your password to confirm deactivation." });
+  }
+
+  try {
+    const jobseeker = await User.findById(jobseekerId);
+    if (!jobseeker || jobseeker.role !== "jobseeker") {
+      return res.status(404).json({ message: "Jobseeker not found" });
+    }
+
+    if (!jobseeker.password) {
+      return res.status(400).json({
+        message: "Password confirmation isn't available for accounts signed in with Google. Please contact support to deactivate.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, jobseeker.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    jobseeker.isActive = false;
+    jobseeker.deactivatedAt = new Date();
+    await jobseeker.save();
+
+    await sendNotification({
+      recipient: jobseeker._id,
+      type: "account_deactivated",
+      message: "Your account has been deactivated.",
+      link: "/user/profile",
+    });
+
+    res.status(200).json({ message: "Account deactivated successfully" });
+  } catch (error) {
+    console.error("Deactivate account error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getJobseekerProfile,
   updateJobseekerProfile,
   getAppliedJobs,
   getDashboardStats,
   updateJobseekerStatus,
+  updateNotificationPreferences,
+  deactivateAccount,
 };

@@ -350,3 +350,24 @@ export const getJobseekerNotifications = async (): Promise<JobseekerNotification
 
   return response.data;
 };
+
+export const updateJobseekerNotificationPreferences = async (preferences: {
+  allNotifications?: boolean;
+  applicationStatus?: boolean;
+  newJobs?: boolean;
+  community?: boolean;
+}) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await api.patch('/api/jobseeker/notification-preferences', preferences);
+  return response.data;
+};
+
+export const deactivateJobseekerAccount = async (password: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await api.post('/api/jobseeker/deactivate', { password });
+  return response.data;
+};
