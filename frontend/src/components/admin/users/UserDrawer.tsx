@@ -5,6 +5,7 @@ import { Drawer } from '../../ui/Drawer';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { deleteUser } from '../adminApi/api';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 export interface AdminUser {
   _id: string;
@@ -33,9 +34,7 @@ interface UserDrawerProps {
   onUserDeleted: (id: string) => void;
 }
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
-const mediaUrl = (path?: string) =>
-  path ? `${MEDIA_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}` : null;
+const mediaUrl = (path?: string) => resolveMediaUrl(path) || null;
 
 /**
  * Slide-over detail panel for a single user (job seeker or employer).

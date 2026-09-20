@@ -18,7 +18,7 @@ import { Drawer } from '../../ui/Drawer';
 import { StatusBadge, StatusTone } from '../../ui/StatusBadge';
 import { EmptyState } from '../../ui/EmptyState';
 import { AdminApplication, getAllApplications, updateApplicationStatus } from '../adminApi/api';
-import { resolveResumeUrl as resumeUrl, isUnrecoverableResumePath } from '../../../utils/mediaUrl';
+import { resolveResumeUrl as resumeUrl, getResumeDownloadUrl, isUnrecoverableResumePath } from '../../../utils/mediaUrl';
 
 const STATUS_OPTIONS = ['All', 'Pending', 'Reviewed', 'Accepted', 'Rejected'] as const;
 type StatusFilter = typeof STATUS_OPTIONS[number];
@@ -354,6 +354,7 @@ function ApplicationDrawer({
   onStatusChange: (a: AdminApplication, status: string) => void;
   updating: boolean;
 }) {
+  const hasResume = !!application?.resume;
   const isPdf = application?.resume?.toLowerCase().endsWith('.pdf');
   const resumeUnavailable = isUnrecoverableResumePath(application?.resume);
 
@@ -413,10 +414,11 @@ function ApplicationDrawer({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Resume</p>
-              {!resumeUnavailable && (
-                
+              {hasResume && !resumeUnavailable && (
                 <a
-                  href={resumeUrl(application.resume)}
+                  href={getResumeDownloadUrl(application.resume, `${application.applicant?.name || 'applicant'}-resume.pdf`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   download
                   className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
                 >
@@ -425,9 +427,13 @@ function ApplicationDrawer({
               )}
             </div>
 
-            {resumeUnavailable ? (
+            {!hasResume ? (
               <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-800/60">
-                This resume was uploaded before a storage fix and is no longer available.
+                No resume attached
+              </div>
+            ) : resumeUnavailable ? (
+              <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
+                Resume unavailable — please ask the applicant to upload again
               </div>
             ) : isPdf ? (
               <iframe

@@ -6,7 +6,6 @@ import { MapPin, Briefcase, DollarSign, ArrowRight, Sparkles } from 'lucide-reac
 import { fetchJobRecommendations } from '../../../api/communityAiApi';
 import { useCurrentUser } from '../../../utils/currentUser';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 // Same fallback-accent trick TrendingJobs.tsx uses for cards without a logo.
 const LOGO_ACCENTS = ['bg-slate-700', 'bg-violet-500', 'bg-emerald-500', 'bg-blue-500', 'bg-rose-500', 'bg-amber-500'];

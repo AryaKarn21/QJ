@@ -51,7 +51,8 @@ router.get("/:postId", optionalAuthenticate, getPostById);
 
 // --- Write actions (require auth) ---
 router.post("/", authenticate, communityUpload, createPost);
-router.patch("/:postId", authenticate, updatePost);
+router.patch("/:postId", authenticate, communityUpload, updatePost);
+router.put("/:postId", authenticate, communityUpload, updatePost);
 router.delete("/:postId", authenticate, deletePost);
 router.post("/:postId/like", authenticate, toggleLikePost);
 router.post("/:postId/bookmark", authenticate, toggleBookmarkPost);

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { CommunityPost, FeedFilter, PostType, PostTopic } from '../types/community';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 // Same "read the token fresh on every call" pattern as api/supportApi.ts.
 const getAuthHeader = () => {
@@ -26,6 +26,7 @@ export interface CreatePostInput {
   pollData?: { options: string[]; allowMultiple?: boolean; expiresAt?: string };
   jobData?: { title: string; companyName?: string; location?: string; jobType?: string; salary?: string; applyUrl?: string; job?: string };
   hiringData?: { roles: string[]; openings?: number; location?: string; urgency?: 'normal' | 'urgent'; applyUrl?: string; contactEmail?: string };
+  hashtags?: string[];
 }
 
 function buildPostFormData(input: CreatePostInput): FormData {
@@ -35,6 +36,7 @@ function buildPostFormData(input: CreatePostInput): FormData {
   if (input.visibility) form.append('visibility', input.visibility);
   if (input.company) form.append('company', input.company);
   if (input.topics?.length) form.append('topics', JSON.stringify(input.topics));
+  if (input.hashtags?.length) form.append('hashtags', JSON.stringify(input.hashtags));
   if (input.pollData) form.append('pollData', JSON.stringify(input.pollData));
   if (input.jobData) form.append('jobData', JSON.stringify(input.jobData));
   if (input.hiringData) form.append('hiringData', JSON.stringify(input.hiringData));
@@ -101,8 +103,17 @@ export const fetchPostById = async (postId: string) => {
   return res.data.post as CommunityPost;
 };
 
-export const updatePost = async (postId: string, content: string) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/community/posts/${postId}`, { content }, getAuthHeader());
+export interface UpdatePostInput {
+  content?: string;
+  hashtags?: string[];
+  media?: any[];
+  topics?: PostTopic[];
+  isPinned?: boolean;
+}
+
+export const updatePost = async (postId: string, data: UpdatePostInput | string) => {
+  const payload = typeof data === 'string' ? { content: data } : data;
+  const res = await axios.patch(`${API_BASE_URL}/api/community/posts/${postId}`, payload, getAuthHeader());
   return res.data;
 };
 

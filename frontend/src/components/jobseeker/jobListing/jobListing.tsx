@@ -75,7 +75,6 @@ const AllJobListing = () => {
   const [jobCounts, setJobCounts] = useState<Array<{country: string, jobCount: number}>>([]);
   const limit = 9;
 
-  const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
   const {
     data: savedJobs = [],

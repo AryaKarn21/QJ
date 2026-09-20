@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getJobApplicants, updateApplicationStatus } from "../employerApi/api";
-import { Eye } from "lucide-react";
+import { Eye, Download } from "lucide-react";
 import { resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
+import { downloadFile } from "../../../utils/downloadFile";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 import { SkeletonText, SkeletonRow } from "../../ui/Skeleton";
 
@@ -31,6 +32,9 @@ const statusColors = {
     Rejected: "bg-red-200 text-black",
     Default: "bg-gray-300 text-black",
 };
+
+const resumeFilename = (name?: string) =>
+    `${(name || "applicant").trim().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase() || "applicant"}-resume.pdf`;
 
 const JobApplicants = () => {
     const { jobId } = useParams();
@@ -136,20 +140,32 @@ const JobApplicants = () => {
                                     </td>
                                     <td className="p-3 border">
                                         {applicant.resume && !isUnrecoverableResumePath(applicant.resume) ? (
-                                            
-                                              <a  href={resolveResumeUrl(applicant.resume)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                <button className="flex items-center text-white bg-primary px-3 py-1 rounded hover:bg-primary/90">
-                                                    <Eye size={14} className="mr-1" />
-                                                    Resume
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={resolveResumeUrl(applicant.resume)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <button className="flex items-center text-white bg-primary px-3 py-1 rounded text-xs hover:bg-primary/90">
+                                                        <Eye size={13} className="mr-1" />
+                                                        Resume
+                                                    </button>
+                                                </a>
+                                                <button
+                                                    onClick={() => downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name))}
+                                                    className="flex items-center text-gray-700 bg-gray-100 border border-gray-300 px-2.5 py-1 rounded text-xs hover:bg-gray-200"
+                                                    title="Download Resume"
+                                                >
+                                                    <Download size={13} className="mr-1" />
+                                                    Download
                                                 </button>
-                                            </a>
+                                            </div>
                                         ) : applicant.resume ? (
-                                            <span className="text-gray-500 text-xs">Resume unavailable</span>
+                                            <span className="text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs inline-block">
+                                                Resume unavailable — please ask the applicant to upload again
+                                            </span>
                                         ) : (
-                                            <span className="text-gray-500 text-xs">No resume</span>
+                                            <span className="text-gray-400 text-xs">No resume</span>
                                         )}
                                     </td>
                                     <td className="p-3 border">

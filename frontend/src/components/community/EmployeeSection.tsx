@@ -9,15 +9,9 @@ import {
   getEmployees, getEmployeeCount,
   type CompanyMember,
 } from "../../api/companyMemberApi";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
-
-const avatarUrl = (pic?: string) => {
-  if (!pic) return null;
-  return pic.startsWith("http")
-    ? pic
-    : `${MEDIA_URL.replace(/\/$/, "")}/${pic.replace(/^\//, "")}`;
-};
+const avatarUrl = (pic?: string) => resolveMediaUrl(pic) || null;
 
 const AvatarCircle = ({ pic, name, size = 10 }: { pic?: string; name?: string; size?: number }) => {
   const url = avatarUrl(pic);

@@ -9,6 +9,7 @@ const {
   getAllApplicantsForEmployerJobs, updateNotificationPreferences,
   deactivateAccount, getCandidates, toggleSavedCandidate,
   getSavedCandidates, getScheduledInterviews, updateEmployerHiringStatus,
+  getApplicationResume,
 } = require("../controllers/employerController");
 
 // Search companies — searchEmployers was missing from controller so we
@@ -75,5 +76,6 @@ router.get("/candidates", authenticate, authorizeRoles("employer"), getCandidate
 router.post("/candidates/:candidateId/save", authenticate, authorizeRoles("employer"), toggleSavedCandidate);
 router.get("/candidates/saved", authenticate, authorizeRoles("employer"), getSavedCandidates);
 router.get("/interviews", authenticate, authorizeRoles("employer"), getScheduledInterviews);
+router.get("/applications/:applicationId/resume", authenticate, authorizeRoles("employer"), getApplicationResume);
 
 module.exports = router;

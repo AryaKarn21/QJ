@@ -51,7 +51,6 @@ interface Job {
   companyOverride?: { name?: string; logo?: string };
 }
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 // Format relative time helper for posted time
 const getRelativeTime = (dateString: string) => {

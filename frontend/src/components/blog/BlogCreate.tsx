@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Save, Wand2, Plus, X, AlertCircle } from 'lucide-react';
+import { Save, Wand2, Plus, X, AlertCircle, Upload, Loader2 } from 'lucide-react';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
+import { uploadBlogImage } from '../../api/blogApi';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { TagInput } from '../common/TagInput';
 // Matches the backend's actual default port (server.js: PORT || 3000, and
 // every other API file in this app — testimonialApi.ts, advertisementApi.ts,
@@ -28,6 +30,8 @@ const BlogCreate: React.FC = () => {
   });
   const [images, setImages] = useState<BlogImage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingFeatured, setUploadingFeatured] = useState(false);
+  const [uploadingPostImageIndex, setUploadingPostImageIndex] = useState<number | null>(null);
   const [generatingContent, setGeneratingContent] = useState(false);
   // Separate from `generatingContent` (the loading flag) on purpose:
   // `generatingContent` is always false again by the time the author
@@ -45,37 +49,93 @@ const BlogCreate: React.FC = () => {
   const [categories, setCategories] = useState<PublicBlogCategory[]>([]);
 
   useEffect(() => {
-    getActiveBlogCategories().then(setCategories).catch(() => setCategories([]));
+    getActiveBlogCategories()
+      .then(setCategories)
+      .catch((err) => {
+        console.error('Failed to load blog categories:', err);
+        // Non-fatal — "General" is always an option below even if the
+        // fetch fails.
+      });
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const generateContent = async () => {
+  const handleFeaturedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a valid image file (JPG, PNG, WEBP, GIF).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+    setUploadingFeatured(true);
+    try {
+      const res = await uploadBlogImage(file);
+      setFormData((prev) => ({ ...prev, featuredImage: res.url }));
+      toast.success('Featured image uploaded to Cloudinary!');
+    } catch (err: any) {
+      console.error('Failed to upload featured image:', err);
+      toast.error(err?.response?.data?.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingFeatured(false);
+    }
+  };
+
+  const handlePostImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a valid image file (JPG, PNG, WEBP, GIF).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+    setUploadingPostImageIndex(index);
+    try {
+      const res = await uploadBlogImage(file);
+      updateImage(index, 'url', res.url);
+      toast.success('Image uploaded to Cloudinary!');
+    } catch (err: any) {
+      console.error('Failed to upload post image:', err);
+      toast.error(err?.response?.data?.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingPostImageIndex(null);
+    }
+  };
+
+  const handleGenerateContent = async () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a title first.');
+      toast.error('Please enter a title first');
       return;
     }
 
-    setAiError(null);
     try {
       setGeneratingContent(true);
+      setAiError(null);
       const token = localStorage.getItem('token');
 
       const response = await fetch(`${API_BASE_URL}/api/blogs/generate-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ title: formData.title }),
       });
 
-      const data = await response.json().catch(() => null);
+      const data = await response.json();
 
       if (response.ok && data) {
         setFormData((prev) => ({ ...prev, content: data.content }));
@@ -151,16 +211,15 @@ const BlogCreate: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        toast.success(publish ? 'Blog published.' : 'Draft saved.');
-        navigate(`/blog/${data.blog.slug || data.blog._id}`);
+        toast.success(publish ? 'Blog published successfully!' : 'Draft saved.');
+        navigate('/blog');
       } else {
-        const error = await response.json().catch(() => null);
-        toast.error(error?.message || 'Failed to create blog.');
+        const error = await response.json();
+        toast.error(error.message || 'Failed to save blog');
       }
     } catch (error) {
       console.error('Error creating blog:', error);
-      toast.error('Failed to create blog. Please try again.');
+      toast.error('Failed to create blog');
     } finally {
       setLoading(false);
     }
@@ -169,61 +228,72 @@ const BlogCreate: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Blog</h1>
-        <p className="text-gray-600">Share your thoughts and insights with the community</p>
+        <h1 className="text-3xl font-bold text-gray-900">Create New Blog Post</h1>
+        <p className="mt-2 text-gray-600">Share your thoughts and expertise with the community.</p>
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-6">
         {/* Title */}
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-            Title *
+            Title
           </label>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              placeholder="Enter your blog title..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
-            <button
-              type="button"
-              onClick={generateContent}
-              disabled={generatingContent || !formData.title.trim()}
-              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Wand2 className="h-4 w-4 mr-2" />
-              {generatingContent ? 'Generating content...' : 'AI Generate'}
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Enter a title and click "AI Generate" to automatically create content using AI
-          </p>
-          {aiError && (
-            <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{aiError}</span>
-            </div>
-          )}
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            placeholder="Enter blog title"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            required
+          />
         </div>
 
         {/* Content */}
         <div>
-          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-            Content *
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+              Content
+            </label>
+            <button
+              type="button"
+              onClick={handleGenerateContent}
+              disabled={generatingContent || !formData.title.trim()}
+              className="flex items-center px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors text-sm"
+            >
+              <Wand2 className="h-4 w-4 mr-1" />
+              {generatingContent ? 'Generating...' : 'Generate with AI'}
+            </button>
+          </div>
+          {aiError && (
+            <div
+              role="alert"
+              className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <span className="font-semibold">AI generation note: </span>
+                {aiError}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAiError(null)}
+                className="text-amber-700 hover:text-amber-950 font-bold"
+                aria-label="Dismiss note"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <textarea
             id="content"
             name="content"
             value={formData.content}
             onChange={handleInputChange}
-            placeholder="Write your blog content here..."
             rows={12}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+            placeholder="Write your blog content here..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-sans"
             required
           />
         </div>
@@ -232,7 +302,7 @@ const BlogCreate: React.FC = () => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <label className="block text-sm font-medium text-gray-700">
-              Images (Optional)
+              Additional Post Images
             </label>
             <button
               type="button"
@@ -258,29 +328,57 @@ const BlogCreate: React.FC = () => {
                   </button>
                 </div>
                 <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer text-xs font-medium transition-colors">
+                      {uploadingPostImageIndex === index ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      <span>{uploadingPostImageIndex === index ? 'Uploading...' : 'Upload Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                        onChange={(e) => handlePostImageUpload(index, e)}
+                        disabled={uploadingPostImageIndex === index}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-xs text-slate-400">or paste URL:</span>
+                  </div>
                   <input
                     type="url"
                     placeholder="Image URL"
                     value={image.url}
                     onChange={(e) => updateImage(index, 'url', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   <input
                     type="text"
                     placeholder="Caption (optional)"
                     value={image.caption}
                     onChange={(e) => updateImage(index, 'caption', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   {image.url && (
-                    <img
-                      src={image.url}
-                      alt={image.caption || `Preview ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <div className="relative mt-2">
+                      <img
+                        src={resolveMediaUrl(image.url)}
+                        alt={image.caption || `Preview ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateImage(index, 'url', '')}
+                        className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
+                        title="Clear image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -315,17 +413,55 @@ const BlogCreate: React.FC = () => {
           </div>
           <div>
             <label htmlFor="featuredImage" className="block text-sm font-medium text-gray-700 mb-2">
-              Featured Image URL (Optional)
+              Featured Image (Optional)
             </label>
-            <input
-              type="url"
-              id="featuredImage"
-              name="featuredImage"
-              value={formData.featuredImage}
-              onChange={handleInputChange}
-              placeholder="https://..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer text-xs font-medium transition-colors">
+                  {uploadingFeatured ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  <span>{uploadingFeatured ? 'Uploading...' : 'Upload Image'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    onChange={handleFeaturedImageUpload}
+                    disabled={uploadingFeatured}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-slate-400">or paste URL:</span>
+              </div>
+              <input
+                type="url"
+                id="featuredImage"
+                name="featuredImage"
+                value={formData.featuredImage}
+                onChange={handleInputChange}
+                placeholder="https://..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              {formData.featuredImage && (
+                <div className="relative mt-2 inline-block">
+                  <img
+                    src={resolveMediaUrl(formData.featuredImage)}
+                    alt="Featured preview"
+                    className="h-32 w-48 object-cover rounded-lg border border-gray-200"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, featuredImage: '' }))}
+                    className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
+                    title="Remove featured image"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -352,39 +488,38 @@ const BlogCreate: React.FC = () => {
           </label>
           <TagInput
             value={formData.tags}
-            onChange={(csv) => setFormData(prev => ({ ...prev, tags: csv }))}
-            placeholder="Type a tag and press Enter, e.g. technology"
+            onChange={(val) => setFormData((prev) => ({ ...prev, tags: val }))}
+            placeholder="Add tags..."
           />
         </div>
 
         {/* Submit Buttons */}
-        <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+        <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
           <button
             type="button"
             onClick={() => navigate('/blog')}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => submitBlog(false)}
-              className="flex items-center px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Saving...' : 'Save Draft'}
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Publishing...' : 'Publish Blog'}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => submitBlog(false)}
+            disabled={loading}
+            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            Save Draft
+          </button>
+          <button
+            type="button"
+            onClick={() => submitBlog(true)}
+            disabled={loading}
+            className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {loading ? 'Publishing...' : 'Publish'}
+          </button>
         </div>
       </form>
     </div>

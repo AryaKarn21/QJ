@@ -16,6 +16,7 @@ const { buildVisibilityFilter, canViewPost } = require("../utils/postVisibility"
 const { buildAuthorSnapshot } = require("../utils/userDisplay");
 const { findOrCreateConversation } = require("../utils/conversationHelpers");
 const { emitToConversation } = require("../utils/socket");
+const { recordAdminAudit } = require("../utils/auditLogger");
 
 const POST_TYPES = ["text", "image", "video", "pdf", "job", "poll", "hiring"];
 const TOPICS = ["career_tips", "interview_experience", "hiring", "general"];
@@ -57,6 +58,34 @@ function safeJsonParse(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function normalizeHashtags(explicitTags, textContent = "") {
+  let list = [];
+  if (Array.isArray(explicitTags)) {
+    list = explicitTags;
+  } else if (typeof explicitTags === "string" && explicitTags.trim()) {
+    try {
+      const parsed = JSON.parse(explicitTags);
+      if (Array.isArray(parsed)) list = parsed;
+      else list = explicitTags.split(",");
+    } catch {
+      list = explicitTags.split(",");
+    }
+  }
+
+  const extracted = extractHashtags(textContent);
+  const combined = [...extracted, ...list];
+  const normalized = new Set();
+  combined.forEach((item) => {
+    if (typeof item === "string") {
+      const cleaned = item.trim().toLowerCase().replace(/^#+/, "");
+      if (/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(cleaned)) {
+        normalized.add(cleaned);
+      }
+    }
+  });
+  return Array.from(normalized);
 }
 
 // --- Create -----------------------------------------------------------
@@ -136,8 +165,16 @@ const createPost = async (req, res) => {
       if (!topics.includes("hiring")) topics.push("hiring");
     }
 
-    const hashtags = extractHashtags(content);
-    const mentionIds = extractMentionIds(content).filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const hashtags = normalizeHashtags(req.body.hashtags, content);
+    const rawMentionIds = extractMentionIds(content).filter((id) => mongoose.Types.ObjectId.isValid(id));
+    let mentionIds = [];
+    if (rawMentionIds.length > 0) {
+      const validUsers = await User.find({
+        _id: { $in: rawMentionIds },
+        isActive: { $ne: false },
+      }).select("_id").lean();
+      mentionIds = validUsers.map((u) => u._id);
+    }
 
     const moderation = await moderateText(content);
 
@@ -414,30 +451,99 @@ const updatePost = async (req, res) => {
     if (!post || post.isDeleted) return res.status(404).json({ message: "Post not found." });
 
     const isOwner = String(post.author) === String(req.user._id);
-    const isModerator = ["admin", "superadmin"].includes(req.user.role);
-    if (!isOwner && !isModerator) {
+    const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+    if (!isOwner && !isSuperAdmin) {
       return res.status(403).json({ message: "You can only edit your own posts." });
     }
 
-    if (isOwner && typeof req.body.content === "string") {
+    if (typeof req.body.content === "string") {
       post.content = req.body.content.trim();
-      post.hashtags = extractHashtags(post.content);
-      post.mentions = extractMentionIds(post.content).filter((id) => mongoose.Types.ObjectId.isValid(id));
-      post.isEdited = true;
-      post.editedAt = new Date();
-
-      const moderation = await moderateText(post.content);
-      post.moderation.status = moderation.status;
-      post.moderation.flags = moderation.flags;
-      post.moderation.reason = moderation.reason;
     }
 
-    if (isModerator && typeof req.body.isPinned === "boolean") {
+    // Normalized hashtags and diff tracking
+    const oldHashtags = post.hashtags || [];
+    const newHashtags = normalizeHashtags(req.body.hashtags, post.content);
+    post.hashtags = newHashtags;
+
+    const removedTags = oldHashtags.filter((t) => !newHashtags.includes(t));
+    const addedTags = newHashtags.filter((t) => !oldHashtags.includes(t));
+
+    if (removedTags.length) {
+      await Promise.all(
+        removedTags.map((tag) =>
+          Hashtag.findOneAndUpdate({ tag, postCount: { $gt: 0 } }, { $inc: { postCount: -1 } })
+        )
+      ).catch((e) => console.error("Hashtag decrement failed:", e.message));
+    }
+    if (addedTags.length) {
+      await Promise.all(
+        addedTags.map((tag) =>
+          Hashtag.findOneAndUpdate(
+            { tag },
+            { $inc: { postCount: 1 }, $set: { lastUsedAt: new Date() } },
+            { upsert: true }
+          )
+        )
+      ).catch((e) => console.error("Hashtag increment failed:", e.message));
+    }
+
+    // Verified mentions in DB
+    const rawMentionIds = extractMentionIds(post.content).filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (rawMentionIds.length > 0) {
+      const validUsers = await User.find({
+        _id: { $in: rawMentionIds },
+        isActive: { $ne: false },
+      }).select("_id").lean();
+      post.mentions = validUsers.map((u) => u._id);
+    } else {
+      post.mentions = [];
+    }
+
+    // Media updates if provided
+    if (req.body.media !== undefined) {
+      const parsedMedia = safeJsonParse(req.body.media, req.body.media);
+      if (Array.isArray(parsedMedia)) {
+        post.media = parsedMedia;
+      }
+    }
+    if (req.files && req.files.length > 0) {
+      const newMedia = req.files.map(mediaUrlFor);
+      post.media = [...(post.media || []), ...newMedia];
+    }
+
+    // Topics if provided
+    if (req.body.topics !== undefined) {
+      const topics = safeJsonParse(req.body.topics, []).filter((t) => TOPICS.includes(t));
+      if (topics.length) post.topics = topics;
+    }
+
+    post.isEdited = true;
+    post.editedAt = new Date();
+
+    const moderation = await moderateText(post.content);
+    if (!post.moderation) post.moderation = {};
+    post.moderation.status = moderation.status;
+    post.moderation.flags = moderation.flags;
+    post.moderation.reason = moderation.reason;
+
+    if (isSuperAdmin && typeof req.body.isPinned === "boolean") {
       post.isPinned = req.body.isPinned;
     }
 
     await post.save();
-    res.json({ message: "Post updated.", post });
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin edited Community Post #${post._id}`,
+        contentType: "Post",
+        contentId: post._id,
+        details: { content: post.content?.slice(0, 200), author: post.author },
+      });
+    }
+
+    const [hydrated] = await hydratePosts([post.toObject()], req.user._id);
+    res.json({ message: "Post updated.", post: hydrated });
   } catch (error) {
     console.error("Error updating post:", error);
     res.status(500).json({ message: "Failed to update post." });
@@ -451,13 +557,32 @@ const deletePost = async (req, res) => {
     if (!post || post.isDeleted) return res.status(404).json({ message: "Post not found." });
 
     const isOwner = String(post.author) === String(req.user._id);
-    const isModerator = ["admin", "superadmin"].includes(req.user.role);
-    if (!isOwner && !isModerator) {
+    const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+    if (!isOwner && !isSuperAdmin) {
       return res.status(403).json({ message: "You can only delete your own posts." });
     }
 
     post.isDeleted = true;
     await post.save();
+
+    if (post.hashtags?.length) {
+      await Promise.all(
+        post.hashtags.map((tag) =>
+          Hashtag.findOneAndUpdate({ tag, postCount: { $gt: 0 } }, { $inc: { postCount: -1 } })
+        )
+      ).catch((e) => console.error("Hashtag decrement failed:", e.message));
+    }
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin deleted Community Post #${post._id}`,
+        contentType: "Post",
+        contentId: post._id,
+        details: { content: post.content?.slice(0, 200), author: post.author },
+      });
+    }
+
     res.json({ message: "Post deleted." });
   } catch (error) {
     console.error("Error deleting post:", error);
@@ -825,6 +950,7 @@ const moderatePostDecision = async (req, res) => {
 };
 
 module.exports = {
+  normalizeHashtags,
   createPost,
   getFeed,
   getCompanyFeed,

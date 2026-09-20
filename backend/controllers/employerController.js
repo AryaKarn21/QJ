@@ -7,6 +7,7 @@ const SavedCandidate = require("../models/SavedCandidate");
 const CompanyMember = require("../models/CompanyMember");
 const sendNotification = require("../utils/sendNotifications");
 const sendMail = require("../utils/sendMail");
+const { recordAdminAudit } = require("../utils/auditLogger");
 const { SYMBOL_BY_CODE } = require("../data/currencies");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
 const {
@@ -16,7 +17,12 @@ const {
   sanitizeStringList,
 } = require("../utils/profileStatus");
 const bcrypt = require("bcryptjs");
-const { persistUpload, deleteStoredFile } = require("../services/media.service");
+const {
+  persistUpload,
+  deleteStoredFile,
+  formatCloudinaryInlineUrl,
+  formatCloudinaryDownloadUrl,
+} = require("../services/media.service");
 
 // Get Employer Profile
 const getEmployerProfile = async (req, res) => {
@@ -336,7 +342,9 @@ const editJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    if (job.employer.toString() !== employerId) {
+    const isOwner = job.employer && job.employer.toString() === employerId;
+    const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+    if (!isOwner && !isSuperAdmin) {
       return res
         .status(403)
         .json({ message: "Not authorized to edit this job" });
@@ -431,21 +439,35 @@ if (req.body.experience === undefined && (req.body.minExperience !== undefined |
 // for admin review, same as a brand-new job).
 let publishedFromDraft = false;
 if (req.body.status !== undefined) {
-  const alreadyApproved = job.status === "Active" || job.status === "Inactive";
-  const isDraft = job.status === "Draft";
-  const requested = req.body.status;
-  if (alreadyApproved && ["Active", "Inactive", "Closed"].includes(requested)) {
-    job.status = requested;
-  } else if (isDraft && requested === "Draft") {
-    // no-op — still a draft
-  } else if (isDraft && requested === "Pending") {
-    job.status = "Pending";
-    publishedFromDraft = true;
+  if (isSuperAdmin) {
+    job.status = req.body.status;
   } else {
-    return res.status(403).json({ message: "Only an admin can approve or reject a job." });
+    const alreadyApproved = job.status === "Active" || job.status === "Inactive";
+    const isDraft = job.status === "Draft";
+    const requested = req.body.status;
+    if (alreadyApproved && ["Active", "Inactive", "Closed"].includes(requested)) {
+      job.status = requested;
+    } else if (isDraft && requested === "Draft") {
+      // no-op — still a draft
+    } else if (isDraft && requested === "Pending") {
+      job.status = "Pending";
+      publishedFromDraft = true;
+    } else {
+      return res.status(403).json({ message: "Only an admin can approve or reject a job." });
+    }
   }
 }
     await job.save();
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin edited Job Listing #${job._id}`,
+        contentType: "Job",
+        contentId: job._id,
+        details: { title: job.title },
+      });
+    }
 
     // A draft being published (Draft -> Pending) needs the same admin
     // notification createJob sends for a brand-new submission — nothing
@@ -625,8 +647,10 @@ const deleteJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    // Check if the employer is authorized to delete this job
-    if (job.employer.toString() !== employerId) {
+    // Check if the employer or super admin is authorized to delete this job
+    const isOwner = job.employer && job.employer.toString() === employerId;
+    const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+    if (!isOwner && !isSuperAdmin) {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this job" });
@@ -634,6 +658,17 @@ const deleteJob = async (req, res) => {
 
     // Use deleteOne method to delete the job
     await Job.deleteOne({ _id: jobId });
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin deleted Job Listing #${job._id}`,
+        contentType: "Job",
+        contentId: job._id,
+        details: { title: job.title },
+      });
+    }
+
     res.json({ message: "Job deleted successfully" });
   } catch (error) {
     console.error("Error deleting job:", error);
@@ -1227,6 +1262,60 @@ const updateEmployerHiringStatus = async (req, res) => {
   }
 };
 
+// Authorized resume download / view endpoint for employers
+const getApplicationResume = async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+    const employerId = req.user.id;
+
+    const application = await Application.findById(applicationId).populate("job applicant");
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    if (!application.job || application.job.employer.toString() !== employerId) {
+      return res.status(403).json({ message: "Not authorized to access this resume" });
+    }
+
+    const resume = application.resume;
+    if (!resume || typeof resume !== "string" || !resume.trim()) {
+      return res.status(404).json({ message: "No resume attached to this application." });
+    }
+
+    const normalized = resume.replace(/\\/g, "/");
+    const isObsoleteLocal =
+      !normalized.startsWith("http://") &&
+      !normalized.startsWith("https://") &&
+      (process.env.NODE_ENV === "production" ||
+        normalized.includes("/opt/render/") ||
+        normalized.startsWith("backend/uploads/") ||
+        normalized.includes("/backend/uploads/"));
+
+    if (isObsoleteLocal) {
+      return res.status(404).json({
+        message: "Resume unavailable — please ask the applicant to upload again",
+        unavailable: true,
+      });
+    }
+
+    const isDownload = req.query.download === "true";
+    const applicantName = application.applicant?.name || "applicant";
+    const filename = `${applicantName.replace(/[^a-zA-Z0-9]/g, "_")}_resume.pdf`;
+
+    let deliveryUrl = resume;
+    if (resume.startsWith("https://res.cloudinary.com/")) {
+      deliveryUrl = isDownload
+        ? formatCloudinaryDownloadUrl(resume, filename)
+        : formatCloudinaryInlineUrl(resume);
+    }
+
+    return res.redirect(deliveryUrl);
+  } catch (err) {
+    console.error("Error getting application resume:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getEmployerProfile,
   updateEmployerProfile,
@@ -1246,4 +1335,5 @@ module.exports = {
   getSavedCandidates,
   getScheduledInterviews,
   updateEmployerHiringStatus,
+  getApplicationResume,
 };

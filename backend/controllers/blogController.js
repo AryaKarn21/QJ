@@ -7,6 +7,7 @@ const {
   classifyGeminiError,
 } = require("../utils/geminiClient");
 const Employer = require("../models/Employer");
+const { persistUpload } = require("../services/media.service");
 
 // ============================================================
 // AI ERROR HANDLER
@@ -1268,6 +1269,39 @@ const getBlogCategories = async (
 };
 
 // ============================================================
+// UPLOAD BLOG IMAGE (Cloudinary)
+// ============================================================
+
+const uploadBlogImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
+    const url = await persistUpload(req.file, "blog_images", req.user.id);
+    return res.status(201).json({
+      success: true,
+      url,
+    });
+  } catch (error) {
+    if (error.code === "CLOUD_STORAGE_NOT_CONFIGURED") {
+      return res.status(503).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    console.error("Error uploading blog image:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to upload image",
+    });
+  }
+};
+
+// ============================================================
 // EXPORT CONTROLLERS
 // ============================================================
 
@@ -1282,4 +1316,5 @@ module.exports = {
   addComment,
   getUserBlogs,
   getBlogCategories,
+  uploadBlogImage,
 };

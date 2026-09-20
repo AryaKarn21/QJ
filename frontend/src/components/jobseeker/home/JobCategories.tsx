@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Layers, ArrowRight, SearchX } from 'lucide-react';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
@@ -148,8 +149,7 @@ const JobCategories = () => {
                   <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${accent.bg}`}>
                     {category.icon ? (
                       <img
-                      // AFTER:
-src={category.icon.startsWith('http') ? category.icon : `${(import.meta.env.VITE_MEDIA_URL || API_BASE_URL).replace(/\/$/, '')}${category.icon.startsWith('/') ? '' : '/'}${category.icon}`}
+                        src={resolveMediaUrl(category.icon)}
                         alt=""
                         className="h-6 w-6 object-contain"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

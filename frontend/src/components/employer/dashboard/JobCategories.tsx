@@ -12,9 +12,14 @@ import {
 import { EmptyState } from '../../ui/EmptyState';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { getFriendlyErrorMessage } from '../../../utils/apiError';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
-const iconUrl = (icon?: string) => (icon ? `${MEDIA_URL.replace(/\/$/, '')}/uploads/icons/${icon.replace(/^\//, '')}` : '');
+const iconUrl = (icon?: string) => {
+  if (!icon) return '';
+  if (/^https?:\/\//i.test(icon.trim())) return icon.trim();
+  const relPath = icon.includes('/') ? icon : `uploads/icons/${icon}`;
+  return resolveMediaUrl(relPath);
+};
 
 interface FormState {
   name: string;

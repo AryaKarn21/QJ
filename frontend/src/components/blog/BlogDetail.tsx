@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, User, Edit, Trash2, Send } from 'lucide-react';
 import { handleImageFallback } from '../../utils/imageFallback';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { SkeletonText, SkeletonBlock, SkeletonAvatarLine, SkeletonParagraph } from '../ui/Skeleton';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
@@ -261,7 +262,7 @@ const BlogDetail: React.FC = () => {
 
         {blog.featuredImage && (
           <img
-            src={blog.featuredImage}
+            src={resolveMediaUrl(blog.featuredImage)}
             alt={blog.title}
             className="w-full h-48 sm:h-64 md:h-96 object-cover bg-gray-100 rounded-lg shadow-md mb-6"
             onError={handleImageFallback}
@@ -271,9 +272,9 @@ const BlogDetail: React.FC = () => {
         <div className="flex items-center mb-6">
           {blog.authorImage && (
             <img
-              src={blog.authorImage}
+              src={resolveMediaUrl(blog.authorImage)}
               alt={blog.author?.name || 'Deleted user'}
-              className="w-12 h-12 rounded-full mr-4"
+              className="w-12 h-12 rounded-full mr-4 object-cover"
             />
           )}
           <div className="flex-1">
@@ -317,9 +318,10 @@ const BlogDetail: React.FC = () => {
         {blog.images.map((image, index) => (
           <div key={index} className="mb-6">
             <img
-              src={image.url}
+              src={resolveMediaUrl(image.url)}
               alt={image.caption || `Blog image ${index + 1}`}
-              className="w-full rounded-lg shadow-md"
+              className="w-full rounded-lg shadow-md object-cover max-h-[500px]"
+              onError={handleImageFallback}
             />
             {image.caption && (
               <p className="text-sm text-gray-600 text-center mt-2 italic">

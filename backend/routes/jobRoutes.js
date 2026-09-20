@@ -16,7 +16,10 @@ const {
   dislikeJob,
   saveJob,
   getSavedJobs,
-  getAppliedJobs
+  getAppliedJobs,
+  updateJob,
+  deleteJob,
+  updateJobStatus
 } = require("../controllers/jobController");
 
 // These three (and "/:id" below) all compute `isSaved` from
@@ -69,6 +72,15 @@ router.patch("/:id/save", authenticate, saveJob);
 
 // Route to get a job by ID
 router.get("/:id", authenticateOptional, getJobById);
+
+// Route to edit a job (Owner or Super Admin)
+router.put("/:id", authenticate, updateJob);
+
+// Route to delete a job (Owner or Super Admin)
+router.delete("/:id", authenticate, deleteJob);
+
+// Route to activate / deactivate a job (Owner or Super Admin)
+router.patch("/:id/status", authenticate, updateJobStatus);
 
 //Route to get job views
 router.get("/:id/views", getJobViews);

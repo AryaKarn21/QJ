@@ -14,9 +14,9 @@ import {
   type AdPlacement,
 } from "../../api/advertisementApi";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
-const resolveImage = (url: string) => `${MEDIA_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+const resolveImage = (url: string) => resolveMediaUrl(url);
 
 const PLACEMENT_LABELS: Record<AdPlacement, string> = {
   homepage: "Homepage",

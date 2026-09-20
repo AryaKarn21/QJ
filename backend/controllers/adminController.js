@@ -10,6 +10,12 @@ const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
 const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const path = require("path");
+const {
+  UPDATABLE_JOB_FIELDS,
+  deriveSalaryString,
+  deriveExperienceString,
+} = require("../utils/jobHelpers");
+const { recordAdminAudit } = require("../utils/auditLogger");
 
 // Create a new admin account (superadmin only). This is the ONLY way an
 // admin account should be created after initial setup — the public
@@ -335,6 +341,109 @@ const getAllJobs = async (req, res) => {
   }
 };
 
+// Create a Job as Admin
+const createAdminJob = async (req, res) => {
+  try {
+    const {
+      employer,
+      title,
+      country,
+      location,
+      jobtype,
+      salary,
+      experience,
+      jobcategory,
+      level,
+      deadline,
+      openings,
+      istrending,
+      status = "Active",
+      description,
+      department,
+      workMode,
+      minExperience,
+      maxExperience,
+      salaryMin,
+      salaryMax,
+      salaryPeriod,
+      currency,
+      overview,
+      responsibilities,
+      requirements,
+      requiredSkills,
+      preferredSkills,
+      education,
+      benefits,
+      perks,
+      workingHours,
+      companyOverride,
+    } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "Job title is required." });
+    }
+
+    let assignedEmployer = employer;
+    if (!assignedEmployer) {
+      const defaultEmployer = await User.findOne({ role: "employer", isActive: { $ne: false } }).select("_id").lean();
+      assignedEmployer = defaultEmployer ? defaultEmployer._id : req.user._id;
+    }
+
+    const derivedSalary = deriveSalaryString({ salary, salaryMin, salaryMax, currency, salaryPeriod });
+    const derivedExperience = deriveExperienceString({ experience, minExperience, maxExperience });
+
+    const job = new Job({
+      employer: assignedEmployer,
+      title,
+      country,
+      location,
+      jobtype,
+      salary: derivedSalary,
+      experience: derivedExperience,
+      jobcategory,
+      level,
+      deadline,
+      openings: openings ? Number(openings) : undefined,
+      istrending: !!istrending,
+      status,
+      description,
+      department,
+      workMode,
+      minExperience: minExperience ? Number(minExperience) : undefined,
+      maxExperience: maxExperience ? Number(maxExperience) : undefined,
+      salaryMin: salaryMin ? Number(salaryMin) : undefined,
+      salaryMax: salaryMax ? Number(salaryMax) : undefined,
+      salaryPeriod,
+      currency,
+      overview,
+      responsibilities,
+      requirements,
+      requiredSkills: Array.isArray(requiredSkills) ? requiredSkills : undefined,
+      preferredSkills: Array.isArray(preferredSkills) ? preferredSkills : undefined,
+      education,
+      benefits: Array.isArray(benefits) ? benefits : undefined,
+      perks,
+      workingHours,
+      companyOverride,
+    });
+
+    await job.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin created Job Listing #${job._id}`,
+      contentType: "Job",
+      contentId: job._id,
+      details: { title: job.title },
+    });
+
+    res.status(201).json({ message: "Job created successfully", job });
+  } catch (error) {
+    console.error("Error creating job by admin:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 // Edit a Job
 const editJob = async (req, res) => {
   const { id: jobId } = req.params;
@@ -353,19 +462,42 @@ const editJob = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to edit this job" });
     }
 
-    const updatableFields = [
-      "title", "location", "jobtype", "salary", "experience",
-      "jobcategory", "level", "deadline", "openings", "istrending",
-      "status", "description",
-    ];
-
-    updatableFields.forEach((field) => {
+    UPDATABLE_JOB_FIELDS.forEach((field) => {
       if (req.body[field] !== undefined) {
         job[field] = req.body[field];
       }
     });
 
+    if (req.body.employer) {
+      job.employer = req.body.employer;
+    }
+
+    if (req.body.salary === undefined && (req.body.salaryMin !== undefined || req.body.salaryMax !== undefined)) {
+      job.salary = deriveSalaryString({
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        currency: job.currency,
+        salaryPeriod: job.salaryPeriod,
+      });
+    }
+
+    if (req.body.experience === undefined && (req.body.minExperience !== undefined || req.body.maxExperience !== undefined)) {
+      job.experience = deriveExperienceString({
+        minExperience: job.minExperience,
+        maxExperience: job.maxExperience,
+      });
+    }
+
     await job.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin edited Job Listing #${job._id}`,
+      contentType: "Job",
+      contentId: job._id,
+      details: { title: job.title },
+    });
+
     res.json(job);
   } catch (error) {
     console.error("Error editing job:", error);
@@ -383,6 +515,14 @@ const deleteJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin deleted Job Listing #${jobId}`,
+      contentType: "Job",
+      contentId: jobId,
+      details: { title: job.title },
+    });
+
     res.json({ message: "Job deleted successfully" });
   } catch (error) {
     console.error("Error deleting job:", error);
@@ -396,13 +536,17 @@ const approveJob = async (req, res) => {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    // BUG FIX: this was writing lowercase "active", but the schema's
-    // `status` enum is capitalized ("Draft"/"Pending"/"Active"/...). That
-    // failed Mongoose validation on save (500), and the admin Approve
-    // button had no error handling, so it silently did nothing.
     job.status = "Active";
     job.rejectionReason = "";
     await job.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin approved Job Listing #${job._id}`,
+      contentType: "Job",
+      contentId: job._id,
+      details: { title: job.title },
+    });
 
     await sendNotification({
       recipient: job.employer,
@@ -426,11 +570,17 @@ const rejectJob = async (req, res) => {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    // Same casing bug as approveJob above, plus this never persisted the
-    // admin's rejection reason the frontend already collects and sends.
     job.status = "Rejected";
     job.rejectionReason = reason || "Did not meet posting requirements.";
     await job.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin rejected Job Listing #${job._id}`,
+      contentType: "Job",
+      contentId: job._id,
+      details: { title: job.title, reason: job.rejectionReason },
+    });
 
     await sendNotification({
       recipient: job.employer,
@@ -587,6 +737,7 @@ module.exports = {
   deleteUser,
   updateUserRole,
   getAllJobs,
+  createAdminJob,
   editJob,
   deleteJob,
   getDailyLoggedInUsersCount,

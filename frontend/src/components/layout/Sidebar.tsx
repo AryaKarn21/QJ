@@ -28,6 +28,7 @@ import {
   User,
   ShieldAlert,
   ReceiptText,
+  Share2,
 } from 'lucide-react';
 import { useAdminUI } from '../../context/AdminUIContext';
 import { useAdminAuth } from '../../context/useAdminAuth';
@@ -86,6 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Content',
     items: [
+      { label: 'Community Feed', icon: <Share2 size={22} />, path: '/community' },
       { label: 'CMS', icon: <Newspaper size={22} />, path: '/admin/cms' },
       { label: 'Blog Categories', icon: <FolderOpen size={22} />, path: '/admin/blog-categories' },
       { label: 'Testimonials', icon: <MessageSquareQuote size={22} />, path: '/admin/testimonials' },

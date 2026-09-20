@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Image, Video, FileText, Briefcase, BarChart3, Megaphone, Type, Sparkles, SpellCheck, X, Plus, Globe2 } from 'lucide-react';
+import { Image, Video, FileText, Briefcase, BarChart3, Megaphone, Type, Sparkles, SpellCheck, X, Plus, Globe2, Hash } from 'lucide-react';
 import { createPost, type CreatePostInput } from '../../api/communityApi';
 import { generateCaption, correctGrammar, detectHiringIntent } from '../../api/communityAiApi';
 import { useCurrentUser } from '../../utils/currentUser';
@@ -53,7 +53,23 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
   const [captionTopic, setCaptionTopic] = useState('');
   const [showCaptionPrompt, setShowCaptionPrompt] = useState(false);
   const [hiringHint, setHiringHint] = useState(false);
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [hashtagInput, setHashtagInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const SUGGESTED_HASHTAGS = ['hiring', 'developer', 'react', 'nepaljobs', 'tech', 'jobopportunity'];
+
+  const addHashtag = (rawTag: string) => {
+    const cleaned = rawTag.trim().toLowerCase().replace(/^#+/, '');
+    if (cleaned && /^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(cleaned) && !hashtags.includes(cleaned)) {
+      setHashtags((prev) => [...prev, cleaned]);
+    }
+    setHashtagInput('');
+  };
+
+  const removeHashtag = (tagToRemove: string) => {
+    setHashtags((prev) => prev.filter((t) => t !== tagToRemove));
+  };
 
   // Poll fields
   const [pollOptions, setPollOptions] = useState(['', '']);
@@ -99,6 +115,8 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
     setPollOptions(['', '']);
     setJobTitle(''); setJobCompany(''); setJobLocation(''); setJobType(''); setJobSalary(''); setJobApplyUrl('');
     setHiringRoles(''); setHiringOpenings(''); setHiringLocation(''); setHiringApplyUrl(''); setHiringContactEmail('');
+    setHashtags([]);
+    setHashtagInput('');
     setType('text');
     setExpanded(false);
     setHiringHint(false);
@@ -171,6 +189,7 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
         type,
         content,
         topics,
+        hashtags,
         files,
         company: postAsCompany ? defaultCompanyId : undefined,
         visibility,
@@ -356,6 +375,85 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
           <input value={hiringApplyUrl} onChange={(e) => setHiringApplyUrl(e.target.value)} placeholder="Apply link (optional)" className="col-span-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm" />
         </div>
       )}
+
+      {/* Hashtag Section */}
+      <div className="mt-3 space-y-2 rounded-lg border border-gray-100 bg-gray-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-800/50">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300">
+          <Hash size={13} className="text-primary" />
+          <span>Hashtags</span>
+          <span className="text-[11px] font-normal text-gray-400">(e.g. #hiring, #react)</span>
+        </div>
+
+        {/* Existing hashtag badges */}
+        {hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {hashtags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary dark:bg-primary/20"
+              >
+                #{tag}
+                <button
+                  type="button"
+                  onClick={() => removeHashtag(tag)}
+                  className="rounded-full hover:bg-primary/20 p-0.5 text-primary"
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Input for adding new hashtag */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">#</span>
+            <input
+              type="text"
+              value={hashtagInput}
+              onChange={(e) => setHashtagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                  e.preventDefault();
+                  addHashtag(hashtagInput);
+                }
+              }}
+              placeholder="Add a hashtag and press Enter…"
+              className="w-full rounded-md border border-gray-200 bg-white py-1 pl-6 pr-3 text-xs text-dark placeholder-gray-400 focus:border-primary focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          {hashtagInput.trim() && (
+            <button
+              type="button"
+              onClick={() => addHashtag(hashtagInput)}
+              className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-primary/90"
+            >
+              Add
+            </button>
+          )}
+        </div>
+
+        {/* Suggested hashtags */}
+        <div className="flex flex-wrap items-center gap-1 pt-1 text-[11px] text-gray-400">
+          <span>Suggestions:</span>
+          {SUGGESTED_HASHTAGS.map((sug) => (
+            <button
+              key={sug}
+              type="button"
+              onClick={() => addHashtag(sug)}
+              disabled={hashtags.includes(sug)}
+              className={`rounded px-1.5 py-0.5 transition ${
+                hashtags.includes(sug)
+                  ? 'bg-gray-100 text-gray-300 dark:bg-slate-800 dark:text-slate-600'
+                  : 'text-primary hover:bg-primary/10'
+              }`}
+            >
+              #{sug}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Topics */}
       <div className="mt-3 flex flex-wrap gap-1.5">

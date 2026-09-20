@@ -85,7 +85,6 @@ const backendKeyMap = {
   Month: "monthly",
 };
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 const AdminDashboard = () => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("Day");

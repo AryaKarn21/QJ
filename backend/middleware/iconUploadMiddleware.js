@@ -23,7 +23,7 @@ const fileFilter = (req, file, cb) => {
       cb(new Error('Invalid icon type. Only JPEG, PNG, JPG, and WEBP are allowed.'), false);
     }
   } else {
-    cb(new Error('Only "icon" field is allowed for job category uploads.'), false);
+    cb(new Error('Only "icon" field is allowed for category uploads.'), false);
   }
 };
 
@@ -50,11 +50,13 @@ function handleIconUpload(req, res, next) {
   iconUpload(req, res, (err) => {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Icon image is too large. Please choose a file under 1MB.' });
+      const msg = 'Icon image is too large. Please choose a file under 1MB.';
+      return res.status(400).json({ message: msg, error: msg });
     }
     // Every other case (bad field name, disallowed mimetype, ...) already
     // carries a specific, safe-to-show message from fileFilter/filename above.
-    return res.status(400).json({ error: err.message || 'Failed to upload icon.' });
+    const msg = err.message || 'Failed to upload icon.';
+    return res.status(400).json({ message: msg, error: msg });
   });
 }
 

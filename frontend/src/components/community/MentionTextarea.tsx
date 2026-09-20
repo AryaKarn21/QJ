@@ -29,13 +29,17 @@ export function MentionTextarea({ value, onChange, placeholder, rows = 4, classN
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!mentionQuery || mentionQuery.text.length < 2) {
+    if (!mentionQuery) {
       setSuggestions([]);
       return;
     }
     const handle = setTimeout(() => {
-      searchMentionableUsers(mentionQuery.text).then(setSuggestions).catch(() => setSuggestions([]));
-    }, 250);
+      searchMentionableUsers(mentionQuery.text)
+        .then((res) => {
+          setSuggestions(Array.isArray(res) ? res : []);
+        })
+        .catch(() => setSuggestions([]));
+    }, 200);
     return () => clearTimeout(handle);
   }, [mentionQuery]);
 
@@ -45,7 +49,7 @@ export function MentionTextarea({ value, onChange, placeholder, rows = 4, classN
 
     const cursor = e.target.selectionStart;
     const uptoCursor = newValue.slice(0, cursor);
-    const match = uptoCursor.match(/@([a-zA-Z\s]{0,40})$/);
+    const match = uptoCursor.match(/@([a-zA-Z0-9_\s]{0,40})$/);
     if (match) {
       setMentionQuery({ start: cursor - match[1].length - 1, text: match[1].trim() });
     } else {
@@ -62,6 +66,7 @@ export function MentionTextarea({ value, onChange, placeholder, rows = 4, classN
     const token = `@${isCompany ? 'company' : ''}[${user.name}](${user._id}) `;
     onChange(`${before}${token}${after}`);
     setMentionQuery(null);
+    setSuggestions([]);
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
@@ -74,39 +79,52 @@ export function MentionTextarea({ value, onChange, placeholder, rows = 4, classN
         placeholder={placeholder}
         rows={rows}
         autoFocus={autoFocus}
-        className={`w-full resize-none rounded-lg border border-gray-200 p-3 text-sm text-dark placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary ${className}`}
+        className={`w-full resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-dark placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${className}`}
       />
       {suggestions.length > 0 && (
-        <div className="absolute z-20 mt-1 w-72 max-w-full rounded-lg border border-gray-200 bg-light shadow-card-hover">
+        <div className="absolute z-30 mt-1 max-h-60 w-72 max-w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+          <div className="border-b border-gray-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:border-slate-700 dark:text-slate-400">
+            Mention someone
+          </div>
           {suggestions.map((user) => {
             const isCompany = user.role === 'employer';
+            const roleLabel =
+              isCompany ? 'Company' :
+              user.role === 'jobseeker' ? 'Job Seeker' :
+              user.role === 'recruiter' ? 'Employer' :
+              user.role === 'mentor' ? 'Mentor' :
+              user.headline || 'User';
+
             return (
               <button
                 key={user._id}
                 type="button"
                 onClick={() => pickMention(user)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-secondary"
+                className="flex w-full items-center gap-2.5 border-b border-gray-50 px-3 py-2 text-left hover:bg-gray-50 dark:border-slate-700/50 dark:hover:bg-slate-700/60"
               >
                 {user.avatar ? (
                   <img
                     src={resolveMediaUrl(user.avatar)}
                     alt=""
-                    className={`h-7 w-7 object-cover ${isCompany ? 'rounded-md' : 'rounded-full'}`}
+                    className={`h-7 w-7 shrink-0 object-cover ${isCompany ? 'rounded-md' : 'rounded-full'}`}
                   />
                 ) : isCompany ? (
-                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <Building2 size={14} />
                   </span>
                 ) : (
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                    {user.name?.[0]?.toUpperCase()}
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    {user.name?.[0]?.toUpperCase() || 'U'}
                   </span>
                 )}
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-dark">{user.name}</span>
-                  <span className="flex items-center gap-1 truncate text-xs text-gray-500">
-                    {isCompany && <Building2 size={11} className="shrink-0" />}
-                    {isCompany ? 'Company' : user.headline || user.role}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-dark dark:text-slate-100">{user.name}</span>
+                  <span className="flex items-center gap-1 truncate text-xs text-gray-500 dark:text-slate-400">
+                    {isCompany && <Building2 size={11} className="shrink-0 text-primary" />}
+                    <span className="font-medium text-gray-600 dark:text-slate-300">{roleLabel}</span>
+                    {user.headline && !isCompany && (
+                      <span className="truncate text-gray-400">· {user.headline}</span>
+                    )}
                   </span>
                 </span>
               </button>

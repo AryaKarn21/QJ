@@ -51,7 +51,6 @@ const BOTTOM_TABS = [
   { name: 'Profile', icon: User, path: null },
 ];
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 const Header: React.FC = () => {
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);

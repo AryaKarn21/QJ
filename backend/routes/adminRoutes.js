@@ -14,6 +14,7 @@ const {
   deleteUser,
   updateUserRole,
   getAllJobs,
+  createAdminJob,
   editJob,
   deleteJob,
   toggleTrendingStatus,
@@ -66,6 +67,9 @@ router.patch("/users/:id/role", authenticate, authorizeSuperAdmin, updateUserRol
 
 // Get all jobs
 router.get("/jobs", authenticate, authorizeAdmin, getAllJobs);
+
+// Create job as admin
+router.post("/jobs", authenticate, authorizeAdmin, createAdminJob);
 
 // Edit job
 router.put("/job/:id", authenticate, authorizeAdmin, editJob);

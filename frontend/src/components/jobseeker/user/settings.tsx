@@ -5,7 +5,6 @@ import { getJobseekerProfile } from '../jobseekerApi/api';
 import { changePassword } from '../../auth/authApi/authApi';
 import { SkeletonCircle, SkeletonText } from '../../ui/Skeleton';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 const UserSettings = () => {
   const [showOldPassword, setShowOldPassword] = useState(false);

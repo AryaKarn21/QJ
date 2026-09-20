@@ -12,9 +12,10 @@ import {
   MapPin,
   ExternalLink,
   Trash2,
-  FileText,
   Pencil,
   X,
+  Hash,
+  Settings,
 } from 'lucide-react';
 import { toggleLikePost, toggleBookmarkPost, deletePost, updatePost } from '../../api/communityApi';
 import { summarizePost } from '../../api/communityAiApi';
@@ -22,6 +23,8 @@ import { useCurrentUser } from '../../utils/currentUser';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from './Avatar';
 import { RichText } from './RichText';
+import { MentionTextarea } from './MentionTextarea';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { PollWidget } from './PollWidget';
 import { CommentSection } from './CommentSection';
 import { ShareModal } from './ShareModal';
@@ -50,7 +53,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onDeleted }: PostCardProps) {
-  const { userId, isAuthenticated } = useCurrentUser();
+  const { userId, role, isAuthenticated } = useCurrentUser();
   const [liked, setLiked] = useState(post.viewer.hasLiked);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [bookmarked, setBookmarked] = useState(post.viewer.hasBookmarked);
@@ -63,12 +66,21 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   const [summarizing, setSummarizing] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [content, setContent] = useState(post.content);
+  const [hashtags, setHashtags] = useState<string[]>(post.hashtags || []);
+  const [media, setMedia] = useState(post.media || []);
   const [isEdited, setIsEdited] = useState(post.isEdited);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(post.content);
+  const [editHashtags, setEditHashtags] = useState<string[]>(post.hashtags || []);
+  const [editHashtagInput, setEditHashtagInput] = useState('');
+  const [editMedia, setEditMedia] = useState(post.media || []);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isOwner = userId === post.author._id;
+  const isSuperAdmin = role === 'superadmin' || role === 'admin';
+  const canManage = isOwner || isSuperAdmin;
   const displayAs = post.company || post.author;
 
   const requireAuth = (fn: () => void) => {
@@ -118,42 +130,68 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   const handleShared = () => setShareCount((c) => c + 1);
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    setDeleting(true);
     try {
       await deletePost(post._id);
       setDeleted(true);
+      setConfirmDeleteOpen(false);
       onDeleted?.(post._id);
       toast.success('Post deleted.');
     } catch {
       toast.error('Could not delete post.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   const startEditing = () => {
     setEditDraft(content);
+    setEditHashtags(hashtags);
+    setEditHashtagInput('');
+    setEditMedia(media);
     setEditing(true);
     setMenuOpen(false);
   };
 
   const cancelEditing = () => {
     setEditDraft(content);
+    setEditHashtags(hashtags);
+    setEditMedia(media);
     setEditing(false);
+  };
+
+  const addEditHashtag = (rawTag: string) => {
+    const cleaned = rawTag.trim().toLowerCase().replace(/^#+/, '');
+    if (cleaned && /^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(cleaned) && !editHashtags.includes(cleaned)) {
+      setEditHashtags((prev) => [...prev, cleaned]);
+    }
+    setEditHashtagInput('');
+  };
+
+  const removeEditHashtag = (tag: string) => {
+    setEditHashtags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const removeEditMedia = (index: number) => {
+    setEditMedia((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveEdit = async () => {
     const trimmed = editDraft.trim();
-    if (!trimmed) {
+    if (!trimmed && editMedia.length === 0 && post.type !== 'poll' && post.type !== 'job' && post.type !== 'hiring') {
       toast.error("Post can't be empty.");
-      return;
-    }
-    if (trimmed === content) {
-      setEditing(false);
       return;
     }
     setSaving(true);
     try {
-      await updatePost(post._id, trimmed);
-      setContent(trimmed);
+      const res = await updatePost(post._id, {
+        content: trimmed,
+        hashtags: editHashtags,
+        media: editMedia,
+      });
+      setContent(res.post?.content !== undefined ? res.post.content : trimmed);
+      setHashtags(res.post?.hashtags || editHashtags);
+      setMedia(res.post?.media || editMedia);
       setIsEdited(true);
       setEditing(false);
       toast.success('Post updated.');
@@ -211,28 +249,41 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
           </div>
         </div>
 
-        {isOwner && (
+        {canManage && (
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className="rounded-full p-1.5 text-gray-400 hover:bg-secondary hover:text-dark"
+              title="Post actions"
             >
               <MoreHorizontal size={18} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-light py-1 shadow-card-hover">
+              <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 <button
                   onClick={startEditing}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-dark hover:bg-secondary"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-dark hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
-                  <Pencil size={14} /> Edit post
+                  <Pencil size={14} className="text-primary" /> Edit
                 </button>
                 <button
-                  onClick={handleDelete}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setConfirmDeleteOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-gray-100 dark:hover:bg-slate-700"
                 >
-                  <Trash2 size={14} /> Delete post
+                  <Trash2 size={14} /> Delete
                 </button>
+                {isSuperAdmin && (
+                  <Link
+                    to="/admin/community/flagged-posts"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <Settings size={14} /> Manage
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -258,14 +309,98 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
 
       {/* Body text */}
       {editing ? (
-        <div className="mt-3">
-          <textarea
+        <div className="mt-3 space-y-3">
+          <MentionTextarea
             value={editDraft}
-            onChange={(e) => setEditDraft(e.target.value)}
+            onChange={setEditDraft}
             rows={4}
             autoFocus
-            className="w-full resize-none rounded-lg border border-gray-300 p-2.5 text-sm leading-relaxed text-dark focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full"
           />
+
+          {/* Edit Hashtags */}
+          <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-2.5 dark:border-slate-800 dark:bg-slate-850">
+            <div className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-gray-600 dark:text-slate-300">
+              <Hash size={12} className="text-primary" /> Hashtags
+            </div>
+            {editHashtags.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {editHashtags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary dark:bg-primary/20"
+                  >
+                    #{tag}
+                    <button
+                      type="button"
+                      onClick={() => removeEditHashtag(tag)}
+                      className="rounded-full hover:bg-primary/20 p-0.5 text-primary"
+                    >
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">#</span>
+                <input
+                  type="text"
+                  value={editHashtagInput}
+                  onChange={(e) => setEditHashtagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                      e.preventDefault();
+                      addEditHashtag(editHashtagInput);
+                    }
+                  }}
+                  placeholder="Add hashtag and press Enter…"
+                  className="w-full rounded-md border border-gray-200 bg-white py-1 pl-6 pr-3 text-xs text-dark placeholder-gray-400 focus:border-primary focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              {editHashtagInput.trim() && (
+                <button
+                  type="button"
+                  onClick={() => addEditHashtag(editHashtagInput)}
+                  className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-primary/90"
+                >
+                  Add
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Edit Media if present */}
+          {editMedia.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-gray-500">Attached Media</span>
+              <div className="grid grid-cols-2 gap-2">
+                {editMedia.map((m, i) => (
+                  <div key={i} className="relative overflow-hidden rounded-lg border border-gray-200">
+                    {m.mimeType?.startsWith('video/') ? (
+                      <video src={resolveMediaUrl(m.url)} className="h-24 w-full bg-black object-cover" />
+                    ) : m.mimeType === 'application/pdf' ? (
+                      <div className="flex h-24 items-center justify-center bg-gray-100 text-xs text-gray-600">
+                        <FileText size={18} className="mr-1 text-primary" /> {m.fileName || 'PDF'}
+                      </div>
+                    ) : (
+                      <img src={resolveMediaUrl(m.url)} alt="" className="h-24 w-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeEditMedia(i)}
+                      className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                      title="Remove media"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-2 flex items-center justify-end gap-2">
             <button
               onClick={cancelEditing}
@@ -284,11 +419,29 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
           </div>
         </div>
       ) : (
-        content && (
-          <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-dark">
-            <RichText text={content} />
-          </div>
-        )
+        <>
+          {content && (
+            <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-dark">
+              <RichText text={content} />
+            </div>
+          )}
+
+          {/* Hashtag pills under post */}
+          {hashtags.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {hashtags.map((tag) => (
+                <Link
+                  key={tag}
+                  to={`/community/hashtag/${tag}`}
+                  className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30"
+                >
+                  <Hash size={11} className="shrink-0" />
+                  {tag}
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {!editing && content.length > 400 && (
@@ -310,9 +463,9 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
       )}
 
       {/* Media — all anchor tags kept on ONE line to prevent tag-name drop */}
-      {post.media?.length > 0 && (
-        <div className={`mt-3 grid gap-1 overflow-hidden rounded-lg ${post.media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          {post.media.map((m, i) =>
+      {!editing && media?.length > 0 && (
+        <div className={`mt-3 grid gap-1 overflow-hidden rounded-lg ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {media.map((m, i) =>
             m.mimeType?.startsWith('video/') ? (
               <video key={i} src={resolveMediaUrl(m.url)} controls className="max-h-96 w-full bg-black object-contain" />
             ) : m.mimeType === 'application/pdf' ? (
@@ -323,6 +476,17 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
           )}
         </div>
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Post"
+        description="Are you sure you want to delete this community post? This action cannot be undone."
+        confirmLabel="Delete Post"
+        loading={deleting}
+      />
 
       {/* Poll */}
       {post.type === 'poll' && post.pollData && (

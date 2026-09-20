@@ -161,4 +161,40 @@ const recordAudit = async ({
   }
 };
 
-module.exports = { auditTrail, recordAudit };
+/**
+ * Standardized audit logging for Super Admin / Admin actions on content
+ * (Community Posts, Job Listings, Blogs, Categories, Users, etc.).
+ */
+const recordAdminAudit = async ({
+  user,
+  action,
+  contentType,
+  contentId,
+  details = {},
+  success = true,
+  req,
+}) => {
+  const roleName = user?.role === "superadmin" ? "Super Admin" : "Admin";
+  const formattedAction = action || `${roleName} modified ${contentType} #${contentId}`;
+  return recordAudit({
+    req,
+    actor: user
+      ? {
+          id: user._id || user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        }
+      : undefined,
+    module: "admin",
+    action: formattedAction,
+    targetType: contentType,
+    targetId: contentId,
+    targetLabel: `${contentType} #${contentId}`,
+    metadata: sanitize(details),
+    success,
+    statusCode: 200,
+  });
+};
+
+module.exports = { auditTrail, recordAudit, recordAdminAudit };

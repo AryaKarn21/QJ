@@ -7,9 +7,9 @@ import {
   type AdPlacement,
   type PublicAd,
 } from '../../api/advertisementApi';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
-const resolveImage = (url: string) => `${MEDIA_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
+const resolveImage = (url: string) => resolveMediaUrl(url);
 
 /**
  * Real advertisement banner — fetches whatever is actually active for the

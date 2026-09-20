@@ -77,6 +77,7 @@ const FOLDER_MAP = {
   job_category_icons:  "qj/job-category-icons",
   blog_category_icons: "qj/blog-category-icons",
   blog_images:          "qj/blog-images",
+  cms_images:           "qj/cms-images",
 };
 
 const ANY_TYPE_FOLDERS = new Set(["message_attachments"]);
@@ -87,6 +88,27 @@ function isCloudinaryUrl(stored) {
 
 function isSupabaseUrl(stored) {
   return typeof stored === "string" && stored.includes(".supabase.co/storage/");
+}
+
+function formatCloudinaryInlineUrl(url) {
+  if (!isCloudinaryUrl(url)) return url;
+  if (url.includes("/raw/upload/") && !url.includes("/raw/upload/fl_inline/")) {
+    return url.replace("/raw/upload/", "/raw/upload/fl_inline/");
+  }
+  return url;
+}
+
+function formatCloudinaryDownloadUrl(url, filename) {
+  if (!isCloudinaryUrl(url)) return url;
+  const safeFilename = filename ? encodeURIComponent(filename.replace(/[/\\?%*:|"<>]/g, "_")) : "";
+  const flag = safeFilename ? `fl_attachment:${safeFilename}` : "fl_attachment";
+  if (url.includes("/raw/upload/")) {
+    return url.replace(/\/raw\/upload\/(fl_inline\/)?/, `/raw/upload/${flag}/`);
+  }
+  if (url.includes("/image/upload/")) {
+    return url.replace(/\/image\/upload\/(fl_inline\/)?/, `/image/upload/${flag}/`);
+  }
+  return url;
 }
 
 function writeBufferToLocalDisk(buffer, mimetype, folder) {
@@ -193,4 +215,6 @@ module.exports = {
   deleteStoredFile,
   isCloudinaryUrl,
   isSupabaseUrl,
+  formatCloudinaryInlineUrl,
+  formatCloudinaryDownloadUrl,
 };

@@ -126,7 +126,8 @@ const BlogCategoryManagement: React.FC = () => {
       setDrawerOpen(false);
       load();
     } catch (err) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const errData = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data;
+      const message = errData?.message || errData?.error;
       toast.error(message || "Failed to save category.");
     } finally {
       setSaving(false);
@@ -151,9 +152,16 @@ const BlogCategoryManagement: React.FC = () => {
       render: (c) => (
         <div className="flex items-center gap-3">
           {c.icon ? (
-            <img src={resolveMediaUrl(c.icon)} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover bg-slate-50" />
+            <img
+              src={resolveMediaUrl(c.icon)}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-lg object-cover bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <FolderOpen size={16} />
             </div>
           )}
@@ -262,9 +270,9 @@ const BlogCategoryManagement: React.FC = () => {
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Icon (optional)</label>
             {iconPreview ? (
-              <img src={iconPreview} alt="Preview" className="mb-2 h-16 w-16 rounded-lg object-cover" />
+              <img src={iconPreview} alt="Preview" className="mb-2 h-16 w-16 rounded-lg object-cover bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
             ) : (
-              <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-slate-200 text-slate-300 dark:border-slate-700">
+              <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-slate-200 text-slate-300 dark:border-slate-700 dark:bg-slate-800/50">
                 <FolderOpen size={22} />
               </div>
             )}

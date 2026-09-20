@@ -5,8 +5,13 @@ const Jobseeker = require("../models/Jobseeker");
 const TrendingSettings = require("../models/TrendingSettings");
 const sendNotification = require("../utils/sendNotifications");
 const { COUNTRIES } = require("../data/countries");
-const { CURRENCIES, CURRENCY_BY_COUNTRY } = require("../data/currencies");
 const { persistUpload } = require("../services/media.service");
+const {
+  UPDATABLE_JOB_FIELDS,
+  deriveSalaryString,
+  deriveExperienceString,
+} = require("../utils/jobHelpers");
+const { recordAdminAudit } = require("../utils/auditLogger");
 
 // GET /api/jobs/meta/countries — public. The single list the job-posting
 // form's Country <select> reads (see postjobs.tsx) — the same array
@@ -610,6 +615,180 @@ const getAppliedJobs = async (req, res) => {
   }
 };
 
+// Update a Job (Job Listing Owner OR Super Admin/Admin)
+const updateJob = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user._id || req.user.id;
+  const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+
+  try {
+    const job = await Job.findById(id);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const isOwner = job.employer && String(job.employer) === String(userId);
+    if (!isOwner && !isSuperAdmin) {
+      return res.status(403).json({ message: "Not authorized to edit this job" });
+    }
+
+    if (req.body.deadline) {
+      const deadlineDate = new Date(req.body.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (isNaN(deadlineDate.getTime()) || deadlineDate < today) {
+        return res.status(422).json({
+          message: "Validation failed",
+          errors: ["Application deadline must be today or a future date"],
+        });
+      }
+    }
+
+    UPDATABLE_JOB_FIELDS.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        job[field] = req.body[field];
+      }
+    });
+
+    if (req.body.salary === undefined && (req.body.salaryMin !== undefined || req.body.salaryMax !== undefined)) {
+      job.salary = deriveSalaryString({
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        currency: job.currency,
+        salaryPeriod: job.salaryPeriod,
+      });
+    }
+
+    if (req.body.experience === undefined && (req.body.minExperience !== undefined || req.body.maxExperience !== undefined)) {
+      job.experience = deriveExperienceString({
+        minExperience: job.minExperience,
+        maxExperience: job.maxExperience,
+      });
+    }
+
+    if (req.body.status !== undefined) {
+      const requested = req.body.status;
+      if (isSuperAdmin) {
+        job.status = requested;
+      } else {
+        const alreadyApproved = job.status === "Active" || job.status === "Inactive";
+        const isDraft = job.status === "Draft";
+        if (alreadyApproved && ["Active", "Inactive", "Closed"].includes(requested)) {
+          job.status = requested;
+        } else if (isDraft && requested === "Draft") {
+          // keep draft
+        } else if (isDraft && requested === "Pending") {
+          job.status = "Pending";
+        } else {
+          return res.status(403).json({ message: "Only an admin can approve or reject a job." });
+        }
+      }
+    }
+
+    await job.save();
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin edited Job Listing #${job._id}`,
+        contentType: "Job",
+        contentId: job._id,
+        details: { title: job.title },
+      });
+    }
+
+    res.json({ message: "Job updated successfully", job });
+  } catch (error) {
+    console.error("Error updating job:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+// Delete a Job (Job Listing Owner OR Super Admin/Admin)
+const deleteJob = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user._id || req.user.id;
+  const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+
+  try {
+    const job = await Job.findById(id);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const isOwner = job.employer && String(job.employer) === String(userId);
+    if (!isOwner && !isSuperAdmin) {
+      return res.status(403).json({ message: "Not authorized to delete this job" });
+    }
+
+    await Job.findByIdAndDelete(id);
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin deleted Job Listing #${job._id}`,
+        contentType: "Job",
+        contentId: job._id,
+        details: { title: job.title },
+      });
+    }
+
+    res.json({ message: "Job deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting job:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update Job Status (Activate / Deactivate)
+const updateJobStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const userId = req.user._id || req.user.id;
+  const isSuperAdmin = ["admin", "superadmin"].includes(req.user.role);
+
+  if (!["Active", "Inactive", "Closed", "Pending", "Rejected", "Draft"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status value" });
+  }
+
+  try {
+    const job = await Job.findById(id);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const isOwner = job.employer && String(job.employer) === String(userId);
+    if (!isOwner && !isSuperAdmin) {
+      return res.status(403).json({ message: "Not authorized to update job status" });
+    }
+
+    if (!isSuperAdmin) {
+      const alreadyApproved = job.status === "Active" || job.status === "Inactive";
+      if (!alreadyApproved && (status === "Active" || status === "Rejected")) {
+        return res.status(403).json({ message: "Only an admin can approve or reject a job." });
+      }
+    }
+
+    job.status = status;
+    await job.save();
+
+    if (isSuperAdmin && !isOwner) {
+      await recordAdminAudit({
+        user: req.user,
+        action: `Super Admin ${status === "Active" ? "activated" : "deactivated"} Job Listing #${job._id}`,
+        contentType: "Job",
+        contentId: job._id,
+        details: { title: job.title, newStatus: status },
+      });
+    }
+
+    res.json({ message: `Job status updated to ${status}`, job });
+  } catch (error) {
+    console.error("Error updating job status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getJobs,
   getTrendingJobs,
@@ -624,5 +803,8 @@ module.exports = {
   dislikeJob,
   saveJob,
   getSavedJobs,
-  getAppliedJobs
+  getAppliedJobs,
+  updateJob,
+  deleteJob,
+  updateJobStatus,
 };

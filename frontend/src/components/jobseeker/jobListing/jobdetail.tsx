@@ -90,7 +90,6 @@ interface Job {
   companyOverride?: { name?: string; logo?: string; tagline?: string };
 }
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 const formatDeadline = (deadline: string): string =>
   new Date(deadline).toLocaleDateString(undefined, {

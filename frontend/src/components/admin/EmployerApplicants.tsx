@@ -5,8 +5,7 @@ import { Eye } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import { SkeletonRow, SkeletonText } from "../ui/Skeleton";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
+import { resolveResumeUrl, isUnrecoverableResumePath } from "../../utils/mediaUrl";
 
 interface Applicant {
     applicant: {
@@ -149,25 +148,23 @@ const EmployerApplicants = () => {
                                                 </button>
                                             </td>
                                             <td className="p-2 border">
-                                                {applicant.resume ? (
+                                                {applicant.resume && !isUnrecoverableResumePath(applicant.resume) ? (
                                                     <a
-                                                        href={
-                                                            applicant.resume.startsWith('http')
-                                                                ? applicant.resume
-                                                                : `${MEDIA_URL.replace(/\/$/, "")}/${applicant.resume
-                                                                    .replace(/\\/g, "/")
-                                                                    .replace(/^.*\/uploads/, "uploads")}`
-                                                        }
+                                                        href={resolveResumeUrl(applicant.resume)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >
-                                                        <button className="flex items-center text-white bg-primary px-3 py-1 rounded hover:bg-primary/90">
-                                                            <Eye size={14} className="mr-1" />
+                                                        <button className="flex items-center text-white bg-primary px-3 py-1 rounded text-xs hover:bg-primary/90">
+                                                            <Eye size={13} className="mr-1" />
                                                             Resume
                                                         </button>
                                                     </a>
+                                                ) : applicant.resume ? (
+                                                    <span className="text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs inline-block">
+                                                        Resume unavailable — please ask the applicant to upload again
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-gray-500 text-xs">No resume</span>
+                                                    <span className="text-gray-400 text-xs">No resume</span>
                                                 )}
                                             </td>
                                             <td className="p-2 border">

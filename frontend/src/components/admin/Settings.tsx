@@ -6,7 +6,6 @@ import { changePassword } from '../auth/authApi/authApi';
 import { useAdminAuth } from '../../context/useAdminAuth';
 import { SkeletonCircle, SkeletonText } from '../ui/Skeleton';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 const AdminSettings = () => {
   const { isSuperAdmin } = useAdminAuth();

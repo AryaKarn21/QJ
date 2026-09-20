@@ -37,8 +37,6 @@ import {
 } from '../employerApi/api';
 import { CommunityPostsPreview } from '../../community/CommunityPostsPreview';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
-const MEDIA_URL    = import.meta.env.VITE_MEDIA_URL    || API_BASE_URL;
 
 const T = {
   bg:      '#FFF8F3',
@@ -415,7 +413,7 @@ const Dashboard: React.FC = () => {
                           <Eye size={13} /> View
                         </a>
                       ) : app.resume ? (
-                        <span title="This resume was uploaded before a storage fix and is no longer available." style={{ fontSize: 12, color: T.muted, cursor: 'default' }}>
+                        <span title="Resume unavailable — please ask the applicant to upload again" style={{ fontSize: 12, color: T.muted, cursor: 'default' }}>
                           Unavailable
                         </span>
                       ) : (

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 // Reads the token fresh on every call (rather than once at module load)
 // so it reflects the current logged-in user, including after login/logout

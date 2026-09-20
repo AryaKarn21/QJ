@@ -435,15 +435,23 @@ const getSuggestions = async (req, res) => {
 const searchMentionableUsers = async (req, res) => {
   try {
     const q = (req.query.q || "").trim();
-    if (q.length < 2) return res.json({ users: [] });
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 20);
 
-    // Default stays 8 (original @mention-composer behavior); the Share
-    // modal's "search all members" box passes a higher ?limit= since it
-    // needs more than a typeahead's worth of results. Capped at 20 either way.
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
+    let queryFilter = {
+      _id: { $ne: req.user._id },
+      isActive: { $ne: false },
+    };
 
-    const regex = new RegExp(escapeRegex(q), "i");
-    const users = await User.find({ name: regex, _id: { $ne: req.user._id }, isActive: { $ne: false } })
+    if (q.length > 0) {
+      const regex = new RegExp(escapeRegex(q), "i");
+      queryFilter = {
+        ...queryFilter,
+        $or: [{ name: regex }, { headline: regex }],
+      };
+    }
+
+    const users = await User.find(queryFilter)
+      .sort({ updatedAt: -1, createdAt: -1 })
       .select(PUBLIC_PROFILE_SELECT)
       .limit(limit)
       .lean();

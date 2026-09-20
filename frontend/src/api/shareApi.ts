@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AuthorSnapshot } from '../types/community';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
 // Same "read the token fresh on every call" pattern as every other api/*.ts file.
 const getAuthHeader = () => {

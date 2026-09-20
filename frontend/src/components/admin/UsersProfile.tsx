@@ -39,7 +39,7 @@ interface User {
     createdAt: string;
 }
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const UsersProfile = () => {
     const { id } = useParams<{ id: string }>();
@@ -77,9 +77,7 @@ const UsersProfile = () => {
     );
 
     const avatar = user.profilePic || user.companyLogo;
-    const imageSrc = avatar
-        ? `${MEDIA_URL.replace(/\/$/, "")}/${avatar.replace(/^\//, "")}`
-        : null;
+    const imageSrc = resolveMediaUrl(avatar) || null;
 
     return (
         <div className="p-6">

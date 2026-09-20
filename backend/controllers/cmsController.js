@@ -4,6 +4,7 @@ const CareerTip = require("../models/CareerTip");
 const Page = require("../models/Page");
 const HomepageContent = require("../models/HomepageContent");
 const { sanitizeRichText } = require("../utils/sanitizeHtml");
+const { persistUpload } = require("../services/media.service");
 
 // Same "escape regex special chars before using in a RegExp" helper other
 // search-by-title endpoints in this codebase use (e.g.
@@ -275,10 +276,14 @@ exports.uploadCmsImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No image file provided" });
     }
-    res.status(201).json({ url: `/uploads/cms/${req.file.filename}` });
+    const url = await persistUpload(req.file, "cms_images", req.user?.id || "cms");
+    res.status(201).json({ url });
   } catch (error) {
+    if (error.code === "CLOUD_STORAGE_NOT_CONFIGURED") {
+      return res.status(503).json({ message: error.message });
+    }
     console.error("Error uploading CMS image:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 

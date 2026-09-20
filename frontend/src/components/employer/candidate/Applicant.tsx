@@ -10,7 +10,7 @@ import {
   X, Download, Eye, ExternalLink, GraduationCap, Sparkles, Filter, RotateCcw,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { resolveMediaUrl, resolveResumeUrl } from "../../../utils/mediaUrl";
+import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
@@ -197,6 +197,10 @@ const Applicants = () => {
 
   const handleDownloadResume = async (applicant: EmployerApplication) => {
     if (!applicant.resume) return;
+    if (isUnrecoverableResumePath(applicant.resume)) {
+      toast.error("Resume unavailable — please ask the applicant to upload again");
+      return;
+    }
     setDownloadingResume(true);
     try {
       await downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name));
@@ -503,7 +507,7 @@ const Applicants = () => {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><FileText size={12} /> Resume</p>
-                  {selected.resume && (
+                  {selected.resume && !isUnrecoverableResumePath(selected.resume) && (
                     <button
                       onClick={() => handleDownloadResume(selected)}
                       disabled={downloadingResume}
@@ -517,6 +521,10 @@ const Applicants = () => {
                 {!selected.resume ? (
                   <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-400">
                     This applicant didn't attach a resume.
+                  </div>
+                ) : isUnrecoverableResumePath(selected.resume) ? (
+                  <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700">
+                    Resume unavailable — please ask the applicant to upload again
                   </div>
                 ) : (
                   <>

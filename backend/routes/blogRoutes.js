@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate, authenticateOptional } = require("../middleware/authMiddleware");
+const handleBlogImageUpload = require("../middleware/blogUploadMiddleware");
 const {
   generateBlogContent,
   createBlog,
@@ -12,6 +13,7 @@ const {
   addComment,
   getUserBlogs,
   getBlogCategories,
+  uploadBlogImage,
 } = require("../controllers/blogController");
 
 // Public routes (no authentication required)
@@ -23,6 +25,7 @@ router.get("/categories", getBlogCategories);
 router.get("/:id", authenticateOptional, getBlogById);
 
 // Protected routes (authentication required)
+router.post("/upload-image", authenticate, handleBlogImageUpload, uploadBlogImage);
 router.post("/generate-content", authenticate, generateBlogContent);
 router.post("/", authenticate, createBlog);
 router.get("/user/my-blogs", authenticate, getUserBlogs);

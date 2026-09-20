@@ -11,9 +11,9 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { EmptyState } from '../ui/EmptyState';
 import { SkeletonRow } from '../ui/Skeleton';
 import { UserDrawer, type AdminUser } from './users/UserDrawer';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { exportToCsv, USER_CSV_COLUMNS } from '../../utils/csvExport';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 const PAGE_SIZE = 15;
 
 type TabKey = 'employer' | 'jobseeker';
@@ -34,8 +34,7 @@ const FILTER_CONFIGS = [
   },
 ];
 
-const mediaUrl = (path?: string) =>
-  path ? `${MEDIA_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}` : null;
+const mediaUrl = (path?: string) => resolveMediaUrl(path) || null;
 
 const UserAvatar: React.FC<{ user: AdminUser; size?: 'sm' | 'md' }> = ({ user, size = 'sm' }) => {
   const dim = size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm';

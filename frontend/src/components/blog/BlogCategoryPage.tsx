@@ -3,12 +3,12 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, Calendar, Search, Layers, ArrowLeft, FileText } from 'lucide-react';
 import { getBlogCategoryBySlug, type PublicBlogCategory } from '../../api/blogCategoryApi';
 import { handleImageFallback, BLOG_IMAGE_FALLBACK } from '../../utils/imageFallback';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { SkeletonBlock, SkeletonText, SkeletonAvatarLine } from '../ui/Skeleton';
 
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why a :8000 fallback would be wrong here too.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 interface Blog {
   _id: string;
@@ -125,7 +125,7 @@ const BlogCategoryPage: React.FC = () => {
       <div className="mb-8 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-gray-100 p-6 sm:p-8">
         <div className="flex items-center gap-4">
           {category.icon ? (
-            <img src={`${MEDIA_URL.replace(/\/$/, '')}/${category.icon.replace(/^\//, '')}`} alt="" className="h-14 w-14 rounded-xl object-contain bg-white p-2 shadow-sm" />
+            <img src={resolveMediaUrl(category.icon)} alt="" className="h-14 w-14 rounded-xl object-contain bg-white p-2 shadow-sm" />
           ) : (
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-primary shadow-sm"><Layers size={24} /></div>
           )}
@@ -182,14 +182,14 @@ const BlogCategoryPage: React.FC = () => {
             {blogs.map((blog) => (
               <div key={blog._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                 <img
-                  src={blog.featuredImage || blog.images[0]?.url || BLOG_IMAGE_FALLBACK}
+                  src={resolveMediaUrl(blog.featuredImage || blog.images[0]?.url) || BLOG_IMAGE_FALLBACK}
                   alt={blog.images[0]?.caption || blog.title}
                   className="w-full h-48 object-cover bg-gray-100"
                   onError={handleImageFallback}
                 />
                 <div className="p-6">
                   <div className="flex items-center mb-3">
-                    {blog.authorImage && <img src={blog.authorImage} alt={blog.author?.name || 'Deleted user'} className="w-8 h-8 rounded-full mr-3" />}
+                    {blog.authorImage && <img src={resolveMediaUrl(blog.authorImage)} alt={blog.author?.name || 'Deleted user'} className="w-8 h-8 rounded-full mr-3" />}
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{blog.author?.name || 'Deleted user'}</p>
                       <div className="flex items-center text-xs text-gray-500">

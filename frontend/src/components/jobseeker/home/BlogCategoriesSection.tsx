@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowRight, FileText } from 'lucide-react';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../../api/blogCategoryApi';
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 // Same deterministic-accent trick JobCategories.tsx/BlogCategoriesExplore.tsx
 // use, so a category without a custom icon still looks intentional.
@@ -91,7 +90,7 @@ const BlogCategoriesSection = () => {
                   <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${accent.bg}`}>
                     {cat.icon ? (
                       <img
-                        src={`${MEDIA_URL.replace(/\/$/, '')}/${cat.icon.replace(/^\//, '')}`}
+                        src={resolveMediaUrl(cat.icon)}
                         alt=""
                         className="h-6 w-6 object-contain"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

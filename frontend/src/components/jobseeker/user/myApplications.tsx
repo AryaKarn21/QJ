@@ -30,7 +30,6 @@ interface AppliedJob {
 const displayNameFor = (app: AppliedJob) => app.companyOverride?.name?.trim() || app.employer?.name?.trim();
 const displayLogoFor = (app: AppliedJob) => app.companyOverride?.logo || app.employer?.companyLogo;
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
 
 // Maps each backend status to a badge color + friendlier label, so
 // jobseekers get a clear, at-a-glance read on where they stand —

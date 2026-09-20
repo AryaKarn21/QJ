@@ -17,12 +17,10 @@ import {
 import { fetchConversations } from "../../../api/messageApi";
 import type { ConversationSummary } from "../../../types/community";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 
 function avatarUrl(pic?: string | null) {
-  if (!pic) return "";
-  return `${MEDIA_URL.replace(/\/$/, "")}/${pic.replace(/^\//, "")}`;
+  return resolveMediaUrl(pic);
 }
 
 function relativeTime(d: string) {

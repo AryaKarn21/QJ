@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Plus, X } from 'lucide-react';
+import { Save, Plus, X, Upload, Loader2 } from 'lucide-react';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../api/blogCategoryApi';
+import { uploadBlogImage } from '../../api/blogApi';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { TagInput } from '../common/TagInput';
 import { SkeletonText, SkeletonBlock } from '../ui/Skeleton';
+import { toast } from 'react-toastify';
 // Matches the backend's actual default port (server.js: PORT || 3000) —
 // see BlogCreate.tsx for why the previous :8000 fallback was wrong.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -39,6 +42,8 @@ const BlogEdit: React.FC = () => {
   const [isPublished, setIsPublished] = useState(true);
   const [images, setImages] = useState<BlogImage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingFeatured, setUploadingFeatured] = useState(false);
+  const [uploadingPostImageIndex, setUploadingPostImageIndex] = useState<number | null>(null);
   const [fetchingBlog, setFetchingBlog] = useState(true);
   // Real, admin-managed categories (Phase 6) — see BlogCreate.tsx's copy
   // of this same comment.
@@ -57,41 +62,91 @@ const BlogEdit: React.FC = () => {
       setFetchingBlog(true);
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/blogs/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (response.ok) {
-        const data = await response.json();
-        const blog: Blog = data.blog;
-        
+        const blog: Blog = await response.json();
         setFormData({
           title: blog.title,
           content: blog.content,
-          tags: blog.tags.join(', '),
+          tags: blog.tags ? blog.tags.join(', ') : '',
           category: blog.category || 'General',
           excerpt: blog.excerpt || '',
           featuredImage: blog.featuredImage || '',
         });
+        setIsPublished(blog.isPublished);
         setImages(blog.images || []);
-        setIsPublished(blog.isPublished !== false);
       } else {
+        toast.error('Failed to fetch blog');
         navigate('/blog');
       }
     } catch (error) {
       console.error('Error fetching blog:', error);
+      toast.error('Failed to fetch blog');
       navigate('/blog');
     } finally {
       setFetchingBlog(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleFeaturedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a valid image file (JPG, PNG, WEBP, GIF).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+    setUploadingFeatured(true);
+    try {
+      const res = await uploadBlogImage(file);
+      setFormData((prev) => ({ ...prev, featuredImage: res.url }));
+      toast.success('Featured image uploaded to Cloudinary!');
+    } catch (err: any) {
+      console.error('Failed to upload featured image:', err);
+      toast.error(err?.response?.data?.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingFeatured(false);
+    }
+  };
+
+  const handlePostImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a valid image file (JPG, PNG, WEBP, GIF).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+    setUploadingPostImageIndex(index);
+    try {
+      const res = await uploadBlogImage(file);
+      updateImage(index, 'url', res.url);
+      toast.success('Image uploaded to Cloudinary!');
+    } catch (err: any) {
+      console.error('Failed to upload post image:', err);
+      toast.error(err?.response?.data?.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingPostImageIndex(null);
+    }
   };
 
   const addImage = () => {
@@ -109,14 +164,11 @@ const BlogEdit: React.FC = () => {
     setImages(images.filter((_, i) => i !== index));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    submitBlog(isPublished);
-  };
 
-  const submitBlog = async (publish: boolean) => {
     if (!formData.title.trim() || !formData.content.trim()) {
-      alert('Title and content are required');
+      toast.error('Title and content are required.');
       return;
     }
 
@@ -132,7 +184,7 @@ const BlogEdit: React.FC = () => {
         featuredImage: formData.featuredImage.trim(),
         images: images.filter(img => img.url.trim()),
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        isPublished: publish,
+        isPublished,
       };
 
       const response = await fetch(`${API_BASE_URL}/api/blogs/${id}`, {
@@ -145,15 +197,15 @@ const BlogEdit: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        navigate(`/blog/${data.blog?.slug || id}`);
+        toast.success('Blog updated successfully!');
+        navigate(`/blog/${id}`);
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to update blog');
+        toast.error(error.message || 'Failed to update blog');
       }
     } catch (error) {
       console.error('Error updating blog:', error);
-      alert('Failed to update blog');
+      toast.error('Failed to update blog');
     } finally {
       setLoading(false);
     }
@@ -161,11 +213,17 @@ const BlogEdit: React.FC = () => {
 
   if (fetchingBlog) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-5" aria-busy="true" aria-label="Loading blog">
-        <SkeletonText width="w-1/3" height="h-8" />
-        <SkeletonText width="w-full" height="h-11" />
-        <SkeletonBlock className="w-full h-56" />
-        <SkeletonText width="w-full" height="h-48" />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <SkeletonBlock height="2.25rem" width="16rem" className="mb-2" />
+        <SkeletonText width="24rem" className="mb-8" />
+        <div className="space-y-6">
+          <SkeletonBlock height="2.75rem" />
+          <SkeletonBlock height="16rem" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <SkeletonBlock height="2.75rem" />
+            <SkeletonBlock height="2.75rem" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -173,15 +231,14 @@ const BlogEdit: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Blog</h1>
-        <p className="text-gray-600">Update your blog post</p>
+        <h1 className="text-3xl font-bold text-gray-900">Edit Blog Post</h1>
+        <p className="mt-2 text-gray-600">Update your blog post content and settings.</p>
       </div>
 
-      <form onSubmit={handleFormSubmit} className="space-y-6">
-        {/* Title */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-            Title *
+            Title
           </label>
           <input
             type="text"
@@ -189,25 +246,24 @@ const BlogEdit: React.FC = () => {
             name="title"
             value={formData.title}
             onChange={handleInputChange}
-            placeholder="Enter your blog title..."
+            placeholder="Enter blog title"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           />
         </div>
 
-        {/* Content */}
         <div>
           <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-            Content *
+            Content
           </label>
           <textarea
             id="content"
             name="content"
             value={formData.content}
             onChange={handleInputChange}
-            placeholder="Write your blog content here..."
             rows={12}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+            placeholder="Write your blog content here..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-sans"
             required
           />
         </div>
@@ -216,7 +272,7 @@ const BlogEdit: React.FC = () => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <label className="block text-sm font-medium text-gray-700">
-              Images (Optional)
+              Additional Post Images
             </label>
             <button
               type="button"
@@ -242,29 +298,57 @@ const BlogEdit: React.FC = () => {
                   </button>
                 </div>
                 <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer text-xs font-medium transition-colors">
+                      {uploadingPostImageIndex === index ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      <span>{uploadingPostImageIndex === index ? 'Uploading...' : 'Upload Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                        onChange={(e) => handlePostImageUpload(index, e)}
+                        disabled={uploadingPostImageIndex === index}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-xs text-slate-400">or paste URL:</span>
+                  </div>
                   <input
                     type="url"
                     placeholder="Image URL"
                     value={image.url}
                     onChange={(e) => updateImage(index, 'url', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   <input
                     type="text"
                     placeholder="Caption (optional)"
                     value={image.caption}
                     onChange={(e) => updateImage(index, 'caption', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                   {image.url && (
-                    <img
-                      src={image.url}
-                      alt={image.caption || `Preview ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <div className="relative mt-2">
+                      <img
+                        src={resolveMediaUrl(image.url)}
+                        alt={image.caption || `Preview ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateImage(index, 'url', '')}
+                        className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
+                        title="Clear image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -299,17 +383,55 @@ const BlogEdit: React.FC = () => {
           </div>
           <div>
             <label htmlFor="featuredImage" className="block text-sm font-medium text-gray-700 mb-2">
-              Featured Image URL (Optional)
+              Featured Image (Optional)
             </label>
-            <input
-              type="url"
-              id="featuredImage"
-              name="featuredImage"
-              value={formData.featuredImage}
-              onChange={handleInputChange}
-              placeholder="https://..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer text-xs font-medium transition-colors">
+                  {uploadingFeatured ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  <span>{uploadingFeatured ? 'Uploading...' : 'Upload Image'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    onChange={handleFeaturedImageUpload}
+                    disabled={uploadingFeatured}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-slate-400">or paste URL:</span>
+              </div>
+              <input
+                type="url"
+                id="featuredImage"
+                name="featuredImage"
+                value={formData.featuredImage}
+                onChange={handleInputChange}
+                placeholder="https://..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              {formData.featuredImage && (
+                <div className="relative mt-2 inline-block">
+                  <img
+                    src={resolveMediaUrl(formData.featuredImage)}
+                    alt="Featured preview"
+                    className="h-32 w-48 object-cover rounded-lg border border-gray-200"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, featuredImage: '' }))}
+                    className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
+                    title="Remove featured image"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -51,10 +51,30 @@ export interface Job {
   likes?: string[];
   dislikes?: string[];
   employer: {
+    _id?: string;
     name: string;
     email?: string;
     companyLogo?: string;
   };
+  country?: string;
+  department?: string;
+  workMode?: string;
+  minExperience?: number;
+  maxExperience?: number;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryPeriod?: string;
+  currency?: string;
+  overview?: string;
+  responsibilities?: string[];
+  requirements?: string[];
+  requiredSkills?: string[];
+  preferredSkills?: string[];
+  education?: string;
+  benefits?: string[];
+  perks?: string;
+  workingHours?: string;
+  companyOverride?: { name?: string; logo?: string; website?: string };
 }
 
 export const getAdminProfile = async () => {
@@ -464,7 +484,17 @@ export const fetchJobs = async (page = 1, limit = 6, search = "", status = "all"
 };
 
 
-export const updateJob = async (jobId: string, updatedData: Partial<Job>) => {
+export const createAdminJob = async (jobData: any) => {
+  const res = await axios.post(`${API_BASE_URL}/api/admin/jobs`, jobData, getAuthConfig());
+  return res.data;
+};
+
+export const updateJobStatus = async (jobId: string, status: string) => {
+  const res = await axios.patch(`${API_BASE_URL}/api/jobs/${jobId}/status`, { status }, getAuthConfig());
+  return res.data;
+};
+
+export const updateJob = async (jobId: string, updatedData: any) => {
   const res = await axios.put(
     `${API_BASE_URL}/api/admin/job/${jobId}`,
     updatedData,

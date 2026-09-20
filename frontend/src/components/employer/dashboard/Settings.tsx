@@ -5,7 +5,6 @@ import { getEmployerProfile, updateNotificationPreferences, deactivateEmployerAc
 import { changePassword } from '../../auth/authApi/authApi';
 import { SkeletonCircle, SkeletonText } from '../../ui/Skeleton';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || import.meta.env.VITE_API_BASE_URL || "https://qj.onrender.com";
 
 type NotificationPrefs = {
   allNotifications: boolean;

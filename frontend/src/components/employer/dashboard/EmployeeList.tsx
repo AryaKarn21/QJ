@@ -12,15 +12,12 @@ import {
 } from "../../../api/companyMemberApi";
 import { useCurrentUser } from "../../../utils/currentUser";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
+import { resolveMediaUrl } from "../../../utils/mediaUrl";
 
 const avatar = (pic?: string, name?: string) => {
-  if (pic) {
-    const src = pic.startsWith("http")
-      ? pic
-      : `${MEDIA_URL.replace(/\/$/, "")}/${pic.replace(/^\//, "")}`;
-    return <img src={src} alt={name} className="w-full h-full object-cover" />;
+  const resolved = resolveMediaUrl(pic);
+  if (resolved) {
+    return <img src={resolved} alt={name} className="w-full h-full object-cover" />;
   }
   return (
     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-sm">

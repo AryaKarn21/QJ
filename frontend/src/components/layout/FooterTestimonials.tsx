@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Quote, Star } from 'lucide-react';
 import { getActiveTestimonials, type PublicTestimonial } from '../../api/testimonialApi';
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const initials = (name: string) =>
   name
@@ -60,7 +59,7 @@ export function FooterTestimonials() {
             <div className="flex items-center gap-3">
               {t.avatarUrl ? (
                 <img
-                  src={`${MEDIA_URL.replace(/\/$/, '')}/${t.avatarUrl.replace(/^\//, '')}`}
+                  src={resolveMediaUrl(t.avatarUrl)}
                   alt=""
                   className="h-9 w-9 shrink-0 rounded-full object-cover"
                 />

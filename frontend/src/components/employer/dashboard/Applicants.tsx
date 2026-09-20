@@ -206,7 +206,7 @@ const Applicants = () => {
     // network/CORS failure, so give a distinct, honest message instead of
     // attempting a fetch that can only ever fail.
     if (isUnrecoverableResumePath(applicant.resume)) {
-      toast.error("This resume was uploaded before a storage fix and is no longer available. Ask the candidate to re-apply.");
+      toast.error("Resume unavailable — please ask the applicant to upload again");
       return;
     }
     setDownloadingResume(true);
@@ -532,7 +532,7 @@ const Applicants = () => {
                   </div>
                 ) : isUnrecoverableResumePath(selected.resume) ? (
                   <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700">
-                    This resume was uploaded before a storage fix and is no longer available. Ask the candidate to re-apply.
+                    Resume unavailable — please ask the applicant to upload again
                   </div>
                 ) : (
                   <>

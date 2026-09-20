@@ -16,7 +16,6 @@ import {
   Globe, Linkedin, Target, Heart, MapPin, Gift, Users, Calendar, ExternalLink,
 } from "lucide-react";
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
 // LinkedIn/Naukri-style posting flow (section 12): Job Details ->
 // Requirements -> Company -> Compensation -> Preview -> Publish. Every
