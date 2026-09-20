@@ -164,21 +164,24 @@ const registerUser = async (req, res) => {
     // From here on, the account already exists in the database — a
     // transient failure in email delivery, admin notification, or audit
     // logging must not turn a successful registration into a reported
-    // "registration failed" 500 (the client would retry, hit the 409
-    // "already exists" check above, and be stuck). Each side-effect is
-    // therefore best-effort: log and move on. The OTP email specifically
-    // can always be retried via POST /api/users/resend-otp.
-   try {
-  await sendMail(email, "Verify your email", `Your OTP code is ${otp}. It is valid for 10 minutes.`);
-} catch (mailErr) {
-  console.error("Register: failed to send verification email:", mailErr);
-  // Delete the just-created user so the person can retry registration
-  // cleanly instead of being stuck with an unverifiable account.
-  await User.findByIdAndDelete(user._id);
-  return res.status(500).json({
-    message: "Account created but we could not send your verification email. Please try again or contact support.",
-  });
-}
+    // "registration failed" 500. Deleting the account here used to force
+    // that outcome: if SMTP credentials are misconfigured/expired on the
+    // server (an ops problem, not a per-user one), EVERY registration
+    // hit this branch and got deleted, making signup entirely unusable
+    // for everyone until the ops issue was fixed — with no way for an
+    // already-working account to ever get created in the meantime. The
+    // account now survives an email failure; the client's onSuccess
+    // still navigates to the OTP-verification screen (cookies already
+    // set below the same as a fully-successful registration), where
+    // "Resend OTP" (POST /api/users/resend-otp) is a real, independent
+    // retry path — including once the underlying email problem is fixed.
+    let emailDeliveryFailed = false;
+    try {
+      await sendMail(email, "Verify your email", `Your OTP code is ${otp}. It is valid for 10 minutes.`);
+    } catch (mailErr) {
+      console.error("Register: failed to send verification email:", mailErr);
+      emailDeliveryFailed = true;
+    }
     // Notify admins (and superadmins — see notifyAllAdmins's comment) on
     // every new registration — employers and jobseekers both, mirroring
     // the same pattern (previously employer-only).
@@ -214,7 +217,12 @@ const registerUser = async (req, res) => {
       console.error("Register: failed to record audit log:", auditErr);
     }
 
-    res.status(201).json({ message: "User registered successfully!" });
+    res.status(201).json({
+      message: emailDeliveryFailed
+        ? "Account created, but we couldn't send the verification email automatically. Use Resend on the next screen to get your code."
+        : "User registered successfully!",
+      emailDeliveryFailed,
+    });
   } catch (error) {
     console.error("Register error:", error);
     // Consider adding logic here to delete uploaded files if user creation fails

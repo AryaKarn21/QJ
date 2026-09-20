@@ -8,9 +8,24 @@ const getAuthHeader = () => {
   return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 };
 
+// The backend builds each conversation's `otherUser` from a live User
+// lookup (messageController.js's getConversations) and returns null when
+// that account has since been deleted — MessagesPage.tsx (and everything
+// else that reads `conv.otherUser.*`) assumes it's always present, so an
+// old conversation with a deleted participant crashed the whole page on
+// load. Normalized here, at the API boundary, so every current and future
+// caller of fetchConversations gets safe data without re-deriving this.
+const DELETED_USER: AuthorSnapshot = {
+  _id: 'deleted',
+  name: 'Deleted user',
+  role: 'jobseeker',
+  avatar: null,
+};
+
 export const fetchConversations = async () => {
   const res = await axios.get(`${API_BASE_URL}/api/community/messages`, getAuthHeader());
-  return res.data.conversations as ConversationSummary[];
+  const conversations = res.data.conversations as ConversationSummary[];
+  return conversations.map((c) => (c.otherUser ? c : { ...c, otherUser: DELETED_USER }));
 };
 
 export const openConversationWith = async (userId: string) => {

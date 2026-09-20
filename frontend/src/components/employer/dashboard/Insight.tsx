@@ -5,6 +5,16 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import {
+  Briefcase,
+  Eye,
+  FileText,
+  TrendingUp,
+  BarChart3,
+  PieChartIcon,
+  Table2,
+  Inbox,
+} from "lucide-react";
+import {
   BarChart,
   Bar,
   XAxis,
@@ -17,6 +27,41 @@ import {
   Cell,
   Legend,
 } from "recharts";
+
+// Validated categorical palette (see dataviz skill / references/palette.md) —
+// fixed hue order, each slot cleared for CVD/contrast as a set. Only the
+// first two slots are used on the bar chart (Views/Applications — well
+// within the "first three slots clear all-pairs" safe zone); the donut
+// below uses the first four, which the palette's own doc flags as the one
+// combination needing a secondary channel — already covered here by the
+// existing direct percentage labels + legend.
+const SERIES_BLUE = "#2a78d6";
+const SERIES_ORANGE = "#eb6834";
+const SERIES_AQUA = "#1baf7a";
+const SERIES_YELLOW = "#eda100";
+const DONUT_COLORS = [SERIES_BLUE, SERIES_ORANGE, SERIES_AQUA, SERIES_YELLOW];
+
+const compactNumber = (n: number) =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}K` : n.toLocaleString();
+
+const StatTile: React.FC<{ label: string; value: string; icon: React.ReactNode }> = ({ label, value, icon }) => (
+  <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-card">
+    <div className="flex items-start justify-between">
+      <p className="text-sm font-medium text-gray-500">{label}</p>
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        {icon}
+      </span>
+    </div>
+    <p className="mt-3 text-2xl font-bold tracking-tight text-dark">{value}</p>
+  </div>
+);
+
+const ChartEmptyState: React.FC<{ message: string }> = ({ message }) => (
+  <div className="flex flex-col items-center justify-center gap-2 py-16 text-gray-400">
+    <Inbox size={28} />
+    <p className="text-sm">{message}</p>
+  </div>
+);
 
 // Pie label render
 const renderCustomizedLabel = ({
@@ -88,59 +133,72 @@ const Insight: React.FC = () => {
     pdf.save("job-comparison-report.pdf");
   };
 
-  const COLORS = ["#2563eb", "#4ade80", "#f87171", "#fbbf24"];
-
   // Filter and sort conversion rates to get the top 4
   const top4ConversionRates = conversionRates
     .filter((item) => item.value > 0) // Keep only items with a value (conversion rate) greater than 0
     .sort((a, b) => b.value - a.value) // Sort in descending order by value
     .slice(0, 4); // Take the top 4
 
-  // --- DEBUGGING: Log derived data to console ---
-  console.log("Top 4 Conversion Rates for Pie Chart (processed):", top4ConversionRates);
-  console.log("Job Comparison for Table (state):", jobComparison);
-  // --- END DEBUGGING ---
+  const totalViews = jobStats.reduce((sum, j) => sum + j.views, 0);
+  const totalApplications = jobStats.reduce((sum, j) => sum + j.applications, 0);
+  const avgConversion = totalViews > 0 ? `${((totalApplications / totalViews) * 100).toFixed(1)}%` : "—";
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-7xl mx-auto" ref={dashboardRef}>
-        <div className="flex justify-end items-center mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-dark">Reports &amp; Analytics</h1>
+            <p className="mt-1 text-sm text-gray-500">Performance across every job you've posted.</p>
+          </div>
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            className="flex items-center px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-lg shadow-card hover:bg-primary/90 transition-colors"
           >
-            <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
+            <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
             Download PDF
           </button>
         </div>
 
+        {/* KPI summary */}
+        <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-4">
+          <StatTile label="Job posts" value={compactNumber(jobStats.length)} icon={<Briefcase size={17} />} />
+          <StatTile label="Total views" value={compactNumber(totalViews)} icon={<Eye size={17} />} />
+          <StatTile label="Applications" value={compactNumber(totalApplications)} icon={<FileText size={17} />} />
+          <StatTile label="Avg. conversion" value={avgConversion} icon={<TrendingUp size={17} />} />
+        </div>
+
         {/* Charts Section */}
-        <div className="flex gap-6 mb-8 flex-wrap lg:flex-nowrap">
+        <div className="flex gap-6 mb-6 flex-wrap lg:flex-nowrap">
           {/* Bar Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm w-full lg:w-[70%]">
-            <h3 className="text-lg font-semibold mb-4">All Jobs by an Employer</h3>
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-card w-full lg:w-[70%]">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-dark mb-4">
+              <BarChart3 size={17} className="text-primary" /> All Jobs by an Employer
+            </h3>
             {jobStats.length === 0 ? (
-              <p className="text-gray-400 text-center mt-10">No data available</p>
+              <ChartEmptyState message="No job activity yet — post a job to see views and applications here." />
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={jobStats}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="title" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="views" fill="#2563eb" name="Views" barSize={25} />
-                  <Bar dataKey="applications" fill="#4ade80" name="Applications" barSize={25} />
+                <BarChart data={jobStats} barGap={2} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e1e0d9" vertical={false} />
+                  <XAxis dataKey="title" tick={{ fill: "#898781", fontSize: 12 }} axisLine={{ stroke: "#c3c2b7" }} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fill: "#898781", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} />
+                  <Legend wrapperStyle={{ fontSize: 13 }} />
+                  <Bar dataKey="views" fill={SERIES_BLUE} name="Views" maxBarSize={24} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="applications" fill={SERIES_ORANGE} name="Applications" maxBarSize={24} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
           {/* Doughnut Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm w-full lg:w-[30%] flex flex-col items-center justify-center">
-            <h3 className="text-lg font-semibold mb-4">Conversion Rates (Top 4)</h3> {/* Updated title */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-card w-full lg:w-[30%] flex flex-col items-center justify-center">
+            <h3 className="flex items-center gap-2 self-start text-base font-semibold text-dark mb-4">
+              <PieChartIcon size={17} className="text-primary" /> Conversion Rates (Top 4)
+            </h3>
             {top4ConversionRates.length === 0 ? (
-              <p className="text-gray-400 mt-10">No data available </p>
+              <ChartEmptyState message="No conversion data yet." />
             ) : (
               <PieChart width={250} height={250}>
                 <Pie
@@ -149,46 +207,49 @@ const Insight: React.FC = () => {
                   cy="50%"
                   innerRadius={40} // Doughnut effect
                   outerRadius={80}
+                  paddingAngle={2}
                   labelLine={false}
                   label={renderCustomizedLabel}
                   dataKey="value"
                 >
                     {top4ConversionRates.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} stroke="#fff" strokeWidth={2} />
                     ))}
                 </Pie>
                 <Tooltip />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             )}
           </div>
         </div>
 
         {/* Table Section */}
-        <div className="bg-white rounded-lg shadow-sm mb-8" ref={jobComparisonTableRef}> {/* Added ref here */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-card mb-8" ref={jobComparisonTableRef}> {/* Added ref here */}
           <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Job Post Comparison</h3>
+            <h3 className="flex items-center gap-2 text-base font-semibold text-dark mb-4">
+              <Table2 size={17} className="text-primary" /> Job Post Comparison
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full table-auto">
                 <thead>
-                  <tr className="text-left">
-                    <th className="pb-4 font-semibold text-gray-700">Job Title</th>
-                    <th className="pb-4 font-semibold text-gray-700">Views</th>
-                    <th className="pb-4 font-semibold text-gray-700">Applications</th>
-                    <th className="pb-4 font-semibold text-gray-700">Conversion Rate</th>
+                  <tr className="text-left border-b border-gray-200">
+                    <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Job Title</th>
+                    <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Views</th>
+                    <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Applications</th>
+                    <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Conversion Rate</th>
                   </tr>
                 </thead>
                 <tbody>
                   {jobComparison.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="text-center text-gray-400 py-6">
-                        No job posts found
+                      <td colSpan={4} className="py-10">
+                        <ChartEmptyState message="No job posts found yet." />
                       </td>
                     </tr>
                   ) : (
                     jobComparison.map((job, index) => (
-                      <tr key={index} className="border-t border-gray-200">
-                        <td className="py-3 text-gray-600">{job.title}</td>
+                      <tr key={index} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="py-3 font-medium text-dark">{job.title}</td>
                         <td className="py-3 text-gray-600">{job.views}</td>
                         <td className="py-3 text-gray-600">{job.applications}</td>
                         <td className="py-3 text-gray-600">{job.conversionRate}</td>
