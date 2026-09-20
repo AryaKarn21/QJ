@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Calendar, Globe, Linkedin, Github, Twitter, MapPin, Pencil, MessageCircle, UserPlus, Users, Users2, Building2,
-  Award, FolderKanban, GraduationCap, Briefcase, Sparkles, ExternalLink, Eye,
+  Award, FolderKanban, GraduationCap, Briefcase, Sparkles, ExternalLink, Eye, BarChart3, Search, FolderPlus, X,
 } from 'lucide-react';
 import { fetchUserFeed } from '../../api/communityApi';
 import { fetchPublicProfile, fetchFollowCounts } from '../../api/followApi';
@@ -48,6 +48,7 @@ export function ProfileFeed() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<AuthorSnapshot | null>(null);
   const [showStatusEditor, setShowStatusEditor] = useState(false);
+  const [dismissSuggested, setDismissSuggested] = useState(false);
   const [counts, setCounts] = useState({ followers: 0, following: 0, isFollowing: false });
   // mutualConnections: only meaningful on someone ELSE's profile, filled
   // in by ConnectionButton's onStatusChange (it already computes this on
@@ -463,6 +464,112 @@ export function ProfileFeed() {
       {/* Feed + Sidebar */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
+          {/* LinkedIn-style: Suggested for you (Private to you) */}
+          {isOwnProfile && !dismissSuggested && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Suggested for you</h2>
+                  <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-medium">
+                    <Eye size={12} className="text-gray-400" /> Private to you
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDismissSuggested(true)}
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Dismiss suggestion"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 shadow-sm">
+                  <FolderPlus size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {!profile?.projects || profile.projects.length === 0
+                      ? 'Add projects that showcase your skills'
+                      : !profile?.skills || profile.skills.length === 0
+                      ? 'Add skills to get discovered by recruiters'
+                      : 'Keep your experience & qualifications updated'}
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                    {!profile?.projects || profile.projects.length === 0
+                      ? 'Show recruiters how you put your skills to use by adding projects to your profile.'
+                      : !profile?.skills || profile.skills.length === 0
+                      ? 'Highlight your strongest technical and interpersonal skills to get matched with top opportunities.'
+                      : 'Adding regular career milestones boosts your profile discovery by up to 3x.'}
+                  </p>
+                  <div className="mt-3">
+                    <button
+                      onClick={() => navigate(ownEditProfilePath)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-semibold text-gray-800 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all shadow-sm"
+                    >
+                      {!profile?.projects || profile.projects.length === 0
+                        ? 'Add a project'
+                        : !profile?.skills || profile.skills.length === 0
+                        ? 'Add skills'
+                        : 'Edit profile'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* LinkedIn-style: Analytics (Private to you) */}
+          {isOwnProfile && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-base font-bold text-gray-900">Analytics</h2>
+                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-medium">
+                  <Eye size={12} className="text-gray-400" /> Private to you
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Link
+                  to="/community/profile-views"
+                  className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                >
+                  <div className="mt-0.5 p-2 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    <Users size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-gray-900 group-hover:text-primary">
+                      {profileViewsTotal !== null ? profileViewsTotal : 0} profile views
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">Discover who's viewed your profile.</p>
+                  </div>
+                </Link>
+
+                <div className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 bg-gray-50/50">
+                  <div className="mt-0.5 p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                    <BarChart3 size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-gray-900">
+                      {posts.length} post updates
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">Check out who's engaging with your posts.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 bg-gray-50/50">
+                  <div className="mt-0.5 p-2 rounded-lg bg-purple-50 text-purple-600">
+                    <Search size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-gray-900">
+                      {connectionsTotal !== null ? connectionsTotal : counts.followers} network reach
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">See your footprint across searches.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* About */}
           {(profile?.bio || isOwnProfile) && (
             <ProfileSection title="About" icon={<Sparkles size={14} className="text-primary" />}>

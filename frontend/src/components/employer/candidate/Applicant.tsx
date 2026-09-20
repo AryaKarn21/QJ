@@ -14,6 +14,7 @@ import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath } from "..
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
+import { FollowButton } from "../../community/FollowButton";
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
   Pending:              { bg: "bg-amber-50",   text: "text-amber-700",  dot: "bg-amber-400" },
@@ -362,6 +363,13 @@ const Applicants = () => {
                           <button onClick={() => setSelected(applicant)} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary border border-gray-200 hover:border-primary/40 px-3 py-1.5 rounded-lg transition-all">
                             <Eye size={12} /> View
                           </button>
+                          {applicant.applicant?._id && (
+                            <FollowButton
+                              userId={applicant.applicant._id}
+                              initialFollowing={false}
+                              size="xs"
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -426,22 +434,43 @@ const Applicants = () => {
                   <p className="text-xs text-gray-400 truncate">{selected.job?.title}</p>
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 shrink-0">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {selected.applicant?._id && (
+                  <FollowButton
+                    userId={selected.applicant._id}
+                    initialFollowing={false}
+                    size="xs"
+                  />
+                )}
+                <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 shrink-0">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               {/* Status + actions */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
                 <StatusBadge status={selected.status} />
-                <select
-                  value={selected.status}
-                  onChange={(e) => handleStatusChange(selected.applicationId, e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  {selected.applicant?._id && (
+                    <a
+                      href={`/community/profile/${selected.applicant._id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline bg-primary/5 px-2.5 py-1.5 rounded-lg border border-primary/20"
+                    >
+                      <User size={12} /> View Profile <ExternalLink size={10} />
+                    </a>
+                  )}
+                  <select
+                    value={selected.status}
+                    onChange={(e) => handleStatusChange(selected.applicationId, e.target.value)}
+                    className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
               </div>
 
               {/* Contact */}

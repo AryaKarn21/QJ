@@ -4,9 +4,11 @@ import { resolveMediaUrl, resolveResumeUrl } from "../../../utils/mediaUrl";
 import {
   Linkedin, Github, Twitter, Globe, Download,
   GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2, ImagePlus,
+  Eye, BarChart3, Search, FolderPlus, X,
 } from "lucide-react";
 import { getJobseekerProfile, updateJobseekerProfile, updateJobseekerCareerStatus } from "../jobseekerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
+import { getMyProfileViewCount } from "../../../api/profileViewApi";
 import EditProfileModal from "./EditProfileModal";
 import ImageCropModal from "../../common/ImageCropModal";
 import { ProfileStatusBadge } from "../../common/profileStatus/ProfileStatusBadge";
@@ -42,6 +44,8 @@ const UserProfile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [profileViewsTotal, setProfileViewsTotal] = useState<number | null>(null);
+  const [dismissSuggested, setDismissSuggested] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   // The raw file the user just picked, awaiting crop/zoom adjustment before
@@ -67,6 +71,9 @@ const UserProfile = () => {
     getJobseekerProfile()
       .then(setProfile)
       .catch((err) => console.error("Failed to load profile:", err));
+    getMyProfileViewCount()
+      .then(setProfileViewsTotal)
+      .catch(() => {});
   }, []);
 
   // Reuses the Community module's existing follow-counts endpoint rather
@@ -479,6 +486,116 @@ const UserProfile = () => {
               {/* Right column — details, as distinct section cards rather
                   than one long stack of plain text. */}
               <div className="md:col-span-2 md:mt-3 space-y-5">
+                {/* LinkedIn-style: Suggested for you (Private to you) */}
+                {!dismissSuggested && (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h2 className="text-base font-bold text-gray-900">Suggested for you</h2>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-medium">
+                          <Eye size={12} className="text-gray-400" /> Private to you
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setDismissSuggested(true)}
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                        title="Dismiss"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 shadow-sm">
+                        <FolderPlus size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {!profile.projects || profile.projects.length === 0
+                            ? "Add projects that showcase your skills"
+                            : !profile.skills || profile.skills.length === 0
+                            ? "Add skills to be discovered by top recruiters"
+                            : "Upload an updated resume for 1-click apply"}
+                        </h3>
+                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                          {!profile.projects || profile.projects.length === 0
+                            ? "Show recruiters how you put your skills to use by adding projects to your profile."
+                            : !profile.skills || profile.skills.length === 0
+                            ? "Showcase your capabilities to appear higher in employer candidate searches."
+                            : "Having an active resume lets employers review your full profile instantly."}
+                        </p>
+                        <div className="mt-3">
+                          <button
+                            onClick={() => setShowEditModal(true)}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-semibold text-gray-800 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all shadow-sm"
+                          >
+                            {!profile.projects || profile.projects.length === 0
+                              ? "Add a project"
+                              : !profile.skills || profile.skills.length === 0
+                              ? "Add skills"
+                              : "Edit profile"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* LinkedIn-style: Analytics (Private to you) */}
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4">
+                    <h2 className="text-base font-bold text-gray-900">Analytics</h2>
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-medium">
+                      <Eye size={12} className="text-gray-400" /> Private to you
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Link
+                      to="/community/profile-views"
+                      className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                    >
+                      <div className="mt-0.5 p-2 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <Users size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-gray-900 group-hover:text-primary">
+                          {profileViewsTotal !== null ? profileViewsTotal : 0} profile views
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">Discover who's viewed your profile.</p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      to={`/community/profile/${profile._id}/followers`}
+                      className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                    >
+                      <div className="mt-0.5 p-2 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <UserPlus size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-gray-900 group-hover:text-primary">
+                          {followCounts.followers} followers
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">People tracking your updates.</p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      to={`/community/profile/${profile._id}/following`}
+                      className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                    >
+                      <div className="mt-0.5 p-2 rounded-lg bg-purple-50 text-purple-600 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <BarChart3 size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-gray-900 group-hover:text-primary">
+                          {followCounts.following} following
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">Companies and peers followed.</p>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+
                 <Section icon={<GraduationCap size={18} />} title="Qualifications">
                   {profile.qualifications?.length > 0 ? (
                     <ul className="space-y-2 text-sm text-gray-700">

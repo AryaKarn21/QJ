@@ -25,10 +25,13 @@ import {
   Camera,
   Loader2,
   ImagePlus,
+  FolderPlus,
+  X,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { getEmployerProfile, updateEmployerProfile, getEmployerDashboardStats, updateEmployerHiringStatusApi } from "../employerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
+import { getMyProfileViewCount } from "../../../api/profileViewApi";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import EditProfileModal from "./EditProfileModal";
 import ImageCropModal from "../../common/ImageCropModal";
@@ -45,7 +48,13 @@ const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [profileViewsTotal, setProfileViewsTotal] = useState<number | null>(null);
+  const [dismissSuggested, setDismissSuggested] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    getMyProfileViewCount().then(setProfileViewsTotal).catch(() => {});
+  }, []);
 
   // Direct-upload state for the logo and cover photo — same adjustable
   // crop/zoom flow as the jobseeker profile's avatar/cover, so employers
@@ -553,25 +562,43 @@ const Profile = () => {
               </button>
             </div>
 
-            {/* Community Followers / Following Card */}
+            {/* Community Network & Analytics Card */}
             <div className="bg-white p-6 rounded-3xl border border-orange-100/80 shadow-xs">
-              <h3 className="font-bold text-slate-900 text-sm mb-4">
-                Community Network
-              </h3>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                  <BarChart3 size={15} className="text-[#F97316]" /> Network &amp; Analytics
+                </h3>
+                <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                  <Eye size={11} /> Private
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <Link
+                  to="/community/profile-views"
+                  className="flex flex-col items-center rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-orange-200 py-3 transition-all group"
+                >
+                  <span className="text-lg font-bold text-slate-900 group-hover:text-[#F97316]">
+                    {profileViewsTotal !== null ? profileViewsTotal : 0}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500">Profile Views</span>
+                </Link>
                 <Link
                   to={`/community/profile/${profile._id}/followers`}
-                  className="flex-1 flex flex-col items-center rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-orange-200 py-3 transition-all"
+                  className="flex flex-col items-center rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-orange-200 py-3 transition-all group"
                 >
-                  <span className="text-lg font-bold text-slate-900">{followCounts.followers}</span>
-                  <span className="text-[11px] font-medium text-slate-500">Followers</span>
+                  <span className="text-lg font-bold text-slate-900 group-hover:text-[#F97316]">
+                    {followCounts.followers}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500">Followers</span>
                 </Link>
                 <Link
                   to={`/community/profile/${profile._id}/following`}
-                  className="flex-1 flex flex-col items-center rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-orange-200 py-3 transition-all"
+                  className="flex flex-col items-center rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-orange-200 py-3 transition-all group"
                 >
-                  <span className="text-lg font-bold text-slate-900">{followCounts.following}</span>
-                  <span className="text-[11px] font-medium text-slate-500">Following</span>
+                  <span className="text-lg font-bold text-slate-900 group-hover:text-[#F97316]">
+                    {followCounts.following}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500">Following</span>
                 </Link>
               </div>
             </div>
@@ -619,6 +646,112 @@ const Profile = () => {
 
           {/* MAIN CONTENT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
+
+            {/* LinkedIn-style: Suggested for you (Private to you) */}
+            {!dismissSuggested && (
+              <div className="bg-white p-6 rounded-3xl border border-orange-100/80 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">Suggested for you</h2>
+                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
+                      <Eye size={12} className="text-slate-400" /> Private to you
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setDismissSuggested(true)}
+                    className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 shadow-sm">
+                    <FolderPlus size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {!profile.description
+                        ? "Add company overview and culture to attract talent"
+                        : (!profile.totalJobs && !profile.activeJobs)
+                        ? "Post your next job opening to receive top candidates"
+                        : "Verify your organization profile for high applicant trust"}
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      {!profile.description
+                        ? "Candidates are 4x more likely to apply when they can read about company mission and culture."
+                        : (!profile.totalJobs && !profile.activeJobs)
+                        ? "Active postings appear directly on candidate home feeds and recommendations."
+                        : "Verified badges elevate your jobs to premier placement across the platform."}
+                    </p>
+                    <div className="mt-3">
+                      <button
+                        onClick={() => (!profile.description ? setShowEditModal(true) : navigate("/employer/postjob"))}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 hover:border-[#F97316] hover:text-[#F97316] hover:bg-orange-50/50 transition-all shadow-sm cursor-pointer"
+                      >
+                        {!profile.description ? "Add overview" : "Post a job"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* LinkedIn-style: Analytics (Private to you) */}
+            <div className="bg-white p-6 rounded-3xl border border-orange-100/80 shadow-xs">
+              <div className="mb-4">
+                <h2 className="text-base font-bold text-slate-900">Analytics &amp; Engagement</h2>
+                <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
+                  <Eye size={12} className="text-slate-400" /> Private to you
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Link
+                  to="/community/profile-views"
+                  className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all group"
+                >
+                  <div className="mt-0.5 p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-orange-100/80 group-hover:text-[#F97316] transition-colors">
+                    <Users size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900 group-hover:text-[#F97316]">
+                      {profileViewsTotal !== null ? profileViewsTotal : 0} profile views
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">Job seekers viewing your company.</p>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/employer/joblist"
+                  className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all group"
+                >
+                  <div className="mt-0.5 p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-orange-100/80 group-hover:text-[#F97316] transition-colors">
+                    <Briefcase size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900 group-hover:text-[#F97316]">
+                      {profile.totalJobs || profile.activeJobs || 0} active jobs
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">Live openings visible in search.</p>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/employer/applicants"
+                  className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all group"
+                >
+                  <div className="mt-0.5 p-2 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-orange-100/80 group-hover:text-[#F97316] transition-colors">
+                    <UserCheck size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900 group-hover:text-[#F97316]">
+                      {profile.totalApplications || 0} applications
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">Candidates in hiring pipeline.</p>
+                  </div>
+                </Link>
+              </div>
+            </div>
 
             {/* COMPANY INFORMATION CARDS */}
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-orange-100/80 shadow-xs space-y-6">

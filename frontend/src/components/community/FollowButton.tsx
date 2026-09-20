@@ -1,36 +1,49 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { Plus, Check, UserMinus, Loader2 } from 'lucide-react';
 import { toggleFollow } from '../../api/followApi';
 import { useCurrentUser } from '../../utils/currentUser';
 import { useFollowState } from '../../context/FollowContext';
 
-interface FollowButtonProps {
+export interface FollowButtonProps {
   userId: string;
   initialFollowing: boolean;
   isCompany?: boolean;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'outline';
   onChange?: (following: boolean) => void;
   className?: string;
 }
 
-export function FollowButton({ userId, initialFollowing, isCompany, onChange, className = '' }: FollowButtonProps) {
+export function FollowButton({
+  userId,
+  initialFollowing,
+  isCompany,
+  size = 'md',
+  variant,
+  onChange,
+  className = '',
+}: FollowButtonProps) {
   const { isAuthenticated, userId: viewerId } = useCurrentUser();
-  // Shared across every FollowButton/list/suggestion rendered for this
-  // same userId (see FollowContext) — toggling here updates all of them
-  // immediately, not just this instance.
   const [following, setFollowing] = useFollowState(userId, initialFollowing);
   const [busy, setBusy] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   if (!isAuthenticated || viewerId === userId) return null;
 
-  const handleClick = async () => {
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (busy) return;
     setBusy(true);
     const previous = following;
-    setFollowing(!previous); // optimistic, visible everywhere at once
+    setFollowing(!previous); // optimistic update
     try {
       const { following: nowFollowing } = await toggleFollow(userId);
       setFollowing(nowFollowing);
       onChange?.(nowFollowing);
+      if (nowFollowing) {
+        toast.success(`You are now following this ${isCompany ? 'company' : 'profile'}.`, { autoClose: 2000 });
+      }
     } catch (err: any) {
       setFollowing(previous);
       const message = err?.response?.data?.message || 'Something went wrong. Please try again.';
@@ -40,16 +53,57 @@ export function FollowButton({ userId, initialFollowing, isCompany, onChange, cl
     }
   };
 
+  const sizeStyles = {
+    xs: 'px-2.5 py-1 text-xs gap-1',
+    sm: 'px-3 py-1.5 text-xs gap-1.5',
+    md: 'px-4 py-1.5 text-sm gap-1.5',
+    lg: 'px-5 py-2.5 text-sm gap-2',
+  }[size];
+
+  const iconSize = size === 'xs' ? 12 : size === 'sm' ? 13 : 15;
+
   return (
     <button
       onClick={handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       disabled={busy}
       aria-pressed={following}
-      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition disabled:opacity-60 ${
-        following ? 'border border-gray-300 text-dark hover:border-danger hover:text-danger' : 'bg-primary text-light hover:bg-primary/90'
+      title={following ? (isHovered ? 'Unfollow' : 'Following') : isCompany ? 'Follow company' : 'Follow'}
+      className={`inline-flex items-center justify-center rounded-full font-semibold transition-all duration-200 cursor-pointer disabled:opacity-60 shadow-sm active:scale-95 ${sizeStyles} ${
+        following
+          ? isHovered
+            ? 'border border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-400'
+            : 'border border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+          : variant === 'outline'
+          ? 'border-2 border-primary text-primary hover:bg-primary hover:text-white'
+          : 'bg-primary text-white hover:bg-primary/90 border border-primary hover:shadow-md'
       } ${className}`}
     >
-      {following ? 'Following' : isCompany ? 'Follow company' : 'Follow'}
+      {busy ? (
+        <>
+          <Loader2 size={iconSize} className="animate-spin" />
+          <span>{following ? 'Updating…' : 'Following…'}</span>
+        </>
+      ) : following ? (
+        isHovered ? (
+          <>
+            <UserMinus size={iconSize} className="stroke-[2.5]" />
+            <span>Unfollow</span>
+          </>
+        ) : (
+          <>
+            <Check size={iconSize} className="stroke-[2.5] text-emerald-600" />
+            <span>Following</span>
+          </>
+        )
+      ) : (
+        <>
+          <Plus size={iconSize} className="stroke-[2.5]" />
+          <span>{isCompany ? 'Follow company' : 'Follow'}</span>
+        </>
+      )}
     </button>
   );
 }
+

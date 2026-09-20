@@ -1,17 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   MapPin, Clock, DollarSign, Users, Share2, Bookmark,
   Briefcase, BarChart, ThumbsUp, ThumbsDown, CalendarClock, Lock,
   Building2, Globe, GraduationCap, Gift, Sparkles, CheckCircle2,
-  Linkedin, Target, Heart,
+  Linkedin, Target, Heart, ArrowRight,
 } from 'lucide-react';
 import { fetchJobById, fetchJobs, likeJob, dislikeJob, toggleSaveJob } from '../jobseekerApi/api';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { formatSalaryRange } from '../../../utils/currency';
 import { jwtDecode } from 'jwt-decode';
 import { SkeletonCircle, SkeletonText, SkeletonParagraph, SkeletonCard } from '../../ui/Skeleton';
+import { FollowButton } from '../../community/FollowButton';
 
 
 interface DecodedToken {
@@ -361,7 +362,26 @@ const JobDetailPage = () => {
                   )}
                   <div className="min-w-0">
                     <h1 className="text-2xl font-bold text-gray-800">{job.title}</h1>
-                    <p className="text-gray-600 mb-0.5">{displayName}</p>
+                    <div className="flex items-center gap-2 mb-1 mt-0.5 flex-wrap">
+                      {job.employer?._id ? (
+                        <Link
+                          to={`/community/company/${job.employer._id}`}
+                          className="text-gray-700 font-semibold hover:text-primary hover:underline transition-colors"
+                        >
+                          {displayName}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-700 font-semibold">{displayName}</span>
+                      )}
+                      {job.employer?._id && (
+                        <FollowButton
+                          userId={job.employer._id}
+                          initialFollowing={false}
+                          isCompany
+                          size="xs"
+                        />
+                      )}
+                    </div>
                     {displayTagline && <p className="text-gray-400 text-xs mb-2">{displayTagline}</p>}
                     <div className="flex flex-wrap text-sm text-gray-500 gap-x-3 gap-y-1 mt-1">
                       <span><MapPin size={14} className="inline mr-1" />{job.location}{job.country ? `, ${job.country}` : ''}</span>
@@ -562,22 +582,45 @@ const JobDetailPage = () => {
                 profile (Phase 1), never re-typed per job. */}
             {job.employer && (
               <div className="bg-white rounded-lg p-6 shadow">
-                <h2 className="text-base font-semibold text-gray-800 mb-4">About the Company</h2>
-                <div className="flex items-start gap-4 mb-4">
-                  {job.employer.companyLogo ? (
-                    <img
-                      src={resolveMediaUrl(job.employer.companyLogo)}
-                      alt={`${job.employer.name} Logo`}
-                      className="w-14 h-14 rounded-full object-cover bg-gray-100 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-lg font-semibold shrink-0">
-                      {job.employer.name?.[0]}
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-gray-800">About the Company</h2>
+                  <Link
+                    to={`/community/company/${job.employer._id}`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  >
+                    View company feed <ArrowRight size={13} />
+                  </Link>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100">
+                  <div className="flex items-start gap-4">
+                    {job.employer.companyLogo ? (
+                      <img
+                        src={resolveMediaUrl(job.employer.companyLogo)}
+                        alt={`${job.employer.name} Logo`}
+                        className="w-14 h-14 rounded-full object-cover bg-gray-100 shrink-0 border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-lg font-semibold shrink-0">
+                        {job.employer.name?.[0]}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <Link
+                        to={`/community/company/${job.employer._id}`}
+                        className="font-bold text-gray-900 hover:text-primary hover:underline text-base"
+                      >
+                        {job.employer.name}
+                      </Link>
+                      {job.employer.headline && <p className="text-sm text-gray-500">{job.employer.headline}</p>}
                     </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-800">{job.employer.name}</p>
-                    {job.employer.headline && <p className="text-sm text-gray-500">{job.employer.headline}</p>}
+                  </div>
+                  <div className="shrink-0">
+                    <FollowButton
+                      userId={job.employer._id}
+                      initialFollowing={false}
+                      isCompany
+                      size="sm"
+                    />
                   </div>
                 </div>
 
