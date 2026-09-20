@@ -34,6 +34,9 @@ export interface BlogCategoryFormPayload {
   description?: string;
   isActive?: boolean;
   icon?: File | null;
+  // Alternative to `icon` — a plain image URL instead of an upload. Ignored
+  // when `icon` (a File) is also set; the backend applies the same priority.
+  iconUrl?: string;
 }
 
 const toFormData = (payload: BlogCategoryFormPayload) => {
@@ -41,7 +44,11 @@ const toFormData = (payload: BlogCategoryFormPayload) => {
   fd.append('name', payload.name);
   if (payload.description !== undefined) fd.append('description', payload.description);
   if (payload.isActive !== undefined) fd.append('isActive', String(payload.isActive));
-  if (payload.icon) fd.append('icon', payload.icon);
+  if (payload.icon) {
+    fd.append('icon', payload.icon);
+  } else if (payload.iconUrl?.trim()) {
+    fd.append('icon', payload.iconUrl.trim());
+  }
   return fd;
 };
 

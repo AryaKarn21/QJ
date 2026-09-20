@@ -69,7 +69,7 @@ const UserSavedJobs = () => {
         : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-  const displayNameFor = (job: Job) => job.companyOverride?.name || job.employer?.name;
+  const displayNameFor = (job: Job) => job.companyOverride?.name?.trim() || job.employer?.name?.trim();
   const displayLogoFor = (job: Job) => job.companyOverride?.logo || job.employer?.companyLogo;
 
   return (

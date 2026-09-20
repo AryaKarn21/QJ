@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Calendar, Globe, Linkedin, Github, Twitter, MapPin, Pencil, MessageCircle, UserPlus, Users, Users2, Building2,
-  Award, FolderKanban, GraduationCap, Briefcase, Sparkles, ExternalLink,
+  Award, FolderKanban, GraduationCap, Briefcase, Sparkles, ExternalLink, Eye,
 } from 'lucide-react';
 import { fetchUserFeed } from '../../api/communityApi';
 import { fetchPublicProfile, fetchFollowCounts } from '../../api/followApi';
@@ -16,7 +16,8 @@ import { Avatar } from './Avatar';
 import { FollowButton } from './FollowButton';
 import { ConnectionButton } from './ConnectionButton';
 import { CoverPhotoEditor } from './CoverPhotoEditor';
-import { getMyConnections } from '../../api/connectionApi';
+import { getMyConnections, type ConnectionStatus } from '../../api/connectionApi';
+import { recordProfileView, getMyProfileViewCount } from '../../api/profileViewApi';
 import { PostComposer } from './PostComposer';
 import { PostCard } from './PostCard';
 import { TrendingSidebar } from './TrendingSidebar';
@@ -54,7 +55,13 @@ export function ProfileFeed() {
   // on your OWN profile, since /community/connections is always "my own"
   // connections — there's no per-profile connections list to link to.
   const [mutualConnections, setMutualConnections] = useState<number | null>(null);
+  // Only rendered for jobseeker profiles (see ConnectionButton below) —
+  // null means "not a jobseeker profile" or "not loaded yet", in which
+  // case the Message button falls back to its pre-existing unconditional
+  // behavior (employer profiles aren't part of the Connection system).
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
   const [connectionsTotal, setConnectionsTotal] = useState<number | null>(null);
+  const [profileViewsTotal, setProfileViewsTotal] = useState<number | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -68,10 +75,19 @@ export function ProfileFeed() {
 
   // Feeds the header search's "Recent" people row (LinkedIn-style) — real
   // browsing history only, per-browser via localStorage, never your own
-  // profile (not useful to see yourself in "recently viewed").
+  // profile (not useful to see yourself in "recently viewed"). Same guard
+  // also gates the profile-view record below — both only make sense on an
+  // actual visit to someone else's profile, not a self-view.
   useEffect(() => {
     if (!profileId || profileId === viewerId) return;
     addRecentlyViewedProfile(profileId);
+    if (isAuthenticated) recordProfileView(profileId);
+  }, [profileId, viewerId, isAuthenticated]);
+
+  // Own-profile-only: total profile-view count for the stats row.
+  useEffect(() => {
+    if (!profileId || !viewerId || viewerId !== profileId) return;
+    getMyProfileViewCount().then(setProfileViewsTotal).catch(() => {});
   }, [profileId, viewerId]);
 
   useEffect(() => {
@@ -209,7 +225,10 @@ export function ProfileFeed() {
                 {profile?.role !== 'employer' && (
                   <ConnectionButton
                     userId={profileId!}
-                    onStatusChange={(_status, mutualCount) => setMutualConnections(mutualCount)}
+                    onStatusChange={(status, mutualCount) => {
+                      setConnectionStatus(status);
+                      setMutualConnections(mutualCount);
+                    }}
                   />
                 )}
                 <FollowButton
@@ -220,18 +239,26 @@ export function ProfileFeed() {
                     setCounts((c) => ({ ...c, isFollowing: f, followers: c.followers + (f ? 1 : -1) }))
                   }
                 />
-                <button
-                  onClick={() =>
-                    openConversationWith(profileId)
-                      .then((conv) => navigate(`/messages/${conv._id}`))
-                      .catch((err) =>
-                        toast.error(err?.response?.data?.message || 'Could not open a conversation.')
-                      )
-                  }
-                  className="flex items-center gap-1.5 rounded-full bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors shadow-sm"
-                >
-                  <MessageCircle size={14} className="text-primary" /> Message
-                </button>
+                {/* Employer profiles aren't part of the Connection system
+                    (no ConnectionButton above), so Message stays
+                    unconditional there — unchanged from before. Jobseeker
+                    profiles only show it once the connection request has
+                    been accepted, per the Connection system's messaging
+                    rule (see backend/utils/conversationHelpers.js). */}
+                {(profile?.role === 'employer' || connectionStatus === 'CONNECTED') && (
+                  <button
+                    onClick={() =>
+                      openConversationWith(profileId)
+                        .then((conv) => navigate(`/messages/${conv._id}`))
+                        .catch((err) =>
+                          toast.error(err?.response?.data?.message || 'Could not open a conversation.')
+                        )
+                    }
+                    className="flex items-center gap-1.5 rounded-full bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors shadow-sm"
+                  >
+                    <MessageCircle size={14} className="text-primary" /> Message
+                  </button>
+                )}
               </div>
             )}
 
@@ -359,6 +386,20 @@ export function ProfileFeed() {
                   <span className="text-lg font-bold text-gray-900 group-hover:text-primary">{connectionsTotal}</span>
                   <span className="text-xs text-gray-500 flex items-center gap-1">
                     <Users2 size={11} /> Connection{connectionsTotal === 1 ? '' : 's'}
+                  </span>
+                </Link>
+              </>
+            )}
+            {isOwnProfile && profileViewsTotal !== null && (
+              <>
+                <div className="hidden h-8 w-px bg-gray-200 sm:block" />
+                <Link
+                  to="/community/profile-views"
+                  className="flex flex-col items-center hover:text-primary transition-colors group"
+                >
+                  <span className="text-lg font-bold text-gray-900 group-hover:text-primary">{profileViewsTotal}</span>
+                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <Eye size={11} /> Profile View{profileViewsTotal === 1 ? '' : 's'}
                   </span>
                 </Link>
               </>

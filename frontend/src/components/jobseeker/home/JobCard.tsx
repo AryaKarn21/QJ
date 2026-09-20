@@ -65,7 +65,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
     if (!readOnly) navigate(`/jobs/${job._id}`);
   };
 
-  const displayName = job.companyOverride?.name || job.employer?.name;
+  const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim();
   const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
 
   return (

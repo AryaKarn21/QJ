@@ -316,9 +316,22 @@ export type JobseekerNotification = {
   _id: string;
   message: string;
   createdAt: string;
-  relatedJob?: string;
-  relatedApplication?: string;
-  relatedRevenue?: string;
+  type?: string;
+  // `link` is a pre-computed deep-link stored on the notification by
+  // sendNotifications.js — always prefer this over re-deriving a path
+  // from the related refs, since the backend already knows the right route.
+  link?: string;
+  isRead?: boolean;
+  // These refs are `.populate()`-d by the controller, so they arrive as
+  // full objects at runtime even though the raw schema type is ObjectId.
+  // Typed as a union so callers can safely handle both the populated and
+  // the rare unpopulated (string-ID) case.
+  relatedJob?: { _id: string; title?: string } | string | null;
+  relatedApplication?: { _id: string } | string | null;
+  relatedRevenue?: { _id: string } | string | null;
+  relatedTicket?: { _id: string } | string | null;
+  relatedPost?: { _id: string } | string | null;
+  relatedConversation?: { _id: string } | string | null;
 };
 
 export const getJobseekerNotifications = async (): Promise<JobseekerNotification[]> => {

@@ -45,13 +45,20 @@ export function BlogCategoriesExplore() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,200px))]">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-2xl bg-gray-100" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+        // auto-fill + a fixed minmax (not 1fr) instead of the previous
+        // fixed 2/4/6-column grid — with just 1-2 categories, fixed
+        // equal-width columns stretched to fill the whole row, so a
+        // single card rendered as one oversized tile with dead space
+        // beside it instead of a normal-sized card. Cards now keep their
+        // natural size regardless of count; unused row width is just
+        // background, not a stretched card.
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,200px))]">
           {categories.map((cat) => {
             const accent = accentFor(cat.name);
             return (

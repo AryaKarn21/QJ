@@ -222,7 +222,7 @@ const RecentJobs: React.FC = () => {
                 job.employer?.isVerified || job.isVerified;
               const workMode = job.workMode || (job.location?.toLowerCase().includes('remote') ? 'Remote' : 'On-site');
               const isBookmarked = !!bookmarkedJobs[job._id];
-              const displayName = job.companyOverride?.name || job.employer?.name;
+              const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim();
               const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
 
               return (

@@ -1,6 +1,27 @@
 const JobCategory = require('../models/JobCategory');
 const Job = require('../models/Job');
 const { persistUpload, deleteStoredFile } = require('../services/media.service');
+const { isSafeHttpUrl } = require('../utils/urlValidation');
+
+// Icon can come from either an uploaded file (persisted to Cloudinary/disk)
+// or a plain image URL typed into the form — mutually exclusive, the file
+// wins if a request somehow sends both. Returns undefined when neither was
+// provided, so the caller can tell "no change" apart from "clear the icon".
+async function resolveIconInput(req, folder, ownerId) {
+  if (req.file) {
+    return persistUpload(req.file, folder, ownerId);
+  }
+  if (typeof req.body.icon === 'string' && req.body.icon.trim()) {
+    const url = req.body.icon.trim();
+    if (!isSafeHttpUrl(url)) {
+      const err = new Error('Please enter a valid http:// or https:// image URL.');
+      err.code = 'INVALID_IMAGE_URL';
+      throw err;
+    }
+    return url;
+  }
+  return undefined;
+}
 
 // Shared by every icon-upload catch block below. A misconfigured storage
 // backend (Cloudinary env vars missing in production — see
@@ -29,12 +50,10 @@ exports.createJobCategory = async (req, res) => {
   }
 
   let icon = '';
-  if (req.file) {
-    try {
-      icon = await persistUpload(req.file, 'job_category_icons', req.user?.id || 'system');
-    } catch (uploadError) {
-      return respondUploadError(res, uploadError, `[jobCategoryController.createJobCategory] icon upload failed (user=${req.user?.id}):`);
-    }
+  try {
+    icon = (await resolveIconInput(req, 'job_category_icons', req.user?.id || 'system')) || '';
+  } catch (uploadError) {
+    return respondUploadError(res, uploadError, `[jobCategoryController.createJobCategory] icon upload failed (user=${req.user?.id}):`);
   }
 
   try {
@@ -105,14 +124,17 @@ exports.updateJobCategory = async (req, res) => {
     }
 
     let previousIcon = null;
-    if (req.file) {
+    if (req.file || (typeof req.body.icon === 'string' && req.body.icon.trim())) {
       const current = await JobCategory.findById(req.params.id).select('icon').lean();
       previousIcon = current?.icon || null;
       try {
-        updateData.icon = await persistUpload(req.file, 'job_category_icons', req.user?.id || req.params.id);
+        const resolved = await resolveIconInput(req, 'job_category_icons', req.user?.id || req.params.id);
+        if (resolved !== undefined) updateData.icon = resolved;
       } catch (uploadError) {
         return respondUploadError(res, uploadError, `[jobCategoryController.updateJobCategory] icon upload failed (id=${req.params.id}):`);
       }
+    } else {
+      delete updateData.icon;
     }
 
     const category = await JobCategory.findByIdAndUpdate(
@@ -197,12 +219,10 @@ exports.createEmployerJobCategory = async (req, res) => {
   }
 
   let icon = '';
-  if (req.file) {
-    try {
-      icon = await persistUpload(req.file, 'job_category_icons', req.user.id);
-    } catch (uploadError) {
-      return respondUploadError(res, uploadError, `[jobCategoryController.createEmployerJobCategory] icon upload failed (user=${req.user?.id}):`);
-    }
+  try {
+    icon = (await resolveIconInput(req, 'job_category_icons', req.user.id)) || '';
+  } catch (uploadError) {
+    return respondUploadError(res, uploadError, `[jobCategoryController.createEmployerJobCategory] icon upload failed (user=${req.user?.id}):`);
   }
 
   try {
@@ -263,10 +283,11 @@ exports.updateEmployerJobCategory = async (req, res) => {
     if (typeof req.body.description === 'string') {
       category.description = req.body.description.trim();
     }
-    if (req.file) {
+    if (req.file || (typeof req.body.icon === 'string' && req.body.icon.trim())) {
       const previousIcon = category.icon;
       try {
-        category.icon = await persistUpload(req.file, 'job_category_icons', req.user.id);
+        const resolved = await resolveIconInput(req, 'job_category_icons', req.user.id);
+        if (resolved !== undefined) category.icon = resolved;
       } catch (uploadError) {
         return respondUploadError(res, uploadError, `[jobCategoryController.updateEmployerJobCategory] icon upload failed (id=${req.params.id}):`);
       }

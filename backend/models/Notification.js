@@ -54,6 +54,10 @@ const notificationSchema = new mongoose.Schema(
         // signup path (previously only employers triggered an admin
         // notification on registration).
         "jobseeker_registration",
+        // Fired the first time a given viewer visits a profile — see
+        // controllers/profileViewController.js. Not re-fired on repeat
+        // visits from the same viewer.
+        "profile_view",
       ],
     },
     message: {

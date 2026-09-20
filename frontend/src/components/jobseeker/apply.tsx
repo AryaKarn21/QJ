@@ -153,8 +153,8 @@ const ApplyPage: React.FC = () => {
         <p className="text-gray-500 text-sm mb-6">Here's what was sent:</p>
         <div className="text-left text-sm text-gray-600 space-y-1.5 bg-gray-50 rounded-lg p-4 mb-6">
           <p><span className="text-gray-400">Job:</span> {job.title}</p>
-          {(job.companyOverride?.name || job.employer?.name) && (
-            <p><span className="text-gray-400">Company:</span> {job.companyOverride?.name || job.employer?.name}</p>
+          {(job.companyOverride?.name?.trim() || job.employer?.name?.trim()) && (
+            <p><span className="text-gray-400">Company:</span> {job.companyOverride?.name?.trim() || job.employer?.name?.trim()}</p>
           )}
           <p><span className="text-gray-400">Applied on:</span> {new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p><span className="text-gray-400">Resume used:</span> {submitted.resumeName}</p>
@@ -198,7 +198,7 @@ const ApplyPage: React.FC = () => {
           <CoverLetterEditor
             jobId={jobId!}
             jobTitle={job.title}
-            companyName={job.companyOverride?.name || job.employer?.name || ""}
+            companyName={job.companyOverride?.name?.trim() || job.employer?.name?.trim() || ""}
             jobDescription={job.description}
             value={coverLetter}
             onChange={setCoverLetter}

@@ -1,6 +1,25 @@
 const BlogCategory = require("../models/BlogCategory");
 const Blog = require("../models/Blog");
 const { persistUpload, deleteStoredFile } = require("../services/media.service");
+const { isSafeHttpUrl } = require("../utils/urlValidation");
+
+// Same file-or-URL resolution as jobCategoryController.js's
+// resolveIconInput — an uploaded file wins if both are somehow present.
+async function resolveIconInput(req, folder, ownerId) {
+  if (req.file) {
+    return persistUpload(req.file, folder, ownerId);
+  }
+  if (typeof req.body.icon === "string" && req.body.icon.trim()) {
+    const url = req.body.icon.trim();
+    if (!isSafeHttpUrl(url)) {
+      const err = new Error("Please enter a valid http:// or https:// image URL.");
+      err.code = "INVALID_IMAGE_URL";
+      throw err;
+    }
+    return url;
+  }
+  return undefined;
+}
 
 const slugify = (text) =>
   (text || "")
@@ -41,13 +60,24 @@ exports.adminListBlogCategories = async (req, res) => {
 };
 
 exports.adminCreateBlogCategory = async (req, res) => {
-  try {
-    const { name, description, isActive } = req.body;
-    const trimmedName = (name || "").trim();
-    if (!trimmedName) {
-      return res.status(400).json({ message: "Category name is required" });
-    }
+  const { name, description, isActive } = req.body;
+  const trimmedName = (name || "").trim();
+  if (!trimmedName) {
+    return res.status(400).json({ message: "Category name is required" });
+  }
 
+  let icon = "";
+  try {
+    icon = (await resolveIconInput(req, "blog_category_icons", req.user.id)) || "";
+  } catch (uploadError) {
+    console.error("[blogCategoryController.adminCreateBlogCategory] icon resolution failed:", uploadError);
+    if (uploadError.code === "CLOUD_STORAGE_NOT_CONFIGURED") {
+      return res.status(503).json({ message: uploadError.message });
+    }
+    return res.status(400).json({ message: uploadError.message || "Failed to upload icon. Please try a different image." });
+  }
+
+  try {
     const existing = await BlogCategory.findOne({ name: trimmedName }).collation({ locale: "en", strength: 2 });
     if (existing) {
       return res.status(409).json({ message: `A category named "${existing.name}" already exists` });
@@ -57,7 +87,7 @@ exports.adminCreateBlogCategory = async (req, res) => {
       name: trimmedName,
       slug: await generateUniqueSlug(trimmedName),
       description: (description || "").trim(),
-      icon: req.file ? await persistUpload(req.file, "blog_category_icons", req.user.id) : "",
+      icon,
       isActive: isActive === undefined ? true : isActive === "true" || isActive === true,
       createdBy: req.user.id,
     });
@@ -96,9 +126,18 @@ exports.adminUpdateBlogCategory = async (req, res) => {
     if (description !== undefined) category.description = description.trim();
     if (isActive !== undefined) category.isActive = isActive === "true" || isActive === true;
 
-    if (req.file) {
+    if (req.file || (typeof req.body.icon === "string" && req.body.icon.trim())) {
       const previousIcon = category.icon;
-      category.icon = await persistUpload(req.file, "blog_category_icons", req.user.id);
+      try {
+        const resolved = await resolveIconInput(req, "blog_category_icons", req.user.id);
+        if (resolved !== undefined) category.icon = resolved;
+      } catch (uploadError) {
+        console.error("[blogCategoryController.adminUpdateBlogCategory] icon resolution failed:", uploadError);
+        if (uploadError.code === "CLOUD_STORAGE_NOT_CONFIGURED") {
+          return res.status(503).json({ message: uploadError.message });
+        }
+        return res.status(400).json({ message: uploadError.message || "Failed to upload icon. Please try a different image." });
+      }
       if (previousIcon) deleteStoredFile(previousIcon);
     }
 

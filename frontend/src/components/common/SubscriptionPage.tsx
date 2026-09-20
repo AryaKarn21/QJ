@@ -82,7 +82,7 @@ export default function SubscriptionPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 p-6">
+            <div key={i} className="rounded-2xl border border-orange-100 p-6">
               <SkeletonText width="w-1/2" height="h-6" className="mb-3" />
               <SkeletonText width="w-1/3" height="h-9" className="mb-4" />
               <SkeletonParagraph lines={3} />
@@ -96,12 +96,12 @@ export default function SubscriptionPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-10">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Subscription</h1>
-        <p className="text-slate-500 mt-1">Manage your plan and billing.</p>
+        <h1 className="text-2xl font-bold text-slate-800">Subscription</h1>
+        <p className="text-sm text-slate-500 mt-1">Manage your plan and billing.</p>
       </div>
 
       {subscription && subscription.status === 'active' && (
-        <div className="rounded-xl border border-orange-200 bg-orange-50 p-6 flex items-center justify-between flex-wrap gap-4">
+        <div className="rounded-2xl border border-orange-100 bg-orange-50 p-6 shadow-sm flex items-center justify-between flex-wrap gap-4 transition-all duration-200 hover:shadow-md">
           <div>
             <div className="flex items-center gap-2 text-orange-700 font-semibold">
               <CheckCircle2 size={20} /> {subscription.plan.name} — Active
@@ -113,7 +113,7 @@ export default function SubscriptionPage() {
           </div>
           <button
             onClick={handleCancel}
-            className="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100"
+            className="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all duration-200"
           >
             Cancel Subscription
           </button>
@@ -121,7 +121,7 @@ export default function SubscriptionPage() {
       )}
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
           {subscription?.status === 'active' ? 'Available Plans' : 'Choose a Plan'}
         </h2>
 
@@ -135,8 +135,8 @@ export default function SubscriptionPage() {
               return (
                 <div
                   key={plan._id}
-                  className={`rounded-xl border p-6 flex flex-col ${
-                    isCurrent ? 'border-orange-400 ring-2 ring-orange-100' : 'border-slate-200'
+                  className={`rounded-2xl border bg-white p-6 flex flex-col shadow-sm transition-all duration-200 hover:shadow-md ${
+                    isCurrent ? 'border-orange-400 ring-2 ring-orange-400' : 'border-orange-100'
                   }`}
                 >
                   <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
@@ -170,14 +170,14 @@ export default function SubscriptionPage() {
                       <button
                         disabled={checkoutPlanId === plan._id}
                         onClick={() => handleCheckout(plan._id, 'esewa')}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition-all duration-200"
                       >
                         <CreditCard size={16} /> Pay with eSewa
                       </button>
                       <button
                         disabled={checkoutPlanId === plan._id}
                         onClick={() => handleCheckout(plan._id, 'khalti')}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-60"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition-all duration-200"
                       >
                         <CreditCard size={16} /> Pay with Khalti
                       </button>
@@ -192,8 +192,8 @@ export default function SubscriptionPage() {
 
       {payments.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Payment History</h2>
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Payment History</h2>
+          <div className="overflow-x-auto rounded-2xl border border-orange-100 shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>

@@ -140,6 +140,7 @@ app.use("/api/community/posts", require("./routes/postRoutes"));
 app.use("/api/community/comments", require("./routes/commentRoutes"));
 app.use("/api/community/follow", require("./routes/followRoutes"));
 app.use("/api/community/connections", require("./routes/connectionRoutes"));
+app.use("/api/community/profile-views", require("./routes/profileViewRoutes"));
 app.use("/api/community/search", require("./routes/searchRoutes"));
 app.use("/api/community/messages", require("./routes/messageRoutes"));
 app.use("/api/notification", require("./routes/notificationRoutes"));

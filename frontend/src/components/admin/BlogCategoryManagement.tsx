@@ -29,6 +29,7 @@ const BlogCategoryManagement: React.FC = () => {
   const [editing, setEditing] = useState<BlogCategory | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconUrl, setIconUrl] = useState("");
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -60,6 +61,7 @@ const BlogCategoryManagement: React.FC = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
     setIconFile(null);
+    setIconUrl("");
     setIconPreview(null);
     setDrawerOpen(true);
   };
@@ -68,6 +70,10 @@ const BlogCategoryManagement: React.FC = () => {
     setEditing(c);
     setForm({ name: c.name, description: c.description || "", isActive: c.isActive });
     setIconFile(null);
+    // Left blank rather than prefilled with the current icon URL —
+    // resubmitting the unchanged value would look like a "change" and
+    // delete-then-reuse the same Cloudinary file it's replacing it with.
+    setIconUrl("");
     setIconPreview(c.icon ? resolveMediaUrl(c.icon) : null);
     setDrawerOpen(true);
   };
@@ -85,7 +91,15 @@ const BlogCategoryManagement: React.FC = () => {
       return;
     }
     setIconFile(file);
+    setIconUrl("");
     setIconPreview(URL.createObjectURL(file));
+  };
+
+  const handleIconUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setIconUrl(value);
+    setIconFile(null);
+    setIconPreview(value.trim() || null);
   };
 
   const handleSave = async () => {
@@ -100,6 +114,7 @@ const BlogCategoryManagement: React.FC = () => {
         description: form.description.trim(),
         isActive: form.isActive,
         icon: iconFile,
+        iconUrl,
       };
       if (editing) {
         await adminUpdateBlogCategory(editing._id, payload);
@@ -254,6 +269,17 @@ const BlogCategoryManagement: React.FC = () => {
               </div>
             )}
             <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleIconChange} className="text-sm" />
+            <div className="mt-2">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Or paste an image URL</label>
+              <input
+                type="url"
+                value={iconUrl}
+                onChange={handleIconUrlChange}
+                placeholder="https://example.com/icon.png"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+              <p className="mt-1 text-xs text-slate-400">Used only if no file is uploaded above.</p>
+            </div>
           </div>
 
           <div>

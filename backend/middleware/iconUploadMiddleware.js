@@ -1,32 +1,16 @@
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
-const { safeExtensionFor } = require('./safeUploadExtension');
 
-// backend/uploads/ is entirely gitignored, so this folder isn't guaranteed
-// to exist on a fresh clone/deploy — ensure it up front rather than
-// crashing the first upload with an opaque ENOENT-turned-500.
-const UPLOAD_DIR = path.join(__dirname, '../uploads/icons');
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-// 1. Configure Storage for Icons
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    // Extension is derived from the validated mimetype, never from the
-    // client-supplied original filename — see safeUploadExtension.js.
-    const ext = safeExtensionFor(file.mimetype);
-    if (!ext) {
-      return cb(new Error('Invalid icon type. Only JPEG, PNG, JPG, and WEBP are allowed.'));
-    }
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
+// In-memory storage — persistUpload() (services/media.service.js) reads
+// file.buffer to upload to Cloudinary or write to local disk itself
+// (choosing the filename/extension there via safeUploadExtension.js, same
+// as every other upload in this app: applicationUploadMiddleware.js,
+// userUploadMiddleware.js). This used to be multer.diskStorage writing
+// straight into backend/uploads/icons/ with its own filename — which
+// never gave req.file a .buffer at all, so persistUpload() received
+// `undefined` and either corrupted the Cloudinary upload or threw
+// writing it to disk. See applicationUploadMiddleware.js's comment for
+// the identical history on the resume-upload path.
+const storage = multer.memoryStorage();
 
 // 2. File Filter for Icons Only
 const fileFilter = (req, file, cb) => {

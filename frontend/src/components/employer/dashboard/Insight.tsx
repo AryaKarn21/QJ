@@ -171,8 +171,8 @@ const Insight: React.FC = () => {
         {/* Charts Section */}
         <div className="flex gap-6 mb-6 flex-wrap lg:flex-nowrap">
           {/* Bar Chart */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-card w-full lg:w-[70%]">
-            <h3 className="flex items-center gap-2 text-base font-semibold text-dark mb-4">
+          <div className="bg-white p-6 rounded-2xl border border-orange-100 shadow-sm transition-all duration-200 hover:shadow-md w-full lg:w-[70%]">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-slate-700 mb-4">
               <BarChart3 size={17} className="text-primary" /> All Jobs by an Employer
             </h3>
             {jobStats.length === 0 ? (
@@ -193,8 +193,8 @@ const Insight: React.FC = () => {
           </div>
 
           {/* Doughnut Chart */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-card w-full lg:w-[30%] flex flex-col items-center justify-center">
-            <h3 className="flex items-center gap-2 self-start text-base font-semibold text-dark mb-4">
+          <div className="bg-white p-6 rounded-2xl border border-orange-100 shadow-sm transition-all duration-200 hover:shadow-md w-full lg:w-[30%] flex flex-col items-center justify-center">
+            <h3 className="flex items-center gap-2 self-start text-base font-semibold text-slate-700 mb-4">
               <PieChartIcon size={17} className="text-primary" /> Conversion Rates (Top 4)
             </h3>
             {top4ConversionRates.length === 0 ? (
@@ -224,9 +224,9 @@ const Insight: React.FC = () => {
         </div>
 
         {/* Table Section */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-card mb-8" ref={jobComparisonTableRef}> {/* Added ref here */}
+        <div className="bg-white rounded-2xl border border-orange-100 shadow-sm transition-all duration-200 hover:shadow-md mb-8" ref={jobComparisonTableRef}> {/* Added ref here */}
           <div className="p-6">
-            <h3 className="flex items-center gap-2 text-base font-semibold text-dark mb-4">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-slate-700 mb-4">
               <Table2 size={17} className="text-primary" /> Job Post Comparison
             </h3>
             <div className="overflow-x-auto">

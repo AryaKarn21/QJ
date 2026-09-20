@@ -17,6 +17,7 @@ import {
   BarChart3, Building2, CreditCard, Settings, Tags,
   LogOut, ChevronRight, Bell, Search, Download,
   Menu, X, Calendar, MessageCircle, Users2, Home, User,
+  BookOpen,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -47,6 +48,10 @@ const NAV_SECTIONS = [
     label: 'Communication',
     items: [
       { path: '/messages',             icon: MessageSquare,   label: 'Messages' },
+      // Public route, same "leaves the dashboard" convention as 'Home'
+      // above — there was previously no way to reach the blog at all
+      // from inside the employer dashboard.
+      { path: '/blog',                 icon: BookOpen,        label: 'Blog' },
     ],
   },
   {

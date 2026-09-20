@@ -9,6 +9,7 @@ import {
 } from './adminApi/api';
 import { toast } from 'react-toastify';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { 
   FaEdit, 
   FaTrash, 
@@ -25,8 +26,6 @@ import {
   FaBolt,
 } from 'react-icons/fa';
 
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
-
 const JobCategories = () => {
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +34,7 @@ const JobCategories = () => {
   const [formData, setFormData] = useState({
     name: '',
     icon: null as File | null,
+    iconUrl: '',
     // Defaults to true for new categories: the homepage "Explore
     // Categories" section only shows isTrending:true categories (see
     // JobCategories.tsx -> GET /api/jobcategories/trending/all), so a
@@ -65,12 +65,14 @@ const JobCategories = () => {
       const objectUrl = URL.createObjectURL(formData.icon);
       setImagePreview(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
+    } else if (formData.iconUrl.trim()) {
+      setImagePreview(formData.iconUrl.trim());
     } else if (currentCategory && currentCategory.icon) {
-      setImagePreview(`${MEDIA_URL.replace(/\/$/, '')}/uploads/icons/${currentCategory.icon.replace(/^\//, '')}`);
+      setImagePreview(resolveMediaUrl(currentCategory.icon));
     } else {
       setImagePreview(null);
     }
-  }, [formData.icon, currentCategory]);
+  }, [formData.icon, formData.iconUrl, currentCategory]);
 
   const fetchCategories = useCallback(async (opts: { silent?: boolean } = {}) => {
     try {
@@ -143,6 +145,8 @@ const JobCategories = () => {
     formDataToSend.append('isTrending', String(formData.isTrending));
     if (formData.icon) {
       formDataToSend.append('icon', formData.icon);
+    } else if (formData.iconUrl.trim()) {
+      formDataToSend.append('icon', formData.iconUrl.trim());
     }
 
     try {
@@ -154,7 +158,7 @@ const JobCategories = () => {
         toast.success('Category created successfully');
       }
       setIsModalOpen(false);
-      setFormData({ name: '', icon: null, isTrending: true });
+      setFormData({ name: '', icon: null, iconUrl: '', isTrending: true });
       setCurrentCategory(null);
       setImagePreview(null);
       fetchCategories();
@@ -169,6 +173,11 @@ const JobCategories = () => {
     setFormData({
       name: category.name,
       icon: null,
+      // Left blank, like the file input — resubmitting the unchanged
+      // current icon URL here would make the update look like a "change"
+      // and delete-then-reuse the same Cloudinary file it's replacing it
+      // with. Only a freshly-typed URL should count as a change.
+      iconUrl: '',
       isTrending: category.isTrending,
     });
     setIsModalOpen(true);
@@ -220,7 +229,7 @@ const JobCategories = () => {
 
   const openNewCategoryModal = (prefillName?: string) => {
     setCurrentCategory(null);
-    setFormData({ name: prefillName || '', icon: null, isTrending: true });
+    setFormData({ name: prefillName || '', icon: null, iconUrl: '', isTrending: true });
     setImagePreview(null);
     setIsModalOpen(true);
   };
@@ -497,7 +506,7 @@ const JobCategories = () => {
                             <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shadow-xs overflow-hidden group-hover:scale-105 transition-transform duration-200">
                               {category.icon ? (
                                 <img
-                                  src={`${MEDIA_URL.replace(/\/$/, '')}/uploads/icons/${category.icon.replace(/^\//, '')}`}
+                                  src={resolveMediaUrl(category.icon)}
                                   alt={category.name}
                                   className="w-8 h-8 object-contain"
                                   onError={(e) => {
@@ -599,7 +608,7 @@ const JobCategories = () => {
                         <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
                           {category.icon ? (
                             <img
-                              src={`${MEDIA_URL.replace(/\/$/, '')}/uploads/icons/${category.icon.replace(/^\//, '')}`}
+                              src={resolveMediaUrl(category.icon)}
                               alt={category.name}
                               className="w-7 h-7 object-contain"
                               onError={(e) => {
@@ -769,6 +778,25 @@ const JobCategories = () => {
                       </>
                     )}
                   </div>
+                </div>
+
+                {/* Image URL alternative — an uploaded file always wins if
+                    both are provided (see handleSubmit), so this is purely
+                    "instead of", not "in addition to". */}
+                <div className="space-y-2">
+                  <label htmlFor="iconUrl" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Or Paste an Image URL
+                  </label>
+                  <input
+                    type="url"
+                    id="iconUrl"
+                    name="iconUrl"
+                    value={formData.iconUrl}
+                    onChange={handleInputChange}
+                    placeholder="https://example.com/icon.png"
+                    className="w-full px-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#F97316] transition-all"
+                  />
+                  <p className="text-xs text-slate-400">Used only if no file is uploaded above.</p>
                 </div>
 
                 {/* Trending toggle — the homepage "Explore Categories" section

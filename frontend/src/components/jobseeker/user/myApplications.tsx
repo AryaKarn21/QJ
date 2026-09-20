@@ -27,7 +27,7 @@ interface AppliedJob {
   appliedAt: string;
 }
 
-const displayNameFor = (app: AppliedJob) => app.companyOverride?.name || app.employer?.name;
+const displayNameFor = (app: AppliedJob) => app.companyOverride?.name?.trim() || app.employer?.name?.trim();
 const displayLogoFor = (app: AppliedJob) => app.companyOverride?.logo || app.employer?.companyLogo;
 
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || '';

@@ -300,7 +300,7 @@ const JobDetailPage = () => {
   // falls back to the auto-attached, populated employer otherwise. The
   // final fallback is an honest "not available", not a generic "Company"
   // that would read as if it were the real name.
-  const displayName = job.companyOverride?.name || job.employer?.name || 'Company not available';
+  const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim() || 'Company not available';
   const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
   const displayTagline = job.companyOverride?.tagline || job.employer?.headline;
 
@@ -721,18 +721,18 @@ const JobDetailPage = () => {
                               {(sJob.companyOverride?.logo || sJob.employer?.companyLogo) ? (
                                 <img
                                   src={resolveMediaUrl(sJob.companyOverride?.logo || sJob.employer!.companyLogo!)}
-                                  alt={sJob.companyOverride?.name || sJob.employer?.name || 'Company'}
+                                  alt={sJob.companyOverride?.name?.trim() || sJob.employer?.name?.trim() || 'Company'}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-500 text-xl font-bold">
-                                  {(sJob.companyOverride?.name || sJob.employer?.name)?.[0] || 'C'}
+                                  {(sJob.companyOverride?.name?.trim() || sJob.employer?.name?.trim())?.[0] || 'C'}
                                 </div>
                               )}
                             </div>
                             <div className="ml-4 flex-grow">
                               <h3 className="font-semibold text-lg">{sJob.title}</h3>
-                              <p className="text-primary text-sm">{sJob.companyOverride?.name || sJob.employer?.name}</p>
+                              <p className="text-primary text-sm">{sJob.companyOverride?.name?.trim() || sJob.employer?.name?.trim()}</p>
                             </div>
                           </div>
 

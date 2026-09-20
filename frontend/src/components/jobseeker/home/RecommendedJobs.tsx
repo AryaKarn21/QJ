@@ -79,7 +79,7 @@ const RecommendedJobs: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {(data || []).slice(0, 8).map(({ job, reason }) => {
-              const displayName = job.companyOverride?.name || job.employer?.name;
+              const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim();
               const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
               return (
               <article

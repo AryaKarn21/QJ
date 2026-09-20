@@ -587,7 +587,7 @@ const AllJobListing = () => {
                 // final fallback is deliberately an honest "not available"
                 // rather than a generic "Company" — that reads as if it
                 // were the actual name, not a missing-data placeholder.
-                const displayName = job.companyOverride?.name || job.employer?.name || 'Company not available';
+                const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim() || 'Company not available';
                 const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
                 return (
                 <div

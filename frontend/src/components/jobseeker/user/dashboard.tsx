@@ -3,6 +3,9 @@ import {
   MapPin, Clock, Bell, MessageCircle, Briefcase,
   FileText, CheckCircle, XCircle, Eye, Send,
   TrendingUp, ChevronRight, Loader2, CalendarClock,
+  Search, ClipboardList, Bookmark, History, Sparkles,
+  Users, BookOpen, Lightbulb, CreditCard, LifeBuoy,
+  UserCircle, Settings,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -41,6 +44,30 @@ interface AppliedJob {
   applicationStatus: string;
   appliedAt: string;
 }
+
+interface QuickAccessModule {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  path: string;
+}
+
+const QUICK_ACCESS_MODULES: QuickAccessModule[] = [
+  { icon: <Search size={20} />, label: "Browse Jobs", description: "Find your next opportunity", path: "/jobs" },
+  { icon: <ClipboardList size={20} />, label: "My Applications", description: "Track jobs you've applied to", path: "/user/applications" },
+  { icon: <Bookmark size={20} />, label: "Saved Jobs", description: "Jobs you bookmarked", path: "/user/savedjobs" },
+  { icon: <FileText size={20} />, label: "Resume Builder", description: "Create a professional resume", path: "/resume" },
+  { icon: <History size={20} />, label: "My Resumes", description: "View your saved resumes", path: "/resume/history" },
+  { icon: <Sparkles size={20} />, label: "AI Resume Builder", description: "Build your resume with AI", path: "/resume/ai-builder" },
+  { icon: <MessageCircle size={20} />, label: "Messages", description: "Chat with employers", path: "/messages" },
+  { icon: <Users size={20} />, label: "Community", description: "Connect with professionals", path: "/community" },
+  { icon: <BookOpen size={20} />, label: "Blog", description: "Read career insights", path: "/blog" },
+  { icon: <Lightbulb size={20} />, label: "Career Tips", description: "Expert advice for job seekers", path: "/career-tips" },
+  { icon: <CreditCard size={20} />, label: "Subscription", description: "Manage your plan", path: "/user/subscription" },
+  { icon: <LifeBuoy size={20} />, label: "Support", description: "Get help with your account", path: "/user/support" },
+  { icon: <UserCircle size={20} />, label: "My Profile", description: "Edit your public profile", path: "/user/profile" },
+  { icon: <Settings size={20} />, label: "Settings", description: "Account preferences", path: "/user/settings" },
+];
 
 const statusConfig: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
   Accepted:             { bg: "bg-green-50 text-green-700 border border-green-200",   text: "Accepted",  icon: <CheckCircle size={11} /> },
@@ -108,17 +135,21 @@ const UserDashboard = () => {
   const recentMessages = conversations.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
+    <div className="min-h-screen bg-[#FFF8F3] p-6 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* ── Welcome bar ── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {dashboardStats && "name" in dashboardStats && (dashboardStats as { name?: string }).name
+                ? `Welcome back, ${(dashboardStats as { name?: string }).name}`
+                : "My Dashboard"}
+            </h1>
             <p className="text-sm text-gray-500 mt-0.5">Track your applications, messages, and activity</p>
           </div>
           <button onClick={() => navigate("/jobs")}
-            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+            className="flex items-center gap-2 bg-[#F97316] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#F97316]/90 transition-colors shadow-sm">
             <TrendingUp size={15} /> Browse Jobs
           </button>
         </div>
@@ -130,7 +161,7 @@ const UserDashboard = () => {
                 <div key={i} className="bg-white rounded-2xl p-5 shadow-sm animate-pulse h-24" />
               ))
             : statCards.map((s, i) => (
-                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-md transition-all">
                   <div className={`w-10 h-10 rounded-xl ${s.bg} ${s.color} flex items-center justify-center mb-3`}>
                     {s.icon}
                   </div>
@@ -138,6 +169,27 @@ const UserDashboard = () => {
                   <p className={`text-xs font-semibold mt-0.5 ${s.color}`}>{s.label}</p>
                 </div>
               ))}
+        </div>
+
+        {/* ── Quick Access ── */}
+        <div>
+          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Quick Access</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {QUICK_ACCESS_MODULES.map((mod) => (
+              <button
+                key={mod.path}
+                type="button"
+                onClick={() => navigate(mod.path)}
+                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm cursor-pointer text-left hover:shadow-md hover:border-orange-200 transition-all"
+              >
+                <div className="w-9 h-9 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center mb-2.5">
+                  {mod.icon}
+                </div>
+                <p className="text-sm font-semibold text-gray-900">{mod.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{mod.description}</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── Main grid ── */}
@@ -148,7 +200,8 @@ const UserDashboard = () => {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Briefcase size={18} className="text-primary" />
-                <h2 className="font-bold text-gray-900">Applied Jobs</h2>
+                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Applied Jobs</h2>
+                <span className="text-xs text-gray-400">({appliedJobs.length})</span>
               </div>
               <button onClick={() => navigate("/user/applications")}
                 className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
@@ -210,7 +263,7 @@ const UserDashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <MessageCircle size={17} className="text-blue-500" />
-                  <h2 className="font-bold text-gray-900 text-sm">Messages</h2>
+                  <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Messages</h2>
                   {unreadMessages > 0 && (
                     <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                       {unreadMessages > 9 ? "9+" : unreadMessages}
@@ -281,7 +334,7 @@ const UserDashboard = () => {
             <div className="bg-white rounded-2xl shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Bell size={17} className="text-orange-500" />
-                <h2 className="font-bold text-gray-900 text-sm">Notifications</h2>
+                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Notifications</h2>
               </div>
 
               {(loadingNotifications || fetchingNotifications) ? (
@@ -298,24 +351,87 @@ const UserDashboard = () => {
               ) : (
                 <ul className="space-y-2 max-h-64 overflow-y-auto pr-1">
                   {notifications.slice(0, 8).map((note) => {
-                    const getId = (ref: any) => typeof ref === "string" ? ref : ref?._id;
-                    const jobId = getId(note.relatedJob);
-                    const appId = getId(note.relatedApplication);
-                    const link = jobId ? `/jobs/${jobId}` : appId ? `/applications/${appId}` : null;
-                    const isMessage = note.message?.toLowerCase().includes("message");
+                    // Helper — works whether the ref was populated (object)
+                    // or left as a raw string ID.
+                    const getId = (ref: any): string | null =>
+                      !ref ? null : typeof ref === "string" ? ref : ref?._id ?? null;
+
+                    const jobId  = getId(note.relatedJob);
+                    const convId = getId(note.relatedConversation);
+                    const postId = getId(note.relatedPost);
+
+                    // Priority:
+                    // 1. `link` — pre-computed deep-link stored by the backend.
+                    // 2. `type` — map the notification type to the correct route.
+                    // 3. relatedJob fallback for legacy notifications.
+                    const resolvedLink: string | null =
+                      note.link ||
+                      (() => {
+                        switch (note.type) {
+                          case "new_message":
+                            return convId ? `/messages/${convId}` : "/messages";
+                          case "application_update":
+                          case "job_application":
+                          case "job_status_update":
+                            return "/user/applications";
+                          case "post_like":
+                          case "post_comment":
+                          case "post_mention":
+                          case "comment_reply":
+                          case "comment_like":
+                          case "post_share":
+                            return postId ? `/community/post/${postId}` : "/community";
+                          case "new_follower":
+                          case "connection_request":
+                          case "connection_accepted":
+                            return "/community";
+                          case "subscription_activated":
+                            return "/user/subscription";
+                          case "support_ticket_reply":
+                            return "/user/support";
+                          case "job_approved":
+                          case "job_rejected":
+                          case "job_post":
+                            return jobId ? `/jobs/${jobId}` : "/jobs";
+                          default:
+                            return jobId ? `/jobs/${jobId}` : null;
+                        }
+                      })();
+
+                    const emoji =
+                      note.type === "new_message"                          ? "💬"
+                      : note.type === "application_update"
+                        || note.type === "job_application"
+                        || note.type === "job_status_update"               ? "📋"
+                      : note.type === "post_like"
+                        || note.type === "comment_like"                    ? "❤️"
+                      : note.type === "post_comment"
+                        || note.type === "comment_reply"                   ? "💬"
+                      : note.type === "new_follower"                       ? "👤"
+                      : note.type === "connection_request"
+                        || note.type === "connection_accepted"             ? "🤝"
+                      : note.type === "subscription_activated"             ? "⭐"
+                      : note.type === "support_ticket_reply"               ? "🎫"
+                      : note.type === "general_announcement"               ? "📢"
+                      : note.message?.toLowerCase().includes("accept")     ? "✅"
+                      : note.message?.toLowerCase().includes("reject")     ? "❌"
+                      : note.message?.toLowerCase().includes("interview")  ? "📅"
+                      : "🔔";
 
                     return (
                       <li key={note._id}>
                         <button
-                          onClick={() => link && navigate(link)}
-                          className={`w-full text-left p-2.5 rounded-xl border transition-all ${link ? "hover:bg-gray-50 cursor-pointer border-gray-100" : "cursor-default border-transparent"}`}
+                          onClick={() => resolvedLink && navigate(resolvedLink)}
+                          className={`w-full text-left p-2.5 rounded-xl border transition-all ${
+                            resolvedLink
+                              ? "hover:bg-gray-50 cursor-pointer border-gray-100"
+                              : "cursor-default border-transparent"
+                          }`}
                         >
                           <div className="flex items-start gap-2">
-                            <span className="text-base flex-shrink-0 mt-0.5">
-                              {isMessage ? "💬" : note.message?.includes("accept") ? "✅" : note.message?.includes("reject") ? "❌" : note.message?.includes("interview") ? "📅" : "🔔"}
-                            </span>
+                            <span className="text-base flex-shrink-0 mt-0.5">{emoji}</span>
                             <div>
-                              <p className={`text-xs leading-snug ${link ? "text-blue-700 font-medium" : "text-gray-700"}`}>
+                              <p className={`text-xs leading-snug ${resolvedLink ? "text-blue-700 font-medium" : "text-gray-700"}`}>
                                 {note.message}
                               </p>
                               <p className="text-[10px] text-gray-400 mt-0.5">
