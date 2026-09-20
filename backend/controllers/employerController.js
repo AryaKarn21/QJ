@@ -658,6 +658,13 @@ const deleteJob = async (req, res) => {
 
     // Use deleteOne method to delete the job
     await Job.deleteOne({ _id: jobId });
+    try {
+      if (typeof Application.deleteMany === "function") {
+        await Application.deleteMany({ job: jobId });
+      }
+    } catch (err) {
+      console.error("Failed to delete applications for job:", err);
+    }
 
     if (isSuperAdmin && !isOwner) {
       await recordAdminAudit({

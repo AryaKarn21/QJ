@@ -594,7 +594,7 @@ const getSavedJobs = async (req, res) => {
 
 // Get applied jobs
 const getAppliedJobs = async (req, res) => {
-  const jobseekerId = req.user._id;
+  const jobseekerId = req.user._id || req.user.id;
 
   try {
     const applications = await Application.find({ applicant: jobseekerId })
@@ -602,11 +602,22 @@ const getAppliedJobs = async (req, res) => {
         path: "job",
         populate: { path: "employer", select: "name email companyLogo" },
       })
+      .select("job status createdAt interview")
       .sort({ createdAt: -1 });
 
-    const appliedJobs = applications
-      .map(app => app.job)
-      .filter(job => job !== null);
+    const validApplications = applications.filter((app) => app && app.job);
+
+    const appliedJobs = validApplications.map((app) => {
+      const jobData =
+        typeof app.job.toObject === "function" ? app.job.toObject() : app.job;
+      return {
+        ...jobData,
+        applicationId: app._id,
+        applicationStatus: app.status,
+        appliedAt: app.createdAt,
+        interview: app.interview,
+      };
+    });
 
     res.status(200).json(appliedJobs);
   } catch (error) {
@@ -722,6 +733,13 @@ const deleteJob = async (req, res) => {
     }
 
     await Job.findByIdAndDelete(id);
+    try {
+      if (typeof Application.deleteMany === "function") {
+        await Application.deleteMany({ job: id });
+      }
+    } catch (err) {
+      console.error("Failed to delete applications for job:", err);
+    }
 
     if (isSuperAdmin && !isOwner) {
       await recordAdminAudit({

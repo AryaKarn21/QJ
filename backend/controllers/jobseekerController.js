@@ -144,23 +144,51 @@ const updateJobseekerProfile = async (req, res) => {
 // Get Applied Jobs with application status
 const getAppliedJobs = async (req, res) => {
   try {
-    const jobseekerId = req.user.id;
+    const jobseekerId = req.user._id || req.user.id;
 
     const applications = await Application.find({ applicant: jobseekerId })
       .populate({
         path: "job",
         populate: {
           path: "employer",
-          select: "name email",
+          select: "name email companyLogo",
         },
       })
-      .select("job status createdAt");
+      .select("job status createdAt interview")
+      .sort({ createdAt: -1 });
 
-    const jobsWithStatus = applications.map((app) => ({
-      ...app.job.toObject(),
-      applicationStatus: app.status,
-      appliedAt: app.createdAt,
-    }));
+    // Clean up any orphaned applications whose jobs have been deleted
+    const orphanedAppIds = applications
+      .filter((app) => !app || !app.job)
+      .map((app) => app._id);
+    if (orphanedAppIds.length > 0) {
+      try {
+        if (typeof Application.deleteMany === "function") {
+          const resDel = Application.deleteMany({ _id: { $in: orphanedAppIds } });
+          if (resDel && typeof resDel.catch === "function") {
+            resDel.catch((err) =>
+              console.error("Failed to clean up orphaned applications:", err)
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Failed to clean up orphaned applications:", err);
+      }
+    }
+
+    const validApplications = applications.filter((app) => app && app.job);
+
+    const jobsWithStatus = validApplications.map((app) => {
+      const jobData =
+        typeof app.job.toObject === "function" ? app.job.toObject() : app.job;
+      return {
+        ...jobData,
+        applicationId: app._id,
+        applicationStatus: app.status,
+        appliedAt: app.createdAt,
+        interview: app.interview,
+      };
+    });
 
     res.json(jobsWithStatus);
   } catch (error) {

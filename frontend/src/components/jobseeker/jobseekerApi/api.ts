@@ -290,9 +290,17 @@ export const fetchAppliedJobs = async (): Promise<Job[]> => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
 
-  const response = await api.get('/api/jobseeker/applied-jobs');
-
-  return response.data;
+  try {
+    const response = await api.get('/api/jobseeker/applied-jobs');
+    return response.data;
+  } catch (err) {
+    try {
+      const fallback = await api.get('/api/jobs/applied-jobs');
+      return fallback.data;
+    } catch {
+      throw err;
+    }
+  }
 };
 
 // Fetch dashboard stats

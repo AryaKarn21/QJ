@@ -9,6 +9,7 @@ jest.mock("../models/Follow");
 jest.mock("../models/Hashtag");
 jest.mock("../models/User");
 jest.mock("../models/Job");
+jest.mock("../models/Application");
 jest.mock("../models/AuditLog");
 jest.mock("../models/Message");
 jest.mock("../models/ShareEvent");
@@ -43,6 +44,7 @@ const Post = require("../models/Post");
 const User = require("../models/User");
 const Hashtag = require("../models/Hashtag");
 const Job = require("../models/Job");
+const Application = require("../models/Application");
 const { recordAdminAudit } = require("../utils/auditLogger");
 
 const {
@@ -75,6 +77,9 @@ function mockRes() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  if (Application) {
+    Application.deleteMany = jest.fn().mockResolvedValue({ deletedCount: 0 });
+  }
 });
 
 describe("Hashtag Normalization Unit Tests", () => {

@@ -27,9 +27,18 @@ interface AppliedJob {
   appliedAt: string;
 }
 
-const displayNameFor = (app: AppliedJob) => app.companyOverride?.name?.trim() || app.employer?.name?.trim();
-const displayLogoFor = (app: AppliedJob) => app.companyOverride?.logo || app.employer?.companyLogo;
+const displayNameFor = (app?: AppliedJob) => app?.companyOverride?.name?.trim() || app?.employer?.name?.trim() || 'Company';
+const displayLogoFor = (app?: AppliedJob) => app?.companyOverride?.logo || app?.employer?.companyLogo;
 
+const formatAppliedDate = (dateStr?: string) => {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? '—' : format(d, 'MMM dd, yyyy');
+  } catch {
+    return '—';
+  }
+};
 
 // Maps each backend status to a badge color + friendlier label, so
 // jobseekers get a clear, at-a-glance read on where they stand —
@@ -59,8 +68,8 @@ const CompanyAvatar = ({ app }: { app: AppliedJob }) => {
   );
 };
 
-const StatusBadge = ({ status }: { status: AppliedJob['applicationStatus'] }) => {
-  const s = STATUS_STYLES[status] ?? STATUS_STYLES.Pending;
+const StatusBadge = ({ status }: { status?: AppliedJob['applicationStatus'] }) => {
+  const s = (status && STATUS_STYLES[status]) || STATUS_STYLES.Pending;
   return <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${s.className}`}>{s.label}</span>;
 };
 
@@ -76,7 +85,7 @@ const UserMyApplications = () => {
     if (!opts.silent) setLoading(true);
     try {
       const jobs = await fetchAppliedJobs();
-      setApplications(jobs as unknown as AppliedJob[]);
+      setApplications(Array.isArray(jobs) ? (jobs as unknown as AppliedJob[]) : []);
     } catch (err) {
       console.error('Error loading applications:', err);
       setError('Could not load your applications. Please try again.');
@@ -89,13 +98,17 @@ const UserMyApplications = () => {
   useAutoRefresh(() => loadApplications(), 30000);
 
   const filteredApplications = applications
-    .filter((app) => statusFilter === 'all' || app.applicationStatus === statusFilter)
+    .filter((app) => app && (statusFilter === 'all' || app.applicationStatus === statusFilter))
     .filter(
       (app) =>
-        app.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        displayNameFor(app)?.toLowerCase().includes(searchTerm.toLowerCase())
+        (app.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (displayNameFor(app) || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+    .sort((a, b) => {
+      const timeA = a?.appliedAt ? new Date(a.appliedAt).getTime() : 0;
+      const timeB = b?.appliedAt ? new Date(b.appliedAt).getTime() : 0;
+      return timeB - timeA;
+    });
 
   return (
     <div className="min-h-screen overflow-auto bg-gray-50 p-4 sm:p-6" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
@@ -187,7 +200,7 @@ const UserMyApplications = () => {
                           <div className="flex items-center">
                             <CompanyAvatar app={app} />
                             <div className="ml-3">
-                              <div className="font-medium">{app.title}</div>
+                              <div className="font-medium">{app.title || 'Untitled Job'}</div>
                               <div className="text-sm text-gray-500">{displayNameFor(app)}</div>
                             </div>
                           </div>
@@ -195,13 +208,13 @@ const UserMyApplications = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center text-gray-500">
                             <MapPin size={16} className="mr-2 shrink-0" />
-                            <span>{app.location}</span>
+                            <span>{app.location || 'Not Specified'}</span>
                             <span className="mx-2">•</span>
                             <Clock size={16} className="mr-2 shrink-0" />
-                            <span>{app.jobtype}</span>
+                            <span>{app.jobtype || 'Full-time'}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">{app.appliedAt ? format(new Date(app.appliedAt), 'MMM dd, yyyy') : '—'}</td>
+                        <td className="px-6 py-4">{formatAppliedDate(app.appliedAt)}</td>
                         <td className="px-6 py-4">
                           <StatusBadge status={app.applicationStatus} />
                         </td>
@@ -224,19 +237,19 @@ const UserMyApplications = () => {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate font-semibold text-gray-900">{app.title}</p>
+                            <p className="truncate font-semibold text-gray-900">{app.title || 'Untitled Job'}</p>
                             <p className="truncate text-sm text-gray-500">{displayNameFor(app)}</p>
                           </div>
                           <StatusBadge status={app.applicationStatus} />
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                           <span className="flex items-center gap-1">
-                            <MapPin size={12} /> {app.location}
+                            <MapPin size={12} /> {app.location || 'Not Specified'}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Clock size={12} /> {app.jobtype}
+                            <Clock size={12} /> {app.jobtype || 'Full-time'}
                           </span>
-                          <span>{app.appliedAt ? format(new Date(app.appliedAt), 'MMM dd, yyyy') : '—'}</span>
+                          <span>{formatAppliedDate(app.appliedAt)}</span>
                         </div>
                         <button
                           className="mt-2.5 text-sm font-semibold text-primary hover:underline"

@@ -515,6 +515,14 @@ const deleteJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
+    try {
+      if (typeof Application.deleteMany === "function") {
+        await Application.deleteMany({ job: jobId });
+      }
+    } catch (err) {
+      console.error("Failed to delete applications for job:", err);
+    }
+
     await recordAdminAudit({
       user: req.user,
       action: `Super Admin deleted Job Listing #${jobId}`,
