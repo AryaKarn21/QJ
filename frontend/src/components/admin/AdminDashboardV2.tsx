@@ -36,6 +36,8 @@ import {
   Share2,
   Plus,
   ArrowUpRight,
+  Newspaper,
+  BarChart3,
 } from 'lucide-react';
 import { KpiCard } from '../ui/KpiCard';
 import { SkeletonAvatarLine } from '../ui/Skeleton';
