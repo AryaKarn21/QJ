@@ -24,6 +24,7 @@ const {
   deleteStoredFile,
   formatCloudinaryInlineUrl,
   formatCloudinaryDownloadUrl,
+  getCloudinaryPrivateDownloadUrl,
 } = require("../services/media.service");
 
 // Get Employer Profile
@@ -1282,7 +1283,9 @@ const getApplicationResume = async (req, res) => {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    if (!application.job || application.job.employer.toString() !== employerId) {
+    const isOwnerEmployer = application.job && application.job.employer.toString() === employerId;
+    const isAdmin = req.user.role === "admin" || req.user.role === "superadmin";
+    if (!isOwnerEmployer && !isAdmin) {
       return res.status(403).json({ message: "Not authorized to access this resume" });
     }
 
@@ -1313,35 +1316,33 @@ const getApplicationResume = async (req, res) => {
 
     let deliveryUrl = resume;
     if (resume.startsWith("https://res.cloudinary.com/")) {
-      deliveryUrl = isDownload
-        ? formatCloudinaryDownloadUrl(resume, filename)
-        : formatCloudinaryInlineUrl(resume);
+      deliveryUrl = getCloudinaryPrivateDownloadUrl(resume, isDownload ? filename : undefined);
     }
 
-    if (isDownload) {
-      if (deliveryUrl.startsWith("http://") || deliveryUrl.startsWith("https://")) {
-        try {
-          const upstreamRes = await fetch(deliveryUrl);
-          if (upstreamRes.ok) {
-            res.setHeader("Content-Type", upstreamRes.headers.get("content-type") || "application/pdf");
-            res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-            const arrayBuf = await upstreamRes.arrayBuffer();
-            return res.send(Buffer.from(arrayBuf));
-          }
-        } catch (fetchErr) {
-          console.error("Failed to stream resume from upstream:", fetchErr);
+    // Stream remote file (e.g. from signed Cloudinary URL) with correct PDF MIME type
+    if (deliveryUrl.startsWith("http://") || deliveryUrl.startsWith("https://")) {
+      try {
+        const upstreamRes = await fetch(deliveryUrl);
+        if (upstreamRes.ok) {
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader(
+            "Content-Disposition",
+            `${isDownload ? "attachment" : "inline"}; filename="${filename}"`
+          );
+          const arrayBuf = await upstreamRes.arrayBuffer();
+          return res.send(Buffer.from(arrayBuf));
+        } else {
+          console.error(`Upstream returned ${upstreamRes.status} for resume URL: ${deliveryUrl}`);
         }
-      } else {
-        const localFilePath = path.join(__dirname, "..", deliveryUrl);
-        if (fs.existsSync(localFilePath)) {
-          return res.download(localFilePath, filename);
-        }
+      } catch (fetchErr) {
+        console.error("Failed to stream resume from upstream:", fetchErr);
       }
-    }
-
-    if (!deliveryUrl.startsWith("http://") && !deliveryUrl.startsWith("https://")) {
+    } else {
       const localFilePath = path.join(__dirname, "..", deliveryUrl);
       if (fs.existsSync(localFilePath)) {
+        if (isDownload) {
+          return res.download(localFilePath, filename);
+        }
         return res.sendFile(localFilePath);
       }
     }

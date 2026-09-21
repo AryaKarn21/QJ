@@ -117,3 +117,19 @@ export function getResumeDownloadUrl(path?: string | null, filename?: string): s
 
   return resolveResumeUrl(trimmed);
 }
+
+/**
+ * Returns an authorized backend delivery URL for an application resume.
+ * This guarantees the request is signed and streamed directly by our server,
+ * bypassing any Cloudinary security restrictions ("deny or ACL failure" / 401).
+ */
+export function getAuthorizedApplicationResumeUrl(applicationId?: string, download = false): string {
+  if (!applicationId) return '';
+  const token = localStorage.getItem('token') || '';
+  const cleanBase = API_BASE_URL.replace(/\/+$/, '');
+  const params = new URLSearchParams();
+  if (token) params.set('token', token);
+  if (download) params.set('download', 'true');
+  const qs = params.toString();
+  return `${cleanBase}/api/employer/applications/${applicationId}/resume${qs ? `?${qs}` : ''}`;
+}

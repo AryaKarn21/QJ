@@ -101,7 +101,6 @@ function formatCloudinaryInlineUrl(url) {
 
 function formatCloudinaryDownloadUrl(url, filename) {
   if (!isCloudinaryUrl(url)) return url;
-  // Raw files cannot be transformed in Cloudinary (returns 400 Bad Request)
   if (url.includes("/raw/upload/")) {
     return url.replace(/\/raw\/upload\/(fl_inline\/|fl_attachment[^/]*\/)?/, "/raw/upload/");
   }
@@ -112,6 +111,30 @@ function formatCloudinaryDownloadUrl(url, filename) {
   }
   return url;
 }
+
+function getCloudinaryPrivateDownloadUrl(url, filename) {
+  if (!isCloudinaryUrl(url)) return url;
+  try {
+    const clean = url.split("?")[0];
+    const isRaw = clean.includes("/raw/upload/");
+    const marker = isRaw ? "/raw/upload/" : "/image/upload/";
+    const idx = clean.indexOf(marker);
+    if (idx === -1) return url;
+    let publicId = clean.slice(idx + marker.length).replace(/^v\d+\//, "");
+    const ext = path.extname(publicId).replace(/^\./, "") || "pdf";
+
+    return cloudinary.utils.private_download_url(publicId, ext, {
+      resource_type: isRaw ? "raw" : "image",
+      type: "upload",
+      attachment: Boolean(filename),
+      expires_at: Math.floor(Date.now() / 1000) + 7200,
+    });
+  } catch (err) {
+    console.error("Error generating private download URL:", err);
+    return url;
+  }
+}
+
 
 function writeBufferToLocalDisk(buffer, mimetype, folder) {
   const ext = safeExtensionFor(mimetype);
@@ -219,4 +242,5 @@ module.exports = {
   isSupabaseUrl,
   formatCloudinaryInlineUrl,
   formatCloudinaryDownloadUrl,
+  getCloudinaryPrivateDownloadUrl,
 };

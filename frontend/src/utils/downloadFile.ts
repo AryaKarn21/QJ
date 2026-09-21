@@ -21,9 +21,11 @@ export async function downloadFile(
 
   // Strategy 1: Authorized backend proxy (avoids Cloudinary CORS restrictions)
   if (applicationId) {
+    const cleanBase = API_BASE_URL.replace(/\/+$/, '');
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+    const proxyEndpoint = `${cleanBase}/api/employer/applications/${applicationId}/resume?download=true${tokenParam}`;
+
     try {
-      const cleanBase = API_BASE_URL.replace(/\/+$/, '');
-      const proxyEndpoint = `${cleanBase}/api/employer/applications/${applicationId}/resume?download=true`;
       const response = await fetch(proxyEndpoint, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -41,8 +43,17 @@ export async function downloadFile(
         return;
       }
     } catch (err) {
-      console.warn('Backend proxy download failed, falling back to direct URL:', err);
+      console.warn('Backend proxy fetch failed, attempting browser navigation:', err);
     }
+
+    // Direct browser navigation to proxy endpoint triggers native file download
+    const link = document.createElement('a');
+    link.href = proxyEndpoint;
+    link.download = safeFilename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return;
   }
 
   // Strategy 2: Direct fetch blob from resolved clean URL

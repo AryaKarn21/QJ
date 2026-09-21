@@ -76,6 +76,6 @@ router.get("/candidates", authenticate, authorizeRoles("employer"), getCandidate
 router.post("/candidates/:candidateId/save", authenticate, authorizeRoles("employer"), toggleSavedCandidate);
 router.get("/candidates/saved", authenticate, authorizeRoles("employer"), getSavedCandidates);
 router.get("/interviews", authenticate, authorizeRoles("employer"), getScheduledInterviews);
-router.get("/applications/:applicationId/resume", authenticate, authorizeRoles("employer"), getApplicationResume);
+router.get("/applications/:applicationId/resume", authenticate, authorizeRoles("employer", "admin", "superadmin"), getApplicationResume);
 
 module.exports = router;

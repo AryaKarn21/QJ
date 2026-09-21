@@ -10,7 +10,7 @@ import {
   X, Download, Eye, ExternalLink, GraduationCap, Sparkles, Filter, RotateCcw,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
+import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath, getAuthorizedApplicationResumeUrl } from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
@@ -561,15 +561,13 @@ const Applicants = () => {
                   </div>
                 ) : (
                   (() => {
-                    const cleanUrl = resolveResumeUrl(selected.resume);
-                    const previewUrl = cleanUrl.startsWith("http")
-                      ? `https://docs.google.com/viewer?url=${encodeURIComponent(cleanUrl)}&embedded=true`
-                      : cleanUrl;
+                    const authorizedUrl = getAuthorizedApplicationResumeUrl(selected.applicationId);
+                    const cleanUrl = authorizedUrl || resolveResumeUrl(selected.resume);
 
                     return (
                       <div className="space-y-2">
                         <iframe
-                          src={previewUrl}
+                          src={cleanUrl}
                           title="Resume preview"
                           className="h-80 w-full rounded-xl border border-gray-200 bg-white"
                         />

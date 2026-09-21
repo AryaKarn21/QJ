@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getJobApplicants, updateApplicationStatus } from "../employerApi/api";
 import { Eye, Download } from "lucide-react";
-import { resolveResumeUrl, isUnrecoverableResumePath } from "../../../utils/mediaUrl";
+import { resolveResumeUrl, isUnrecoverableResumePath, getAuthorizedApplicationResumeUrl } from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 import { SkeletonText, SkeletonRow } from "../../ui/Skeleton";
@@ -142,7 +142,7 @@ const JobApplicants = () => {
                                         {applicant.resume && !isUnrecoverableResumePath(applicant.resume) ? (
                                             <div className="flex items-center gap-2">
                                                 <a
-                                                    href={resolveResumeUrl(applicant.resume)}
+                                                    href={getAuthorizedApplicationResumeUrl(applicant.applicationId) || resolveResumeUrl(applicant.resume)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >
