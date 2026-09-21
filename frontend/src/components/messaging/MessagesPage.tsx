@@ -13,8 +13,7 @@ import { useCurrentUser } from '../../utils/currentUser';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from '../community/Avatar';
 import type { ConversationSummary, DirectMessage, MessageAttachment } from '../../types/community';
-import { useWebRTC, type CallEndedInfo } from './useWebRTC';
-import { CallOverlay } from './CallOverlay';
+import { useCall } from '../../context/CallContext';
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 const MAX_ATTACHMENTS = 4;
@@ -873,18 +872,7 @@ export function MessagesPage() {
   const [search, setSearch] = useState('');
   const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
 
-  const handleCallEnded = useCallback((info: CallEndedInfo) => {
-    const conv = conversations.find((c) => c.otherUser._id === info.peerId);
-    if (!conv) return;
-    logCall(conv._id, info).catch((err) => console.error('Failed to log call:', err));
-  }, [conversations]);
-
-  const {
-    callState, callType, incomingCall, localStream, remoteStream,
-    isMuted, isCamOff, callDuration, error: callError, dismissError,
-    startCall, answerCall, rejectCall, endCall, toggleMute, toggleCamera,
-    canSwitchCamera, switchCamera,
-  } = useWebRTC(socket, userId || '', handleCallEnded);
+  const { startCall } = useCall();
 
   useEffect(() => {
     fetchConversations()
@@ -971,8 +959,6 @@ export function MessagesPage() {
     startCall(active.otherUser._id, 'video', active.otherUser.name, resolveMediaUrl(active.otherUser.avatar));
   };
 
-  const callRemoteName = incomingCall?.callerName || active?.otherUser.name || 'Unknown';
-  const callRemoteAvatar = incomingCall?.callerAvatar || resolveMediaUrl(active?.otherUser.avatar);
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
   return (
@@ -995,21 +981,6 @@ export function MessagesPage() {
       style={{ position: 'fixed', inset: 0, zIndex: 40 }}
       className="bg-slate-100 flex flex-col overflow-hidden"
     >
-      {/* Call overlay */}
-      {(callState === 'calling' || callState === 'incoming' || callState === 'connected' || callState === 'reconnecting' || callState === 'failed') && (
-        <CallOverlay
-          callState={callState} callType={callType}
-          remoteName={callRemoteName} remoteAvatar={callRemoteAvatar}
-          localStream={localStream} remoteStream={remoteStream}
-          isMuted={isMuted} isCamOff={isCamOff} callDuration={callDuration}
-          error={callError}
-          canSwitchCamera={canSwitchCamera}
-          onAnswer={answerCall} onReject={rejectCall} onEnd={endCall}
-          onToggleMute={toggleMute} onToggleCamera={toggleCamera} onSwitchCamera={switchCamera}
-          onDismissError={dismissError}
-        />
-      )}
-
       {/* ── Two-pane shell ── */}
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
 

@@ -22,13 +22,12 @@ beforeEach(() => {
 });
 
 describe("checkMessagePermission", () => {
-  it("blocks starting a new conversation between two people who aren't connected", async () => {
+  it("allows starting a new conversation between registered users", async () => {
     Connection.findOne.mockReturnValue(mockConnectionQuery(null));
 
     const result = await checkMessagePermission(validId(), validId(), { conversationExists: false });
 
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toMatch(/connected/i);
+    expect(result.allowed).toBe(true);
   });
 
   it("allows starting a new conversation between accepted connections", async () => {
@@ -56,7 +55,7 @@ describe("checkMessagePermission", () => {
     expect(result.reason).toMatch(/can't message/i);
   });
 
-  it("blocks starting a new conversation when blocked, with the blocked-specific message (not the not-connected one)", async () => {
+  it("blocks starting a new conversation when blocked, with the blocked-specific message", async () => {
     Connection.findOne.mockReturnValue(mockConnectionQuery({ status: "blocked" }));
 
     const result = await checkMessagePermission(validId(), validId(), { conversationExists: false });
@@ -70,7 +69,7 @@ describe("findOrCreateConversation", () => {
   it("returns the existing conversation without any connection check when one already exists", async () => {
     const existing = { _id: validId(), participants: [] };
     Conversation.findOne.mockResolvedValue(existing);
-    Connection.findOne.mockReturnValue(mockConnectionQuery(null)); // not connected at all
+    Connection.findOne.mockReturnValue(mockConnectionQuery(null));
 
     const result = await findOrCreateConversation(validId(), validId());
 
@@ -78,9 +77,9 @@ describe("findOrCreateConversation", () => {
     expect(Conversation.create).not.toHaveBeenCalled();
   });
 
-  it("creates a new conversation for accepted connections", async () => {
+  it("creates a new conversation for registered users", async () => {
     Conversation.findOne.mockResolvedValue(null);
-    Connection.findOne.mockReturnValue(mockConnectionQuery({ status: "accepted" }));
+    Connection.findOne.mockReturnValue(mockConnectionQuery(null));
     Conversation.create.mockResolvedValue({ _id: validId() });
 
     await findOrCreateConversation(validId(), validId());
@@ -88,9 +87,9 @@ describe("findOrCreateConversation", () => {
     expect(Conversation.create).toHaveBeenCalled();
   });
 
-  it("throws MESSAGE_NOT_ALLOWED instead of silently creating a conversation for non-connections", async () => {
+  it("throws MESSAGE_NOT_ALLOWED when users are blocked", async () => {
     Conversation.findOne.mockResolvedValue(null);
-    Connection.findOne.mockReturnValue(mockConnectionQuery(null));
+    Connection.findOne.mockReturnValue(mockConnectionQuery({ status: "blocked" }));
 
     await expect(findOrCreateConversation(validId(), validId())).rejects.toMatchObject({
       code: "MESSAGE_NOT_ALLOWED",

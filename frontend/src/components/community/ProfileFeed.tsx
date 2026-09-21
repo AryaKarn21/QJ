@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  Calendar, Globe, Linkedin, Github, Twitter, MapPin, Pencil, MessageCircle, UserPlus, Users, Users2, Building2,
+  Calendar, Globe, Linkedin, Github, Twitter, MapPin, Pencil, MessageCircle, MessageSquare, Phone, Video, UserPlus, Users, Users2, Building2,
   Award, FolderKanban, GraduationCap, Briefcase, Sparkles, ExternalLink, Eye, BarChart3, Search, FolderPlus, X,
 } from 'lucide-react';
 import { fetchUserFeed } from '../../api/communityApi';
@@ -11,6 +11,8 @@ import { openConversationWith } from '../../api/messageApi';
 import { updateJobseekerProfile, updateJobseekerCareerStatus } from '../../components/jobseeker/jobseekerApi/api';
 import { updateEmployerProfile, updateEmployerHiringStatusApi } from '../../components/employer/employerApi/api';
 import { useCurrentUser } from '../../utils/currentUser';
+import { useCall } from '../../context/CallContext';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { addRecentlyViewedProfile } from '../../utils/recentSearches';
 import { Avatar } from './Avatar';
 import { FollowButton } from './FollowButton';
@@ -46,7 +48,38 @@ export function ProfileFeed() {
   const { userId: profileId } = useParams<{ userId: string }>();
   const { userId: viewerId, isAuthenticated } = useCurrentUser();
   const navigate = useNavigate();
+  const { startCall } = useCall();
   const [profile, setProfile] = useState<AuthorSnapshot | null>(null);
+
+  const handleOpenMessage = async () => {
+    if (!profileId) return;
+    try {
+      const conv = await openConversationWith(profileId);
+      navigate(`/messages/${conv._id}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not open conversation.');
+    }
+  };
+
+  const handleStartAudioCall = () => {
+    if (!profileId || !profile) return;
+    startCall(
+      profileId,
+      'audio',
+      profile.name || 'User',
+      resolveMediaUrl(profile.avatar)
+    );
+  };
+
+  const handleStartVideoCall = () => {
+    if (!profileId || !profile) return;
+    startCall(
+      profileId,
+      'video',
+      profile.name || 'User',
+      resolveMediaUrl(profile.avatar)
+    );
+  };
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [dismissSuggested, setDismissSuggested] = useState(false);
   const [counts, setCounts] = useState({ followers: 0, following: 0, isFollowing: false });
@@ -220,9 +253,8 @@ export function ProfileFeed() {
             </div>
 
             {!isOwnProfile && isAuthenticated && (
-              <div className="flex flex-wrap gap-2 pb-1">
-                {/* Connect (mutual approval) and Follow (one-way) are
-                    separate, coexisting actions — see PROJECT_AUDIT.md §6. */}
+              <div className="flex flex-wrap items-center gap-2 pb-1">
+                {/* Connect (mutual approval) and Follow (one-way) */}
                 {profile?.role !== 'employer' && (
                   <ConnectionButton
                     userId={profileId!}
@@ -240,26 +272,48 @@ export function ProfileFeed() {
                     setCounts((c) => ({ ...c, isFollowing: f, followers: c.followers + (f ? 1 : -1) }))
                   }
                 />
-                {/* Employer profiles aren't part of the Connection system
-                    (no ConnectionButton above), so Message stays
-                    unconditional there — unchanged from before. Jobseeker
-                    profiles only show it once the connection request has
-                    been accepted, per the Connection system's messaging
-                    rule (see backend/utils/conversationHelpers.js). */}
-                {(profile?.role === 'employer' || connectionStatus === 'CONNECTED') && (
-                  <button
-                    onClick={() =>
-                      openConversationWith(profileId)
-                        .then((conv) => navigate(`/messages/${conv._id}`))
-                        .catch((err) =>
-                          toast.error(err?.response?.data?.message || 'Could not open a conversation.')
-                        )
-                    }
-                    className="flex items-center gap-1.5 rounded-full bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors shadow-sm"
-                  >
-                    <MessageCircle size={14} className="text-primary" /> Message
-                  </button>
-                )}
+
+                {/* Instant Real-Time Messaging */}
+                <button
+                  onClick={handleOpenMessage}
+                  className="flex items-center gap-1.5 rounded-full bg-primary hover:bg-primary-dark text-white px-4 py-2 text-sm font-semibold transition-all shadow-sm active:scale-95 cursor-pointer"
+                  title="Send Message"
+                >
+                  <MessageSquare size={15} />
+                  <span>Message</span>
+                </button>
+
+                {/* WebRTC Voice Call */}
+                <button
+                  onClick={handleStartAudioCall}
+                  className="flex items-center gap-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 hover:border-emerald-400 text-emerald-700 px-3.5 py-2 text-sm font-semibold transition-all shadow-sm active:scale-95 cursor-pointer"
+                  title="Start Voice Call"
+                >
+                  <Phone size={15} className="text-emerald-600" />
+                  <span className="hidden sm:inline">Call</span>
+                </button>
+
+                {/* WebRTC Video Call */}
+                <button
+                  onClick={handleStartVideoCall}
+                  className="flex items-center gap-1.5 rounded-full bg-blue-50 hover:bg-blue-100 border border-blue-300 hover:border-blue-400 text-blue-700 px-3.5 py-2 text-sm font-semibold transition-all shadow-sm active:scale-95 cursor-pointer"
+                  title="Start Video Call"
+                >
+                  <Video size={15} className="text-blue-600" />
+                  <span className="hidden sm:inline">Video</span>
+                </button>
+              </div>
+            )}
+
+            {!isOwnProfile && !isAuthenticated && (
+              <div className="flex flex-wrap items-center gap-2 pb-1">
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex items-center gap-1.5 rounded-full bg-primary hover:bg-primary-dark text-white px-4 py-2 text-sm font-semibold transition-all shadow-sm cursor-pointer"
+                >
+                  <MessageSquare size={15} />
+                  <span>Sign in to Message</span>
+                </button>
               </div>
             )}
 

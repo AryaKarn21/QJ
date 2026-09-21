@@ -78,6 +78,7 @@ import CareerTipDetail from './components/content/CareerTipDetail';
 import { BlogList, BlogDetail, BlogCreate, BlogEdit, BlogCategoryPage } from './components/blog';
 import OAuthCallback from './components/auth/OAuthCallback';
 import { SocketProvider } from './context/SocketContext';
+import { CallProvider } from './context/CallContext';
 import { FollowProvider } from './context/FollowContext';
 import { HomeFeed } from './components/community/HomeFeed';
 import { CompanyFeed } from './components/community/CompanyFeed';
@@ -442,9 +443,11 @@ function App() {
       future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
     >
       <SocketProvider>
-        <FollowProvider>
-          <AppWrapper />
-        </FollowProvider>
+        <CallProvider>
+          <FollowProvider>
+            <AppWrapper />
+          </FollowProvider>
+        </CallProvider>
       </SocketProvider>
     </Router>
   );

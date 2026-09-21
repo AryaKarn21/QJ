@@ -10,7 +10,9 @@ const Connection = require("../models/Connection");
 // findOrCreateConversation so sendMessage can re-check it on every send
 // (a block should stop future messages in an already-open conversation,
 // not just new ones).
-async function checkMessagePermission(userAId, userBId, { conversationExists }) {
+// Checks whether userA can send a message or start a call with userB.
+// Only blocked connections prevent communication.
+async function checkMessagePermission(userAId, userBId, { conversationExists } = {}) {
   const connection = await Connection.findOne({
     $or: [
       { requester: userAId, recipient: userBId },
@@ -24,13 +26,7 @@ async function checkMessagePermission(userAId, userBId, { conversationExists }) 
     return { allowed: false, reason: "You can't message this person." };
   }
 
-  if (conversationExists) return { allowed: true };
-  if (connection?.status === "accepted") return { allowed: true };
-
-  return {
-    allowed: false,
-    reason: "You can only start a conversation with someone you're connected with.",
-  };
+  return { allowed: true };
 }
 
 // Finds the existing 1:1 conversation for (userAId, userBId), or creates
