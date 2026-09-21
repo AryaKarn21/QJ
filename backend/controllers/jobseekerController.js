@@ -76,9 +76,11 @@ const updateJobseekerProfile = async (req, res) => {
       return res.status(404).json({ message: "Jobseeker not found" });
     }
 
-    const { name, skills, qualifications, experiences, projects, certifications } = req.body;
+    const { name, skills, qualifications, experiences, projects, certifications, bio, headline, removeResume } = req.body;
 
     if (name !== undefined) jobseeker.name = name;
+    if (bio !== undefined) jobseeker.bio = typeof bio === "string" ? bio.trim().slice(0, 600) : "";
+    if (headline !== undefined) jobseeker.headline = typeof headline === "string" ? headline.trim().slice(0, 160) : "";
     if (skills !== undefined)
       jobseeker.skills = Array.isArray(skills) ? skills : skills.split(",").map((s) => s.trim()).filter(Boolean);
     if (qualifications !== undefined)
@@ -124,6 +126,9 @@ const updateJobseekerProfile = async (req, res) => {
       const oldResume = jobseeker.resume;
       jobseeker.resume = await persistUpload(req.files.resume[0], "resumes", jobseeker._id);
       if (oldResume) deleteStoredFile(oldResume);
+    } else if (removeResume === "true" || removeResume === true) {
+      if (jobseeker.resume) deleteStoredFile(jobseeker.resume);
+      jobseeker.resume = null;
     }
 
     await jobseeker.save();

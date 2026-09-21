@@ -80,20 +80,16 @@ const Stats: React.FC = () => {
 
   return (
     <section
+      className="py-10 sm:py-12 lg:py-14"
       style={{
         position: 'relative',
-        padding: '72px 0',
         background: 'linear-gradient(180deg, #FFFFFF 0%, #FFF8F3 100%)',
         borderTop: '1px solid #FFE4CC',
         borderBottom: '1px solid #FFE4CC',
         overflow: 'hidden',
       }}
     >
-      {/* Subtle background blob — same slow, professional drift as the
-          Hero blobs, kept static (no motion) when the visitor prefers
-          reduced motion. The centering transform lives on this outer,
-          never-animated wrapper so framer-motion's own transform
-          composition (on the inner element) never fights it. */}
+      {/* Subtle background blob */}
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -111,20 +107,20 @@ const Stats: React.FC = () => {
         />
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Section header */}
-        <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto 52px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto 28px' }}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '6px 16px', borderRadius: 999,
+              padding: '5px 14px', borderRadius: 999,
               background: '#FFF7ED', border: '1px solid #FED7AA',
               fontSize: 12, fontWeight: 700, color: '#EA580C',
-              marginBottom: 16, letterSpacing: '.04em',
+              marginBottom: 12, letterSpacing: '.04em',
             }}
           >
             <Sparkles size={13} color="#F97316" />
@@ -167,6 +163,7 @@ const Stats: React.FC = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: idx * 0.09 }}
                 onClick={() => navigate(feature.link)}
+                className="group"
                 style={{
                   background: '#FFFFFF',
                   border: '1.5px solid #F3F4F6',
@@ -195,13 +192,16 @@ const Stats: React.FC = () => {
                 <div>
                   {/* Icon row + tag */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <div style={{
-                      width: 48, height: 48, borderRadius: 14,
-                      background: feature.iconBg,
-                      border: '1.5px solid #FED7AA',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: feature.iconColor,
-                    }}>
+                    <div
+                      className="transition-transform duration-200 group-hover:-translate-y-0.5"
+                      style={{
+                        width: 48, height: 48, borderRadius: 14,
+                        background: feature.iconBg,
+                        border: '1.5px solid #FED7AA',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: feature.iconColor,
+                      }}
+                    >
                       <Icon size={22} />
                     </div>
                     <span style={{
@@ -234,8 +234,8 @@ const Stats: React.FC = () => {
                   fontSize: 13, fontWeight: 700, color: '#F97316',
                   gap: 4,
                 }}>
-                  Explore feature
-                  <ArrowUpRight size={14} />
+                  <span>Explore feature</span>
+                  <ArrowUpRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
               </motion.div>
             );

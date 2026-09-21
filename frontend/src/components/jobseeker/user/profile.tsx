@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { resolveMediaUrl, resolveResumeUrl } from "../../../utils/mediaUrl";
 import {
   Linkedin, Github, Twitter, Globe, Download,
   GraduationCap, BadgeCheck, Briefcase, Pencil, Building2, Users, UserPlus, Camera, Loader2, ImagePlus,
-  Eye, BarChart3, Search, FolderPlus, X,
+  Eye, BarChart3, Search, FolderPlus, X, ArrowLeft, FileText, UploadCloud, Trash2, CheckCircle2, User,
 } from "lucide-react";
+import { toast } from "react-toastify";
 import { getJobseekerProfile, updateJobseekerProfile, updateJobseekerCareerStatus } from "../jobseekerApi/api";
 import { fetchFollowCounts } from "../../../api/followApi";
 import { getMyProfileViewCount } from "../../../api/profileViewApi";
@@ -26,6 +27,8 @@ type JobseekerProfile = {
   _id: string;
   name: string;
   email: string;
+  headline?: string;
+  bio?: string;
   profilePic?: string;
   coverPhoto?: string;
   resume?: string;
@@ -40,6 +43,7 @@ type JobseekerProfile = {
 };
 
 const UserProfile = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<JobseekerProfile | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusEditor, setShowStatusEditor] = useState(false);
@@ -55,8 +59,13 @@ const UserProfile = () => {
   const [coverError, setCoverError] = useState<string | null>(null);
   const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
 
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+
   const [formState, setFormState] = useState({
     name: "",
+    headline: "",
+    bio: "",
     skills: "",
     qualifications: [] as Qualification[],
     experiences: [] as Experience[],
@@ -65,6 +74,7 @@ const UserProfile = () => {
     resume: null as File | null,
     profilePic: null as File | null,
     existingProfilePicUrl: undefined as string | undefined,
+    existingResumeUrl: undefined as string | undefined,
   });
 
   useEffect(() => {
@@ -90,6 +100,8 @@ const UserProfile = () => {
     if (profile) {
       setFormState({
         name: profile.name || "",
+        headline: profile.headline || "",
+        bio: profile.bio || "",
         skills: profile.skills?.join(", ") || "",
         qualifications: profile.qualifications || [],
         experiences: profile.experiences || [],
@@ -97,9 +109,8 @@ const UserProfile = () => {
         certifications: profile.certifications || [],
         resume: null,
         profilePic: null,
-        // So the Edit Profile modal shows the current picture on open
-        // instead of a blank uploader — see EditProfileModal's previewSrc.
         existingProfilePicUrl: profile.profilePic ? resolveMediaUrl(profile.profilePic) : undefined,
+        existingResumeUrl: profile.resume || undefined,
       });
     }
   }, [profile]);
@@ -162,10 +173,53 @@ const UserProfile = () => {
     }
   };
 
+  const handleDirectResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File is too large. Resumes must be under 10MB.");
+      return;
+    }
+    setResumeUploading(true);
+    setResumeError(null);
+    try {
+      const fd = new FormData();
+      fd.append("resume", file);
+      const updated = await updateJobseekerProfile(fd);
+      setProfile(updated.jobseeker);
+      toast.success("Resume uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading resume:", error);
+      setResumeError("Upload failed. Please upload a valid PDF or Word document under 10MB.");
+      toast.error("Failed to upload resume.");
+    } finally {
+      setResumeUploading(false);
+    }
+  };
+
+  const handleRemoveResume = async () => {
+    if (!window.confirm("Are you sure you want to remove your current resume?")) return;
+    setResumeUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("removeResume", "true");
+      const updated = await updateJobseekerProfile(fd);
+      setProfile(updated.jobseeker);
+      toast.success("Resume removed successfully.");
+    } catch (error) {
+      toast.error("Failed to remove resume.");
+    } finally {
+      setResumeUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       const fd = new FormData();
       fd.append("name", formState.name);
+      if (formState.headline !== undefined) fd.append("headline", formState.headline);
+      if (formState.bio !== undefined) fd.append("bio", formState.bio);
       fd.append("skills", formState.skills);
       fd.append("qualifications", JSON.stringify(formState.qualifications));
       fd.append("experiences", JSON.stringify(formState.experiences));
@@ -176,8 +230,10 @@ const UserProfile = () => {
       const updated = await updateJobseekerProfile(fd);
       setProfile(updated.jobseeker);
       setShowEditModal(false);
+      toast.success("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
+      toast.error("Failed to update profile. Please check your inputs.");
     }
   };
 
@@ -278,30 +334,24 @@ const UserProfile = () => {
     </div>
   );
 
-  const resumeDownloadButton = profile.resume
-    ? React.createElement(
-        "a",
-        {
-          href: resolveResumeUrl(profile.resume),
-          target: "_blank",
-          rel: "noopener noreferrer",
-        },
-        React.createElement(
-          "button",
-          { className: "flex items-center text-white bg-primary font-medium px-4 py-2.5 rounded-lg shadow-sm hover:bg-primary/90 transition-colors" },
-          React.createElement(Download, { size: 16, className: "mr-2" }),
-          "Download CV"
-        )
-      )
-    : React.createElement(
-        "p",
-        { className: "text-sm text-gray-400 italic" },
-        "No resume uploaded."
-      );
+
 
   return (
     <div className="bg-gray-50 px-3 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-12 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-5xl mx-auto">
+
+        {/* Back Navigation */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-xs transition-all hover:text-primary"
+          >
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
+        </div>
+
         <div className="bg-white rounded-2xl shadow overflow-hidden relative">
 
           {/* Banner — an actual cover photo when one's set, gradient
@@ -355,7 +405,7 @@ const UserProfile = () => {
           <div className="px-4 sm:px-8 pb-6 sm:pb-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
 
-              {/* Left column — avatar */}
+              {/* Left column — avatar & user details */}
               <div className="text-center">
               <div className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto -mt-14 sm:-mt-16 mb-4 z-10 group">
                 <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden flex items-center justify-center ring-4 ring-white shadow-md">
@@ -366,11 +416,7 @@ const UserProfile = () => {
                   )}
                 </div>
 
-                {/* Camera overlay — the actual "upload a photo" affordance.
-                    Fades in on hover (desktop); the whole circle stays
-                    clickable regardless, and the persistent badge below
-                    covers discoverability on touch devices that have no
-                    hover state. Always shown mid-upload. */}
+                {/* Camera overlay — the actual "upload a photo" affordance. */}
                 <label
                   className={`absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white
                     transition-opacity cursor-pointer
@@ -391,9 +437,6 @@ const UserProfile = () => {
                   />
                 </label>
 
-                {/* Small always-visible badge so the option is discoverable
-                    without needing to hover first (mirrors the overlay's
-                    icon, just persistent). */}
                 <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white shadow ring-2 ring-white pointer-events-none">
                   <Camera size={13} />
                 </span>
@@ -402,10 +445,7 @@ const UserProfile = () => {
                 <p className="text-xs text-red-600 mb-2 max-w-[14rem] mx-auto">{avatarError}</p>
               )}
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 break-words">{profile.name}</h2>
-              {/* Career status replaces the generic "Jobseeker" role label
-                  here — the account role itself is unaffected everywhere
-                  it's used for authorization (this is a display-only
-                  change; see profile.role, still used elsewhere as-is). */}
+              {/* Career status */}
               <div className="mt-1.5 flex justify-center">
                 <ProfileStatusBadge
                   profileStatus={profile.profileStatus}
@@ -413,6 +453,11 @@ const UserProfile = () => {
                   onEdit={() => setShowStatusEditor(true)}
                 />
               </div>
+              {profile.headline && (
+                <p className="text-xs sm:text-sm font-medium text-gray-600 mt-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 max-w-[280px] mx-auto break-words leading-snug">
+                  {profile.headline}
+                </p>
+              )}
               <p className="text-gray-500 text-sm sm:text-base break-all mt-1">{profile.email}</p>
 
               {/* Currently working at — the "recently working" highlight */}
@@ -433,9 +478,7 @@ const UserProfile = () => {
                 </div>
               )}
 
-              {/* Followers / Following — reuses the Community follow system;
-                  clicking through lands on the same pages linked from the
-                  Community Profile header. */}
+              {/* Followers / Following */}
               <div className="flex justify-center items-stretch gap-6 mt-4 py-3 border-y border-gray-100">
                 <Link
                   to={`/community/profile/${profile._id}/followers`}
@@ -454,9 +497,7 @@ const UserProfile = () => {
                 </Link>
               </div>
 
-              {/* Only real, saved links are shown — no dead placeholder icons.
-                  Edit these from "Edit Profile" (backed by User.socialLinks,
-                  the same field the Community Profile page reads). */}
+              {/* Social links */}
               {profile.socialLinks && Object.values(profile.socialLinks).some(Boolean) && (
                 <div className="flex justify-center space-x-4 mt-4">
                   {profile.socialLinks.linkedin && (
@@ -483,9 +524,160 @@ const UserProfile = () => {
               )}
               </div>
 
-              {/* Right column — details, as distinct section cards rather
-                  than one long stack of plain text. */}
+              {/* Right column — details */}
               <div className="md:col-span-2 md:mt-3 space-y-5">
+                {/* ── About Me Section ── */}
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <User size={18} />
+                      </span>
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900 tracking-tight">About Me</h3>
+                        <p className="text-xs text-gray-500">Summary and background overview</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 px-2.5 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                  </div>
+
+                  {profile.bio ? (
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50/70 p-4 rounded-xl border border-gray-100">
+                      {profile.bio}
+                    </p>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-5 text-center">
+                      <p className="text-sm text-gray-700 font-medium">You haven't added an About summary yet.</p>
+                      <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+                        Share your career path, technical background, and what opportunities you are looking for to attract recruiters.
+                      </p>
+                      <button
+                        onClick={() => setShowEditModal(true)}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-800 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all shadow-2xs"
+                      >
+                        <Pencil size={12} /> Write about yourself
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Resume & CV Section ── */}
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-primary">
+                        <FileText size={18} />
+                      </span>
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900 tracking-tight">Resume & CV</h3>
+                        <p className="text-xs text-gray-500">Document used for job applications</p>
+                      </div>
+                    </div>
+                    {profile.resume && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                        <CheckCircle2 size={12} /> Active Resume
+                      </span>
+                    )}
+                  </div>
+
+                  {profile.resume ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gray-50/70 border border-gray-200 rounded-xl">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
+                            <FileText size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {profile.name ? `${profile.name}_Resume.pdf` : 'Curriculum_Vitae.pdf'}
+                            </p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                              <span>PDF Document</span>
+                              <span>•</span>
+                              <span className="text-emerald-600 font-medium">Ready for recruiter review</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap shrink-0">
+                          <a
+                            href={resolveResumeUrl(profile.resume)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg shadow-2xs transition-colors"
+                          >
+                            <Eye size={13} /> Preview
+                          </a>
+
+                          <a
+                            href={resolveResumeUrl(profile.resume)}
+                            download={`${profile.name?.replace(/\s+/g, '_') || 'Jobseeker'}_Resume.pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary/90 rounded-lg shadow-2xs transition-colors"
+                          >
+                            <Download size={13} /> Download
+                          </a>
+
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg shadow-2xs transition-colors cursor-pointer">
+                            {resumeUploading ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />}
+                            <span>Replace</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                              className="sr-only"
+                              disabled={resumeUploading}
+                              onChange={handleDirectResumeUpload}
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={handleRemoveResume}
+                            disabled={resumeUploading}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Remove resume"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-6 text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-orange-50 text-primary mx-auto flex items-center justify-center mb-3">
+                        <UploadCloud size={24} />
+                      </div>
+                      <h4 className="text-sm font-semibold text-gray-800">No resume uploaded yet</h4>
+                      <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                        Upload your resume in PDF or Word format (up to 10MB) so recruiters can easily review your qualifications.
+                      </p>
+                      <div className="mt-4 flex justify-center">
+                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-sm hover:bg-primary/90 transition-all cursor-pointer">
+                          {resumeUploading ? <Loader2 size={15} className="animate-spin" /> : <UploadCloud size={15} />}
+                          <span>Upload Resume</span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            className="sr-only"
+                            disabled={resumeUploading}
+                            onChange={handleDirectResumeUpload}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {resumeError && (
+                    <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded-lg">{resumeError}</p>
+                  )}
+                </div>
+
                 {/* LinkedIn-style: Suggested for you (Private to you) */}
                 {!dismissSuggested && (
                   <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -675,10 +867,7 @@ const UserProfile = () => {
                   )}
                 </Section>
 
-                {/* Resume download */}
-                <div className="flex justify-center md:justify-end pt-1">
-                  {resumeDownloadButton}
-                </div>
+
               </div>
             </div>
           </div>

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { getCandidates, toggleSavedCandidate, updateApplicationStatus } from "../employerApi/api";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
-import { Bookmark, BookmarkCheck, Pencil, Calendar, Search, Users } from "lucide-react";
+import {
+    Bookmark, BookmarkCheck, Pencil, Calendar, Search, Users,
+    X, Video, Phone, Building2, Clock, CheckCircle2, Link2, MapPin, Mail,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 
@@ -113,6 +116,15 @@ const Candidates = () => {
         setInterviewLink("");
         setInterviewLocation("");
         setInterviewNotes("");
+    };
+
+    const setQuickDate = (offsetDays: number, hour: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
+        d.setHours(hour, 0, 0, 0);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        setInterviewDate(formatted);
     };
 
     const handleScheduleInterview = async () => {
@@ -310,99 +322,227 @@ const Candidates = () => {
                 )}
             </div>
 
-            {/* Interview Scheduling Modal */}
-            {interviewModalFor && (
-                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-[480px] max-h-[90dvh] overflow-y-auto">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="h-9 w-9 rounded-full bg-orange-50 flex items-center justify-center">
-                                <Calendar size={16} className="text-orange-600" />
-                            </div>
-                            <h2 className="text-lg font-bold text-gray-900">Schedule Interview</h2>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-5 ml-11">The candidate will be emailed these details automatically.</p>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Date & Time</label>
-                                <input
-                                    type="datetime-local"
-                                    value={interviewDate}
-                                    onChange={(e) => setInterviewDate(e.target.value)}
-                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Mode</label>
-                                <select
-                                    value={interviewMode}
-                                    onChange={(e) => setInterviewMode(e.target.value)}
-                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
-                                >
-                                    <option value="Video Call">Video Call</option>
-                                    <option value="Phone Call">Phone Call</option>
-                                    <option value="In-Person">In-Person</option>
-                                </select>
-                            </div>
-
-                            {interviewMode === "In-Person" ? (
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Location</label>
-                                    <input
-                                        type="text"
-                                        value={interviewLocation}
-                                        onChange={(e) => setInterviewLocation(e.target.value)}
-                                        placeholder="Office address"
-                                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
-                                    />
+            {/* Production-grade Interview Scheduling Modal */}
+            {interviewModalFor && (() => {
+                const modalCandidate = candidates.find((c) => c.latestApplicationId === interviewModalFor);
+                return (
+                    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 my-auto">
+                            {/* Modal Header with Candidate Context */}
+                            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-orange-50/50 to-amber-50/30">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-sm flex-shrink-0">
+                                        <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                                            {modalCandidate?.profilePic ? (
+                                                <img src={resolveMediaUrl(modalCandidate.profilePic)} alt="" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <span className="text-sm font-bold text-orange-600">{(modalCandidate?.name || "C")[0].toUpperCase()}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-base font-bold text-gray-900">Schedule Interview</h2>
+                                            <span className="text-[11px] font-semibold bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">Invite</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            Candidate: <span className="font-semibold text-gray-800">{modalCandidate?.name || "Candidate"}</span>
+                                            {modalCandidate?.latestJobTitle ? ` • ${modalCandidate.latestJobTitle}` : ""}
+                                        </p>
+                                    </div>
                                 </div>
-                            ) : (
+                                <button
+                                    onClick={closeInterviewModal}
+                                    className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                                    title="Close"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Form Fields */}
+                            <div className="p-6 space-y-4">
+                                {/* Mode Selection Pills */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                                        Interview Mode
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { mode: "Video Call", icon: Video, label: "Video Call" },
+                                            { mode: "Phone Call", icon: Phone, label: "Phone Call" },
+                                            { mode: "In-Person", icon: Building2, label: "In-Person" },
+                                        ].map(({ mode, icon: Icon, label }) => {
+                                            const isSelected = interviewMode === mode;
+                                            return (
+                                                <button
+                                                    key={mode}
+                                                    type="button"
+                                                    onClick={() => setInterviewMode(mode)}
+                                                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                                                        isSelected
+                                                            ? "border-orange-500 bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-400/30"
+                                                            : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                                                    }`}
+                                                >
+                                                    <Icon size={14} className={isSelected ? "text-orange-600" : "text-gray-400"} />
+                                                    <span>{label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Date & Time */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                            Date & Time
+                                        </label>
+                                        <span className="text-[11px] text-gray-400">Local time</span>
+                                    </div>
+                                    <input
+                                        type="datetime-local"
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        value={interviewDate}
+                                        onChange={(e) => setInterviewDate(e.target.value)}
+                                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors cursor-pointer"
+                                    />
+                                    {/* Quick Shortcut Buttons */}
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                        <span className="text-[11px] text-gray-400 mr-1 flex items-center gap-1"><Clock size={11} /> Quick:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickDate(1, 10)}
+                                            className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                                        >
+                                            Tomorrow 10 AM
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickDate(1, 14)}
+                                            className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                                        >
+                                            Tomorrow 2 PM
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickDate(2, 11)}
+                                            className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                                        >
+                                            In 2 Days 11 AM
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Dynamic Location / Link Input */}
+                                {interviewMode === "In-Person" ? (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                                            Office / Interview Location
+                                        </label>
+                                        <div className="relative">
+                                            <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            <input
+                                                type="text"
+                                                value={interviewLocation}
+                                                onChange={(e) => setInterviewLocation(e.target.value)}
+                                                placeholder="Company headquarters, Room 402, Building A"
+                                                className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                                {interviewMode === "Video Call" ? "Meeting Link" : "Phone Number"}
+                                            </label>
+                                            {interviewMode === "Video Call" && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setInterviewLink("https://meet.google.com/new")}
+                                                    className="text-[11px] text-orange-600 hover:text-orange-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <Link2 size={11} /> Create Google Meet
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="relative">
+                                            {interviewMode === "Video Call" ? (
+                                                <Video size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            ) : (
+                                                <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            )}
+                                            <input
+                                                type="text"
+                                                value={interviewLink}
+                                                onChange={(e) => setInterviewLink(e.target.value)}
+                                                placeholder={
+                                                    interviewMode === "Video Call"
+                                                        ? "https://meet.google.com/… or Zoom link"
+                                                        : modalCandidate?.email ? `Contact ${modalCandidate.name}` : "+977-… or candidate phone"
+                                                }
+                                                className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Notes / Preparation */}
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
-                                        {interviewMode === "Video Call" ? "Meeting Link" : "Phone Number"}
+                                        Candidate Instructions & Notes (Optional)
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={interviewLink}
-                                        onChange={(e) => setInterviewLink(e.target.value)}
-                                        placeholder={interviewMode === "Video Call" ? "https://meet.google.com/…" : "+977-…"}
-                                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+                                    <textarea
+                                        value={interviewNotes}
+                                        onChange={(e) => setInterviewNotes(e.target.value)}
+                                        rows={2}
+                                        placeholder="e.g. Please bring your portfolio or prepare for a 15-minute case discussion."
+                                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors resize-none"
                                     />
                                 </div>
-                            )}
 
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Notes (optional)</label>
-                                <textarea
-                                    value={interviewNotes}
-                                    onChange={(e) => setInterviewNotes(e.target.value)}
-                                    rows={3}
-                                    placeholder="Anything the candidate should prepare or know in advance"
-                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 resize-none"
-                                />
+                                {/* Automated notification reassurance */}
+                                <div className="flex items-start gap-2.5 rounded-xl bg-orange-50/70 border border-orange-200/70 p-3 text-xs text-orange-800">
+                                    <Mail size={15} className="text-orange-600 flex-shrink-0 mt-0.5" />
+                                    <span>
+                                        An automated calendar invitation and email notification will be sent directly to{" "}
+                                        <strong className="font-semibold text-orange-900">{modalCandidate?.email || "the candidate"}</strong>.
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Footer Buttons */}
+                            <div className="flex items-center gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={closeInterviewModal}
+                                    className="flex-1 border border-gray-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleScheduleInterview}
+                                    disabled={scheduling || !interviewDate}
+                                    className="flex-1 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                                    style={{ background: "linear-gradient(135deg,#F59E0B,#F97316)" }}
+                                >
+                                    {scheduling ? (
+                                        <span>Scheduling…</span>
+                                    ) : (
+                                        <>
+                                            <Calendar size={15} />
+                                            <span>Send Invitation</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={closeInterviewModal}
-                                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleScheduleInterview}
-                                disabled={scheduling}
-                                className="flex-1 text-white rounded-xl px-4 py-2.5 text-sm font-medium transition-opacity disabled:opacity-60"
-                                style={{ background: "linear-gradient(135deg,#F59E0B,#F97316)" }}
-                            >
-                                {scheduling ? "Scheduling…" : "Schedule"}
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 };

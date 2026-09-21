@@ -2,7 +2,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || API_BASE_URL;
 
-const isProduction =
+const _isProduction =
   import.meta.env.PROD ||
   !MEDIA_URL.includes('localhost') && !MEDIA_URL.includes('127.0.0.1');
 
@@ -33,12 +33,7 @@ export function resolveMediaUrl(path?: string | null): string {
     return '';
   }
 
-  // In production, Render's ephemeral filesystem wipes any local /uploads/...
-  if (isProduction && (normalized.startsWith('/uploads/') || normalized.startsWith('uploads/'))) {
-    return '';
-  }
-
-  // Local development fallback
+  // Resolve relative upload paths against the backend/media host
   const cleanMedia = MEDIA_URL.replace(/\/+$/, '');
   const cleanPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
   return `${cleanMedia}${cleanPath}`;
@@ -59,8 +54,24 @@ export function isUnrecoverableResumePath(path?: string | null): boolean {
     return false;
   }
 
-  // Any non-http(s) path in production or any obsolete filesystem path is unrecoverable
-  return true;
+  const normalized = trimmed.replace(/\\/g, '/');
+
+  // Hard disk or obsolete server paths that are definitely broken
+  if (
+    normalized.includes('/opt/render/') ||
+    normalized.startsWith('backend/uploads/') ||
+    normalized.includes('/backend/uploads/') ||
+    /^[a-zA-Z]:[\\/]/.test(trimmed)
+  ) {
+    return true;
+  }
+
+  // Active relative /uploads path served by backend
+  if (normalized.startsWith('/uploads/') || normalized.startsWith('uploads/')) {
+    return false;
+  }
+
+  return false;
 }
 
 /**

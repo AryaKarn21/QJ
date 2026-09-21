@@ -10,6 +10,8 @@ import {
   CalendarClock,
   SlidersHorizontal,
   X,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import { fetchJobs, fetchSavedJobs, toggleSaveJob, fetchJobCountsByCountry, type Job } from '../jobseekerApi/api';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
@@ -230,6 +232,18 @@ const AllJobListing = () => {
       {/* Renders nothing if no admin has published a jobs-page ad. */}
       <AdBanner placement="jobs_page" />
       <div className="container mx-auto px-4 md:px-6 lg:px-8 py-8">
+        {/* Back Navigation */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-xs transition-all hover:text-primary"
+          >
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
+        </div>
+
         {/* Search */}
         <div className="bg-white rounded-lg shadow-sm p-2 mb-6">
           {/* flex-wrap + a min-w floor on the input below — at very narrow
@@ -588,57 +602,95 @@ const AllJobListing = () => {
                 // were the actual name, not a missing-data placeholder.
                 const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim() || 'Company not available';
                 const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
+                const companyInitial = displayName.charAt(0).toUpperCase() || 'C';
+
                 return (
                 <div
                   key={job._id}
-                  className={`bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow ${
+                  className={`group relative bg-white rounded-2xl border border-gray-100 hover:border-orange-200 p-5 sm:p-6 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between ${
                     expired ? 'opacity-75' : ''
                   }`}
                 >
-                  <div className="flex justify-between items-start gap-2 mb-4">
-                    <div className="flex gap-3 items-start min-w-0">
-                      {displayLogo && (
-                        <img
-                          src={resolveMediaUrl(displayLogo)}
-                          alt="Company Logo"
-                          className="w-10 h-10 rounded object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg break-words">{job.title}</h3>
-                          {expired && (
-                            <span className="text-[11px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                              Deadline Passed
-                            </span>
-                          )}
+                  <div>
+                    {/* Top Row: Company Avatar, Title, Bookmark */}
+                    <div className="flex justify-between items-start gap-3 mb-3.5">
+                      <div className="flex gap-3.5 items-center min-w-0">
+                        {displayLogo ? (
+                          <img
+                            src={resolveMediaUrl(displayLogo)}
+                            alt={displayName}
+                            className="w-12 h-12 rounded-xl object-cover border border-gray-100 shadow-2xs shrink-0"
+                            onError={(e) => {
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                (e.target as HTMLElement).style.display = 'none';
+                                const fallback = document.createElement('div');
+                                fallback.className = 'w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center shadow-xs shrink-0';
+                                fallback.innerText = companyInitial;
+                                parent.appendChild(fallback);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center shadow-xs shrink-0">
+                            {companyInitial}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900 group-hover:text-primary transition-colors line-clamp-1 break-words">
+                              {job.title}
+                            </h3>
+                            {expired && (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                Closed
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-500 text-xs sm:text-sm font-medium truncate mt-0.5">{displayName}</p>
                         </div>
-                        <p className="text-gray-600 text-sm break-words">{displayName}</p>
                       </div>
-                    </div>
-                    <button onClick={() => handleToggleSave(job._id)} className="p-1 flex-shrink-0">
-                      {savedJobs.some((saved) => saved._id === job._id) ? (
-                        <Bookmark fill="currentColor" className="text-primary" size={20} />
-                      ) : (
-                        <Bookmark className="text-gray-400" size={20} />
-                      )}
-                    </button>
-                  </div>
 
-                  <div className="text-sm text-gray-500 space-y-1">
-                    <div className="flex items-center min-w-0">
-                      <MapPin className="mr-2 flex-shrink-0" size={16} /> <span className="break-words">{job.location}</span>
+                      <button
+                        onClick={() => handleToggleSave(job._id)}
+                        className="p-2 rounded-xl text-gray-400 hover:text-primary hover:bg-orange-50 transition-all active:scale-90 shrink-0"
+                        title={savedJobs.some((saved) => saved._id === job._id) ? "Saved" : "Save job"}
+                      >
+                        {savedJobs.some((saved) => saved._id === job._id) ? (
+                          <Bookmark fill="currentColor" className="text-primary" size={20} />
+                        ) : (
+                          <Bookmark size={20} />
+                        )}
+                      </button>
                     </div>
-                    <div className="flex items-center min-w-0">
-                      <Clock className="mr-2 flex-shrink-0" size={16} /> <span className="break-words">{job.jobtype}</span>
+
+                    {/* Badges / Meta Pills */}
+                    <div className="flex flex-wrap gap-2 my-3">
+                      {job.jobtype && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
+                          <Clock size={12} />
+                          <span>{job.jobtype}</span>
+                        </span>
+                      )}
+                      {job.location && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100/80 text-gray-700 border border-gray-200/50">
+                          <MapPin size={12} className="text-gray-400" />
+                          <span className="truncate max-w-[140px]">{job.location}</span>
+                        </span>
+                      )}
+                      {job.salary && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <DollarSign size={12} />
+                          <span>{job.salary}</span>
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center min-w-0">
-                      <DollarSign className="mr-2 flex-shrink-0" size={16} /> <span className="break-words">{job.salary}</span>
-                    </div>
+
+                    {/* Deadline info if available */}
                     {job.deadline && (
-                      <div className={`flex items-center min-w-0 ${expired ? 'text-red-500' : ''}`}>
-                        <CalendarClock className="mr-2 flex-shrink-0" size={16} />
-                        <span className="break-words">
+                      <div className={`flex items-center gap-1.5 text-xs mt-2 ${expired ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                        <CalendarClock size={13} className="shrink-0" />
+                        <span className="truncate">
                           {expired
                             ? `Closed on ${formatDeadline(job.deadline)}`
                             : `Apply by ${formatDeadline(job.deadline)}`}
@@ -647,13 +699,15 @@ const AllJobListing = () => {
                     )}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap justify-between items-center gap-2 text-sm text-gray-500">
-                    <span>{getTimeAgo(job.createdAt)}</span>
+                  {/* Bottom Row: Posted time & View Details button */}
+                  <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2">
+                    <span className="text-xs text-gray-400">{getTimeAgo(job.createdAt)}</span>
                     <button
                       onClick={() => navigate(`/jobs/${job._id}`)}
-                      className="flex-shrink-0 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-xs hover:shadow-md transition-all active:scale-98"
                     >
-                      View Details
+                      <span>View Details</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
                 </div>

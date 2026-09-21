@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Users, ArrowRight, Share2 } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { fetchFeed } from '../../api/communityApi';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import type { CommunityPost } from '../../types/community';
@@ -32,6 +33,7 @@ interface Props {
 export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Props) {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const shouldReduceMotion = useReducedMotion();
 
   const isEmployer = variant === 'employer';
   const accent = isEmployer ? '#F97316' : '#F97316';
@@ -46,12 +48,8 @@ export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Prop
 
   if (loading) {
     return (
-      <section style={{ background: '#fff', padding: '60px 0' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
-          {/* Was a fixed `repeat(3, 1fr)` with no breakpoint at all — at
-              360px that's ~88px-wide columns, badly broken. Tailwind's
-              responsive grid classes replace the inline style so it can
-              actually respond to viewport width. */}
+      <section className="bg-white py-10 sm:py-12 lg:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} style={{ background: '#F9FAFB', borderRadius: 16, padding: 24, height: 200 }}>
@@ -74,16 +72,19 @@ export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Prop
   }
 
   return (
-    <section style={{ background: '#fff', padding: '64px 0', borderTop: '1px solid #F3F4F6', borderBottom: '1px solid #F3F4F6' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+    <section className="bg-white py-10 sm:py-12 lg:py-14" style={{ borderTop: '1px solid #F3F4F6', borderBottom: '1px solid #F3F4F6' }}>
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-50px' }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.5, ease: 'easeOut' }}
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+      >
 
-        {/* Section header — flex-wrap so the "View all posts" button drops
-            below the heading on narrow screens instead of squeezing
-            against it or forcing horizontal overflow; heading uses
-            clamp() instead of a fixed 32px so it scales down on mobile. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 36 }}>
+        {/* Section header */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: accentLight, borderRadius: 20, padding: '6px 14px', marginBottom: 12 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: accentLight, borderRadius: 20, padding: '5px 12px', marginBottom: 10 }}>
               <Users size={14} color={accent} />
               <span style={{ fontSize: 12, fontWeight: 700, color: accent, letterSpacing: '.04em', textTransform: 'uppercase' }}>
                 Community
@@ -92,12 +93,13 @@ export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Prop
             <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1.2 }}>
               From the Community
             </h2>
-            <p style={{ fontSize: 15, color: '#6B7280', marginTop: 8 }}>
+            <p style={{ fontSize: 15, color: '#6B7280', marginTop: 6 }}>
               See what professionals are sharing, asking, and discussing.
             </p>
           </div>
           <Link
             to="/community"
+            className="group active:scale-[0.98] transition-all"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: accent, color: '#fff', textDecoration: 'none',
@@ -105,7 +107,8 @@ export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Prop
               boxShadow: `0 4px 14px ${accent}44`, whiteSpace: 'nowrap',
             }}
           >
-            View All Posts <ArrowRight size={15} />
+            <span>View All Posts</span>
+            <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </div>
 
@@ -230,9 +233,10 @@ export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Prop
         )}
 
         {/* Bottom CTA */}
-        <div style={{ textAlign: 'center', marginTop: 40 }}>
+        <div style={{ textAlign: 'center', marginTop: 28 }}>
           <Link
             to="/community"
+            className="group active:scale-[0.98]"
             style={{
               fontSize: 14, fontWeight: 600, color: accent, textDecoration: 'none',
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -240,10 +244,11 @@ export function CommunityPostsPreview({ variant = 'jobseeker', limit = 3 }: Prop
               transition: 'all .15s',
             }}
           >
-            <Users size={15} /> Join the community conversation
+            <Users size={15} className="transition-transform duration-200 group-hover:scale-110" />
+            <span>Join the community conversation</span>
           </Link>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

@@ -17,6 +17,7 @@ const { buildAuthorSnapshot } = require("../utils/userDisplay");
 const { findOrCreateConversation } = require("../utils/conversationHelpers");
 const { emitToConversation } = require("../utils/socket");
 const { recordAdminAudit } = require("../utils/auditLogger");
+const { persistUpload } = require("../services/media.service");
 
 const POST_TYPES = ["text", "image", "video", "pdf", "job", "poll", "hiring"];
 const TOPICS = ["career_tips", "interview_experience", "hiring", "general"];
@@ -99,7 +100,18 @@ const createPost = async (req, res) => {
     }
 
     const topics = safeJsonParse(req.body.topics, []).filter((t) => TOPICS.includes(t));
-    const media = (req.files || []).map(mediaUrlFor);
+    const media = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const url = await persistUpload(file, "community_media", req.user._id);
+        media.push({
+          url,
+          mimeType: file.mimetype,
+          fileName: file.originalname,
+          sizeBytes: file.size,
+        });
+      }
+    }
 
     if (["image", "video", "pdf"].includes(type) && media.length === 0) {
       return res.status(400).json({ message: `A ${type} post requires at least one uploaded file.` });
@@ -507,7 +519,16 @@ const updatePost = async (req, res) => {
       }
     }
     if (req.files && req.files.length > 0) {
-      const newMedia = req.files.map(mediaUrlFor);
+      const newMedia = [];
+      for (const file of req.files) {
+        const url = await persistUpload(file, "community_media", req.user._id);
+        newMedia.push({
+          url,
+          mimeType: file.mimetype,
+          fileName: file.originalname,
+          sizeBytes: file.size,
+        });
+      }
       post.media = [...(post.media || []), ...newMedia];
     }
 

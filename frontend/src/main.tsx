@@ -6,15 +6,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Handle dynamic import failures caused by new deployments / stale chunk hashes.
+// When a chunk fails to load, Vite emits 'vite:preloadError'. We safely reload the page
+// so the user fetches the newly deployed chunk without getting a blank screen.
+window.addEventListener('vite:preloadError', () => {
+  const retryKey = 'vite_preload_reload';
+  const lastReload = sessionStorage.getItem(retryKey);
+  const now = Date.now();
+  if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+    sessionStorage.setItem(retryKey, String(now));
+    window.location.reload();
+  }
+});
+
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <App />
-      {/* react-toastify is already a dependency and used throughout (e.g.
-          components/admin/JobCategoryManagement.tsx) but had no
-          <ToastContainer /> mounted anywhere, so none of those toast()
-          calls were actually rendering. Added once here, at the root. */}
       <ToastContainer position="bottom-right" autoClose={3500} />
     </QueryClientProvider>
 );

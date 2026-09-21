@@ -776,10 +776,10 @@ const updateBlog = async (req, res) => {
     // Authorization
     // --------------------------------------------------------
 
-    if (
-      blog.author.toString() !==
-      userId
-    ) {
+    const isOwner = blog.author.toString() === userId;
+    const isPrivileged = req.user && ["admin", "superadmin"].includes(req.user.role);
+
+    if (!isOwner && !isPrivileged) {
       return res.status(403).json({
         message:
           "Not authorized to update this blog",
@@ -911,10 +911,10 @@ const deleteBlog = async (req, res) => {
     // Authorization
     // --------------------------------------------------------
 
-    if (
-      blog.author.toString() !==
-      userId
-    ) {
+    const isOwner = blog.author.toString() === userId;
+    const isPrivileged = req.user && ["admin", "superadmin"].includes(req.user.role);
+
+    if (!isOwner && !isPrivileged) {
       return res.status(403).json({
         message:
           "Not authorized to delete this blog",

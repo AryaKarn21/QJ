@@ -45,6 +45,7 @@ import { DataTable, type DataTableColumn } from '../ui/DataTable';
 import { useAdminAuth } from '../../context/useAdminAuth';
 import {
   getAdminProfile,
+  getAdminStats,
   getAnalyticsOverview,
   getAllApplications,
   fetchJobs,
@@ -74,14 +75,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 /** Quick Actions — the highest-frequency admin tasks, one click away. */
 const QUICK_ACTIONS = [
-  { label: 'Manage Jobs', icon: <Briefcase size={18} />, path: '/admin/jobs', accent: 'amber' },
-  { label: 'Community Feed', icon: <Share2 size={18} />, path: '/community', accent: 'violet' },
-  { label: 'Review Applications', icon: <ClipboardCheck size={18} />, path: '/admin/applications', accent: 'blue' },
-  { label: 'Verify Companies', icon: <UserCheck size={18} />, path: '/admin/employers', accent: 'teal' },
-  { label: 'Audit Log Trail', icon: <ShieldAlert size={18} />, path: '/admin/audit-logs', accent: 'rose' },
-  { label: 'Categories & Tags', icon: <Tags size={18} />, path: '/admin/jobcategories', accent: 'green' },
-  { label: 'CMS & Blogs', icon: <Megaphone size={18} />, path: '/admin/cms', accent: 'blue' },
-  { label: 'Support Tickets', icon: <LifeBuoy size={18} />, path: '/admin/support', accent: 'amber' },
+  { label: 'Add New Job', icon: <Briefcase size={18} />, path: '/admin/jobs', accent: 'violet' },
+  { label: 'Add New Category', icon: <Tags size={18} />, path: '/admin/jobcategories', accent: 'green' },
+  { label: 'Create Blog Post', icon: <Newspaper size={18} />, path: '/admin/blogs', accent: 'blue' },
+  { label: 'Review Reports', icon: <ShieldAlert size={18} />, path: '/admin/reports', accent: 'rose' },
+  { label: 'View Analytics', icon: <BarChart3 size={18} />, path: '/admin/analytics', accent: 'teal' },
+  { label: 'Verify Companies', icon: <UserCheck size={18} />, path: '/admin/employers', accent: 'amber' },
 ] as const;
 
 const QUICK_ACTION_STYLES: Record<string, string> = {
@@ -99,6 +98,13 @@ export const AdminDashboardV2: React.FC = () => {
   const { data: profile } = useQuery<AdminProfile>({
     queryKey: ['adminProfile'],
     queryFn: getAdminProfile,
+    retry: false,
+    refetchInterval: 30000,
+  });
+
+  const { data: adminStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['adminStats'],
+    queryFn: getAdminStats,
     retry: false,
     refetchInterval: 30000,
   });
@@ -236,47 +242,109 @@ export const AdminDashboardV2: React.FC = () => {
         </div>
       )}
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {/* 12 Top Statistics Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <KpiCard
-          label="Users"
-          value={totalUsers}
+          label="Total Users"
+          value={adminStats?.totalUsers ?? totalUsers}
+          delta={adminStats?.trends?.users}
           icon={<Users size={18} />}
-          loading={isLoading}
+          loading={statsLoading || isLoading}
           accent="teal"
-          description={`${overview?.users.totalJobseekers ?? 0} job seekers · ${overview?.users.totalEmployers ?? 0} employers`}
+          description="Registered platform accounts"
         />
         <KpiCard
-          label="Companies"
-          value={overview?.users.totalEmployers ?? 0}
-          icon={<Building2 size={18} />}
-          loading={isLoading}
+          label="Total Job Seekers"
+          value={adminStats?.totalJobSeekers ?? overview?.users.totalJobseekers ?? 0}
+          delta={adminStats?.trends?.jobSeekers}
+          icon={<UserCheck size={18} />}
+          loading={statsLoading || isLoading}
           accent="blue"
-          description="Registered employers"
+          description="Candidates looking for work"
         />
         <KpiCard
-          label="Jobs"
-          value={overview?.jobs.totalJobs ?? 0}
-          icon={<Briefcase size={18} />}
-          loading={isLoading}
-          accent="violet"
-          description="Live & historical postings"
-        />
-        <KpiCard
-          label="Applications"
-          value={totalApplications}
-          icon={<ClipboardList size={18} />}
-          loading={appsLoading || appsFetching}
+          label="Total Job Providers"
+          value={adminStats?.totalJobProviders ?? overview?.users.totalEmployers ?? 0}
+          delta={adminStats?.trends?.jobProviders}
+          icon={<Building2 size={18} />}
+          loading={statsLoading || isLoading}
           accent="amber"
-          description="Across all open jobs"
+          description="Hiring companies & recruiters"
         />
         <KpiCard
-          label="Revenue"
-          value={`$${(overview?.revenue.totalRevenue ?? 0).toLocaleString()}`}
-          icon={<DollarSign size={18} />}
-          loading={isLoading}
+          label="Total Jobs"
+          value={adminStats?.totalJobs ?? overview?.jobs.totalJobs ?? 0}
+          delta={adminStats?.trends?.jobs}
+          icon={<Briefcase size={18} />}
+          loading={statsLoading || isLoading}
+          accent="violet"
+          description="Live & historical listings"
+        />
+        <KpiCard
+          label="Active Jobs"
+          value={adminStats?.activeJobs ?? 0}
+          icon={<CheckCircle2 size={18} />}
+          loading={statsLoading || isLoading}
           accent="green"
-          description="Total platform revenue"
+          description="Currently open for applications"
+        />
+        <KpiCard
+          label="Pending Jobs"
+          value={adminStats?.pendingJobs ?? 0}
+          icon={<AlertTriangle size={18} />}
+          loading={statsLoading || isLoading}
+          accent="amber"
+          description="Awaiting admin approval"
+        />
+        <KpiCard
+          label="Total Applications"
+          value={adminStats?.totalApplications ?? totalApplications}
+          delta={adminStats?.trends?.applications}
+          icon={<ClipboardList size={18} />}
+          loading={statsLoading || appsLoading}
+          accent="teal"
+          description="Submitted job applications"
+        />
+        <KpiCard
+          label="Community Posts"
+          value={adminStats?.totalCommunityPosts ?? 0}
+          delta={adminStats?.trends?.posts}
+          icon={<Share2 size={18} />}
+          loading={statsLoading || isLoading}
+          accent="violet"
+          description="Discussions, polls & articles"
+        />
+        <KpiCard
+          label="Total Blogs"
+          value={adminStats?.totalBlogs ?? 0}
+          icon={<Newspaper size={18} />}
+          loading={statsLoading || isLoading}
+          accent="blue"
+          description="Published & draft articles"
+        />
+        <KpiCard
+          label="Total Categories"
+          value={adminStats?.totalCategories ?? 0}
+          icon={<Tags size={18} />}
+          loading={statsLoading || isLoading}
+          accent="green"
+          description="Taxonomies & job sectors"
+        />
+        <KpiCard
+          label="Total Reports"
+          value={adminStats?.totalReports ?? 0}
+          icon={<ShieldAlert size={18} />}
+          loading={statsLoading || isLoading}
+          accent="rose"
+          description="Flagged content & users"
+        />
+        <KpiCard
+          label="Pending Approvals"
+          value={adminStats?.pendingApprovals ?? 0}
+          icon={<ClipboardCheck size={18} />}
+          loading={statsLoading || isLoading}
+          accent="amber"
+          description="Items awaiting review"
         />
       </div>
 

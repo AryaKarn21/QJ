@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Briefcase, Users, Building2, Target } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { getPublicStats, type PublicStats } from '../../../api/statsApi';
 
 // Rounds a real count into a compact "10K+" style label — the "+" is only
@@ -23,6 +24,7 @@ function formatCount(n: number): string {
 export function TrustStatsBar() {
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [failed, setFailed] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     getPublicStats()
@@ -41,10 +43,16 @@ export function TrustStatsBar() {
 
   return (
     <section className="relative z-10 -mt-8 px-4 sm:-mt-10 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)] sm:grid-cols-4 sm:gap-6 sm:p-8">
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 15 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.5, ease: 'easeOut' }}
+        className="mx-auto grid max-w-7xl grid-cols-2 gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)] sm:grid-cols-4 sm:gap-6 sm:p-6 lg:p-7"
+      >
         {items.map(({ icon: Icon, value, label }) => (
-          <div key={label} className="flex items-center justify-center gap-3 sm:justify-start">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+          <div key={label} className="flex items-center justify-center gap-3 sm:justify-start group">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500 transition-transform duration-200 group-hover:scale-105">
               <Icon size={20} />
             </div>
             <div className="min-w-0 text-left">
@@ -53,7 +61,7 @@ export function TrustStatsBar() {
             </div>
           </div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }

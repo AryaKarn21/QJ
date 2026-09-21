@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, FileText, ExternalLink, X } from "lucide-react";
 import CompanySearchInput from "./CompanySearchInput";
 import { TagInput } from "../../common/TagInput";
 import ImageCropModal from "../../common/ImageCropModal";
+import { resolveResumeUrl } from "../../../utils/mediaUrl";
 
 interface Qualification {
     degree: string;
@@ -37,6 +38,8 @@ interface Props {
     onSave: () => void;
     formState: {
         name: string;
+        headline?: string;
+        bio?: string;
         skills: string;
         qualifications: Qualification[];
         experiences: Experience[];
@@ -44,9 +47,8 @@ interface Props {
         certifications: Certification[];
         resume: File | null;
         profilePic: File | null;
-        // Existing hosted URL for the profile picture — shown when no new
-        // file has been selected so the user can see their current picture.
         existingProfilePicUrl?: string;
+        existingResumeUrl?: string;
     };
     setFormState: React.Dispatch<React.SetStateAction<any>>;
     addQualification: () => void;
@@ -95,34 +97,79 @@ const EditProfileModal: React.FC<Props> = ({
         : formState.existingProfilePicUrl || null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white w-full max-w-3xl rounded-lg shadow-lg p-6 relative max-h-[90dvh] overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4">Edit Profile</h2>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-5 sm:p-7 relative max-h-[90dvh] overflow-y-auto border border-gray-100">
+                <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Update your personal details, summary, resume, and experience.</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                        aria-label="Close"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-5">
                     {/* Name */}
                     <div>
-                        <label className="font-semibold">Name</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
                         <input
                             type="text"
                             value={formState.name}
                             onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                            className="w-full border px-3 py-2 rounded mt-1"
+                            className="w-full border border-gray-300 px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                            placeholder="Your full name"
+                        />
+                    </div>
+
+                    {/* Headline */}
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-semibold text-gray-700">Professional Headline</label>
+                            <span className="text-[11px] text-gray-400">{(formState.headline || '').length}/160</span>
+                        </div>
+                        <input
+                            type="text"
+                            maxLength={160}
+                            value={formState.headline || ''}
+                            onChange={(e) => setFormState({ ...formState, headline: e.target.value })}
+                            placeholder="e.g. Senior Frontend Developer | React & TypeScript"
+                            className="w-full border border-gray-300 px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                    </div>
+
+                    {/* About Me / Bio */}
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-semibold text-gray-700">About Me / Summary</label>
+                            <span className="text-[11px] text-gray-400">{(formState.bio || '').length}/600</span>
+                        </div>
+                        <textarea
+                            rows={4}
+                            maxLength={600}
+                            value={formState.bio || ''}
+                            onChange={(e) => setFormState({ ...formState, bio: e.target.value })}
+                            placeholder="Write about yourself, your career path, technical passions, and what kind of opportunities you're looking for..."
+                            className="w-full border border-gray-300 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y"
                         />
                     </div>
 
                     {/* Profile Picture */}
                     <div>
-                        <label className="font-semibold">Profile Picture</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Profile Picture</label>
                         {previewSrc && (
-                            <div className="mt-2 mb-2">
+                            <div className="mt-1 mb-3 flex items-center gap-3">
                                 <img
                                     src={previewSrc}
                                     alt="Current profile"
-                                    className="h-32 w-32 rounded-full object-cover border"
+                                    className="h-20 w-20 rounded-full object-cover border-2 border-primary/20 shadow-sm"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {formState.profilePic ? "New picture selected" : "Current picture — upload a new one to change"}
+                                <p className="text-xs text-gray-500">
+                                    {formState.profilePic ? "New picture selected" : "Current picture — choose a new file to change"}
                                 </p>
                             </div>
                         )}
@@ -134,31 +181,77 @@ const EditProfileModal: React.FC<Props> = ({
                                 e.target.value = ""; // allow re-selecting the same file later
                                 if (file) setPendingFile(file);
                             }}
-                            className="w-full mt-1"
+                            className="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Resume Card & Upload */}
+                    <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+                        <label className="block text-sm font-semibold text-gray-800 mb-1">Resume / CV</label>
+                        <p className="text-xs text-gray-500 mb-3">Upload your resume in PDF or Word document format (up to 10MB).</p>
+
+                        {formState.existingResumeUrl && !formState.resume && (
+                            <div className="mb-3 flex items-center justify-between p-3 bg-white border border-emerald-200 rounded-xl shadow-2xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                        <FileText size={18} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-gray-800 truncate">Current Resume Attached</p>
+                                        <p className="text-[11px] text-emerald-600 font-medium">Ready for recruiter review</p>
+                                    </div>
+                                </div>
+                                <a
+                                    href={resolveResumeUrl(formState.existingResumeUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline ml-2 shrink-0"
+                                >
+                                    <span>Preview</span>
+                                    <ExternalLink size={12} />
+                                </a>
+                            </div>
+                        )}
+
+                        {formState.resume && (
+                            <div className="mb-3 flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                        <FileText size={18} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-primary truncate">{formState.resume.name}</p>
+                                        <p className="text-[11px] text-gray-500">{Math.round(formState.resume.size / 1024)} KB · Ready to save</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormState({ ...formState, resume: null })}
+                                    className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        )}
+
+                        <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            onChange={(e) =>
+                                setFormState({ ...formState, resume: e.target.files?.[0] || null })
+                            }
+                            className="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
                         />
                     </div>
 
                     {/* Skills */}
                     <div>
-                        <label className="font-semibold">Skills</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Skills</label>
                         <TagInput
                             value={formState.skills}
                             onChange={(csv) => setFormState({ ...formState, skills: csv })}
                             placeholder="Type a skill and press Enter, e.g. React"
                             className="mt-1"
-                        />
-                    </div>
-
-                    {/* Resume */}
-                    <div>
-                        <label className="font-semibold">Resume (PDF)</label>
-                        <input
-                            type="file"
-                            accept="application/pdf"
-                            onChange={(e) =>
-                                setFormState({ ...formState, resume: e.target.files?.[0] || null })
-                            }
-                            className="w-full mt-1"
                         />
                     </div>
 

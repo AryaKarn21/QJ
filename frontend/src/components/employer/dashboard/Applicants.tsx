@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   getAllApplicantsForEmployerJobs,
   getEmployerJobs,
@@ -8,12 +9,15 @@ import {
 import {
   Search, ChevronLeft, ChevronRight, FileText, Calendar, User, Mail, Briefcase,
   X, Download, Eye, ExternalLink, GraduationCap, Sparkles, Filter, RotateCcw,
+  MessageSquare, Video, Phone, Building2, Clock, CheckCircle2, Link2, MapPin,
+  Table, ArrowLeft, AlertCircle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath, getAuthorizedApplicationResumeUrl } from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
+import { openConversationWith } from "../../../api/messageApi";
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
   Pending:              { bg: "bg-amber-50",   text: "text-amber-700",  dot: "bg-amber-400" },
@@ -35,23 +39,56 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// Tailwind's JIT scanner needs literal class strings, not `h-${size}`
-// template interpolation — an explicit map keeps every size class actually
-// present in source so it gets generated.
 const AVATAR_SIZE_CLASSES: Record<number, string> = {
   8: "h-8 w-8",
   10: "h-10 w-10",
+  12: "h-12 w-12",
+  14: "h-14 w-14",
 };
 
-const Avatar = ({ name, photo, size = 8 }: { name?: string; photo?: string; size?: 8 | 10 }) => (
+const Avatar = ({ name, photo, size = 8 }: { name?: string; photo?: string; size?: 8 | 10 | 12 | 14 }) => (
   <div className={`${AVATAR_SIZE_CLASSES[size]} rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden`}>
     {photo ? (
       <img src={resolveMediaUrl(photo)} alt="" className="h-full w-full object-cover" />
     ) : (
-      <span className="text-xs font-bold text-primary">{(name || "?")[0].toUpperCase()}</span>
+      <span className={`${size >= 12 ? 'text-base font-bold' : 'text-xs font-bold'} text-primary`}>
+        {(name || "?")[0].toUpperCase()}
+      </span>
     )}
   </div>
 );
+
+function formatCoverLetter(rawText?: string | null) {
+  if (!rawText || typeof rawText !== "string" || !rawText.trim()) {
+    return { subject: "", paragraphs: [] };
+  }
+
+  let subject = "";
+  let body = rawText.trim();
+
+  // Extract Subject: line if present at start
+  const subjectMatch = body.match(/^Subject:\s*([^\n\r]+?)(Dear\b|\r|\n|$)/i);
+  if (subjectMatch) {
+    subject = subjectMatch[1].trim();
+    body = body.slice(subjectMatch[0].length - (subjectMatch[2] ? subjectMatch[2].length : 0)).trim();
+  }
+
+  let paragraphs: string[] = [];
+  if (body.includes("\n")) {
+    paragraphs = body.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  } else {
+    // Intelligent boundary split for unformatted raw single-line text
+    const normalized = body
+      .replace(/(Dear\s+[^,]+,)/gi, "\n\n$1\n\n")
+      .replace(/(When\s+I\s+saw)/gi, "\n\n$1")
+      .replace(/(\[[^\]]+\])/g, "\n\n$1\n\n")
+      .replace(/(Thank\s+you\s+for\s+considering)/gi, "\n\n$1\n\n")
+      .replace(/(Best\s+regards,?)/gi, "\n\n$1\n");
+    paragraphs = normalized.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  }
+
+  return { subject, paragraphs };
+}
 
 const resumeFilename = (name?: string) =>
   `${(name || "applicant").trim().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase() || "applicant"}-resume.pdf`;
@@ -78,6 +115,7 @@ const Applicants = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const [selected, setSelected] = useState<EmployerApplication | null>(null);
+  const [selectedTab, setSelectedTab] = useState<'resume' | 'coverLetter' | 'profile' | 'interview'>('resume');
   const [downloadingResume, setDownloadingResume] = useState(false);
 
   const [interviewModalFor, setInterviewModalFor] = useState<string | null>(null);
@@ -87,6 +125,36 @@ const Applicants = () => {
   const [interviewLocation, setInterviewLocation] = useState("");
   const [interviewNotes, setInterviewNotes] = useState("");
   const [schedulingLoading, setSchedulingLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (selected) {
+      setSelectedTab(selected.resume ? 'resume' : 'coverLetter');
+    }
+  }, [selected?.applicationId]);
+
+  const setQuickDate = (offsetDays: number, hour: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    d.setHours(hour, 0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setInterviewDate(formatted);
+  };
+
+  const handleMessageCandidate = async (candidateUserId?: string) => {
+    if (!candidateUserId) {
+      toast.info("Candidate profile is not available for direct messaging.");
+      return;
+    }
+    try {
+      const conv = await openConversationWith(candidateUserId);
+      navigate(`/messages/${conv._id}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not open conversation with candidate.");
+    }
+  };
 
   const activeFilterCount = [statusFilter, jobFilter, dateFrom, dateTo].filter(Boolean).length;
 
@@ -339,9 +407,476 @@ const Applicants = () => {
             {activeFilterCount > 0 || search ? "Try a different search or clear the filters." : "Applications will appear here once candidates apply to your jobs."}
           </p>
         </div>
+      ) : selected ? (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col lg:flex-row min-h-[760px] animate-fade-in">
+          {/* ── Left Column: Compact Applicant Queue ── */}
+          <div className="w-full lg:w-[360px] xl:w-[400px] border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50/50 flex flex-col flex-shrink-0">
+            {/* Queue Header */}
+            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Applicant Queue</h3>
+                <p className="text-xs text-gray-500">{applications.length} applications loaded</p>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors cursor-pointer shadow-2xs"
+                title="Return to full table view"
+              >
+                <Table size={13} className="text-primary" />
+                <span>Full Table</span>
+              </button>
+            </div>
+
+            {/* Scrollable list of applicants */}
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100 max-h-[640px]">
+              {applications.map((applicant) => {
+                const isActive = selected?.applicationId === applicant.applicationId;
+                return (
+                  <button
+                    key={applicant.applicationId}
+                    onClick={() => setSelected(applicant)}
+                    className={`w-full text-left p-3.5 transition-all flex items-start gap-3 cursor-pointer ${
+                      isActive
+                        ? "bg-orange-50/80 border-l-4 border-orange-500 shadow-xs"
+                        : "hover:bg-white/80 bg-transparent border-l-4 border-transparent"
+                    }`}
+                  >
+                    <Avatar name={applicant.applicant?.name} photo={applicant.applicant?.profilePic} size={10} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <p className={`text-sm font-bold truncate ${isActive ? "text-orange-950" : "text-gray-900"}`}>
+                          {applicant.applicant?.name || "No name"}
+                        </p>
+                        <span className="text-[11px] text-gray-400 flex-shrink-0">{formatDate(applicant.appliedAt)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate mb-1.5">{applicant.job?.title || "Job removed"}</p>
+                      <div className="flex items-center justify-between">
+                        <StatusBadge status={applicant.status} />
+                        {applicant.resume && !isUnrecoverableResumePath(applicant.resume) && (
+                          <span className="text-[10px] font-medium text-gray-400 flex items-center gap-0.5">
+                            <FileText size={10} /> PDF
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Queue Footer */}
+            <div className="p-3 border-t border-gray-200 bg-white flex items-center justify-between">
+              <button
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1}
+                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer"
+              >
+                Prev
+              </button>
+              <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                disabled={page === totalPages}
+                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
+          {/* ── Right Column: Full Candidate Dossier (Fills 100% of Remaining Width!) ── */}
+          <div className="flex-1 min-w-0 bg-white flex flex-col">
+            {/* Header with Candidate Context & Primary Actions */}
+            <div className="border-b border-gray-200 p-5 bg-gradient-to-r from-gray-50/60 via-white to-orange-50/20">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <Avatar name={selected.applicant?.name} photo={selected.applicant?.profilePic} size={14} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-bold text-gray-900 leading-snug truncate">
+                        {selected.applicant?.name || "Applicant"}
+                      </h2>
+                      <StatusBadge status={selected.status} />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                      <span className="flex items-center gap-1 text-gray-700 font-medium">
+                        <Briefcase size={12} className="text-primary" /> {selected.job?.title || "Job removed"}
+                      </span>
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <Calendar size={12} /> Applied {new Date(selected.appliedAt).toLocaleDateString()}
+                      </span>
+                      {selected.applicant?.email && (
+                        <a
+                          href={`mailto:${selected.applicant.email}`}
+                          className="flex items-center gap-1 text-gray-600 hover:text-primary transition-colors"
+                        >
+                          <Mail size={12} /> {selected.applicant.email}
+                        </a>
+                      )}
+                      {selected.howDidYouHear && (
+                        <span className="text-gray-400">Via: {selected.howDidYouHear}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={selected.status}
+                    onChange={(e) => handleStatusChange(selected.applicationId, e.target.value)}
+                    className="border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-800 shadow-2xs focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      setInterviewModalFor(selected.applicationId);
+                      setInterviewDate("");
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold shadow-xs hover:shadow-md active:scale-98 transition-all cursor-pointer"
+                    title="Schedule interview with candidate"
+                  >
+                    <Calendar size={14} />
+                    <span>Schedule Interview</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleMessageCandidate(selected.applicant?._id)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                    title="Start real-time chat with candidate"
+                  >
+                    <MessageSquare size={14} className="text-primary" />
+                    <span>Message</span>
+                  </button>
+
+                  {selected.resume && !isUnrecoverableResumePath(selected.resume) && (
+                    <button
+                      onClick={() => handleDownloadResume(selected)}
+                      disabled={downloadingResume}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Download PDF resume"
+                    >
+                      <Download size={14} className="text-gray-500" />
+                      <span>{downloadingResume ? "Downloading…" : "Resume"}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer ml-1"
+                    title="Close dossier (Return to full table view)"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <div className="flex items-center gap-1 mt-5 border-b border-gray-200 -mb-5">
+                {[
+                  { key: "resume", label: "Resume Preview", icon: FileText, count: selected.resume ? "PDF" : null },
+                  { key: "coverLetter", label: "Cover Letter", icon: Mail, count: null },
+                  { key: "profile", label: "Candidate Background", icon: User, count: selected.applicant?.skills?.length ?? null },
+                  { key: "interview", label: "Interview & Stages", icon: Calendar, count: selected.status === "Interview Scheduled" ? "Scheduled" : null },
+                ].map(({ key, label, icon: Icon, count }) => {
+                  const isActive = selectedTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedTab(key as any)}
+                      className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                        isActive
+                          ? "border-orange-500 text-orange-600 bg-orange-50/50"
+                          : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Icon size={14} />
+                      <span>{label}</span>
+                      {count && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                          isActive ? "bg-orange-200/80 text-orange-800" : "bg-gray-200/70 text-gray-600"
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Dossier Body Content */}
+            <div className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-280px)]">
+              {/* Tab 1: Resume Preview */}
+              {selectedTab === "resume" && (
+                <div>
+                  {!selected.resume ? (
+                    <div className="rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center bg-gray-50/50">
+                      <FileText size={32} className="mx-auto text-gray-300 mb-3" />
+                      <h4 className="text-base font-bold text-gray-700">No resume attached</h4>
+                      <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                        This applicant did not attach a PDF resume or applied using their online profile.
+                      </p>
+                    </div>
+                  ) : isUnrecoverableResumePath(selected.resume) ? (
+                    <div className="rounded-2xl border border-amber-200 p-8 text-center bg-amber-50">
+                      <AlertCircle size={28} className="mx-auto text-amber-600 mb-2" />
+                      <h4 className="text-sm font-bold text-amber-900">Resume file unavailable</h4>
+                      <p className="text-xs text-amber-700 mt-1 max-w-sm mx-auto">
+                        This resume file was stored on an earlier server and is no longer available. You can message the candidate to request a fresh copy.
+                      </p>
+                      <button
+                        onClick={() => handleMessageCandidate(selected.applicant?._id)}
+                        className="mt-3 px-4 py-2 rounded-xl bg-white border border-amber-300 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
+                      >
+                        Message Candidate
+                      </button>
+                    </div>
+                  ) : (
+                    (() => {
+                      const authorizedUrl = getAuthorizedApplicationResumeUrl(selected.applicationId);
+                      const cleanUrl = authorizedUrl || resolveResumeUrl(selected.resume);
+                      return (
+                        <div className="space-y-3">
+                          {/* Viewer Toolbar */}
+                          <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600">
+                            <span className="font-semibold text-gray-700 flex items-center gap-1.5">
+                              <FileText size={13} className="text-primary" /> {resumeFilename(selected.applicant?.name)}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <a
+                                href={cleanUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-primary transition-colors"
+                              >
+                                <ExternalLink size={13} /> Open in new tab
+                              </a>
+                              <button
+                                onClick={() => handleDownloadResume(selected)}
+                                disabled={downloadingResume}
+                                className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark transition-colors cursor-pointer"
+                              >
+                                <Download size={13} /> Download PDF
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Full Height PDF Viewport */}
+                          <iframe
+                            src={cleanUrl}
+                            title="Resume preview"
+                            className="w-full h-[620px] rounded-xl border border-gray-200 bg-white shadow-inner"
+                          />
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Formatted Cover Letter */}
+              {selectedTab === "coverLetter" && (() => {
+                const { subject, paragraphs } = formatCoverLetter(selected.coverLetter);
+                return (
+                  <div className="space-y-4 max-w-3xl">
+                    {subject && (
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-orange-50 border border-orange-200 text-xs font-bold text-orange-800 shadow-2xs">
+                        <FileText size={13} className="text-orange-600" />
+                        <span>Subject: {subject}</span>
+                      </div>
+                    )}
+
+                    <div className="rounded-2xl border border-gray-200/90 bg-gray-50/60 p-6 sm:p-8 space-y-4 shadow-inner">
+                      {paragraphs.length > 0 ? (
+                        paragraphs.map((p, idx) => (
+                          <p
+                            key={idx}
+                            className={`text-sm leading-relaxed ${
+                              p.startsWith("Dear ")
+                                ? "font-bold text-gray-900 text-base"
+                                : p.startsWith("Best regards") || p.startsWith("Sincerely")
+                                ? "font-semibold text-gray-800 pt-3"
+                                : "text-gray-700 font-normal"
+                            }`}
+                          >
+                            {p}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No cover letter provided for this application.</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Tab 3: Candidate Background (Skills, Experience, Education) */}
+              {selectedTab === "profile" && (
+                <div className="space-y-6 max-w-3xl">
+                  {/* Skills Cloud */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2.5 flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-primary" /> Key Skills & Competencies
+                    </h4>
+                    {selected.applicant?.skills && selected.applicant.skills.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selected.applicant.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="rounded-xl bg-orange-50 border border-orange-200 text-orange-800 px-3 py-1 text-xs font-semibold shadow-2xs"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">No skills specified on candidate profile.</p>
+                    )}
+                  </div>
+
+                  {/* Work Experience Timeline */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                      <Briefcase size={13} className="text-primary" /> Work Experience
+                    </h4>
+                    {selected.applicant?.experiences && selected.applicant.experiences.length > 0 ? (
+                      <div className="space-y-3">
+                        {selected.applicant.experiences.map((exp, i) => (
+                          <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
+                            <div className="h-9 w-9 rounded-xl bg-orange-100/70 text-orange-600 flex items-center justify-center flex-shrink-0">
+                              <Briefcase size={16} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">{exp.jobPosition}</p>
+                              <p className="text-xs text-gray-600">{exp.institution}</p>
+                              <p className="text-xs text-gray-400 mt-1">{exp.duration}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">No previous experience records listed.</p>
+                    )}
+                  </div>
+
+                  {/* Education */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                      <GraduationCap size={13} className="text-primary" /> Education & Qualifications
+                    </h4>
+                    {selected.applicant?.qualifications && selected.applicant.qualifications.length > 0 ? (
+                      <div className="space-y-3">
+                        {selected.applicant.qualifications.map((q, i) => (
+                          <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
+                            <div className="h-9 w-9 rounded-xl bg-blue-100/70 text-blue-600 flex items-center justify-center flex-shrink-0">
+                              <GraduationCap size={16} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">{q.degree}</p>
+                              <p className="text-xs text-gray-600">{q.institution}{q.year ? `, ${q.year}` : ""}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">No education qualifications listed.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 4: Interview & Stages */}
+              {selectedTab === "interview" && (
+                <div className="space-y-5 max-w-2xl">
+                  {selected.status === "Interview Scheduled" ? (
+                    <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                            <Calendar size={16} />
+                          </div>
+                          <h4 className="text-sm font-bold text-purple-900">Upcoming Interview Scheduled</h4>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setInterviewModalFor(selected.applicationId);
+                            setInterviewDate("");
+                          }}
+                          className="text-xs font-semibold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                        >
+                          Reschedule
+                        </button>
+                      </div>
+
+                      {selected.interview?.scheduledAt && (
+                        <p className="text-sm font-semibold text-purple-900 flex items-center gap-2">
+                          <Clock size={15} /> {new Date(selected.interview.scheduledAt).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })}
+                        </p>
+                      )}
+
+                      {selected.interview?.mode && (
+                        <p className="text-xs text-purple-800">
+                          <strong>Mode:</strong> {selected.interview.mode}
+                        </p>
+                      )}
+
+                      {selected.interview?.meetingLink && (
+                        <div>
+                          <a
+                            href={selected.interview.meetingLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors shadow-sm"
+                          >
+                            <Video size={13} /> Join Interview Meeting →
+                          </a>
+                        </div>
+                      )}
+
+                      {selected.interview?.location && (
+                        <p className="text-xs text-purple-800 flex items-center gap-1.5">
+                          <MapPin size={13} /> {selected.interview.location}
+                        </p>
+                      )}
+
+                      {selected.interview?.notes && (
+                        <div className="bg-white/80 p-3 rounded-xl border border-purple-200 text-xs text-purple-900">
+                          <strong>Instructions:</strong> {selected.interview.notes}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center space-y-3">
+                      <Calendar size={28} className="mx-auto text-gray-400" />
+                      <h4 className="text-sm font-bold text-gray-800">No interview scheduled yet</h4>
+                      <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                        Move this applicant forward in your hiring pipeline by setting up an online video interview or phone screening.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setInterviewModalFor(selected.applicationId);
+                          setInterviewDate("");
+                        }}
+                        className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                      >
+                        Schedule Interview Now
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
+        /* Full Table View when no applicant is selected */
         <>
-          {/* Desktop table */}
+          {/* Desktop Table (Spans 100% of container) */}
           <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px]">
@@ -356,12 +891,12 @@ const Applicants = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {applications.map((applicant) => (
-                    <tr key={applicant.applicationId} onClick={() => setSelected(applicant)} className="hover:bg-gray-50 transition-colors cursor-pointer">
+                    <tr key={applicant.applicationId} onClick={() => setSelected(applicant)} className="hover:bg-orange-50/40 transition-colors cursor-pointer">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={applicant.applicant?.name} photo={applicant.applicant?.profilePic} />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">{applicant.applicant?.name || <span className="italic text-gray-400">No name</span>}</p>
+                            <p className="text-sm font-bold text-gray-800 truncate">{applicant.applicant?.name || <span className="italic text-gray-400">No name</span>}</p>
                             <p className="text-xs text-gray-400 truncate">{applicant.applicant?.email}</p>
                           </div>
                         </div>
@@ -371,8 +906,11 @@ const Applicants = () => {
                       <td className="px-5 py-4"><StatusBadge status={applicant.status} /></td>
                       <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => setSelected(applicant)} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary border border-gray-200 hover:border-primary/40 px-3 py-1.5 rounded-lg transition-all">
-                            <Eye size={12} /> View
+                          <button
+                            onClick={() => setSelected(applicant)}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-primary bg-white hover:bg-gray-50 border border-gray-200 hover:border-primary/40 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+                          >
+                            <Eye size={12} className="text-primary" /> Review Dossier
                           </button>
                         </div>
                       </td>
@@ -384,11 +922,11 @@ const Applicants = () => {
 
             {/* Pagination */}
             <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50">
-              <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
                 <ChevronLeft size={15} /> Previous
               </button>
               <span className="text-sm text-gray-500">Page <span className="font-semibold text-gray-800">{page}</span> of <span className="font-semibold text-gray-800">{totalPages}</span></span>
-              <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
                 Next <ChevronRight size={15} />
               </button>
             </div>
@@ -397,7 +935,7 @@ const Applicants = () => {
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {applications.map((applicant) => (
-              <button key={applicant.applicationId} onClick={() => setSelected(applicant)} className="w-full text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-4 active:bg-gray-50 transition-colors">
+              <button key={applicant.applicationId} onClick={() => setSelected(applicant)} className="w-full text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-4 active:bg-gray-50 transition-colors cursor-pointer">
                 <div className="flex items-start gap-3">
                   <Avatar name={applicant.applicant?.name} photo={applicant.applicant?.profilePic} size={10} />
                   <div className="min-w-0 flex-1">
@@ -413,11 +951,11 @@ const Applicants = () => {
             ))}
 
             <div className="flex items-center justify-between pt-2">
-              <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg disabled:opacity-40">
+              <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl disabled:opacity-40 cursor-pointer">
                 <ChevronLeft size={14} /> Prev
               </button>
               <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg disabled:opacity-40">
+              <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl disabled:opacity-40 cursor-pointer">
                 Next <ChevronRight size={14} />
               </button>
             </div>
@@ -425,210 +963,227 @@ const Applicants = () => {
         </>
       )}
 
-      {/* Application Details Drawer */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setSelected(null)} />
-          <div className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <Avatar name={selected.applicant?.name} photo={selected.applicant?.profilePic} size={10} />
-                <div className="min-w-0">
-                  <h2 className="text-base font-bold text-gray-900 truncate">{selected.applicant?.name || "Applicant"}</h2>
-                  <p className="text-xs text-gray-400 truncate">{selected.job?.title}</p>
+      {/* Production-grade Interview Scheduling Modal with z-[100] */}
+      {interviewModalFor && (() => {
+        const modalApp = applications.find((a) => a.applicationId === interviewModalFor) || (selected?.applicationId === interviewModalFor ? selected : null);
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 my-auto">
+              {/* Modal Header with Candidate Context */}
+              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-orange-50/50 to-amber-50/30">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-11 w-11 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-sm flex-shrink-0">
+                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                      {modalApp?.applicant?.profilePic ? (
+                        <img src={resolveMediaUrl(modalApp.applicant.profilePic)} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-orange-600">{(modalApp?.applicant?.name || "C")[0].toUpperCase()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-gray-900">Schedule Interview</h2>
+                      <span className="text-[11px] font-semibold bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">Invite</span>
+                    </div>
+                    <p className="text-xs text-gray-500 truncate">
+                      Candidate: <span className="font-semibold text-gray-800">{modalApp?.applicant?.name || "Candidate"}</span>
+                      {modalApp?.job?.title ? ` • ${modalApp.job.title}` : ""}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 shrink-0">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-              {/* Status + actions */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <StatusBadge status={selected.status} />
-                <select
-                  value={selected.status}
-                  onChange={(e) => handleStatusChange(selected.applicationId, e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                <button
+                  onClick={() => setInterviewModalFor(null)}
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
+                  title="Close"
                 >
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                  <X size={18} />
+                </button>
               </div>
 
-              {/* Contact */}
-              <div className="rounded-xl border border-gray-200 p-3.5 space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Mail size={12} /> Contact</p>
-                <p className="text-sm text-gray-700">{selected.applicant?.email || "—"}</p>
-              </div>
-
-              {/* Applied job info */}
-              <div className="rounded-xl border border-gray-200 p-3.5 space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Briefcase size={12} /> Applied for</p>
-                <p className="text-sm font-medium text-gray-800">{selected.job?.title || "Job removed"}</p>
-                <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-1"><Calendar size={11} /> Applied {new Date(selected.appliedAt).toLocaleString()}</p>
-                {selected.howDidYouHear && <p className="text-xs text-gray-400 mt-1">Heard about this role via: {selected.howDidYouHear}</p>}
-              </div>
-
-              {/* Skills */}
-              {selected.applicant?.skills && selected.applicant.skills.length > 0 && (
+              {/* Form Fields */}
+              <div className="p-6 space-y-4">
+                {/* Mode Selection Pills */}
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5"><Sparkles size={12} /> Skills</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selected.applicant.skills.map((skill) => (
-                      <span key={skill} className="rounded-full bg-primary/10 text-primary px-2.5 py-1 text-xs font-medium">{skill}</span>
-                    ))}
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                    Interview Mode
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { mode: "Video Call", icon: Video, label: "Video Call" },
+                      { mode: "Phone Call", icon: Phone, label: "Phone Call" },
+                      { mode: "In-Person", icon: Building2, label: "In-Person" },
+                    ].map(({ mode, icon: Icon, label }) => {
+                      const isSelected = interviewMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setInterviewMode(mode)}
+                          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-orange-500 bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-400/30"
+                              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          <Icon size={14} className={isSelected ? "text-orange-600" : "text-gray-400"} />
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
 
-              {/* Experience */}
-              {selected.applicant?.experiences && selected.applicant.experiences.length > 0 && (
+                {/* Date & Time */}
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5"><Briefcase size={12} /> Experience</p>
-                  <div className="space-y-2">
-                    {selected.applicant.experiences.map((exp, i) => (
-                      <div key={i} className="text-sm text-gray-700">
-                        <p className="font-medium">{exp.jobPosition} <span className="text-gray-400 font-normal">— {exp.institution}</span></p>
-                        <p className="text-xs text-gray-400">{exp.duration}</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Date & Time
+                    </label>
+                    <span className="text-[11px] text-gray-400">Local time</span>
                   </div>
-                </div>
-              )}
-
-              {/* Qualifications */}
-              {selected.applicant?.qualifications && selected.applicant.qualifications.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5"><GraduationCap size={12} /> Education</p>
-                  <div className="space-y-1.5">
-                    {selected.applicant.qualifications.map((q, i) => (
-                      <p key={i} className="text-sm text-gray-700">{q.degree} <span className="text-gray-400">— {q.institution}{q.year ? `, ${q.year}` : ""}</span></p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Cover letter */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1.5"><FileText size={12} /> Cover letter</p>
-                <p className="whitespace-pre-wrap rounded-xl bg-gray-50 p-3.5 text-sm text-gray-600 leading-relaxed">{selected.coverLetter}</p>
-              </div>
-
-              {/* Resume */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><FileText size={12} /> Resume</p>
-                  {selected.resume && !isUnrecoverableResumePath(selected.resume) && (
+                  <input
+                    type="datetime-local"
+                    min={new Date().toISOString().slice(0, 16)}
+                    value={interviewDate}
+                    onChange={(e) => setInterviewDate(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors cursor-pointer"
+                  />
+                  {/* Quick Shortcut Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className="text-[11px] text-gray-400 mr-1 flex items-center gap-1"><Clock size={11} /> Quick:</span>
                     <button
-                      onClick={() => handleDownloadResume(selected)}
-                      disabled={downloadingResume}
-                      className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-50"
+                      type="button"
+                      onClick={() => setQuickDate(1, 10)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
                     >
-                      <Download size={13} /> {downloadingResume ? "Downloading…" : "Download"}
+                      Tomorrow 10 AM
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => setQuickDate(1, 14)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                    >
+                      Tomorrow 2 PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickDate(2, 11)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                    >
+                      In 2 Days 11 AM
+                    </button>
+                  </div>
                 </div>
 
-                {!selected.resume ? (
-                  <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-400">
-                    This applicant didn't attach a resume.
-                  </div>
-                ) : isUnrecoverableResumePath(selected.resume) ? (
-                  <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700">
-                    Resume unavailable — please ask the applicant to upload again
+                {/* Location / Link */}
+                {interviewMode === "In-Person" ? (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                      Office / Interview Location
+                    </label>
+                    <div className="relative">
+                      <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={interviewLocation}
+                        onChange={(e) => setInterviewLocation(e.target.value)}
+                        placeholder="Company headquarters, Room 402, Building A"
+                        className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                      />
+                    </div>
                   </div>
                 ) : (
-                  (() => {
-                    const authorizedUrl = getAuthorizedApplicationResumeUrl(selected.applicationId);
-                    const cleanUrl = authorizedUrl || resolveResumeUrl(selected.resume);
-
-                    return (
-                      <div className="space-y-2">
-                        <iframe
-                          src={cleanUrl}
-                          title="Resume preview"
-                          className="h-80 w-full rounded-xl border border-gray-200 bg-white"
-                        />
-                        <div className="flex items-center justify-between">
-                          <a
-                            href={cleanUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary"
-                          >
-                            <ExternalLink size={12} /> Open original PDF in new tab
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadResume(selected)}
-                            disabled={downloadingResume}
-                            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                          >
-                            <Download size={12} /> {downloadingResume ? "Downloading…" : "Download"}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        {interviewMode === "Video Call" ? "Meeting Link" : "Phone Number"}
+                      </label>
+                      {interviewMode === "Video Call" && (
+                        <button
+                          type="button"
+                          onClick={() => setInterviewLink("https://meet.google.com/new")}
+                          className="text-[11px] text-orange-600 hover:text-orange-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Link2 size={11} /> Create Google Meet
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      {interviewMode === "Video Call" ? (
+                        <Video size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      ) : (
+                        <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      )}
+                      <input
+                        type="text"
+                        value={interviewLink}
+                        onChange={(e) => setInterviewLink(e.target.value)}
+                        placeholder={
+                          interviewMode === "Video Call"
+                            ? "https://meet.google.com/… or Zoom link"
+                            : modalApp?.applicant?.email ? `Contact ${modalApp.applicant.name}` : "+977-… or candidate phone"
+                        }
+                        className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                      />
+                    </div>
+                  </div>
                 )}
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                    Candidate Instructions & Notes (Optional)
+                  </label>
+                  <textarea
+                    value={interviewNotes}
+                    onChange={(e) => setInterviewNotes(e.target.value)}
+                    rows={2}
+                    placeholder="e.g. Please bring your portfolio or prepare for a 15-minute case discussion."
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors resize-none"
+                  />
+                </div>
+
+                {/* Automated notification reassurance */}
+                <div className="flex items-start gap-2.5 rounded-xl bg-orange-50/70 border border-orange-200/70 p-3 text-xs text-orange-800">
+                  <Mail size={15} className="text-orange-600 flex-shrink-0 mt-0.5" />
+                  <span>
+                    An automated calendar invitation and email notification will be sent directly to{" "}
+                    <strong className="font-semibold text-orange-900">{modalApp?.applicant?.email || "the candidate"}</strong>.
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex items-center gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setInterviewModalFor(null)}
+                  className="flex-1 border border-gray-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleScheduleInterview}
+                  disabled={schedulingLoading || !interviewDate}
+                  className="flex-1 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg,#F59E0B,#F97316)" }}
+                >
+                  {schedulingLoading ? (
+                    <span>Scheduling…</span>
+                  ) : (
+                    <>
+                      <Calendar size={15} />
+                      <span>Send Invitation</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Interview Scheduling Modal */}
-      {interviewModalFor && (
-        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto p-6">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center">
-                <Calendar size={16} className="text-purple-600" />
-              </div>
-              <h2 className="text-lg font-bold text-gray-900">Schedule Interview</h2>
-            </div>
-            <p className="text-sm text-gray-500 mb-5 ml-11">The candidate will be emailed these details automatically.</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Date & Time</label>
-                <input type="datetime-local" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Mode</label>
-                <select value={interviewMode} onChange={(e) => setInterviewMode(e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
-                  <option value="Video Call">Video Call</option>
-                  <option value="Phone Call">Phone Call</option>
-                  <option value="In-Person">In-Person</option>
-                </select>
-              </div>
-              {interviewMode === "In-Person" ? (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Location</label>
-                  <input type="text" value={interviewLocation} onChange={(e) => setInterviewLocation(e.target.value)} placeholder="Office address" className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">{interviewMode === "Video Call" ? "Meeting Link" : "Phone Number"}</label>
-                  <input type="text" value={interviewLink} onChange={(e) => setInterviewLink(e.target.value)} placeholder={interviewMode === "Video Call" ? "https://meet.google.com/…" : "+977-…"} className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">Notes (optional)</label>
-                <textarea value={interviewNotes} onChange={(e) => setInterviewNotes(e.target.value)} rows={3} placeholder="Anything the candidate should prepare or know in advance" className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none" />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setInterviewModalFor(null)} className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleScheduleInterview} disabled={schedulingLoading} className="flex-1 bg-primary text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors">
-                {schedulingLoading ? "Scheduling…" : "Schedule & Notify"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

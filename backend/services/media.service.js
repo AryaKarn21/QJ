@@ -78,9 +78,10 @@ const FOLDER_MAP = {
   blog_category_icons: "qj/blog-category-icons",
   blog_images:          "qj/blog-images",
   cms_images:           "qj/cms-images",
+  community_media:      "qj/community",
 };
 
-const ANY_TYPE_FOLDERS = new Set(["message_attachments"]);
+const ANY_TYPE_FOLDERS = new Set(["message_attachments", "community_media"]);
 
 function isCloudinaryUrl(stored) {
   return typeof stored === "string" && stored.startsWith("https://res.cloudinary.com/");
@@ -148,10 +149,17 @@ function writeBufferToLocalDisk(buffer, mimetype, folder) {
 
 async function uploadToCloudinary(buffer, mimetype, folder, ownerId) {
   const isImage   = mimetype.startsWith("image/");
+  const isVideo   = mimetype.startsWith("video/");
   const isPdf     = mimetype === "application/pdf";
-  if (!isImage && !isPdf && !ANY_TYPE_FOLDERS.has(folder)) throw new Error("Invalid file type.");
+  if (!isImage && !isVideo && !isPdf && !ANY_TYPE_FOLDERS.has(folder)) throw new Error("Invalid file type.");
 
-  const resourceType = isImage ? "image" : "raw";
+  let resourceType = "image";
+  if (isVideo) {
+    resourceType = "video";
+  } else if (!isImage) {
+    resourceType = "raw";
+  }
+
   const ext          = safeExtensionFor(mimetype);
   const cloudFolder  = FOLDER_MAP[folder] || `qj/${folder}`;
   const publicId = resourceType === "raw" && ext

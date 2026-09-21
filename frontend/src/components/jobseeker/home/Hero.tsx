@@ -104,7 +104,7 @@ const Hero: React.FC = () => {
   }, []);
 
   return (
-    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-16 sm:px-6 sm:py-20 lg:min-h-[620px] lg:px-8 lg:py-0">
+    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-12 sm:px-6 sm:py-14 lg:py-16 lg:px-8">
 
       {/* ── BACKGROUND ── one real photo (slow Ken-Burns drift), a dark
           scrim for contrast, three soft brand-color glows that pulse AND
@@ -154,22 +154,19 @@ const Hero: React.FC = () => {
         />
       </div>
 
-      {/* ── CONTENT ── centered on mobile (narrow enough that centering
-          reads better), shifts to a left-aligned column on desktop —
-          matching the reference's content sitting in the left/center-left
-          portion of the hero rather than dead-center. */}
+      {/* ── CONTENT ── centered on mobile, left-aligned column on desktop */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="relative z-10 mx-auto w-full max-w-6xl text-center lg:text-left"
+        className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-center lg:text-left"
       >
       <div className="mx-auto max-w-2xl lg:mx-0">
 
         {/* Badge */}
         <motion.div
           variants={itemVariants}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold tracking-tight text-white backdrop-blur-sm sm:text-[13px]"
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold tracking-tight text-white backdrop-blur-sm sm:text-[13px]"
         >
           <Zap size={13} className="fill-orange-400 text-orange-400" />
           {content.badgeText}
@@ -178,7 +175,7 @@ const Hero: React.FC = () => {
         {/* Headline */}
         <motion.h1
           variants={itemVariants}
-          className="mb-5 text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
+          className="mb-3 text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
         >
           {content.headline} <span className="text-orange-500">{content.headlineAccent}</span>
         </motion.h1>
@@ -186,21 +183,16 @@ const Hero: React.FC = () => {
         {/* Sub-headline */}
         <motion.p
           variants={itemVariants}
-          className="mx-auto mb-9 max-w-xl text-base font-normal leading-relaxed text-slate-300 sm:text-lg lg:mx-0"
+          className="mx-auto mb-5 max-w-xl text-base font-normal leading-relaxed text-slate-300 sm:text-lg lg:mx-0"
         >
           {content.subheadline}
         </motion.p>
 
-        {/* Search bar — one integrated pill on tablet+, stacks to a
-            full-width input then a full-width button on phones so the
-            button keeps a comfortable touch target instead of squeezing
-            into the same row. Focusing it lifts the pill with a soft
-            orange glow and opens a lightweight suggestions dropdown
-            filtered against the popular-search terms. */}
-        <motion.div variants={itemVariants} className="relative mx-auto mb-6 max-w-xl lg:mx-0" ref={searchWrapRef}>
+        {/* Search bar */}
+        <motion.div variants={itemVariants} className="relative mx-auto mb-4 max-w-xl lg:mx-0" ref={searchWrapRef}>
           <div
-            className={`flex flex-col gap-2 rounded-2xl bg-white p-1.5 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.4)] transition-all duration-300 sm:flex-row sm:items-center sm:gap-0 ${
-              isFocused ? 'ring-4 ring-orange-500/25 shadow-[0_14px_36px_-6px_rgba(249,115,22,0.45)]' : ''
+            className={`flex flex-col gap-2 rounded-2xl bg-white p-1.5 border transition-all duration-200 sm:flex-row sm:items-center sm:gap-0 ${
+              isFocused ? 'border-orange-300 ring-2 ring-orange-500/25 shadow-md shadow-orange-500/10' : 'border-slate-100 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.3)]'
             }`}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2 pl-4">
@@ -228,9 +220,9 @@ const Hero: React.FC = () => {
             <button
               type="button"
               onClick={handleSearch}
-              className="flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.03] hover:bg-orange-600 active:scale-95 sm:w-auto"
+              className="group flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:bg-orange-600 active:scale-[0.98] sm:w-auto"
             >
-              Search <ArrowRight size={15} />
+              Search <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
             </button>
           </div>
 
@@ -265,7 +257,7 @@ const Hero: React.FC = () => {
         </motion.div>
 
         {/* Popular searches */}
-        <motion.div variants={itemVariants} className="mb-9 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+        <motion.div variants={itemVariants} className="mb-6 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
           <span className="text-[13px] font-medium text-slate-400">Popular Searches:</span>
           {staticPopularJobs.map((job, i) => (
             <button
@@ -284,14 +276,14 @@ const Hero: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(content.primaryCtaLink)}
-            className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(249,115,22,0.35)] transition-all duration-200 hover:scale-[1.03] hover:bg-orange-600 active:scale-95"
+            className="group inline-flex items-center gap-2 rounded-full bg-orange-500 px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(249,115,22,0.35)] transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:bg-orange-600 active:scale-[0.98]"
           >
-            {content.primaryCtaText} <ArrowRight size={17} />
+            {content.primaryCtaText} <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-1" />
           </button>
           <button
             type="button"
             onClick={() => navigate(content.secondaryCtaLink)}
-            className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-[15px] font-bold text-slate-900 transition-all duration-200 hover:scale-[1.03] hover:bg-slate-100 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-[15px] font-bold text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:bg-slate-100 active:scale-[0.98]"
           >
             <FileText size={16} className="text-orange-500" /> {content.secondaryCtaText}
           </button>

@@ -70,7 +70,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
 
   return (
     <article
-      className={`group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg ${className}`}
+      className={`group flex flex-col justify-between h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 ease-out hover:-translate-y-[3px] hover:scale-[1.01] hover:border-orange-200 hover:shadow-md hover:shadow-orange-500/5 ${className}`}
     >
       <div>
         <div className="mb-4 flex items-start justify-between gap-2">
@@ -79,15 +79,15 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
               <img
                 src={resolveMediaUrl(displayLogo)}
                 alt={`${displayName || 'Company'} logo`}
-                className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                className="h-11 w-11 shrink-0 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105"
               />
             ) : (
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white ${accentFor(job._id)}`}>
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white transition-transform duration-200 group-hover:scale-105 ${accentFor(job._id)}`}>
                 {displayName?.[0] || 'C'}
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900">{job.title}</h3>
+              <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900 transition-colors duration-200 group-hover:text-orange-600">{job.title}</h3>
               <p className="truncate text-sm text-slate-500">{displayName || 'Company'}</p>
             </div>
           </div>
@@ -98,7 +98,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
             disabled={readOnly}
             aria-label={isSaved ? 'Remove bookmark' : 'Bookmark job'}
             aria-pressed={isSaved}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors duration-200 ${
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105 active:scale-95 ${
               isSaved
                 ? 'border-orange-200 bg-orange-50 text-orange-500'
                 : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-orange-200 hover:text-orange-500'
@@ -147,9 +147,9 @@ export const JobCard: React.FC<JobCardProps> = ({ job, readOnly = false, classNa
           onClick={goToJob}
           disabled={readOnly}
           aria-label={`View details for ${job.title}`}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-transform duration-200 group-hover:scale-105 hover:bg-orange-600 active:scale-95 disabled:cursor-default"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-all duration-200 hover:scale-[1.05] hover:bg-orange-600 active:scale-95 disabled:cursor-default"
         >
-          <ArrowRight size={16} />
+          <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
         </button>
       </div>
     </article>

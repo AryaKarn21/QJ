@@ -16,6 +16,7 @@ import {
   ExternalLink,
   ChevronRight,
   Info,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
@@ -180,7 +181,19 @@ const UserSettings = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 overflow-auto" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        {/* Back Navigation */}
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-xs transition-all hover:text-primary"
+          >
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
+        </div>
 
         {/* ── Page Header & Profile Card ── */}
         <div className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">

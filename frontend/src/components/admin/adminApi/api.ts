@@ -870,3 +870,194 @@ export const updateTrendingSettings = async (maxDisplayCount: number) => {
   const res = await axios.put(`${TRENDING_BASE}/settings`, { maxDisplayCount }, getAuthConfig());
   return res.data;
 };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Super Admin Extended Endpoints (Reports, Users, Jobs, Community, Blogs)
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface ReportItem {
+  _id: string;
+  targetType: 'user' | 'job' | 'post' | 'comment' | 'blog';
+  targetId: string;
+  reportedBy: {
+    _id: string;
+    name: string;
+    email: string;
+    profilePic?: string;
+    role?: string;
+  };
+  reason: string;
+  customReason?: string;
+  evidenceUrl?: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  targetSnapshot?: any;
+  targetPreview?: any;
+  resolvedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  resolvedAt?: string;
+  resolutionNotes?: string;
+  actionTaken?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getAllReports = async (params?: {
+  targetType?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const res = await axios.get(`${API_BASE_URL}/api/reports`, { ...getAuthConfig(), params });
+  return res.data;
+};
+
+export const getReportStats = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/reports/stats`, getAuthConfig());
+  return res.data;
+};
+
+export const resolveReport = async (
+  reportId: string,
+  data: { action: 'warn' | 'remove_content' | 'suspend_user' | 'dismiss' | 'other'; resolutionNotes?: string; targetAction?: any }
+) => {
+  const res = await axios.patch(`${API_BASE_URL}/api/reports/${reportId}/resolve`, data, getAuthConfig());
+  return res.data;
+};
+
+export const updateUserStatus = async (
+  userId: string,
+  status: 'active' | 'deactivated' | 'suspended',
+  reason?: string
+) => {
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/admin/users/${userId}/status`,
+    { status, reason },
+    getAuthConfig()
+  );
+  return res.data;
+};
+
+export const getUserDetailsAdmin = async (userId: string) => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/users/${userId}/details`, getAuthConfig());
+  return res.data;
+};
+
+export const bulkJobAction = async (action: string, jobIds: string[]) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/admin/jobs/bulk-action`,
+    { action, jobIds },
+    getAuthConfig()
+  );
+  return res.data;
+};
+
+export const updateAdminJobStatus = async (jobId: string, status: string, istrending?: boolean) => {
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/admin/jobs/${jobId}/status`,
+    { status, istrending },
+    getAuthConfig()
+  );
+  return res.data;
+};
+
+export const getAllCommunityPostsAdmin = async (params?: {
+  status?: string;
+  type?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/community/posts`, { ...getAuthConfig(), params });
+  return res.data;
+};
+
+export const updateCommunityPostStatusAdmin = async (postId: string, status: string, notes?: string) => {
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/admin/community/posts/${postId}/status`,
+    { status, notes },
+    getAuthConfig()
+  );
+  return res.data;
+};
+
+export const getAllCommunityCommentsAdmin = async (params?: {
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/community/comments`, { ...getAuthConfig(), params });
+  return res.data;
+};
+
+export const deleteCommunityCommentAdmin = async (commentId: string, notes?: string) => {
+  const res = await axios.delete(
+    `${API_BASE_URL}/api/admin/community/comments/${commentId}`,
+    { ...getAuthConfig(), data: { notes } }
+  );
+  return res.data;
+};
+
+export const getAllBlogsAdmin = async (params?: {
+  status?: 'all' | 'published' | 'drafts';
+  category?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/blogs`, { ...getAuthConfig(), params });
+  return res.data;
+};
+
+export const updateBlogStatusAdmin = async (blogId: string, isPublished: boolean) => {
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/admin/blogs/${blogId}/publish`,
+    { isPublished },
+    getAuthConfig()
+  );
+  return res.data;
+};
+
+export const createBlogAdmin = async (blogData: any) => {
+  const res = await axios.post(`${API_BASE_URL}/api/blogs`, blogData, getAuthConfig());
+  return res.data;
+};
+
+export const updateBlogAdmin = async (blogId: string, blogData: any) => {
+  const res = await axios.put(`${API_BASE_URL}/api/blogs/${blogId}`, blogData, getAuthConfig());
+  return res.data;
+};
+
+export const deleteBlogAdmin = async (blogId: string) => {
+  const res = await axios.delete(`${API_BASE_URL}/api/blogs/${blogId}`, getAuthConfig());
+  return res.data;
+};
+
+export const uploadBlogImageAdmin = async (file: File) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await axios.post(`${API_BASE_URL}/api/blogs/upload-image`, formData, {
+    headers: {
+      ...(getAuthConfig().headers || {}),
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
+};
+
+export const updateCompanyAdmin = async (companyId: string, data: any) => {
+  const res = await axios.put(`${API_BASE_URL}/api/admin/companies/${companyId}`, data, getAuthConfig());
+  return res.data;
+};
+
+export const toggleCompanySuspendAdmin = async (companyId: string, isSuspended: boolean, suspensionReason?: string) => {
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/admin/companies/${companyId}/suspend`,
+    { isSuspended, suspensionReason },
+    getAuthConfig()
+  );
+  return res.data;
+};

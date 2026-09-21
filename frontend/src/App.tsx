@@ -55,6 +55,10 @@ import RevenueManagement from './components/admin/RevenueManagement';
 import RolesPermissions from './components/admin/RolesPermissions';
 import JobCategoryManagement from './components/admin/JobCategoryManagement';
 import PlanManagement from './components/admin/PlanManagement';
+import ReportManagement from './components/admin/reports/ReportManagement';
+import CommunityManagement from './components/admin/community/CommunityManagement';
+import BlogManagement from './components/admin/blogs/BlogManagement';
+import CategoryManagementHub from './components/admin/categories/CategoryManagementHub';
 import SubscriptionPage from './components/common/SubscriptionPage';
 import SubscriptionCallback from './components/common/SubscriptionCallback';
 // Lazy-loaded: the resume builder's template registry alone is 1500+
@@ -403,6 +407,12 @@ function AppWrapper() {
                 </ProtectedRoute>
               }
             />
+            <Route path="reports" element={<ReportManagement />} />
+            <Route path="community/posts" element={<CommunityManagement />} />
+            <Route path="community/reported" element={<CommunityManagement />} />
+            <Route path="community/comments" element={<CommunityManagement />} />
+            <Route path="blogs" element={<BlogManagement />} />
+            <Route path="categories" element={<CategoryManagementHub />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Routes>

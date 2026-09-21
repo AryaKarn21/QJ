@@ -1,6 +1,10 @@
 const User = require("../models/User");
 const Job = require("../models/Job");
 const Revenue = require("../models/Revenue");
+const Application = require("../models/Application");
+const Post = require("../models/Post");
+const Blog = require("../models/Blog");
+const Comment = require("../models/Comment");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -159,24 +163,106 @@ async function buildDeviceAnalytics() {
   };
 }
 
+async function buildApplicationAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, statusAgg, totalApplications] = await Promise.all([
+    Application.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    Application.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    Application.countDocuments(),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  return {
+    totalApplications,
+    growth,
+    byStatus: statusAgg.map((s) => ({ status: s._id || "pending", count: s.count })),
+  };
+}
+
+async function buildCommunityAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, totalPosts, totalComments] = await Promise.all([
+    Post.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    Post.countDocuments(),
+    Comment.countDocuments(),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  return {
+    totalPosts,
+    totalComments,
+    growth,
+  };
+}
+
+async function buildBlogAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, totalBlogs, publishedBlogs, draftBlogs] = await Promise.all([
+    Blog.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    Blog.countDocuments(),
+    Blog.countDocuments({ isPublished: true }),
+    Blog.countDocuments({ isPublished: false }),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  return {
+    totalBlogs,
+    publishedBlogs,
+    draftBlogs,
+    growth,
+  };
+}
+
 /**
  * GET /api/admin/analytics
  * Single combined payload for the Analytics Hub — one request, one loading
- * state, four tabs' worth of real data. See Architecture doc §14/§10 —
- * "Country Analytics" is deliberately omitted: the app doesn't currently
- * collect reliable geo data (IP-geolocation would need a paid service), so
- * rather than fabricate a country breakdown, this ships without it.
+ * state, seven tabs/sections worth of real data.
  */
 exports.getAnalyticsOverview = async (req, res) => {
   try {
-    const [users, jobs, revenue, devices] = await Promise.all([
+    const [users, jobs, revenue, devices, applications, community, blogs] = await Promise.all([
       buildUserAnalytics(),
       buildJobAnalytics(),
       buildRevenueAnalytics(),
       buildDeviceAnalytics(),
+      buildApplicationAnalytics(),
+      buildCommunityAnalytics(),
+      buildBlogAnalytics(),
     ]);
 
-    return res.status(200).json({ users, jobs, revenue, devices });
+    return res.status(200).json({ users, jobs, revenue, devices, applications, community, blogs });
   } catch (error) {
     console.error("Failed to build analytics overview:", error.message);
     return res.status(500).json({ message: "Failed to load analytics" });

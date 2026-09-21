@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Quote, Star, MessageSquareHeart } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { getActiveTestimonials, type PublicTestimonial } from '../../../api/testimonialApi';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
@@ -34,6 +35,7 @@ const accentFor = (name: string) =>
 const Testimonials = () => {
   const [testimonials, setTestimonials] = useState<PublicTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     getActiveTestimonials(9)
@@ -45,18 +47,24 @@ const Testimonials = () => {
   if (!loading && testimonials.length === 0) return null;
 
   return (
-    <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section className="bg-white py-10 sm:py-12 lg:py-14">
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-50px' }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.5, ease: 'easeOut' }}
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+      >
 
         {/* Section header */}
-        <div className="mb-10 text-center">
+        <div className="mb-6 sm:mb-8 text-center">
           <div className="mb-2 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
             <MessageSquareHeart size={14} /> Testimonials
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
             What People Are Saying
           </h2>
-          <p className="mx-auto mt-1.5 max-w-xl text-sm text-slate-500 sm:text-base">
+          <p className="mx-auto mt-1 max-w-xl text-sm text-slate-500 sm:text-base">
             Real feedback from job seekers and employers who found success on QuickJobs.
           </p>
         </div>
@@ -74,7 +82,7 @@ const Testimonials = () => {
               return (
                 <div
                   key={t._id}
-                  className="flex flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                  className="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs transition-all duration-200 ease-out hover:-translate-y-[2px] hover:border-orange-200 hover:shadow-md"
                 >
                   <Quote size={22} className={`mb-3 ${accent.text}`} />
 
@@ -122,7 +130,7 @@ const Testimonials = () => {
             })}
           </div>
         )}
-      </div>
+      </motion.div>
     </section>
   );
 };

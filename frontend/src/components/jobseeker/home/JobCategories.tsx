@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Layers, ArrowRight, SearchX } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
@@ -49,6 +50,7 @@ const accentFor = (name: string) => {
 
 const JobCategories = () => {
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,67 +78,74 @@ const JobCategories = () => {
   };
 
   return (
-    <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section className="bg-slate-50 py-10 sm:py-12 lg:py-14">
+      <motion.div
+        initial={prefersReducedMotion ? undefined : { opacity: 0, y: 20 }}
+        whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+      >
 
         {/* Section header */}
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-6 sm:mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
               <Layers size={14} /> Browse Categories
             </div>
             <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Explore Categories</h2>
-            <p className="mt-1.5 text-sm text-slate-500 sm:text-base">
+            <p className="mt-1 text-sm text-slate-500 sm:text-base">
               Find jobs in your preferred field and build your dream career.
             </p>
           </div>
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="flex shrink-0 items-center gap-1 text-sm font-semibold text-orange-500 hover:text-orange-600"
+            className="group flex shrink-0 items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors duration-200"
           >
-            View All Categories <ArrowRight size={15} />
+            <span>View All Categories</span>
+            <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
           </button>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-            {Array.from({ length: 8 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-28 animate-pulse rounded-2xl bg-white" />
             ))}
           </div>
         ) : error ? (
-          <div className="bg-white border border-red-100 rounded-[20px] p-12 text-center max-w-lg mx-auto shadow-sm">
-            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
-              <SearchX size={32} />
+          <div className="rounded-2xl border border-red-100 bg-red-50/50 p-6 sm:p-7 text-center max-w-lg mx-auto shadow-xs">
+            <div className="w-12 h-12 bg-red-100 text-red-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <SearchX size={24} />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Couldn't load categories</h3>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">{error}</p>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">Couldn't load categories</h3>
+            <p className="text-slate-500 text-xs sm:text-sm mb-4 leading-relaxed">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-slate-900 text-white font-medium text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Retry
             </button>
           </div>
         ) : categories.length === 0 ? (
-          <div className="bg-white border border-slate-200/80 rounded-[20px] p-12 text-center max-w-lg mx-auto shadow-sm">
-            <div className="w-16 h-16 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-orange-100">
-              <Layers size={32} />
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-7 text-center max-w-xl mx-auto shadow-xs">
+            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Layers size={24} />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">No categories yet</h3>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-              Categories marked as trending by our team will show up here. Browse all open jobs in the meantime.
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">No categories yet</h3>
+            <p className="text-slate-500 text-xs sm:text-sm mb-4 leading-relaxed max-w-md mx-auto">
+              Categories marked as trending will show up here. Browse all open jobs in the meantime.
             </p>
             <button
               onClick={() => navigate('/jobs')}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-slate-900 text-white font-medium text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              Browse All Jobs
+              Browse All Jobs <ArrowRight size={14} />
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+          <div className={categories.length <= 3 ? "flex flex-wrap gap-4 sm:gap-5" : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 sm:gap-5"}>
             {categories.map((category) => {
               const accent = accentFor(category.name);
               return (
@@ -144,14 +153,14 @@ const JobCategories = () => {
                   key={category._id}
                   type="button"
                   onClick={() => handleCategoryClick(category.name)}
-                  className="flex flex-col items-center gap-2.5 rounded-2xl border border-transparent bg-white p-4 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-md"
+                  className={`group flex flex-col items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-5 text-center shadow-xs transition-all duration-200 ease-out hover:-translate-y-[2px] hover:border-orange-200 hover:shadow-md active:scale-[0.98] ${categories.length <= 3 ? "w-full sm:w-auto sm:min-w-[200px] sm:max-w-[240px]" : ""}`}
                 >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${accent.bg}`}>
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${accent.bg} transition-transform duration-200 ease-out group-hover:-translate-y-1`}>
                     {category.icon ? (
                       <img
                         src={resolveMediaUrl(category.icon)}
                         alt=""
-                        className="h-6 w-6 object-contain"
+                        className="h-6 w-6 object-contain transition-transform duration-200 ease-out group-hover:scale-105"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
@@ -159,15 +168,15 @@ const JobCategories = () => {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">{category.name}</p>
-                    <p className="text-xs text-slate-400">{category.jobCount} job{category.jobCount === 1 ? '' : 's'}</p>
+                    <p className="truncate text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors">{category.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{category.jobCount} job{category.jobCount === 1 ? '' : 's'}</p>
                   </div>
                 </button>
               );
             })}
           </div>
         )}
-      </div>
+      </motion.div>
     </section>
   );
 };

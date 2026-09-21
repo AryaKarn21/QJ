@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 import { useQuery } from '@tanstack/react-query';
+import { motion, useReducedMotion } from 'framer-motion';
 import { MapPin, Briefcase, DollarSign, ArrowRight, Sparkles } from 'lucide-react';
 import { fetchJobRecommendations } from '../../../api/communityAiApi';
 import { useCurrentUser } from '../../../utils/currentUser';
@@ -25,6 +26,7 @@ const accentFor = (id: string) => LOGO_ACCENTS[[...id].reduce((a, c) => a + c.ch
  */
 const RecommendedJobs: React.FC = () => {
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
   const { isAuthenticated, role } = useCurrentUser();
   const enabled = isAuthenticated && role === 'jobseeker';
 
@@ -38,30 +40,37 @@ const RecommendedJobs: React.FC = () => {
   if (!isLoading && (isError || !data || data.length === 0)) return null;
 
   return (
-    <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section className="bg-slate-50 py-10 sm:py-12 lg:py-14">
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-50px' }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.5, ease: 'easeOut' }}
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+      >
 
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-6 sm:mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
               <Sparkles size={14} /> Just For You
             </div>
             <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Recommended Jobs</h2>
-            <p className="mt-1.5 text-sm text-slate-500 sm:text-base">
+            <p className="mt-1 text-sm text-slate-500 sm:text-base">
               Matched to the skills on your profile.
             </p>
           </div>
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="flex shrink-0 items-center gap-1 text-sm font-semibold text-orange-500 hover:text-orange-600"
+            className="group flex shrink-0 items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors"
           >
-            View All Jobs <ArrowRight size={15} />
+            <span>View All Jobs</span>
+            <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
           </button>
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((n) => (
               <div key={n} className="animate-pulse rounded-2xl border border-slate-100 bg-white p-5">
                 <div className="mb-4 flex items-center gap-3">
@@ -76,14 +85,14 @@ const RecommendedJobs: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {(data || []).slice(0, 8).map(({ job, reason }) => {
               const displayName = job.companyOverride?.name?.trim() || job.employer?.name?.trim();
               const displayLogo = job.companyOverride?.logo || job.employer?.companyLogo;
               return (
               <article
                 key={job._id}
-                className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg"
+                className="group flex flex-col justify-between h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 ease-out hover:-translate-y-[3px] hover:scale-[1.01] hover:border-orange-200 hover:shadow-lg hover:shadow-orange-500/5"
               >
                 <div>
                   <div className="mb-3 flex items-start justify-between gap-2">
@@ -100,7 +109,7 @@ const RecommendedJobs: React.FC = () => {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900">{job.title}</h3>
+                        <h3 className="truncate text-[15px] font-bold tracking-tight text-slate-900 group-hover:text-orange-600 transition-colors">{job.title}</h3>
                         <p className="truncate text-sm text-slate-500">{displayName || 'Company'}</p>
                       </div>
                     </div>
@@ -135,9 +144,9 @@ const RecommendedJobs: React.FC = () => {
                     type="button"
                     onClick={() => navigate(`/jobs/${job._id}`)}
                     aria-label={`View details for ${job.title}`}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-transform duration-200 group-hover:scale-105 hover:bg-orange-600 active:scale-95"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition-all duration-200 group-hover:scale-105 hover:bg-orange-600 active:scale-95 shadow-sm shadow-orange-500/20"
                   >
-                    <ArrowRight size={16} />
+                    <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
                 </div>
               </article>
@@ -145,7 +154,7 @@ const RecommendedJobs: React.FC = () => {
             })}
           </div>
         )}
-      </div>
+      </motion.div>
     </section>
   );
 };

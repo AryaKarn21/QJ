@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
-import { FileDown, Trash2, CheckCircle2, UserCircle } from 'lucide-react';
+import { FileDown, Trash2, CheckCircle2, UserCircle, Shield, ShieldCheck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAllUsers, deleteUser } from './adminApi/api';
 import { FilterBar } from '../ui/FilterBar';
@@ -11,16 +11,17 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { EmptyState } from '../ui/EmptyState';
 import { SkeletonRow } from '../ui/Skeleton';
 import { UserDrawer, type AdminUser } from './users/UserDrawer';
-import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { exportToCsv, USER_CSV_COLUMNS } from '../../utils/csvExport';
 
 const PAGE_SIZE = 15;
 
-type TabKey = 'employer' | 'jobseeker';
+type TabKey = 'all' | 'jobseeker' | 'employer' | 'admin';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'employer',  label: 'Employers'   },
-  { key: 'jobseeker', label: 'Job Seekers' },
+  { key: 'all',       label: 'All Users'     },
+  { key: 'jobseeker', label: 'Job Seekers'   },
+  { key: 'employer',  label: 'Job Providers' },
+  { key: 'admin',     label: 'Admins'        },
 ];
 
 const FILTER_CONFIGS = [
@@ -55,8 +56,12 @@ const UserAvatar: React.FC<{ user: AdminUser; size?: 'sm' | 'md' }> = ({ user, s
 const UserManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roleParam = searchParams.get('role') as TabKey | null;
 
-  const [activeTab,       setActiveTab]       = useState<TabKey>('employer');
+  const [activeTab,       setActiveTab]       = useState<TabKey>(
+    roleParam && ['all', 'jobseeker', 'employer', 'admin'].includes(roleParam) ? roleParam : 'all'
+  );
   const [search,          setSearch]          = useState('');
   const [filters,         setFilters]         = useState<Record<string, string>>({ verifiedFilter: 'all' });
   const [page,            setPage]            = useState(1);
@@ -64,6 +69,12 @@ const UserManagement: React.FC = () => {
   const [drawerUser,      setDrawerUser]      = useState<AdminUser | null>(null);
   const [drawerOpen,      setDrawerOpen]      = useState(false);
   const [confirmBulkDel,  setConfirmBulkDel]  = useState(false);
+
+  useEffect(() => {
+    if (roleParam && ['all', 'jobseeker', 'employer', 'admin'].includes(roleParam)) {
+      setActiveTab(roleParam);
+    }
+  }, [roleParam]);
 
   useEffect(() => { setPage(1); setSelectedIds([]); }, [activeTab, search, filters]);
 
@@ -99,7 +110,13 @@ const UserManagement: React.FC = () => {
 
   const filtered = useMemo(() => {
     return allUsers.filter((u) => {
-      if (u.role !== activeTab) return false;
+      if (activeTab !== 'all') {
+        if (activeTab === 'admin') {
+          if (!['admin', 'superadmin'].includes(u.role)) return false;
+        } else if (u.role !== activeTab) {
+          return false;
+        }
+      }
 
       if (search) {
         const q = search.toLowerCase();
@@ -263,6 +280,14 @@ const UserManagement: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   User
                 </th>
+                {activeTab === 'all' && (
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Role
+                  </th>
+                )}
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Status
+                </th>
                 {activeTab === 'employer' && (
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Verification
@@ -284,7 +309,7 @@ const UserManagement: React.FC = () => {
 
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {isLoading && Array.from({ length: 8 }).map((_, i) => (
-                <SkeletonRow key={i} columns={activeTab === 'employer' ? 5 : 5} />
+                <SkeletonRow key={i} columns={activeTab === 'all' ? 6 : 5} />
               ))}
 
               {!isLoading && paginated.map((user) => (
@@ -317,6 +342,24 @@ const UserManagement: React.FC = () => {
                         </p>
                       </div>
                     </div>
+                  </td>
+
+                  {activeTab === 'all' && (
+                    <td className="px-4 py-3">
+                      <StatusBadge label={user.role} tone="neutral" />
+                    </td>
+                  )}
+
+                  <td className="px-4 py-3">
+                    <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
+                      (user.status || 'active') === 'active'
+                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                        : (user.status || 'active') === 'suspended'
+                        ? 'bg-red-500/10 text-red-600 border border-red-500/20'
+                        : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                    }`}>
+                      {user.status || 'active'}
+                    </span>
                   </td>
 
                   {activeTab === 'employer' && (

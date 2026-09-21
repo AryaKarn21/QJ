@@ -4,7 +4,8 @@ import { Trash2, Mail, Calendar, Briefcase, FileText } from 'lucide-react';
 import { Drawer } from '../../ui/Drawer';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { deleteUser } from '../adminApi/api';
+import { deleteUser, updateUserStatus } from '../adminApi/api';
+import { toast } from 'react-toastify';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 export interface AdminUser {
@@ -12,6 +13,8 @@ export interface AdminUser {
   name: string;
   email: string;
   role: 'jobseeker' | 'employer' | 'admin' | 'superadmin';
+  status?: 'active' | 'deactivated' | 'suspended';
+  suspensionReason?: string;
   isVerified?: boolean;
   createdAt: string;
   profilePic?: string;
@@ -163,6 +166,86 @@ export const UserDrawer: React.FC<UserDrawerProps> = ({
             </div>
           )}
 
+          {/* User Account Status Controls */}
+          <div className="space-y-2 rounded-xl border border-slate-200 p-3.5 text-xs dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Account Status:</span>
+              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
+                (user.status || 'active') === 'active'
+                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                  : (user.status || 'active') === 'suspended'
+                  ? 'bg-red-500/10 text-red-600 border border-red-500/20'
+                  : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+              }`}>
+                {user.status || 'active'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await updateUserStatus(user._id, 'active');
+                    onUserUpdated({ ...user, status: 'active' });
+                    toast.success('Account set to Active');
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || 'Failed to update status');
+                  }
+                }}
+                className={`flex-1 rounded-lg py-1.5 font-medium transition-all ${
+                  (user.status || 'active') === 'active'
+                    ? 'bg-emerald-500 text-white shadow-xs'
+                    : 'border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                }`}
+              >
+                Activate
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await updateUserStatus(user._id, 'deactivated');
+                    onUserUpdated({ ...user, status: 'deactivated' });
+                    toast.success('Account deactivated');
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || 'Failed to update status');
+                  }
+                }}
+                className={`flex-1 rounded-lg py-1.5 font-medium transition-all ${
+                  user.status === 'deactivated'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                }`}
+              >
+                Deactivate
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const reason = window.prompt('Enter reason for suspension (optional):') || undefined;
+                  try {
+                    await updateUserStatus(user._id, 'suspended', reason);
+                    onUserUpdated({ ...user, status: 'suspended', suspensionReason: reason });
+                    toast.success('Account suspended');
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || 'Failed to update status');
+                  }
+                }}
+                className={`flex-1 rounded-lg py-1.5 font-medium transition-all ${
+                  user.status === 'suspended'
+                    ? 'bg-red-500 text-white shadow-xs'
+                    : 'border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300'
+                }`}
+              >
+                Suspend
+              </button>
+            </div>
+            {user.suspensionReason && (
+              <p className="mt-1 text-[11px] text-red-500">Reason: {user.suspensionReason}</p>
+            )}
+          </div>
+
           {/* Actions */}
           {user.role === 'employer' && !user.isVerified && (
             <button
@@ -177,7 +260,7 @@ export const UserDrawer: React.FC<UserDrawerProps> = ({
               onClick={() => setConfirmDelete(true)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
             >
-              <Trash2 size={14} /> Delete
+              <Trash2 size={14} /> Delete User
             </button>
           </div>
         </div>

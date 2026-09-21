@@ -156,6 +156,7 @@ app.use("/api/community/ai", require("./routes/communityAiRoutes"));
 app.use("/api/insights", require("./routes/insightRoutes"));
 app.use("/api/subscriptions", require("./routes/subscriptionRoutes"));
 app.use("/api/chatbot", require("./routes/chatbotRoutes"));
+app.use("/api/reports", require("./routes/reportRoutes"));
 
 // Company employee management — nested under /api/companies/:companyId/employees
 app.use("/api/companies/:companyId/employees", require("./routes/companyMemberRoutes"));

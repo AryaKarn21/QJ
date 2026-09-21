@@ -23,6 +23,171 @@ import {
 // reorganization into steps, not a new set of fields or a new API.
 const STEPS = ["Job Details", "Requirements", "Company", "Compensation", "Preview", "Publish"];
 
+export const POPULAR_JOB_TITLES_BY_GROUP = [
+  {
+    group: "Technology & Software Development",
+    titles: [
+      "Software Engineer",
+      "Frontend Developer",
+      "Backend Developer",
+      "Full Stack Developer",
+      "Mobile App Developer (iOS / Android)",
+      "DevOps Engineer",
+      "Cloud Architect / Engineer",
+      "QA / Test Automation Engineer",
+      "Systems Engineer",
+      "Embedded Systems Engineer",
+      "Site Reliability Engineer (SRE)",
+      "Firmware Engineer",
+    ],
+  },
+  {
+    group: "Data & Artificial Intelligence",
+    titles: [
+      "Data Scientist",
+      "Data Analyst",
+      "Data Engineer",
+      "AI / Machine Learning Engineer",
+      "Business Intelligence (BI) Analyst",
+      "Database Administrator",
+      "Computer Vision Engineer",
+      "NLP Engineer",
+    ],
+  },
+  {
+    group: "Design & Creative",
+    titles: [
+      "UI/UX Designer",
+      "Product Designer",
+      "Graphic Designer",
+      "Web Designer",
+      "Motion Designer / Video Editor",
+      "3D Artist / Animator",
+      "Creative Director",
+    ],
+  },
+  {
+    group: "Product & Project Management",
+    titles: [
+      "Product Manager",
+      "Technical Product Manager",
+      "Project Manager",
+      "Scrum Master / Agile Coach",
+      "Program Manager",
+    ],
+  },
+  {
+    group: "IT, Security & Infrastructure",
+    titles: [
+      "IT Support Specialist",
+      "System Administrator",
+      "Network Engineer",
+      "Cybersecurity Analyst / Specialist",
+      "Information Security Officer",
+      "Solutions Architect",
+    ],
+  },
+  {
+    group: "Marketing & Communications",
+    titles: [
+      "Digital Marketing Specialist",
+      "Marketing Manager",
+      "SEO / SEM Specialist",
+      "Content Writer / Copywriter",
+      "Social Media Manager",
+      "Growth Marketer",
+      "Brand Manager",
+      "Public Relations (PR) Specialist",
+    ],
+  },
+  {
+    group: "Sales & Business Development",
+    titles: [
+      "Sales Executive / Representative",
+      "Business Development Manager",
+      "Account Manager / Executive",
+      "Inside Sales Specialist",
+      "Sales Operations Specialist",
+    ],
+  },
+  {
+    group: "Human Resources & Recruitment",
+    titles: [
+      "Human Resources (HR) Manager",
+      "HR Generalist",
+      "Talent Acquisition Specialist / Recruiter",
+      "HR Coordinator",
+      "People Operations Manager",
+    ],
+  },
+  {
+    group: "Finance, Accounting & Legal",
+    titles: [
+      "Accountant",
+      "Senior Accountant",
+      "Financial Analyst",
+      "Finance Manager",
+      "Auditor",
+      "Legal Counsel / Officer",
+      "Compliance Specialist",
+    ],
+  },
+  {
+    group: "Operations & Administration",
+    titles: [
+      "Operations Manager",
+      "Business Analyst",
+      "Administrative Assistant",
+      "Office Administrator / Manager",
+      "Supply Chain / Logistics Coordinator",
+      "Executive Assistant",
+    ],
+  },
+  {
+    group: "Customer Service & Support",
+    titles: [
+      "Customer Support Representative",
+      "Customer Success Manager",
+      "Technical Support Specialist",
+      "Call Center Representative",
+    ],
+  },
+  {
+    group: "Engineering (Non-IT)",
+    titles: [
+      "Civil Engineer",
+      "Mechanical Engineer",
+      "Electrical Engineer",
+      "Electronics Engineer",
+      "Biomedical Engineer",
+    ],
+  },
+];
+
+export const ALL_STANDARD_JOB_TITLES: string[] = POPULAR_JOB_TITLES_BY_GROUP.flatMap((g) => g.titles);
+
+export const POPULAR_DEPARTMENTS: string[] = [
+  "Engineering & Technology",
+  "Product Management",
+  "Design & User Experience (UX)",
+  "Data & Analytics",
+  "Information Technology (IT)",
+  "Marketing & Communications",
+  "Sales & Business Development",
+  "Customer Support & Success",
+  "Human Resources & Talent",
+  "Finance & Accounting",
+  "Operations & Logistics",
+  "Quality Assurance (QA)",
+  "Research & Development (R&D)",
+  "Legal & Compliance",
+  "Administration & Facilities",
+  "Creative & Content",
+  "Healthcare & Medical",
+  "Education & Training",
+];
+
+
 const EMPTY_FORM = {
   title: "",
   country: "",
@@ -83,6 +248,8 @@ const PostJob = () => {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [sourceStatus, setSourceStatus] = useState<string | undefined>(undefined);
+  const [isOtherTitle, setIsOtherTitle] = useState(false);
+  const [isOtherDepartment, setIsOtherDepartment] = useState(false);
 
   const { data: jobData, isLoading: isFetching } = useQuery({
     queryKey: ["job", jobId || duplicateFrom],
@@ -146,6 +313,21 @@ const PostJob = () => {
     // currency choice — never let the country-default effect above
     // silently swap it out from under the employer.
     if (jobData.currency) setCurrencyTouched(true);
+
+    if (jobData.title) {
+      const isKnownTitle = ALL_STANDARD_JOB_TITLES.includes(jobData.title);
+      setIsOtherTitle(!isKnownTitle);
+    } else {
+      setIsOtherTitle(false);
+    }
+
+    if (jobData.department) {
+      const isKnownDept = POPULAR_DEPARTMENTS.includes(jobData.department);
+      setIsOtherDepartment(!isKnownDept);
+    } else {
+      setIsOtherDepartment(false);
+    }
+
     setFormData((prev) => ({
       ...prev,
       ...jobData,
@@ -245,6 +427,28 @@ const PostJob = () => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     setFormData((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const handleTitleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "Other") {
+      setIsOtherTitle(true);
+      setFormData((prev) => ({ ...prev, title: "" }));
+    } else {
+      setIsOtherTitle(false);
+      setFormData((prev) => ({ ...prev, title: val }));
+    }
+  };
+
+  const handleDepartmentSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "Other") {
+      setIsOtherDepartment(true);
+      setFormData((prev) => ({ ...prev, department: "" }));
+    } else {
+      setIsOtherDepartment(false);
+      setFormData((prev) => ({ ...prev, department: val }));
+    }
   };
 
   const REQUIRED_FOR_PUBLISH: { field: keyof typeof EMPTY_FORM; label: string; step: number }[] = [
@@ -361,11 +565,85 @@ const PostJob = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className={labelCls}>Job Title *</label>
-                <input name="title" placeholder="e.g. Software Engineer" value={formData.title} onChange={handleChange} className={inputCls} />
+                <select
+                  name="titleSelect"
+                  value={isOtherTitle ? "Other" : (formData.title || "")}
+                  onChange={handleTitleSelectChange}
+                  className={inputCls}
+                >
+                  <option value="">Select Job Title</option>
+                  {formData.title && !isOtherTitle && !ALL_STANDARD_JOB_TITLES.includes(formData.title) && (
+                    <option value={formData.title}>{formData.title}</option>
+                  )}
+                  {POPULAR_JOB_TITLES_BY_GROUP.map((g) => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.titles.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  <option value="Other">Other (Please specify)</option>
+                </select>
+
+                {isOtherTitle && (
+                  <div className="mt-2.5">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Specify Job Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      placeholder="e.g. Prompt Engineer, Sound Designer, etc."
+                      value={formData.title}
+                      onChange={handleChange}
+                      className={inputCls}
+                      autoFocus
+                      required
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Enter your custom job title if not listed in the options above.
+                    </p>
+                  </div>
+                )}
               </div>
+
               <div>
                 <label className={labelCls}>Department (Optional)</label>
-                <input name="department" placeholder="e.g. Engineering" value={formData.department} onChange={handleChange} className={inputCls} />
+                <select
+                  name="departmentSelect"
+                  value={isOtherDepartment ? "Other" : (formData.department || "")}
+                  onChange={handleDepartmentSelectChange}
+                  className={inputCls}
+                >
+                  <option value="">Select Department (Optional)</option>
+                  {formData.department && !isOtherDepartment && !POPULAR_DEPARTMENTS.includes(formData.department) && (
+                    <option value={formData.department}>{formData.department}</option>
+                  )}
+                  {POPULAR_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                  <option value="Other">Other (Please specify)</option>
+                </select>
+
+                {isOtherDepartment && (
+                  <div className="mt-2.5">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Specify Department
+                    </label>
+                    <input
+                      type="text"
+                      name="department"
+                      placeholder="e.g. Robotics, AI Research, etc."
+                      value={formData.department}
+                      onChange={handleChange}
+                      className={inputCls}
+                      autoFocus
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Enter your custom department name if not listed in the options above.
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className={labelCls}>Job Category *</label>

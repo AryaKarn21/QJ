@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable, DataTableColumn } from '../../ui/DataTable';
 import { StatusBadge, statusToTone } from '../../ui/StatusBadge';
 import { Drawer } from '../../ui/Drawer';
 import { KpiCard } from '../../ui/KpiCard';
 import { FilterBar } from '../../ui/FilterBar';
+import { BulkActionsBar } from '../../ui/BulkActionsBar';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import {
   fetchJobs,
@@ -14,6 +16,7 @@ import {
   createAdminJob,
   updateJob,
   updateJobStatus,
+  bulkJobAction,
   getJobCategories,
   Job,
   JobCategory,
@@ -120,6 +123,10 @@ const INITIAL_JOB_FORM: JobFormData = {
 };
 
 const JobManagement: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status');
+  const urlAction = searchParams.get('action');
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [page, setPage] = useState(1);
@@ -134,12 +141,59 @@ const JobManagement: React.FC = () => {
   const [confirmDeleteJob, setConfirmDeleteJob] = useState<Job | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [togglingTrending, setTogglingTrending] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   // Edit / Create modal state
   const [formDrawerOpen, setFormDrawerOpen] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [jobForm, setJobForm] = useState<JobFormData>(INITIAL_JOB_FORM);
   const [savingJob, setSavingJob] = useState(false);
+
+  useEffect(() => {
+    if (urlStatus) {
+      const lower = urlStatus.toLowerCase();
+      const mapped = lower === 'active' ? 'Active'
+        : lower === 'pending' ? 'Pending'
+        : lower === 'expired' || lower === 'closed' ? 'Closed'
+        : urlStatus;
+      setFilters((prev) => ({ ...prev, status: mapped }));
+    }
+    if (urlAction === 'create') {
+      setIsCreatingJob(true);
+      setJobForm(INITIAL_JOB_FORM);
+      setFormDrawerOpen(true);
+    }
+  }, [urlStatus, urlAction]);
+
+  const handleToggleRow = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleToggleAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedKeys(new Set(jobs.map((j) => j._id)));
+    } else {
+      setSelectedKeys(new Set());
+    }
+  };
+
+  const handleBulkAction = async (action: string) => {
+    const ids = Array.from(selectedKeys);
+    if (!ids.length) return;
+    try {
+      await bulkJobAction(action, ids);
+      toast.success(`Bulk ${action} executed for ${ids.length} job(s)`);
+      setSelectedKeys(new Set());
+      load(page);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || `Failed to execute bulk ${action}`);
+    }
+  };
 
   useEffect(() => {
     getJobCategories()
@@ -455,6 +509,41 @@ const JobManagement: React.FC = () => {
         resultLabel="job"
       />
 
+      {selectedKeys.size > 0 && (
+        <BulkActionsBar
+          selectedIds={Array.from(selectedKeys)}
+          onClearSelection={() => setSelectedKeys(new Set())}
+          entityLabel="job"
+          actions={[
+            {
+              label: 'Approve',
+              icon: <CheckCircle2 size={13} />,
+              onClick: () => handleBulkAction('approve'),
+            },
+            {
+              label: 'Reject',
+              icon: <XCircle size={13} />,
+              onClick: () => handleBulkAction('reject'),
+            },
+            {
+              label: 'Feature',
+              icon: <Star size={13} />,
+              onClick: () => handleBulkAction('feature'),
+            },
+            {
+              label: 'Delete',
+              variant: 'danger',
+              icon: <Trash2 size={13} />,
+              onClick: () => {
+                if (window.confirm(`Permanently delete ${selectedKeys.size} selected job(s)?`)) {
+                  handleBulkAction('delete');
+                }
+              },
+            },
+          ]}
+        />
+      )}
+
       <DataTable
         columns={columns}
         data={jobs}
@@ -464,6 +553,10 @@ const JobManagement: React.FC = () => {
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}
+        selectable={true}
+        selectedKeys={selectedKeys}
+        onToggleRow={handleToggleRow}
+        onToggleAll={handleToggleAll}
         emptyTitle="No jobs found"
         emptyDescription="Try a different search or status filter."
       />

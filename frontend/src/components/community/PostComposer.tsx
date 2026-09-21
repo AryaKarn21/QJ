@@ -130,6 +130,11 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
     setPreviews(chosen.map((f) => URL.createObjectURL(f)));
   };
 
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleGenerateCaption = async () => {
     if (!captionTopic.trim()) return;
     setGeneratingCaption(true);
@@ -328,7 +333,17 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
           {type === 'image' && previews.length > 0 && (
             <div className="mt-2 grid grid-cols-3 gap-2">
               {previews.map((src, i) => (
-                <img key={i} src={src} className="h-20 w-full rounded-lg object-cover" />
+                <div key={i} className="relative rounded-lg overflow-hidden border border-gray-200">
+                  <img src={src} alt="Preview" className="h-20 w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeFile(i)}
+                    className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80 transition-colors"
+                    title="Remove image"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               ))}
             </div>
           )}

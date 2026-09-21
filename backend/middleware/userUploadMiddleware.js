@@ -16,7 +16,11 @@ const fileFilter = (req, file, cb) => {
   // webp added alongside the pre-existing types — safeUploadExtension.js
   // already recognized image/webp, this filter just hadn't caught up.
   const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-  const allowedResumeTypes = ['application/pdf'];
+  const allowedResumeTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
 
   if (file.fieldname === 'profilePic' || file.fieldname === 'companyLogo' || file.fieldname === 'coverPhoto') {
     if (allowedImageTypes.includes(file.mimetype)) {
@@ -28,7 +32,7 @@ const fileFilter = (req, file, cb) => {
     if (allowedResumeTypes.includes(file.mimetype)) {
       cb(null, true); // Accept the file
     } else {
-      cb(new Error('Invalid resume type. Only PDF is allowed.'), false);
+      cb(new Error('Invalid resume type. Only PDF, DOC, or DOCX documents are allowed.'), false);
     }
   } else {
     // This case should not happen with the .fields setup, but as a fallback
@@ -41,12 +45,12 @@ const fileFilter = (req, file, cb) => {
 const userUpload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit for any file
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for resumes and media
 }).fields([
   { name: 'profilePic', maxCount: 1 },
   { name: 'resume', maxCount: 1 },
   { name: 'companyLogo', maxCount: 1 },
-   { name: 'coverPhoto', maxCount: 1 }
+  { name: 'coverPhoto', maxCount: 1 }
 ]);
 
 module.exports = userUpload;

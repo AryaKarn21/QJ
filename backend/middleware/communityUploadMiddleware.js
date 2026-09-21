@@ -1,37 +1,10 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const { v4: uuidv4 } = require("uuid");
-const { safeExtensionFor } = require("./safeUploadExtension");
 
-// Community post media: images, videos, and PDFs (matches the "text,
-// image, video, PDF, job, poll, hiring" post types in the spec). Mirrors
-// middleware/userUploadMiddleware.js's disk-storage/uuid pattern, in its
-// own file (rather than extending that one) because post media has very
-// different size limits than a 2MB profile picture/resume.
-const uploadRoot = path.join(__dirname, "../uploads/community");
-["images", "videos", "documents"].forEach((sub) => {
-  const dir = path.join(uploadRoot, sub);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = "images";
-    if (file.mimetype.startsWith("video/")) folder = "videos";
-    else if (file.mimetype === "application/pdf") folder = "documents";
-    cb(null, path.join(uploadRoot, folder));
-  },
-  filename: (req, file, cb) => {
-    // Extension is derived from the validated mimetype, never from the
-    // client-supplied original filename — see safeUploadExtension.js.
-    const ext = safeExtensionFor(file.mimetype);
-    if (!ext) {
-      return cb(new Error("Unsupported file type."));
-    }
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
+// In-memory storage — postController hands each buffer to
+// services/media.service.js (persistUpload), matching messageUploadMiddleware
+// and applicationUploadMiddleware. Never relies on local disk in production,
+// so media persists reliably to Cloudinary CDN across restarts.
+const storage = multer.memoryStorage();
 
 const allowedTypes = [
   "image/jpeg",
@@ -53,18 +26,18 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// 50MB ceiling covers short video clips; images/PDFs will always be far
-// smaller in practice. Enforced per-file by multer regardless of type.
+// 50MB ceiling covers short video clips; images/PDFs are smaller.
 const communityUpload = multer({
   storage,
   fileFilter,
   limits: { fileSize: 50 * 1024 * 1024, files: 6 },
 }).array("media", 6);
 
-// Wraps multer's callback-style error handling into the same
-// {message: "..."} JSON shape the rest of the API already returns, so the
-// frontend doesn't need special-case handling for upload errors.
+// Handles multipart requests when media is present. Passes through non-multipart
+// JSON requests (e.g. text-only post updates) directly to next().
 function handleCommunityUpload(req, res, next) {
+  if (!req.is("multipart/form-data")) return next();
+
   communityUpload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       return res.status(400).json({ message: `Upload error: ${err.message}` });

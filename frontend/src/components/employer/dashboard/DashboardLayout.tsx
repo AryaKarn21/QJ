@@ -100,6 +100,19 @@ const DashboardLayout = () => {
 
   const notifRef   = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Global Ctrl+K / Cmd+K listener to focus search input
+  useEffect(() => {
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onGlobalKeyDown);
+    return () => window.removeEventListener('keydown', onGlobalKeyDown);
+  }, []);
 
   // Close either dropdown when clicking outside of it.
   useEffect(() => {
@@ -171,10 +184,20 @@ const DashboardLayout = () => {
           className={`employer-sidebar${sidebarOpen ? ' open' : ''}`}
         >
           {/* Logo */}
-          <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          <div
+            style={{
+              height: 72,
+              padding: '0 20px',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              boxSizing: 'border-box',
+            }}
             onClick={() => navigate('/')}
           >
-            <img src={logo} alt="Quick Jobs" style={{ height: 46, width: 'auto', objectFit: 'contain' }} />
+            <img src={logo} alt="Quick Jobs" style={{ height: 42, width: 'auto', objectFit: 'contain' }} />
             <button
               style={{ display: 'none' }}
               className="sidebar-close-mobile"
@@ -281,46 +304,69 @@ const DashboardLayout = () => {
         </aside>
 
         {/* ══ NAVBAR ════════════════════════════════════════════════ */}
-        <header style={{
-          position: 'fixed', top: 0, left: 256, right: 0, height: 72,
-          background: '#fff', borderBottom: '1px solid #E5E7EB',
-          display: 'flex', alignItems: 'center', gap: 12, padding: '0 28px',
-          zIndex: 90,
-        }} className="employer-navbar">
+        <header
+          style={{
+            position: 'fixed', top: 0, left: 256, right: 0, height: 72,
+            background: '#fff', borderBottom: '1px solid #E5E7EB',
+            display: 'flex', alignItems: 'center', flexWrap: 'nowrap',
+            gap: 10, padding: '0 24px',
+            zIndex: 90, boxSizing: 'border-box',
+          }}
+          className="employer-navbar"
+        >
 
           {/* Mobile menu btn */}
           <button
             className="mobile-menu-btn-employer"
             aria-label="Open menu"
-            style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
+            style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
             onClick={() => setSidebarOpen(true)}
           >
             <Menu size={20} />
           </button>
 
           {/* Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', borderRadius: 10, padding: '0 14px', height: 40, maxWidth: 380, width: '100%', transition: 'all .15s' }}
+          <div
+            className="employer-navbar-search"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: BRAND.pageBg, border: '1px solid #E5E7EB',
+              borderRadius: 10, padding: '0 12px', height: 40,
+              maxWidth: 380, flex: '1 1 auto', minWidth: 140,
+              transition: 'all .15s', flexShrink: 1,
+            }}
             onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = BRAND.primary}
             onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'}
           >
             <Search size={15} color="#64748B" style={{ flexShrink: 0 }} />
-            <input type="text" placeholder="Search jobs, candidates, applications…" style={{ border: 'none', background: 'none', outline: 'none', fontSize: 13.5, color: '#111827', width: '100%', fontFamily: 'inherit' }} />
-            <kbd style={{ fontSize: 10.5, color: '#64748B', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit' }}>⌘ K</kbd>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search jobs, candidates, applications…"
+              style={{ border: 'none', background: 'none', outline: 'none', fontSize: 13.5, color: '#111827', width: '100%', minWidth: 0, fontFamily: 'inherit' }}
+            />
+            <kbd style={{ fontSize: 10.5, color: '#64748B', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit' }}>
+              {typeof window !== 'undefined' && navigator.platform?.toUpperCase().includes('MAC') ? '⌘ K' : 'Ctrl + K'}
+            </kbd>
           </div>
 
-          {/* People/company search (LinkedIn-style) — separate from the
-              job/candidate search above; this dashboard has its own
-              navbar (not the main site Header where that search lives),
-              so it never appeared here at all. */}
-          <Link to="/community/search" aria-label="Search people, companies, skills" title="Search people, companies, skills"
-            style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}>
+          {/* People/company search (LinkedIn-style) */}
+          <Link
+            to="/community/search"
+            aria-label="Search people, companies, skills"
+            title="Search people, companies, skills"
+            style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BRAND.pageBg, border: '1px solid #E5E7EB', color: '#64748B', cursor: 'pointer', flexShrink: 0, transition: 'all .15s', textDecoration: 'none' }}
+          >
             <Users2 size={17} />
           </Link>
 
-          <div style={{ flex: 1 }} />
+          <div style={{ flex: 1, minWidth: 0 }} />
 
           {/* Date */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 36, border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 12.5, color: '#64748B', background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <div
+            className="employer-header-date"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 38, border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 12.5, color: '#64748B', background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+          >
             <Calendar size={13} />
             <span>{today}</span>
           </div>
@@ -387,19 +433,21 @@ const DashboardLayout = () => {
           </Link>
 
           {/* Export */}
-          <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: BRAND.gradient, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: `0 2px 8px ${BRAND.primaryShadow}`, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all .15s' }}
+          <button
+            className="employer-header-export-btn"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', height: 38, background: BRAND.gradient, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: `0 2px 8px ${BRAND.primaryShadow}`, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all .15s' }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'none'}
           >
-            <Download size={13} />
-            Export
+            <Download size={14} />
+            <span className="export-label">Export</span>
           </button>
 
           {/* Avatar */}
           <div ref={profileRef} style={{ position: 'relative', flexShrink: 0 }}>
             <div
               onClick={() => { setProfileOpen(o => !o); setNotifOpen(false); }}
-              style={{ width: 36, height: 36, borderRadius: '50%', background: `linear-gradient(135deg,#FDBA74,${BRAND.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', cursor: 'pointer' }}
+              style={{ width: 38, height: 38, borderRadius: '50%', background: `linear-gradient(135deg,#FDBA74,${BRAND.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', cursor: 'pointer', flexShrink: 0 }}
             >
               EM
             </div>
@@ -487,19 +535,41 @@ const DashboardLayout = () => {
       )}
 
       <style>{`
+        .employer-navbar {
+          flex-wrap: nowrap !important;
+        }
+        @media (max-width: 1024px) {
+          .employer-header-date {
+            display: none !important;
+          }
+        }
         @media (max-width: 768px) {
           .employer-sidebar { transform: translateX(-256px) !important; padding-bottom: env(safe-area-inset-bottom); }
           .employer-sidebar.open { transform: translateX(0) !important; }
           .sidebar-close-mobile { display: flex !important; width: 32px; height: 32px; align-items: center; justify-content: center; }
           .employer-navbar {
             left: 0 !important;
-            padding: 0 calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left)) !important;
+            padding: 0 calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left)) !important;
+            gap: 8px !important;
           }
           .mobile-menu-btn-employer { display: flex !important; }
           .employer-main { margin-left: 0 !important; }
         }
-        @media (max-width: 480px) {
-          .employer-navbar kbd { display: none; }
+        @media (max-width: 600px) {
+          .employer-header-export-btn .export-label {
+            display: none !important;
+          }
+          .employer-header-export-btn {
+            padding: 0 10px !important;
+          }
+          .employer-navbar-search kbd {
+            display: none !important;
+          }
+        }
+        @media (max-width: 440px) {
+          .employer-navbar-search {
+            min-width: 110px !important;
+          }
         }
       `}</style>
     </>

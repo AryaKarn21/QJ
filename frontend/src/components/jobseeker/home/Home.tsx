@@ -22,14 +22,12 @@ export const HomePageJobSeeker = () => (
     <main className="flex-grow">
       <Hero />
       <TrustStatsBar />
-      <Stats />
       <TrendingJobs />
       {/* Renders nothing for anonymous visitors/employers, or a jobseeker
           with no skill-matched jobs yet. */}
       <RecommendedJobs />
       {/* Job Categories (job listings) and Blog Categories (articles) are
-          separate systems/APIs — this is intentionally a second, distinct
-          category section, not a duplicate of the one above it. */}
+          separate systems/APIs */}
       <JobCategories />
       {/* Renders nothing if no category currently has any active jobs. */}
       <ExploreByField />
@@ -38,6 +36,8 @@ export const HomePageJobSeeker = () => (
       {/* Renders nothing if no admin has published a homepage ad. */}
       <AdBanner placement="homepage" />
       <RecentJobs />
+      {/* Feature showcase */}
+      <Stats />
       {/* Renders nothing if no admin has published a testimonial. */}
       <Testimonials />
       <CommunityPostsPreview variant="jobseeker" limit={3} />

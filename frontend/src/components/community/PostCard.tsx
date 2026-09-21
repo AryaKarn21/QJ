@@ -17,6 +17,8 @@ import {
   Hash,
   Settings,
   AtSign,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { toggleLikePost, toggleBookmarkPost, deletePost, updatePost } from '../../api/communityApi';
 import { summarizePost } from '../../api/communityAiApi';
@@ -394,27 +396,51 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
             <div className="space-y-1">
               <span className="text-xs font-medium text-gray-500">Attached Media</span>
               <div className="grid grid-cols-2 gap-2">
-                {editMedia.map((m, i) => (
-                  <div key={i} className="relative overflow-hidden rounded-lg border border-gray-200">
-                    {m.mimeType?.startsWith('video/') ? (
-                      <video src={resolveMediaUrl(m.url)} className="h-24 w-full bg-black object-cover" />
-                    ) : m.mimeType === 'application/pdf' ? (
-                      <div className="flex h-24 items-center justify-center bg-gray-100 text-xs text-gray-600">
-                        <FileText size={18} className="mr-1 text-primary" /> {m.fileName || 'PDF'}
-                      </div>
-                    ) : (
-                      <img src={resolveMediaUrl(m.url)} alt="" className="h-24 w-full object-cover" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeEditMedia(i)}
-                      className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                      title="Remove media"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
+                {editMedia.map((m, i) => {
+                  const resolved = resolveMediaUrl(m.url);
+                  return (
+                    <div key={i} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                      {m.mimeType?.startsWith('video/') ? (
+                        <video src={resolved} className="h-24 w-full bg-black object-cover" />
+                      ) : m.mimeType === 'application/pdf' ? (
+                        <div className="flex h-24 items-center justify-center bg-gray-100 p-2 text-xs text-gray-600">
+                          <FileText size={18} className="mr-1 text-primary shrink-0" />
+                          <span className="truncate">{m.fileName || 'PDF Document'}</span>
+                        </div>
+                      ) : resolved ? (
+                        <>
+                          <img
+                            src={resolved}
+                            alt=""
+                            className="h-24 w-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                              const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fb) fb.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden h-24 w-full items-center justify-center bg-gray-100 p-2 text-xs text-gray-500">
+                            <ImageIcon size={16} className="mr-1 text-gray-400" />
+                            <span className="truncate">{m.fileName || 'Image Attachment'}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex h-24 w-full items-center justify-center bg-gray-100 p-2 text-xs text-gray-500">
+                          <ImageIcon size={16} className="mr-1 text-gray-400" />
+                          <span className="truncate">{m.fileName || 'Image Attachment'}</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeEditMedia(i)}
+                        className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80 transition-colors"
+                        title="Remove media"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -483,15 +509,27 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
       {/* Media — all anchor tags kept on ONE line to prevent tag-name drop */}
       {!editing && media?.length > 0 && (
         <div className={`mt-3 grid gap-1 overflow-hidden rounded-lg ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          {media.map((m, i) =>
-            m.mimeType?.startsWith('video/') ? (
-              <video key={i} src={resolveMediaUrl(m.url)} controls className="max-h-96 w-full bg-black object-contain" />
-            ) : m.mimeType === 'application/pdf' ? (
-              <a key={i} href={resolveMediaUrl(m.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-gray-200 bg-secondary p-3 text-sm text-dark hover:bg-gray-200"><FileText size={18} className="text-primary" />{m.fileName || 'View PDF'}<ExternalLink size={13} className="ml-auto" /></a>
-            ) : (
-              <img key={i} src={resolveMediaUrl(m.url)} alt="" className="max-h-96 w-full object-cover" />
-            )
-          )}
+          {media.map((m, i) => {
+            const resolved = resolveMediaUrl(m.url);
+            if (m.mimeType?.startsWith('video/')) {
+              return <video key={i} src={resolved} controls className="max-h-96 w-full bg-black object-contain" />;
+            }
+            if (m.mimeType === 'application/pdf') {
+              return <a key={i} href={resolved} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-gray-200 bg-secondary p-3 text-sm text-dark hover:bg-gray-200"><FileText size={18} className="text-primary" />{m.fileName || 'View PDF'}<ExternalLink size={13} className="ml-auto" /></a>;
+            }
+            if (!resolved) return null;
+            return (
+              <img
+                key={i}
+                src={resolved}
+                alt=""
+                className="max-h-96 w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
+            );
+          })}
         </div>
       )}
 

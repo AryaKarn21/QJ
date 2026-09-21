@@ -5,6 +5,14 @@ const Employer = require("../models/Employer");
 const Recruiter = require("../models/Recruiter");
 const Mentor = require("../models/Mentor");
 const Application = require("../models/Application");
+const Post = require("../models/Post");
+const Blog = require("../models/Blog");
+const JobCategory = require("../models/JobCategory");
+const BlogCategory = require("../models/BlogCategory");
+const Report = require("../models/Report");
+const Resume = require("../models/Resume");
+const Bookmark = require("../models/Bookmark");
+const Comment = require("../models/Comment");
 const sendNotification = require("../utils/sendNotifications");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
 const bcrypt = require("bcryptjs");
@@ -78,21 +86,93 @@ const getAdminProfile = async (req, res) => {
   }
 };
 
-// Get Admin Stats
+// Get Admin Stats - Complete Top 12 Platform Statistics with real live data
 const getAdminStats = async (req, res) => {
   try {
-    const totalJobseekers = await User.countDocuments({ role: "jobseeker" });
-    const totalEmployers = await User.countDocuments({ role: "employer" });
-    // Excludes "Draft" (Phase 4) — an employer's unsubmitted, half-filled
-    // draft was never a real posting and shouldn't inflate this count.
-    const totalJobs = await Job.countDocuments({ status: { $ne: "Draft" } });
-    const totalApplications = await Application.countDocuments();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    res.status(200).json({
+    const [
+      totalUsers,
       totalJobseekers,
       totalEmployers,
+      totalRecruiters,
+      totalMentors,
       totalJobs,
+      activeJobs,
+      pendingJobs,
       totalApplications,
+      totalCommunityPosts,
+      totalBlogs,
+      jobCategoriesCount,
+      blogCategoriesCount,
+      totalReports,
+      pendingReports,
+      pendingCompanies,
+      // 30-day counts for real trend calculation
+      usersLast30,
+      jobsLast30,
+      applicationsLast30,
+      postsLast30,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: "jobseeker" }),
+      User.countDocuments({ role: "employer" }),
+      User.countDocuments({ role: "recruiter" }),
+      User.countDocuments({ role: "mentor" }),
+      Job.countDocuments({ status: { $ne: "Draft" } }),
+      Job.countDocuments({ status: "Active" }),
+      Job.countDocuments({ status: "Pending" }),
+      Application.countDocuments(),
+      Post.countDocuments({ isDeleted: false }),
+      Blog.countDocuments(),
+      JobCategory.countDocuments(),
+      BlogCategory.countDocuments(),
+      Report.countDocuments(),
+      Report.countDocuments({ status: "pending" }),
+      Employer.countDocuments({ verificationStatus: "Pending" }),
+      User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo }, status: { $ne: "Draft" } }),
+      Application.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Post.countDocuments({ createdAt: { $gte: thirtyDaysAgo }, isDeleted: false }),
+    ]);
+
+    const totalJobProviders = totalEmployers + totalRecruiters;
+    const totalCategories = jobCategoriesCount + blogCategoriesCount;
+    const pendingApprovals = pendingJobs + pendingCompanies + pendingReports;
+
+    const calcGrowth = (newCount, total) => {
+      const prev = total - newCount;
+      if (prev <= 0) return newCount > 0 ? 100 : 0;
+      return Math.round((newCount / prev) * 100);
+    };
+
+    res.status(200).json({
+      // 12 Requested Top Metrics
+      totalUsers,
+      totalJobseekers,
+      totalJobProviders,
+      totalJobs,
+      activeJobs,
+      pendingJobs,
+      totalApplications,
+      totalCommunityPosts,
+      totalBlogs,
+      totalCategories,
+      totalReports,
+      pendingApprovals,
+      // Granular sub-counts
+      totalRecruiters,
+      totalMentors,
+      jobCategoriesCount,
+      blogCategoriesCount,
+      pendingReports,
+      pendingCompanies,
+      trends: {
+        usersGrowth: calcGrowth(usersLast30, totalUsers),
+        jobsGrowth: calcGrowth(jobsLast30, totalJobs),
+        applicationsGrowth: calcGrowth(applicationsLast30, totalApplications),
+        postsGrowth: calcGrowth(postsLast30, totalCommunityPosts),
+      },
     });
   } catch (error) {
     console.error("Error getting admin stats:", error);
@@ -225,15 +305,43 @@ const getAllApplications = async (req, res) => {
 // controller that needs it — not just this one — uses the same list.)
 const getAllUsers = async (req, res) => {
   try {
-    const [jobseekers, employers, recruiters, mentors, admins] = await Promise.all([
-      Jobseeker.find().select(SAFE_USER_FIELDS),
-      Employer.find().select(SAFE_USER_FIELDS),
-      Recruiter.find().select(SAFE_USER_FIELDS),
-      Mentor.find().select(SAFE_USER_FIELDS),
-      User.find({ role: { $in: ["admin", "superadmin"] } }).select(SAFE_USER_FIELDS),
-    ]);
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+    const { role, status, search } = req.query;
 
-    const users = [...jobseekers, ...employers, ...recruiters, ...mentors, ...admins];
+    const query = {};
+    if (role && role !== "all") {
+      query.role = role;
+    }
+    if (status === "active") {
+      query.isActive = { $ne: false };
+      query.lockUntil = { $not: { $gt: new Date() } };
+    } else if (status === "deactivated") {
+      query.isActive = false;
+    } else if (status === "suspended") {
+      query.lockUntil = { $gt: new Date() };
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (page && limit) {
+      const [users, total] = await Promise.all([
+        User.find(query)
+          .select(SAFE_USER_FIELDS)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        User.countDocuments(query),
+      ]);
+      return res.json({ users, total, page, totalPages: Math.ceil(total / limit) });
+    }
+
+    const users = await User.find(query).select(SAFE_USER_FIELDS).sort({ createdAt: -1 }).lean();
     res.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -258,6 +366,14 @@ const deleteUser = async (req, res) => {
 
     await User.findByIdAndDelete(userId);
 
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin deleted User #${userId}`,
+      contentType: "User",
+      contentId: userId,
+      details: { email: user.email, name: user.name, role: user.role },
+    });
+
     res.json({ message: "User deleted successfully" });
   } catch (error) {
     console.error("Error deleting user:", error);
@@ -275,7 +391,7 @@ const updateUserRole = async (req, res) => {
   }
 
   try {
-    const user = await User.findById(id).select("role");
+    const user = await User.findById(id).select("role email name");
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -303,9 +419,118 @@ const updateUserRole = async (req, res) => {
 
     await User.findByIdAndUpdate(id, { role: newRole });
 
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin ${action}d User #${user._id} to ${newRole}`,
+      contentType: "User",
+      contentId: user._id,
+      details: { email: user.email, oldRole: user.role, newRole },
+    });
+
     res.json({ message: `User role updated to ${newRole}.` });
   } catch (error) {
     console.error("Error updating user role:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update User Status (Activate, Deactivate, Suspend)
+const updateUserStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, reason, durationDays } = req.body; // status: "active" | "deactivated" | "suspended"
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.role === "superadmin" && req.user.role !== "superadmin") {
+      return res.status(403).json({ message: "Cannot modify superadmin status." });
+    }
+
+    let actionLabel = "";
+    if (status === "active") {
+      user.isActive = true;
+      user.lockUntil = undefined;
+      user.failedLoginAttempts = 0;
+      user.deactivatedAt = undefined;
+      actionLabel = "activated";
+    } else if (status === "deactivated") {
+      user.isActive = false;
+      user.deactivatedAt = new Date();
+      actionLabel = "deactivated";
+    } else if (status === "suspended") {
+      user.isActive = false;
+      const days = parseInt(durationDays) || 30;
+      user.lockUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+      user.deactivatedAt = new Date();
+      actionLabel = `suspended for ${days} days`;
+    } else {
+      return res.status(400).json({ message: "Invalid status. Must be 'active', 'deactivated', or 'suspended'." });
+    }
+
+    await user.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin ${actionLabel} User #${user._id}`,
+      contentType: "User",
+      contentId: user._id,
+      details: { email: user.email, role: user.role, status, reason },
+    });
+
+    sendNotification({
+      recipient: user._id,
+      type: "account_verification",
+      message: status === "active"
+        ? "Your account has been reactivated."
+        : `Your account has been ${actionLabel}. Reason: ${reason || "Policy violation."}`,
+      link: "/",
+    });
+
+    const safeUser = await User.findById(user._id).select(SAFE_USER_FIELDS);
+    res.json({ message: `User ${actionLabel} successfully.`, user: safeUser });
+  } catch (error) {
+    console.error("Error updating user status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Deep User Details for Admin Modal
+const getUserDetailsAdmin = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findById(id).select(SAFE_USER_FIELDS);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    let extraData = {};
+    if (user.role === "jobseeker") {
+      const [resumes, applications, savedJobsCount, postsCount] = await Promise.all([
+        Resume.find({ user: id }).select("title templateId isDefault updatedAt").lean(),
+        Application.find({ applicant: id })
+          .populate("job", "title employer location")
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .lean(),
+        Bookmark.countDocuments({ user: id }),
+        Post.countDocuments({ author: id, isDeleted: false }),
+      ]);
+      extraData = { resumes, applications, savedJobsCount, postsCount };
+    } else if (user.role === "employer" || user.role === "recruiter") {
+      const [postedJobs, applicantsCount] = await Promise.all([
+        Job.find({ employer: id }).select("title status jobtype openings deadline createdAt").sort({ createdAt: -1 }).limit(10).lean(),
+        Application.countDocuments({ "job.employer": id }).catch(() => 0),
+      ]);
+      extraData = { postedJobs, applicantsCount };
+    }
+
+    res.json({ user, ...extraData });
+  } catch (error) {
+    console.error("Error fetching user details:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -316,18 +541,49 @@ const getAllJobs = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const search = req.query.search || "";
+    const status = req.query.status;
+    const category = req.query.category || req.query.jobcategory;
+    const employer = req.query.employer;
+    const jobtype = req.query.jobtype;
+    const location = req.query.location;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
 
-    // "Draft" (Phase 4) is employer-private and never submitted for
-    // review — it should never show up in the admin job queue, same as
-    // it's excluded from every public listing.
-    const query = {
-      status: { $ne: "Draft" },
-      ...(search ? { title: { $regex: search, $options: "i" } } : {}),
-    };
+    const query = {};
+    if (status && status !== "all") {
+      query.status = status;
+    } else {
+      query.status = { $ne: "Draft" };
+    }
+
+    if (category && category !== "all") {
+      query.jobcategory = category;
+    }
+    if (employer) {
+      query.employer = employer;
+    }
+    if (jobtype && jobtype !== "all") {
+      query.jobtype = jobtype;
+    }
+    if (location) {
+      query.location = { $regex: location, $options: "i" };
+    }
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { "companyOverride.name": { $regex: search, $options: "i" } },
+        { location: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
 
     const [jobs, total] = await Promise.all([
       Job.find(query)
-        .populate("employer", "name email companyLogo")
+        .populate("employer", "name email companyLogo isVerified")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -732,6 +988,375 @@ const rejectCompany = async (req, res) => {
   }
 };
 
+// Update Company details as Admin
+const updateCompanyAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, website, location, bio } = req.body;
+
+    const employer = await Employer.findById(id);
+    if (!employer) return res.status(404).json({ message: "Company not found." });
+
+    if (name) employer.name = name;
+    if (email) employer.email = email;
+    if (website !== undefined) employer.website = website;
+    if (location !== undefined) employer.location = location;
+    if (bio !== undefined) employer.bio = bio;
+
+    await employer.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin edited Company #${employer._id}`,
+      contentType: "Employer",
+      contentId: employer._id,
+      details: { name: employer.name, email: employer.email },
+    });
+
+    const safe = await Employer.findById(employer._id).select(SAFE_USER_FIELDS);
+    res.json({ message: "Company updated successfully.", company: safe });
+  } catch (error) {
+    console.error("Error updating company by admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Suspend / Restore Company
+const toggleCompanySuspendAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, reason } = req.body; // action: "suspend" | "restore"
+
+    const employer = await Employer.findById(id);
+    if (!employer) return res.status(404).json({ message: "Company not found." });
+
+    if (action === "suspend") {
+      employer.isActive = false;
+      employer.deactivatedAt = new Date();
+    } else {
+      employer.isActive = true;
+      employer.deactivatedAt = undefined;
+    }
+
+    await employer.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin ${action}ed Company #${employer._id}`,
+      contentType: "Employer",
+      contentId: employer._id,
+      details: { action, reason },
+    });
+
+    const safe = await Employer.findById(employer._id).select(SAFE_USER_FIELDS);
+    res.json({ message: `Company ${action}ed successfully.`, company: safe });
+  } catch (error) {
+    console.error("Error toggling company suspend:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Bulk Job Action: Approve, Reject, Feature, Unfeature, Delete, Suspend, Restore
+const bulkJobAction = async (req, res) => {
+  const { jobIds, action, reason } = req.body;
+
+  if (!Array.isArray(jobIds) || jobIds.length === 0 || !action) {
+    return res.status(400).json({ message: "jobIds array and action are required." });
+  }
+
+  try {
+    let update = {};
+
+    switch (action) {
+      case "approve":
+        update = { status: "Active", rejectionReason: "" };
+        break;
+      case "reject":
+        update = { status: "Rejected", rejectionReason: reason || "Did not meet requirements." };
+        break;
+      case "feature":
+        update = { istrending: true };
+        break;
+      case "unfeature":
+        update = { istrending: false };
+        break;
+      case "suspend":
+        update = { status: "Suspended" };
+        break;
+      case "restore":
+        update = { status: "Active" };
+        break;
+      case "delete":
+        await Job.deleteMany({ _id: { $in: jobIds } });
+        await Application.deleteMany({ job: { $in: jobIds } }).catch(() => {});
+        await recordAdminAudit({
+          user: req.user,
+          action: `Super Admin bulk deleted ${jobIds.length} jobs`,
+          contentType: "Job",
+          details: { jobIds, count: jobIds.length },
+        });
+        return res.json({ message: `Successfully deleted ${jobIds.length} jobs.` });
+      default:
+        return res.status(400).json({ message: `Invalid action: ${action}` });
+    }
+
+    await Job.updateMany({ _id: { $in: jobIds } }, { $set: update });
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin bulk ${action} on ${jobIds.length} jobs`,
+      contentType: "Job",
+      details: { jobIds, action, count: jobIds.length, update },
+    });
+
+    res.json({ message: `Successfully applied '${action}' to ${jobIds.length} jobs.` });
+  } catch (error) {
+    console.error("Error performing bulk job action:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update Single Job Status (Suspend, Restore, Feature, Unfeature)
+const updateJobStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, istrending } = req.body;
+
+  try {
+    const job = await Job.findById(id);
+    if (!job) return res.status(404).json({ message: "Job not found." });
+
+    if (status !== undefined) job.status = status;
+    if (istrending !== undefined) job.istrending = !!istrending;
+
+    await job.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin updated status for Job #${job._id} to ${job.status}`,
+      contentType: "Job",
+      contentId: job._id,
+      details: { status: job.status, istrending: job.istrending },
+    });
+
+    res.json({ message: "Job status updated successfully.", job });
+  } catch (error) {
+    console.error("Error updating job status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all community posts for admin
+const getAllCommunityPostsAdmin = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+    const { status, search } = req.query;
+
+    const query = {};
+    if (status === "deleted") {
+      query.isDeleted = true;
+    } else if (status === "flagged") {
+      query["moderation.status"] = "flagged";
+      query.isDeleted = false;
+    } else if (status === "removed") {
+      query["moderation.status"] = "removed";
+    } else if (status === "approved") {
+      query["moderation.status"] = "approved";
+      query.isDeleted = false;
+    } else if (status && status !== "all") {
+      query["moderation.status"] = status;
+    }
+
+    if (search) {
+      query.content = { $regex: search, $options: "i" };
+    }
+
+    const [posts, total] = await Promise.all([
+      Post.find(query)
+        .populate("author", "name email profilePic role")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments(query),
+    ]);
+
+    res.json({ posts, total, page, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error("Error fetching community posts for admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update community post status (hide, restore, approve, remove)
+const updateCommunityPostStatusAdmin = async (req, res) => {
+  const { id } = req.params;
+  const { action, reason } = req.body;
+
+  try {
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "Post not found." });
+
+    if (action === "hide" || action === "delete") {
+      post.isDeleted = true;
+      post.moderation.status = "removed";
+      post.moderation.reason = reason || "Hidden by administrator.";
+    } else if (action === "restore") {
+      post.isDeleted = false;
+      post.moderation.status = "approved";
+      post.moderation.reason = "";
+    } else if (action === "approve") {
+      post.isDeleted = false;
+      post.moderation.status = "approved";
+      post.moderation.reviewedBy = req.user._id;
+      post.moderation.reviewedAt = new Date();
+    } else {
+      return res.status(400).json({ message: "Invalid action." });
+    }
+
+    await post.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin ${action} on Community Post #${post._id}`,
+      contentType: "Post",
+      contentId: post._id,
+      details: { action, reason },
+    });
+
+    res.json({ message: `Post ${action}d successfully.`, post });
+  } catch (error) {
+    console.error("Error updating post status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all community comments for admin
+const getAllCommunityCommentsAdmin = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const { search, postId } = req.query;
+
+    const query = {};
+    if (postId) query.post = postId;
+    if (search) query.content = { $regex: search, $options: "i" };
+
+    const [comments, total] = await Promise.all([
+      Comment.find(query)
+        .populate("author", "name email profilePic role")
+        .populate("post", "content")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Comment.countDocuments(query),
+    ]);
+
+    res.json({ comments, total, page, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error("Error fetching comments for admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Delete community comment by admin
+const deleteCommunityCommentAdmin = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const comment = await Comment.findById(id);
+    if (!comment) return res.status(404).json({ message: "Comment not found." });
+
+    comment.isDeleted = true;
+    await comment.save();
+
+    await Post.updateOne({ _id: comment.post }, { $inc: { commentCount: -1 } });
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin deleted Comment #${comment._id}`,
+      contentType: "Comment",
+      contentId: comment._id,
+      details: { content: comment.content?.slice(0, 100), author: comment.author },
+    });
+
+    res.json({ message: "Comment deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting comment by admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all blogs for admin (including drafts, category, and search filter)
+const getAllBlogsAdmin = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+    const { status, category, search } = req.query;
+
+    const query = {};
+    if (status === "published") {
+      query.isPublished = true;
+    } else if (status === "draft") {
+      query.isPublished = false;
+    }
+    if (category && category !== "all") {
+      query.category = category;
+    }
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { content: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const [blogs, total] = await Promise.all([
+      Blog.find(query)
+        .populate("author", "name email profilePic role")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Blog.countDocuments(query),
+    ]);
+
+    res.json({ blogs, total, page, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error("Error fetching blogs for admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update blog status (publish / unpublish / draft) by admin
+const updateBlogStatusAdmin = async (req, res) => {
+  const { id } = req.params;
+  const { isPublished } = req.body;
+
+  try {
+    const blog = await Blog.findById(id);
+    if (!blog) return res.status(404).json({ message: "Blog not found." });
+
+    blog.isPublished = !!isPublished;
+    if (blog.isPublished && !blog.publishedAt) {
+      blog.publishedAt = new Date();
+    }
+    await blog.save();
+
+    await recordAdminAudit({
+      user: req.user,
+      action: `Super Admin ${blog.isPublished ? "published" : "unpublished"} Blog #${blog._id}`,
+      contentType: "Blog",
+      contentId: blog._id,
+      details: { title: blog.title, isPublished: blog.isPublished },
+    });
+
+    res.json({ message: `Blog ${blog.isPublished ? "published" : "moved to draft"}.`, blog });
+  } catch (error) {
+    console.error("Error updating blog status by admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createAdmin,
   getAdminProfile,
@@ -744,14 +1369,26 @@ module.exports = {
   getAllUsers,
   deleteUser,
   updateUserRole,
+  updateUserStatus,
+  getUserDetailsAdmin,
   getAllJobs,
   createAdminJob,
   editJob,
   deleteJob,
+  bulkJobAction,
+  updateJobStatus,
   getDailyLoggedInUsersCount,
   approveJob,
   rejectJob,
   getAllCompanies,
   verifyCompany,
   rejectCompany,
+  updateCompanyAdmin,
+  toggleCompanySuspendAdmin,
+  getAllCommunityPostsAdmin,
+  updateCommunityPostStatusAdmin,
+  getAllCommunityCommentsAdmin,
+  deleteCommunityCommentAdmin,
+  getAllBlogsAdmin,
+  updateBlogStatusAdmin,
 };

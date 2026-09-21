@@ -36,19 +36,15 @@ const CallToAction: React.FC = () => {
 
   return (
     <section
+      className="py-10 sm:py-12 lg:py-14"
       style={{
         position: 'relative',
-        padding: '72px 0',
         background: 'linear-gradient(180deg, #FFF8F3 0%, #FFFFFF 100%)',
         borderTop: '1px solid #FFE4CC',
         overflow: 'hidden',
       }}
     >
-      {/* Background blobs — same slow, professional drift as the Hero
-          section's, static when the visitor prefers reduced motion. The
-          first blob's centering transform lives on a never-animated
-          outer wrapper so it can't fight framer-motion's own transform
-          on the inner element. */}
+      {/* Background blobs */}
       <div style={{
         position: 'absolute', top: '50%', left: '40%',
         transform: 'translate(-50%, -50%)',
@@ -76,7 +72,7 @@ const CallToAction: React.FC = () => {
         }}
       />
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Main card */}
         <motion.div
@@ -86,13 +82,13 @@ const CallToAction: React.FC = () => {
           transition={{ duration: 0.5 }}
           style={{
             position: 'relative', overflow: 'hidden',
-            borderRadius: 28,
+            borderRadius: 24,
             background: '#FFFFFF',
             border: '1.5px solid #FED7AA',
-            boxShadow: '0 8px 40px rgba(249,115,22,0.1), 0 2px 8px rgba(0,0,0,0.04)',
-            padding: '56px 64px',
+            boxShadow: '0 8px 36px rgba(249,115,22,0.09), 0 2px 8px rgba(0,0,0,0.04)',
+            padding: '40px 48px',
             display: 'flex', alignItems: 'center',
-            gap: 48,
+            gap: 36,
           }}
           className="cta-card"
         >
@@ -124,10 +120,10 @@ const CallToAction: React.FC = () => {
             {/* Badge */}
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '6px 16px', borderRadius: 999,
+              padding: '5px 14px', borderRadius: 999,
               background: '#FFF7ED', border: '1px solid #FED7AA',
               fontSize: 12, fontWeight: 700, color: '#EA580C',
-              marginBottom: 24,
+              marginBottom: 16,
             }}>
               <Sparkles size={13} color="#F97316" />
               {content.badgeText}
@@ -137,7 +133,7 @@ const CallToAction: React.FC = () => {
             <h2 style={{
               fontSize: 'clamp(1.6rem, 3vw, 2.4rem)',
               fontWeight: 900, lineHeight: 1.2,
-              color: '#111827', marginBottom: 32,
+              color: '#111827', marginBottom: 16,
               letterSpacing: '-0.02em',
             }}>
               {content.heading}{' '}
@@ -153,8 +149,8 @@ const CallToAction: React.FC = () => {
             {/* Description */}
             {content.description && (
               <p style={{
-                fontSize: 16, lineHeight: 1.7, color: '#6B7280',
-                marginBottom: 32, maxWidth: 440,
+                fontSize: 15, lineHeight: 1.6, color: '#6B7280',
+                marginBottom: 24, maxWidth: 460,
               }}>
                 {content.description}
               </p>
@@ -165,6 +161,7 @@ const CallToAction: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate(content.primaryCtaLink)}
+                className="group active:scale-[0.98]"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '13px 28px', borderRadius: 14, border: 'none', cursor: 'pointer',
@@ -177,13 +174,14 @@ const CallToAction: React.FC = () => {
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}
               >
                 <FileText size={17} />
-                {content.primaryCtaText}
-                <ArrowRight size={15} />
+                <span>{content.primaryCtaText}</span>
+                <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
               </button>
 
               <button
                 type="button"
                 onClick={() => navigate(content.secondaryCtaLink)}
+                className="group active:scale-[0.98]"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '13px 28px', borderRadius: 14, cursor: 'pointer',
@@ -206,7 +204,7 @@ const CallToAction: React.FC = () => {
                 }}
               >
                 <Briefcase size={17} color="#F97316" />
-                {content.secondaryCtaText}
+                <span>{content.secondaryCtaText}</span>
               </button>
             </div>
           </div>
@@ -294,7 +292,7 @@ const CallToAction: React.FC = () => {
 
       <style>{`
         @media (max-width: 900px) {
-          .cta-card { flex-direction: column !important; padding: 36px 28px !important; }
+          .cta-card { flex-direction: column !important; padding: 28px 20px !important; gap: 24px !important; }
           .cta-left, .cta-right { flex: none !important; width: 100% !important; }
           .cta-accent-frame { display: none; }
         }
