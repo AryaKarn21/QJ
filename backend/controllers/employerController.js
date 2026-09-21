@@ -17,6 +17,8 @@ const {
   sanitizeStringList,
 } = require("../utils/profileStatus");
 const bcrypt = require("bcryptjs");
+const fs = require("fs");
+const path = require("path");
 const {
   persistUpload,
   deleteStoredFile,
@@ -1314,6 +1316,34 @@ const getApplicationResume = async (req, res) => {
       deliveryUrl = isDownload
         ? formatCloudinaryDownloadUrl(resume, filename)
         : formatCloudinaryInlineUrl(resume);
+    }
+
+    if (isDownload) {
+      if (deliveryUrl.startsWith("http://") || deliveryUrl.startsWith("https://")) {
+        try {
+          const upstreamRes = await fetch(deliveryUrl);
+          if (upstreamRes.ok) {
+            res.setHeader("Content-Type", upstreamRes.headers.get("content-type") || "application/pdf");
+            res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+            const arrayBuf = await upstreamRes.arrayBuffer();
+            return res.send(Buffer.from(arrayBuf));
+          }
+        } catch (fetchErr) {
+          console.error("Failed to stream resume from upstream:", fetchErr);
+        }
+      } else {
+        const localFilePath = path.join(__dirname, "..", deliveryUrl);
+        if (fs.existsSync(localFilePath)) {
+          return res.download(localFilePath, filename);
+        }
+      }
+    }
+
+    if (!deliveryUrl.startsWith("http://") && !deliveryUrl.startsWith("https://")) {
+      const localFilePath = path.join(__dirname, "..", deliveryUrl);
+      if (fs.existsSync(localFilePath)) {
+        return res.sendFile(localFilePath);
+      }
     }
 
     return res.redirect(deliveryUrl);

@@ -5,6 +5,7 @@ const Jobseeker = require("../models/Jobseeker");
 const TrendingSettings = require("../models/TrendingSettings");
 const sendNotification = require("../utils/sendNotifications");
 const { COUNTRIES } = require("../data/countries");
+const { CURRENCIES, CURRENCY_BY_COUNTRY } = require("../data/currencies");
 const { persistUpload } = require("../services/media.service");
 const {
   UPDATABLE_JOB_FIELDS,

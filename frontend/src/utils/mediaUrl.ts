@@ -76,9 +76,9 @@ export function resolveResumeUrl(path?: string | null): string {
   const trimmed = path.trim();
 
   if (trimmed.startsWith('https://res.cloudinary.com/')) {
-    // For Cloudinary raw PDF deliveries, ensure fl_inline flag is present for inline rendering
-    if (trimmed.includes('/raw/upload/') && !trimmed.includes('/raw/upload/fl_inline/')) {
-      return trimmed.replace('/raw/upload/', '/raw/upload/fl_inline/');
+    // Cloudinary raw uploads do NOT support transformation flags like fl_inline (returns 400 Bad Request)
+    if (trimmed.includes('/raw/upload/')) {
+      return trimmed.replace(/\/raw\/upload\/(fl_inline\/|fl_attachment[^/]*\/)?/, '/raw/upload/');
     }
     return trimmed;
   }
@@ -92,7 +92,7 @@ export function resolveResumeUrl(path?: string | null): string {
 
 /**
  * Formats a resume URL for download with an optional custom filename.
- * Uses Cloudinary `fl_attachment` to guarantee clean browser downloads without CORS blocks.
+ * Uses Cloudinary `fl_attachment` on image uploads, and clean URLs on raw uploads.
  */
 export function getResumeDownloadUrl(path?: string | null, filename?: string): string {
   if (!path || typeof path !== 'string' || !path.trim()) return '';
@@ -101,15 +101,16 @@ export function getResumeDownloadUrl(path?: string | null, filename?: string): s
   const trimmed = path.trim();
 
   if (trimmed.startsWith('https://res.cloudinary.com/')) {
-    const safeName = filename
-      ? encodeURIComponent(filename.replace(/[/\\?%*:|"<>]/g, '_'))
-      : '';
-    const flag = safeName ? `fl_attachment:${safeName}` : 'fl_attachment';
-
+    // Raw files cannot be transformed in Cloudinary (returns 400 Bad Request)
     if (trimmed.includes('/raw/upload/')) {
-      return trimmed.replace(/\/raw\/upload\/(fl_inline\/)?/, `/raw/upload/${flag}/`);
+      return trimmed.replace(/\/raw\/upload\/(fl_inline\/|fl_attachment[^/]*\/)?/, '/raw/upload/');
     }
+
     if (trimmed.includes('/image/upload/')) {
+      const safeName = filename
+        ? encodeURIComponent(filename.replace(/[/\\?%*:|"<>]/g, '_'))
+        : '';
+      const flag = safeName ? `fl_attachment:${safeName}` : 'fl_attachment';
       return trimmed.replace(/\/image\/upload\/(fl_inline\/)?/, `/image/upload/${flag}/`);
     }
   }

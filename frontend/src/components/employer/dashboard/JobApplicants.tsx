@@ -152,7 +152,7 @@ const JobApplicants = () => {
                                                     </button>
                                                 </a>
                                                 <button
-                                                    onClick={() => downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name))}
+                                                    onClick={() => downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name), applicant.applicationId)}
                                                     className="flex items-center text-gray-700 bg-gray-100 border border-gray-300 px-2.5 py-1 rounded text-xs hover:bg-gray-200"
                                                     title="Download Resume"
                                                 >

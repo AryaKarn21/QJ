@@ -92,20 +92,22 @@ function isSupabaseUrl(stored) {
 
 function formatCloudinaryInlineUrl(url) {
   if (!isCloudinaryUrl(url)) return url;
-  if (url.includes("/raw/upload/") && !url.includes("/raw/upload/fl_inline/")) {
-    return url.replace("/raw/upload/", "/raw/upload/fl_inline/");
+  // Raw files cannot be transformed in Cloudinary (returns 400 Bad Request)
+  if (url.includes("/raw/upload/")) {
+    return url.replace(/\/raw\/upload\/(fl_inline\/|fl_attachment[^/]*\/)?/, "/raw/upload/");
   }
   return url;
 }
 
 function formatCloudinaryDownloadUrl(url, filename) {
   if (!isCloudinaryUrl(url)) return url;
-  const safeFilename = filename ? encodeURIComponent(filename.replace(/[/\\?%*:|"<>]/g, "_")) : "";
-  const flag = safeFilename ? `fl_attachment:${safeFilename}` : "fl_attachment";
+  // Raw files cannot be transformed in Cloudinary (returns 400 Bad Request)
   if (url.includes("/raw/upload/")) {
-    return url.replace(/\/raw\/upload\/(fl_inline\/)?/, `/raw/upload/${flag}/`);
+    return url.replace(/\/raw\/upload\/(fl_inline\/|fl_attachment[^/]*\/)?/, "/raw/upload/");
   }
   if (url.includes("/image/upload/")) {
+    const safeFilename = filename ? encodeURIComponent(filename.replace(/[/\\?%*:|"<>]/g, "_")) : "";
+    const flag = safeFilename ? `fl_attachment:${safeFilename}` : "fl_attachment";
     return url.replace(/\/image\/upload\/(fl_inline\/)?/, `/image/upload/${flag}/`);
   }
   return url;

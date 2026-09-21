@@ -204,7 +204,11 @@ const Applicants = () => {
     }
     setDownloadingResume(true);
     try {
-      await downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name));
+      await downloadFile(
+        resolveResumeUrl(applicant.resume),
+        resumeFilename(applicant.applicant?.name),
+        applicant.applicationId
+      );
     } catch (err) {
       console.error("Resume download failed:", err);
       toast.error("Couldn't download the resume — try opening it in a new tab instead.");
@@ -556,33 +560,40 @@ const Applicants = () => {
                     Resume unavailable — please ask the applicant to upload again
                   </div>
                 ) : (
-                  <>
-                    <object
-                      data={resolveResumeUrl(selected.resume)}
-                      type="application/pdf"
-                      className="h-80 w-full rounded-xl border border-gray-200"
-                    >
-                      <p className="p-4 text-sm text-gray-400 text-center">
-                        Preview blocked by browser.{' '}
-                        <a
-                          href={resolveResumeUrl(selected.resume)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary underline"
-                        >
-                          Open resume in a new tab
-                        </a>
-                      </p>
-                    </object>
-                    <a
-                      href={resolveResumeUrl(selected.resume)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary"
-                    >
-                      <ExternalLink size={12} /> Can't see the preview? Open in a new tab
-                    </a>
-                  </>
+                  (() => {
+                    const cleanUrl = resolveResumeUrl(selected.resume);
+                    const previewUrl = cleanUrl.startsWith("http")
+                      ? `https://docs.google.com/viewer?url=${encodeURIComponent(cleanUrl)}&embedded=true`
+                      : cleanUrl;
+
+                    return (
+                      <div className="space-y-2">
+                        <iframe
+                          src={previewUrl}
+                          title="Resume preview"
+                          className="h-80 w-full rounded-xl border border-gray-200 bg-white"
+                        />
+                        <div className="flex items-center justify-between">
+                          <a
+                            href={cleanUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary"
+                          >
+                            <ExternalLink size={12} /> Open original PDF in new tab
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadResume(selected)}
+                            disabled={downloadingResume}
+                            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            <Download size={12} /> {downloadingResume ? "Downloading…" : "Download"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             </div>

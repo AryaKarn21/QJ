@@ -229,3 +229,28 @@ describe("media.service — deleteStoredFile (retrieval-adjacent cleanup path)",
     expect(fs.promises.unlink).not.toHaveBeenCalled();
   });
 });
+
+describe("media.service — formatCloudinaryInlineUrl and formatCloudinaryDownloadUrl", () => {
+  test("strips transformation flags from raw upload URLs to prevent Cloudinary 400 Bad Request", () => {
+    const { formatCloudinaryInlineUrl, formatCloudinaryDownloadUrl } = loadMediaService({ ...CLOUDINARY_ENV });
+    const rawUrl = "https://res.cloudinary.com/test-cloud/raw/upload/v12345/resumes/user1/test.pdf";
+    const withInline = "https://res.cloudinary.com/test-cloud/raw/upload/fl_inline/v12345/resumes/user1/test.pdf";
+    const withAttachment = "https://res.cloudinary.com/test-cloud/raw/upload/fl_attachment:test/v12345/resumes/user1/test.pdf";
+
+    expect(formatCloudinaryInlineUrl(rawUrl)).toBe(rawUrl);
+    expect(formatCloudinaryInlineUrl(withInline)).toBe(rawUrl);
+    expect(formatCloudinaryInlineUrl(withAttachment)).toBe(rawUrl);
+
+    expect(formatCloudinaryDownloadUrl(rawUrl, "resume.pdf")).toBe(rawUrl);
+    expect(formatCloudinaryDownloadUrl(withInline, "resume.pdf")).toBe(rawUrl);
+    expect(formatCloudinaryDownloadUrl(withAttachment, "resume.pdf")).toBe(rawUrl);
+  });
+
+  test("adds fl_attachment flag to image uploads", () => {
+    const { formatCloudinaryDownloadUrl } = loadMediaService({ ...CLOUDINARY_ENV });
+    const imageUrl = "https://res.cloudinary.com/test-cloud/image/upload/v12345/test.png";
+
+    const downloadUrl = formatCloudinaryDownloadUrl(imageUrl, "profile.png");
+    expect(downloadUrl).toBe("https://res.cloudinary.com/test-cloud/image/upload/fl_attachment:profile.png/v12345/test.png");
+  });
+});
