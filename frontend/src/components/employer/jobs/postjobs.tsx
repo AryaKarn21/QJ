@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
 import { createJob, getSingleJob, editJob, getEmployerProfile, fetchCountries, fetchCurrencies } from "../employerApi/api";
 import { CurrencySelect } from "../../common/CurrencySelect";
+import { CustomSelect } from "../../common/CustomSelect";
 import { formatSalaryRange } from "../../../utils/currency";
 import { fetchJobCategories } from "../../../api/jobCategoryApi";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -23,170 +24,77 @@ import {
 // reorganization into steps, not a new set of fields or a new API.
 const STEPS = ["Job Details", "Requirements", "Company", "Compensation", "Preview", "Publish"];
 
-export const POPULAR_JOB_TITLES_BY_GROUP = [
-  {
-    group: "Technology & Software Development",
-    titles: [
-      "Software Engineer",
-      "Frontend Developer",
-      "Backend Developer",
-      "Full Stack Developer",
-      "Mobile App Developer (iOS / Android)",
-      "DevOps Engineer",
-      "Cloud Architect / Engineer",
-      "QA / Test Automation Engineer",
-      "Systems Engineer",
-      "Embedded Systems Engineer",
-      "Site Reliability Engineer (SRE)",
-      "Firmware Engineer",
-    ],
-  },
-  {
-    group: "Data & Artificial Intelligence",
-    titles: [
-      "Data Scientist",
-      "Data Analyst",
-      "Data Engineer",
-      "AI / Machine Learning Engineer",
-      "Business Intelligence (BI) Analyst",
-      "Database Administrator",
-      "Computer Vision Engineer",
-      "NLP Engineer",
-    ],
-  },
-  {
-    group: "Design & Creative",
-    titles: [
-      "UI/UX Designer",
-      "Product Designer",
-      "Graphic Designer",
-      "Web Designer",
-      "Motion Designer / Video Editor",
-      "3D Artist / Animator",
-      "Creative Director",
-    ],
-  },
-  {
-    group: "Product & Project Management",
-    titles: [
-      "Product Manager",
-      "Technical Product Manager",
-      "Project Manager",
-      "Scrum Master / Agile Coach",
-      "Program Manager",
-    ],
-  },
-  {
-    group: "IT, Security & Infrastructure",
-    titles: [
-      "IT Support Specialist",
-      "System Administrator",
-      "Network Engineer",
-      "Cybersecurity Analyst / Specialist",
-      "Information Security Officer",
-      "Solutions Architect",
-    ],
-  },
-  {
-    group: "Marketing & Communications",
-    titles: [
-      "Digital Marketing Specialist",
-      "Marketing Manager",
-      "SEO / SEM Specialist",
-      "Content Writer / Copywriter",
-      "Social Media Manager",
-      "Growth Marketer",
-      "Brand Manager",
-      "Public Relations (PR) Specialist",
-    ],
-  },
-  {
-    group: "Sales & Business Development",
-    titles: [
-      "Sales Executive / Representative",
-      "Business Development Manager",
-      "Account Manager / Executive",
-      "Inside Sales Specialist",
-      "Sales Operations Specialist",
-    ],
-  },
-  {
-    group: "Human Resources & Recruitment",
-    titles: [
-      "Human Resources (HR) Manager",
-      "HR Generalist",
-      "Talent Acquisition Specialist / Recruiter",
-      "HR Coordinator",
-      "People Operations Manager",
-    ],
-  },
-  {
-    group: "Finance, Accounting & Legal",
-    titles: [
-      "Accountant",
-      "Senior Accountant",
-      "Financial Analyst",
-      "Finance Manager",
-      "Auditor",
-      "Legal Counsel / Officer",
-      "Compliance Specialist",
-    ],
-  },
-  {
-    group: "Operations & Administration",
-    titles: [
-      "Operations Manager",
-      "Business Analyst",
-      "Administrative Assistant",
-      "Office Administrator / Manager",
-      "Supply Chain / Logistics Coordinator",
-      "Executive Assistant",
-    ],
-  },
-  {
-    group: "Customer Service & Support",
-    titles: [
-      "Customer Support Representative",
-      "Customer Success Manager",
-      "Technical Support Specialist",
-      "Call Center Representative",
-    ],
-  },
-  {
-    group: "Engineering (Non-IT)",
-    titles: [
-      "Civil Engineer",
-      "Mechanical Engineer",
-      "Electrical Engineer",
-      "Electronics Engineer",
-      "Biomedical Engineer",
-    ],
-  },
+export const POPULAR_JOB_TITLES: { value: string; label: string; group?: string }[] = [
+  // Engineering & Tech
+  { value: "Software Engineer", label: "Software Engineer", group: "Engineering & Tech" },
+  { value: "Frontend Developer", label: "Frontend Developer", group: "Engineering & Tech" },
+  { value: "Backend Developer", label: "Backend Developer", group: "Engineering & Tech" },
+  { value: "Full Stack Developer", label: "Full Stack Developer", group: "Engineering & Tech" },
+  { value: "Mobile App Developer", label: "Mobile App Developer", group: "Engineering & Tech" },
+  { value: "DevOps Engineer", label: "DevOps Engineer", group: "Engineering & Tech" },
+  { value: "Cloud Architect", label: "Cloud Architect", group: "Engineering & Tech" },
+  { value: "QA Engineer", label: "QA Engineer", group: "Engineering & Tech" },
+  { value: "Systems Engineer", label: "Systems Engineer", group: "Engineering & Tech" },
+  // Data & AI
+  { value: "Data Analyst", label: "Data Analyst", group: "Data & AI" },
+  { value: "Data Scientist", label: "Data Scientist", group: "Data & AI" },
+  { value: "Data Engineer", label: "Data Engineer", group: "Data & AI" },
+  { value: "AI / Machine Learning Engineer", label: "AI / Machine Learning Engineer", group: "Data & AI" },
+  // Product & Design
+  { value: "UI/UX Designer", label: "UI/UX Designer", group: "Product & Design" },
+  { value: "Product Designer", label: "Product Designer", group: "Product & Design" },
+  { value: "Product Manager", label: "Product Manager", group: "Product & Design" },
+  { value: "Project Manager", label: "Project Manager", group: "Product & Design" },
+  { value: "Graphic Designer", label: "Graphic Designer", group: "Product & Design" },
+  // Marketing & Sales
+  { value: "Digital Marketer", label: "Digital Marketer", group: "Marketing & Sales" },
+  { value: "Content Writer", label: "Content Writer", group: "Marketing & Sales" },
+  { value: "SEO Specialist", label: "SEO Specialist", group: "Marketing & Sales" },
+  { value: "Social Media Manager", label: "Social Media Manager", group: "Marketing & Sales" },
+  { value: "Sales Executive", label: "Sales Executive", group: "Marketing & Sales" },
+  { value: "Business Development Manager", label: "Business Development Manager", group: "Marketing & Sales" },
+  // Business & Support
+  { value: "HR Executive", label: "HR Executive", group: "Business & Support" },
+  { value: "Customer Support", label: "Customer Support", group: "Business & Support" },
+  { value: "Accountant", label: "Accountant", group: "Business & Support" },
+  { value: "Business Analyst", label: "Business Analyst", group: "Business & Support" },
+  { value: "Operations Manager", label: "Operations Manager", group: "Business & Support" },
+  // Other
+  { value: "Other", label: "Other" },
 ];
 
-export const ALL_STANDARD_JOB_TITLES: string[] = POPULAR_JOB_TITLES_BY_GROUP.flatMap((g) => g.titles);
-
-export const POPULAR_DEPARTMENTS: string[] = [
-  "Engineering & Technology",
-  "Product Management",
-  "Design & User Experience (UX)",
-  "Data & Analytics",
-  "Information Technology (IT)",
-  "Marketing & Communications",
-  "Sales & Business Development",
-  "Customer Support & Success",
-  "Human Resources & Talent",
-  "Finance & Accounting",
-  "Operations & Logistics",
-  "Quality Assurance (QA)",
-  "Research & Development (R&D)",
-  "Legal & Compliance",
-  "Administration & Facilities",
-  "Creative & Content",
-  "Healthcare & Medical",
-  "Education & Training",
+export const JOB_LEVEL_OPTIONS = [
+  { value: "Internship", label: "Internship" },
+  { value: "Fresher", label: "Fresher" },
+  { value: "Entry Level", label: "Entry Level" },
+  { value: "Junior", label: "Junior" },
+  { value: "Associate", label: "Associate" },
+  { value: "Mid Level", label: "Mid Level" },
+  { value: "Senior", label: "Senior" },
+  { value: "Lead", label: "Lead" },
+  { value: "Manager", label: "Manager" },
+  { value: "Director", label: "Director" },
+  { value: "Executive", label: "Executive" },
+  { value: "Other", label: "Other" },
 ];
 
+export const JOB_TYPE_OPTIONS = [
+  { value: "Full-time", label: "Full-time" },
+  { value: "Part-time", label: "Part-time" },
+  { value: "Contract", label: "Contract" },
+  { value: "Internship", label: "Internship" },
+  { value: "Freelance", label: "Freelance" },
+  { value: "Temporary", label: "Temporary" },
+  { value: "Volunteer", label: "Volunteer" },
+  { value: "Other", label: "Other" },
+];
+
+export const WORK_MODE_OPTIONS = [
+  { value: "On-site", label: "On-site" },
+  { value: "Remote", label: "Remote" },
+  { value: "Hybrid", label: "Hybrid" },
+  { value: "Other", label: "Other" },
+];
 
 const EMPTY_FORM = {
   title: "",
@@ -230,8 +138,9 @@ const toStr = (n: unknown) => (n === undefined || n === null ? "" : String(n));
 const toArray = (csv: string) => csv.split(",").map((s) => s.trim()).filter(Boolean);
 const toNumberOrUndefined = (s: string) => (s.trim() === "" ? undefined : Number(s));
 
-const inputCls = "w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary";
-const labelCls = "block mb-1 font-medium";
+const inputCls = "w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 outline-none transition-all duration-200 hover:border-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20";
+const inputErrorCls = "w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-red-500 rounded-xl text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 outline-none transition-all duration-200 focus:ring-2 focus:ring-red-200";
+const labelCls = "block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-200";
 
 const PostJob = () => {
   const { jobId } = useParams();
@@ -248,8 +157,24 @@ const PostJob = () => {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [sourceStatus, setSourceStatus] = useState<string | undefined>(undefined);
-  const [isOtherTitle, setIsOtherTitle] = useState(false);
-  const [isOtherDepartment, setIsOtherDepartment] = useState(false);
+
+  // Selection and custom 'Other' states for Step 1
+  const [titleSelect, setTitleSelect] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
+
+  const [categorySelect, setCategorySelect] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
+
+  const [levelSelect, setLevelSelect] = useState("");
+  const [customLevel, setCustomLevel] = useState("");
+
+  const [jobtypeSelect, setJobtypeSelect] = useState("");
+  const [customJobType, setCustomJobType] = useState("");
+
+  const [workModeSelect, setWorkModeSelect] = useState("On-site");
+  const [customWorkMode, setCustomWorkMode] = useState("");
+
+  const [step1Errors, setStep1Errors] = useState<Record<string, string>>({});
 
   const { data: jobData, isLoading: isFetching } = useQuery({
     queryKey: ["job", jobId || duplicateFrom],
@@ -257,24 +182,18 @@ const PostJob = () => {
     enabled: !!(jobId || duplicateFrom),
   });
 
-  // Real, admin-managed categories — see fetchJobCategories's own comment.
+  // Real, admin-managed categories
   const { data: categories = [] } = useQuery({
     queryKey: ["jobCategories"],
     queryFn: fetchJobCategories,
   });
 
-  // The same list backend/models/Job.js's `country` enum validates
-  // against (backend/data/countries.js) — this used to be a hand-typed
-  // 6-option list that couldn't reach ~190 of the countries the backend
-  // actually accepts.
-  const { data: countries = [] } = useQuery({
-    queryKey: ["countries"],
-    queryFn: fetchCountries,
-    staleTime: Infinity, // a static reference list — no reason to refetch
-  });
+  const categoryOptions = useMemo(() => {
+    const opts = categories.map((c) => ({ value: c.name, label: c.name }));
+    opts.push({ value: "Other", label: "Other" });
+    return opts;
+  }, [categories]);
 
-  // Feeds the Compensation step's searchable currency selector, plus the
-  // country->currency default it suggests (see the effect below).
   const { data: currencyData } = useQuery({
     queryKey: ["currencies"],
     queryFn: fetchCurrencies,
@@ -282,25 +201,8 @@ const PostJob = () => {
   });
   const currencies = currencyData?.currencies ?? [];
 
-  // The employer's job posting form's Country -> currency default: only
-  // ever *suggests* a value, and only while they haven't picked one
-  // themselves — flips true the moment they touch the currency selector
-  // directly, or the moment an existing job (edit/duplicate) loads with
-  // its own currency already set, so it never silently overwrites an
-  // intentional choice.
   const [currencyTouched, setCurrencyTouched] = useState(false);
-  useEffect(() => {
-    if (currencyTouched || !currencyData || !formData.country) return;
-    const suggested = currencyData.countryDefaults[formData.country];
-    if (suggested && suggested !== formData.currency) {
-      setFormData((prev) => ({ ...prev, currency: suggested }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.country, currencyData, currencyTouched]);
 
-  // The "Company" step previews the employer's own Company Profile
-  // (Phase 1/3) so they can see exactly what auto-attaches to this job
-  // before deciding whether they need a per-job override.
   const { data: companyProfile } = useQuery({
     queryKey: ["employerProfile"],
     queryFn: getEmployerProfile,
@@ -309,31 +211,71 @@ const PostJob = () => {
   useEffect(() => {
     if (!jobData) return;
     setSourceStatus(jobData.status);
-    // An existing job (edit/duplicate) already carries a deliberate
-    // currency choice — never let the country-default effect above
-    // silently swap it out from under the employer.
     if (jobData.currency) setCurrencyTouched(true);
 
+    // Sync Title
     if (jobData.title) {
-      const isKnownTitle = ALL_STANDARD_JOB_TITLES.includes(jobData.title);
-      setIsOtherTitle(!isKnownTitle);
-    } else {
-      setIsOtherTitle(false);
+      const isKnown = POPULAR_JOB_TITLES.some((t) => t.value === jobData.title && t.value !== "Other");
+      if (isKnown) {
+        setTitleSelect(jobData.title);
+        setCustomTitle("");
+      } else {
+        setTitleSelect("Other");
+        setCustomTitle(jobData.title);
+      }
     }
 
-    if (jobData.department) {
-      const isKnownDept = POPULAR_DEPARTMENTS.includes(jobData.department);
-      setIsOtherDepartment(!isKnownDept);
-    } else {
-      setIsOtherDepartment(false);
+    // Sync Category
+    if (jobData.jobcategory) {
+      const isKnown = categories.some((c) => c.name === jobData.jobcategory);
+      if (isKnown) {
+        setCategorySelect(jobData.jobcategory);
+        setCustomCategory("");
+      } else {
+        setCategorySelect("Other");
+        setCustomCategory(jobData.jobcategory);
+      }
+    }
+
+    // Sync Level
+    if (jobData.level) {
+      const isKnown = JOB_LEVEL_OPTIONS.some((l) => l.value === jobData.level && l.value !== "Other");
+      if (isKnown) {
+        setLevelSelect(jobData.level);
+        setCustomLevel("");
+      } else {
+        setLevelSelect("Other");
+        setCustomLevel(jobData.level);
+      }
+    }
+
+    // Sync Job Type
+    if (jobData.jobtype) {
+      const isKnown = JOB_TYPE_OPTIONS.some((t) => t.value === jobData.jobtype && t.value !== "Other");
+      if (isKnown) {
+        setJobtypeSelect(jobData.jobtype);
+        setCustomJobType("");
+      } else {
+        setJobtypeSelect("Other");
+        setCustomJobType(jobData.jobtype);
+      }
+    }
+
+    // Sync Work Mode
+    if (jobData.workMode) {
+      const isKnown = WORK_MODE_OPTIONS.some((m) => m.value === jobData.workMode && m.value !== "Other");
+      if (isKnown) {
+        setWorkModeSelect(jobData.workMode);
+        setCustomWorkMode("");
+      } else {
+        setWorkModeSelect("Other");
+        setCustomWorkMode(jobData.workMode);
+      }
     }
 
     setFormData((prev) => ({
       ...prev,
       ...jobData,
-      // Duplicating: this is a NEW posting, so it shouldn't inherit the
-      // source job's deadline/openings-filled-count baggage — start the
-      // deadline blank so the employer picks a fresh one.
       deadline: isEdit && jobData.deadline ? new Date(jobData.deadline).toISOString().split("T")[0] : "",
       openings: jobData.openings || 1,
       workMode: jobData.workMode || "On-site",
@@ -354,7 +296,7 @@ const PostJob = () => {
       overrideTagline: jobData.companyOverride?.tagline || "",
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobData]);
+  }, [jobData, categories]);
 
   const buildPayload = (isDraft: boolean) => {
     const payload: Record<string, unknown> = {
@@ -378,25 +320,17 @@ const PostJob = () => {
     delete payload.useCompanyOverride;
     delete payload.overrideName;
     delete payload.overrideTagline;
-    // `formData` inherited a `status` key from `...jobData` when editing/
-    // duplicating (see the load effect above) — drop it unconditionally
-    // first. Forwarding it unintentionally would make editJob see
-    // `req.body.status !== undefined` on every save and reject it with
-    // "Only an admin can approve or reject a job" for anything not
-    // Active/Inactive (e.g. a Pending or Rejected job), even though the
-    // employer never touched status at all.
     delete payload.status;
+
+    // Do not send empty department or country in new workflow
+    if (!payload.department) delete payload.department;
+    if (!payload.country) delete payload.country;
 
     if (isDraft) {
       payload.status = "Draft";
     } else if (isEdit && sourceStatus === "Draft") {
-      // Publishing an existing draft — the one status transition an
-      // employer can make themselves (see employerController.js's editJob).
       payload.status = "Pending";
     }
-    // Otherwise: creating fresh (backend defaults to Pending) or editing a
-    // non-draft job (never send `status` here — that's Close/Reopen's job
-    // on the dashboard list, not this form).
     return payload;
   };
 
@@ -429,35 +363,226 @@ const PostJob = () => {
     setFormData((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
-  const handleTitleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const handleTitleSelect = (val: string) => {
+    setTitleSelect(val);
     if (val === "Other") {
-      setIsOtherTitle(true);
+      setCustomTitle("");
       setFormData((prev) => ({ ...prev, title: "" }));
     } else {
-      setIsOtherTitle(false);
+      setCustomTitle("");
       setFormData((prev) => ({ ...prev, title: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.title;
+      return n;
+    });
+  };
+
+  const handleCustomTitleChange = (val: string) => {
+    setCustomTitle(val);
+    setFormData((prev) => ({ ...prev, title: val }));
+    if (step1Errors.title) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.title;
+        return n;
+      });
     }
   };
 
-  const handleDepartmentSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const handleCategorySelect = (val: string) => {
+    setCategorySelect(val);
     if (val === "Other") {
-      setIsOtherDepartment(true);
-      setFormData((prev) => ({ ...prev, department: "" }));
+      setCustomCategory("");
+      setFormData((prev) => ({ ...prev, jobcategory: "" }));
     } else {
-      setIsOtherDepartment(false);
-      setFormData((prev) => ({ ...prev, department: val }));
+      setCustomCategory("");
+      setFormData((prev) => ({ ...prev, jobcategory: val }));
     }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.jobcategory;
+      return n;
+    });
+  };
+
+  const handleCustomCategoryChange = (val: string) => {
+    setCustomCategory(val);
+    setFormData((prev) => ({ ...prev, jobcategory: val }));
+    if (step1Errors.jobcategory) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.jobcategory;
+        return n;
+      });
+    }
+  };
+
+  const handleLevelSelect = (val: string) => {
+    setLevelSelect(val);
+    if (val === "Other") {
+      setCustomLevel("");
+      setFormData((prev) => ({ ...prev, level: "" }));
+    } else {
+      setCustomLevel("");
+      setFormData((prev) => ({ ...prev, level: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.level;
+      return n;
+    });
+  };
+
+  const handleCustomLevelChange = (val: string) => {
+    setCustomLevel(val);
+    setFormData((prev) => ({ ...prev, level: val }));
+    if (step1Errors.level) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.level;
+        return n;
+      });
+    }
+  };
+
+  const handleJobTypeSelect = (val: string) => {
+    setJobtypeSelect(val);
+    if (val === "Other") {
+      setCustomJobType("");
+      setFormData((prev) => ({ ...prev, jobtype: "" }));
+    } else {
+      setCustomJobType("");
+      setFormData((prev) => ({ ...prev, jobtype: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.jobtype;
+      return n;
+    });
+  };
+
+  const handleCustomJobTypeChange = (val: string) => {
+    setCustomJobType(val);
+    setFormData((prev) => ({ ...prev, jobtype: val }));
+    if (step1Errors.jobtype) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.jobtype;
+        return n;
+      });
+    }
+  };
+
+  const handleWorkModeSelect = (val: string) => {
+    setWorkModeSelect(val);
+    if (val === "Other") {
+      setCustomWorkMode("");
+      setFormData((prev) => ({ ...prev, workMode: "" }));
+    } else {
+      setCustomWorkMode("");
+      setFormData((prev) => ({ ...prev, workMode: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.workMode;
+      return n;
+    });
+  };
+
+  const handleCustomWorkModeChange = (val: string) => {
+    setCustomWorkMode(val);
+    setFormData((prev) => ({ ...prev, workMode: val }));
+    if (step1Errors.workMode) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.workMode;
+        return n;
+      });
+    }
+  };
+
+  const validateStep1 = (): boolean => {
+    const errs: Record<string, string> = {};
+
+    // 1. Job Title
+    if (titleSelect === "Other") {
+      if (!customTitle.trim()) {
+        errs.title = "Please enter your custom job title.";
+      }
+    } else if (!formData.title.trim()) {
+      errs.title = "Job title is required.";
+    }
+
+    // 2. Job Category
+    if (categorySelect === "Other") {
+      if (!customCategory.trim()) {
+        errs.jobcategory = "Please enter your custom category.";
+      }
+    } else if (!formData.jobcategory.trim()) {
+      errs.jobcategory = "Job category is required.";
+    }
+
+    // 3. Job Level
+    if (levelSelect === "Other") {
+      if (!customLevel.trim()) {
+        errs.level = "Please enter your custom job level.";
+      }
+    } else if (!formData.level.trim()) {
+      errs.level = "Job level is required.";
+    }
+
+    // 4. Job Type
+    if (jobtypeSelect === "Other") {
+      if (!customJobType.trim()) {
+        errs.jobtype = "Please enter your custom job type.";
+      }
+    } else if (!formData.jobtype.trim()) {
+      errs.jobtype = "Job type is required.";
+    }
+
+    // 5. Work Mode
+    if (workModeSelect === "Other") {
+      if (!customWorkMode.trim()) {
+        errs.workMode = "Please enter your custom work mode.";
+      }
+    } else if (!formData.workMode.trim()) {
+      errs.workMode = "Work mode is required.";
+    }
+
+    // 6. Preferred Location
+    if (!formData.location.trim()) {
+      errs.location = "Preferred location is required.";
+    }
+
+    // 7. Application Deadline
+    if (!formData.deadline) {
+      errs.deadline = "Application deadline is required.";
+    } else if (formData.deadline < todayStr) {
+      errs.deadline = "Application deadline must be today or a future date.";
+    }
+
+    // 8. Openings
+    if (Number(formData.openings) < 1) {
+      errs.openings = "Openings must be at least 1.";
+    }
+
+    setStep1Errors(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error("Please fill in all required fields before proceeding.");
+      return false;
+    }
+    return true;
   };
 
   const REQUIRED_FOR_PUBLISH: { field: keyof typeof EMPTY_FORM; label: string; step: number }[] = [
     { field: "title", label: "Job title", step: 0 },
-    { field: "country", label: "Country", step: 0 },
-    { field: "location", label: "Location", step: 0 },
+    { field: "location", label: "Preferred location", step: 0 },
     { field: "jobtype", label: "Job type", step: 0 },
     { field: "jobcategory", label: "Job category", step: 0 },
     { field: "level", label: "Job level", step: 0 },
+    { field: "workMode", label: "Work mode", step: 0 },
     { field: "deadline", label: "Application deadline", step: 0 },
     { field: "description", label: "Job description", step: 1 },
   ];
@@ -476,10 +601,6 @@ const PostJob = () => {
       setStep(0);
       return;
     }
-    // Accepts either the free-text field (a negotiable-salary description
-    // works fine there) or a structured min/max range — not just the
-    // former, since the currency selector above makes the structured
-    // fields the more natural path now.
     if (!formData.salary.trim() && !formData.salaryMin && !formData.salaryMax) {
       toast.error("Salary is required before publishing.");
       setStep(3);
@@ -495,8 +616,21 @@ const PostJob = () => {
     mutation.mutate({ isDraft: false });
   };
 
-  const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const goNext = () => {
+    if (step === 0) {
+      if (!validateStep1()) return;
+    }
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
+
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
+
+  const handleStepClick = (targetStep: number) => {
+    if (step === 0 && targetStep > 0) {
+      if (!validateStep1()) return;
+    }
+    setStep(targetStep);
+  };
 
   if ((isEdit || duplicateFrom) && isFetching) return (
     <div className="max-w-3xl mx-auto p-6 space-y-5" aria-busy="true" aria-label="Loading job data">
@@ -516,10 +650,6 @@ const PostJob = () => {
   const displayCompanyName = formData.useCompanyOverride && formData.overrideName ? formData.overrideName : companyProfile?.name;
   const displayCompanyTagline = formData.useCompanyOverride && formData.overrideTagline ? formData.overrideTagline : companyProfile?.headline;
 
-  // Mirrors what the backend actually derives on save (employerController.js's
-  // deriveSalaryString) — the free-text field always wins when filled in,
-  // otherwise the structured range is what will actually be published, so
-  // Preview should show that, not a blank "—".
   const previewSalary = formData.salary
     || (formData.salaryMin || formData.salaryMax
       ? formatSalaryRange(toNumberOrUndefined(formData.salaryMin), toNumberOrUndefined(formData.salaryMax), formData.currency, formData.salaryPeriod)
@@ -527,8 +657,8 @@ const PostJob = () => {
 
   return (
     <div className="min-h-screen overflow-auto bg-gray-50 py-8" style={{ maxHeight: "calc(100dvh - 50px)" }}>
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6 sm:p-8">
-        <h2 className="text-2xl font-bold mb-1">
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+        <h2 className="text-2xl font-bold mb-1 text-gray-900">
           {isEdit ? "Edit Job" : duplicateFrom ? "Duplicate Job" : "Post a Job"}
         </h2>
         <p className="text-sm text-gray-500 mb-6">
@@ -537,24 +667,44 @@ const PostJob = () => {
         </p>
 
         {/* Step indicator */}
-        <div className="flex items-center mb-8 overflow-x-auto">
+        <div className="flex items-center mb-8 overflow-x-auto pb-2 scrollbar-none">
           {STEPS.map((label, i) => (
             <React.Fragment key={label}>
               <button
                 type="button"
-                onClick={() => setStep(i)}
-                className="flex flex-col items-center gap-1 shrink-0"
+                onClick={() => handleStepClick(i)}
+                className="flex items-center gap-2 shrink-0 group focus:outline-none"
               >
                 <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                    i < step ? "bg-primary text-white" : i === step ? "border-2 border-primary text-primary" : "border border-gray-300 text-gray-400"
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all duration-200 ${
+                    i < step
+                      ? "bg-primary text-white shadow-sm"
+                      : i === step
+                      ? "bg-primary/10 border-2 border-primary text-primary font-bold"
+                      : "border border-gray-300 text-gray-400 group-hover:border-gray-400"
                   }`}
                 >
-                  {i < step ? <Check size={14} /> : i + 1}
+                  {i < step ? <Check size={13} strokeWidth={2.5} /> : i + 1}
                 </span>
-                <span className={`text-[11px] whitespace-nowrap ${i === step ? "font-semibold text-primary" : "text-gray-400"}`}>{label}</span>
+                <span
+                  className={`text-xs whitespace-nowrap transition-colors ${
+                    i === step
+                      ? "font-bold text-gray-900"
+                      : i < step
+                      ? "font-medium text-gray-700"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {label}
+                </span>
               </button>
-              {i < STEPS.length - 1 && <div className={`h-0.5 flex-1 min-w-6 mx-1 ${i < step ? "bg-primary" : "bg-gray-200"}`} />}
+              {i < STEPS.length - 1 && (
+                <div
+                  className={`h-0.5 flex-1 min-w-5 mx-2 transition-colors ${
+                    i < step ? "bg-primary" : "bg-gray-200"
+                  }`}
+                />
+              )}
             </React.Fragment>
           ))}
         </div>
@@ -562,158 +712,254 @@ const PostJob = () => {
         <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           {/* Step 1: Job Details */}
           {step === 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Row 1, Col 1: Job Title * */}
               <div>
-                <label className={labelCls}>Job Title *</label>
-                <select
-                  name="titleSelect"
-                  value={isOtherTitle ? "Other" : (formData.title || "")}
-                  onChange={handleTitleSelectChange}
-                  className={inputCls}
-                >
-                  <option value="">Select Job Title</option>
-                  {formData.title && !isOtherTitle && !ALL_STANDARD_JOB_TITLES.includes(formData.title) && (
-                    <option value={formData.title}>{formData.title}</option>
-                  )}
-                  {POPULAR_JOB_TITLES_BY_GROUP.map((g) => (
-                    <optgroup key={g.group} label={g.group}>
-                      {g.titles.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  <option value="Other">Other (Please specify)</option>
-                </select>
-
-                {isOtherTitle && (
-                  <div className="mt-2.5">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Specify Job Title <span className="text-red-500">*</span>
+                <CustomSelect
+                  id="job-title-select"
+                  label="Job Title"
+                  required
+                  searchable
+                  searchPlaceholder="Search job title..."
+                  placeholder="Select Job Title"
+                  value={titleSelect}
+                  options={POPULAR_JOB_TITLES}
+                  onChange={handleTitleSelect}
+                  error={step1Errors.title && titleSelect !== "Other" ? step1Errors.title : undefined}
+                />
+                {titleSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Job Title <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      name="title"
-                      placeholder="e.g. Prompt Engineer, Sound Designer, etc."
-                      value={formData.title}
-                      onChange={handleChange}
-                      className={inputCls}
+                      placeholder="Enter your job title"
+                      value={customTitle}
+                      onChange={(e) => handleCustomTitleChange(e.target.value)}
+                      className={step1Errors.title ? inputErrorCls : inputCls}
                       autoFocus
-                      required
                     />
-                    <p className="text-[11px] text-gray-500 mt-1">
-                      Enter your custom job title if not listed in the options above.
-                    </p>
+                    {step1Errors.title && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.title}</p>
+                    )}
                   </div>
                 )}
               </div>
 
+              {/* Row 1, Col 2: Job Category * */}
               <div>
-                <label className={labelCls}>Department (Optional)</label>
-                <select
-                  name="departmentSelect"
-                  value={isOtherDepartment ? "Other" : (formData.department || "")}
-                  onChange={handleDepartmentSelectChange}
-                  className={inputCls}
-                >
-                  <option value="">Select Department (Optional)</option>
-                  {formData.department && !isOtherDepartment && !POPULAR_DEPARTMENTS.includes(formData.department) && (
-                    <option value={formData.department}>{formData.department}</option>
-                  )}
-                  {POPULAR_DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                  <option value="Other">Other (Please specify)</option>
-                </select>
-
-                {isOtherDepartment && (
-                  <div className="mt-2.5">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Specify Department
+                <CustomSelect
+                  id="job-category-select"
+                  label="Job Category"
+                  required
+                  searchable
+                  searchPlaceholder="Search category..."
+                  placeholder="Select Category"
+                  value={categorySelect}
+                  options={categoryOptions}
+                  onChange={handleCategorySelect}
+                  error={step1Errors.jobcategory && categorySelect !== "Other" ? step1Errors.jobcategory : undefined}
+                />
+                {categorySelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Job Category <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      name="department"
-                      placeholder="e.g. Robotics, AI Research, etc."
-                      value={formData.department}
-                      onChange={handleChange}
-                      className={inputCls}
+                      placeholder="Enter category"
+                      value={customCategory}
+                      onChange={(e) => handleCustomCategoryChange(e.target.value)}
+                      className={step1Errors.jobcategory ? inputErrorCls : inputCls}
                       autoFocus
                     />
-                    <p className="text-[11px] text-gray-500 mt-1">
-                      Enter your custom department name if not listed in the options above.
-                    </p>
+                    {step1Errors.jobcategory && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.jobcategory}</p>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Row 2, Col 1: Job Level * */}
               <div>
-                <label className={labelCls}>Job Category *</label>
-                <select name="jobcategory" value={formData.jobcategory} onChange={handleChange} className={inputCls}>
-                  <option value="">Select a category</option>
-                  {formData.jobcategory && !categories.some((c) => c.name === formData.jobcategory) && (
-                    <option value={formData.jobcategory}>{formData.jobcategory}</option>
-                  )}
-                  {categories.map((c) => (
-                    <option key={c._id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
+                <CustomSelect
+                  id="job-level-select"
+                  label="Job Level"
+                  required
+                  placeholder="Select Level"
+                  value={levelSelect}
+                  options={JOB_LEVEL_OPTIONS}
+                  onChange={handleLevelSelect}
+                  error={step1Errors.level && levelSelect !== "Other" ? step1Errors.level : undefined}
+                />
+                {levelSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Job Level <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter job level"
+                      value={customLevel}
+                      onChange={(e) => handleCustomLevelChange(e.target.value)}
+                      className={step1Errors.level ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.level && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.level}</p>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Row 2, Col 2: Job Type * */}
               <div>
-                <label className={labelCls}>Job Level *</label>
-                <select name="level" value={formData.level} onChange={handleChange} className={inputCls}>
-                  <option value="">Select Level</option>
-                  <option value="Internship">Internship</option>
-                  <option value="Fresher">Fresher</option>
-                  <option value="Mid Level">Mid Level</option>
-                  <option value="Senior">Senior</option>
-                </select>
+                <CustomSelect
+                  id="job-type-select"
+                  label="Job Type"
+                  required
+                  placeholder="Select Job Type"
+                  value={jobtypeSelect}
+                  options={JOB_TYPE_OPTIONS}
+                  onChange={handleJobTypeSelect}
+                  error={step1Errors.jobtype && jobtypeSelect !== "Other" ? step1Errors.jobtype : undefined}
+                />
+                {jobtypeSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Job Type <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter job type"
+                      value={customJobType}
+                      onChange={(e) => handleCustomJobTypeChange(e.target.value)}
+                      className={step1Errors.jobtype ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.jobtype && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.jobtype}</p>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Row 3, Col 1: Work Mode * */}
               <div>
-                <label className={labelCls}>Job Type *</label>
-                <select name="jobtype" value={formData.jobtype} onChange={handleChange} className={inputCls}>
-                  <option value="">Select Job Type</option>
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Hourly">Hourly</option>
-                </select>
+                <CustomSelect
+                  id="work-mode-select"
+                  label="Work Mode"
+                  required
+                  placeholder="Select Work Mode"
+                  value={workModeSelect}
+                  options={WORK_MODE_OPTIONS}
+                  onChange={handleWorkModeSelect}
+                  error={step1Errors.workMode && workModeSelect !== "Other" ? step1Errors.workMode : undefined}
+                />
+                {workModeSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Work Mode <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter work mode"
+                      value={customWorkMode}
+                      onChange={(e) => handleCustomWorkModeChange(e.target.value)}
+                      className={step1Errors.workMode ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.workMode && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.workMode}</p>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Row 3, Col 2: Preferred Location * */}
               <div>
-                <label className={labelCls}>Work Mode</label>
-                <select name="workMode" value={formData.workMode} onChange={handleChange} className={inputCls}>
-                  <option value="On-site">On-site</option>
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Remote">Remote</option>
-                </select>
+                <label htmlFor="job-preferred-location" className={labelCls}>
+                  Preferred Location <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="job-preferred-location"
+                  type="text"
+                  name="location"
+                  placeholder="e.g. Kathmandu, Nepal"
+                  value={formData.location}
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (step1Errors.location) {
+                      setStep1Errors((prev) => {
+                        const n = { ...prev };
+                        delete n.location;
+                        return n;
+                      });
+                    }
+                  }}
+                  className={step1Errors.location ? inputErrorCls : inputCls}
+                />
+                {step1Errors.location && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.location}</p>
+                )}
               </div>
+
+              {/* Row 4, Col 1: Openings */}
               <div>
-                <label className={labelCls}>Country *</label>
-                <select name="country" value={formData.country} onChange={handleChange} className={inputCls}>
-                  <option value="">Select Country</option>
-                  {/* A job being edited/duplicated may carry a country
-                      value from before the list below loads — keep it
-                      selectable rather than silently blanking the field. */}
-                  {formData.country && !countries.includes(formData.country) && (
-                    <option value={formData.country}>{formData.country}</option>
-                  )}
-                  {countries.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <label htmlFor="job-openings" className={labelCls}>
+                  Openings
+                </label>
+                <input
+                  id="job-openings"
+                  type="number"
+                  name="openings"
+                  min="1"
+                  placeholder="1"
+                  value={formData.openings}
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (step1Errors.openings) {
+                      setStep1Errors((prev) => {
+                        const n = { ...prev };
+                        delete n.openings;
+                        return n;
+                      });
+                    }
+                  }}
+                  className={step1Errors.openings ? inputErrorCls : inputCls}
+                />
+                {step1Errors.openings && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.openings}</p>
+                )}
               </div>
+
+              {/* Row 4, Col 2: Application Deadline * */}
               <div>
-                <label className={labelCls}>Location *</label>
-                <input name="location" placeholder="e.g. Kathmandu" value={formData.location} onChange={handleChange} className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Openings</label>
-                <input name="openings" type="number" min={1} value={formData.openings} onChange={handleChange} className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Application Deadline *</label>
-                <div className="relative">
-                  <CalendarClock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                  <input name="deadline" type="date" value={formData.deadline} onChange={handleChange} min={todayStr} className={`${inputCls} pl-10`} />
-                </div>
+                <label htmlFor="job-deadline" className={labelCls}>
+                  Application Deadline <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="job-deadline"
+                  type="date"
+                  name="deadline"
+                  min={todayStr}
+                  value={formData.deadline}
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (step1Errors.deadline) {
+                      setStep1Errors((prev) => {
+                        const n = { ...prev };
+                        delete n.deadline;
+                        return n;
+                      });
+                    }
+                  }}
+                  className={step1Errors.deadline ? inputErrorCls : inputCls}
+                />
+                {step1Errors.deadline && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.deadline}</p>
+                )}
               </div>
             </div>
           )}
@@ -1075,19 +1321,28 @@ const PostJob = () => {
             <button
               type="button"
               onClick={() => (step === 0 ? navigate("/employer/dashboard") : goBack())}
-              className="flex items-center gap-1 px-4 py-2 text-gray-600 hover:text-gray-800"
+              className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ChevronLeft size={16} /> {step === 0 ? "Cancel" : "Back"}
             </button>
 
             <div className="flex items-center gap-3">
               {step < STEPS.length - 1 && (
-                <button type="button" onClick={handleSaveDraft} disabled={mutation.isPending} className="px-4 py-2 text-sm text-gray-500 hover:text-primary">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={mutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-primary transition-colors disabled:opacity-50"
+                >
                   Save as Draft
                 </button>
               )}
               {step < STEPS.length - 1 && (
-                <button type="button" onClick={goNext} className="flex items-center gap-1 px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="flex items-center gap-1.5 px-6 py-2.5 bg-primary text-white font-medium text-sm rounded-xl shadow-sm hover:shadow hover:bg-[#e66800] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                >
                   {step === STEPS.length - 2 ? "Review to Publish" : "Next"} <ChevronRight size={16} />
                 </button>
               )}

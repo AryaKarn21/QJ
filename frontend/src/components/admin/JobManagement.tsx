@@ -313,9 +313,16 @@ const JobManagement = () => {
                   >
                     <option value="">Select Level</option>
                     <option value="Internship">Internship</option>
-                    <option value="Fresher">Fresher</option>
+                    <option value="Fresher">Fresher / Trainee</option>
+                    <option value="Entry Level">Entry Level</option>
+                    <option value="Junior">Junior</option>
+                    <option value="Associate">Associate</option>
                     <option value="Mid Level">Mid Level</option>
-                    <option value="Senior">Senior</option>
+                    <option value="Senior">Senior Level</option>
+                    <option value="Lead">Lead / Staff</option>
+                    <option value="Manager">Manager / Supervisor</option>
+                    <option value="Director">Director / Head</option>
+                    <option value="Executive">Executive (VP, C-Level, Founder)</option>
                   </select>
                 </div>
 

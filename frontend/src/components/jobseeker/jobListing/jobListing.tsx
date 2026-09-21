@@ -527,7 +527,7 @@ const AllJobListing = () => {
             <div>
               <label className="block text-sm font-medium mb-2">Level</label>
               <div className="space-y-2">
-                {['Internship', 'Fresher', 'Mid Level', 'Senior'].map((level) => (
+                {['Internship', 'Fresher', 'Entry Level', 'Junior', 'Associate', 'Mid Level', 'Senior', 'Lead', 'Manager', 'Director', 'Executive'].map((level) => (
                   <label key={level} className="flex items-center gap-2 text-sm">
                     <input
                       type="radio"

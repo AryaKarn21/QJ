@@ -17,15 +17,14 @@ const jobSchema = new mongoose.Schema(
     title: { type: String, required: requiredUnlessDraft, trim: true },
     country: {
       type: String,
-      required: requiredUnlessDraft,
-      enum: COUNTRIES,
-      trim: true
+      trim: true,
+      default: "",
     },
     location: { type: String, required: requiredUnlessDraft, trim: true },
     jobtype: {
       type: String,
       required: requiredUnlessDraft,
-      enum: ["Full-time", "Part-time", "Contract", "Hourly"],
+      trim: true,
     },
     salary: { type: String, required: requiredUnlessDraft, trim: true },
     experience: { type: String, trim: true },
@@ -34,10 +33,10 @@ const jobSchema = new mongoose.Schema(
     level: {
       type: String,
       required: requiredUnlessDraft,
-      enum: ["Internship", "Fresher", "Mid Level", "Senior"],
+      trim: true,
     },
     deadline: { type: Date, required: requiredUnlessDraft },
-    openings: { type: Number, required: requiredUnlessDraft, min: 1 },
+    openings: { type: Number, required: requiredUnlessDraft, min: 1, default: 1 },
 
     // ── LinkedIn/Naukri-style structured fields (all optional/additive) ──
     // `salary`/`experience`/`description` above stay required exactly as
@@ -52,7 +51,7 @@ const jobSchema = new mongoose.Schema(
     department: { type: String, trim: true, default: "" },
     workMode: {
       type: String,
-      enum: ["On-site", "Hybrid", "Remote"],
+      trim: true,
       default: "On-site",
     },
     minExperience: { type: Number, min: 0 },
