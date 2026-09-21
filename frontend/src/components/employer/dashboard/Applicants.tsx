@@ -908,28 +908,31 @@ const Applicants = () => {
                               selected.applicationId
                             ) || resolveResumeUrl(selected.resume);
                           return (
-                            <div className="space-y-3">
-                              {/* Resume Section Header with Action Buttons */}
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <FileText
-                                    size={16}
-                                    className="text-orange-600 flex-shrink-0"
-                                  />
-                                  <span className="text-xs sm:text-sm font-bold text-gray-800 truncate">
-                                    {resumeFilename(selected.applicant?.name)}
-                                  </span>
+                            <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-7 shadow-2xs">
+                              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-orange-50/50 rounded-xl border border-orange-100">
+                                <div className="flex items-center gap-3.5 min-w-0 w-full sm:w-auto">
+                                  <div className="h-12 w-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                                    <FileText size={24} />
+                                  </div>
+                                  <div className="min-w-0 text-left">
+                                    <h4 className="text-sm sm:text-base font-bold text-gray-900 truncate">
+                                      {resumeFilename(selected.applicant?.name)}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      PDF Document • Candidate Resume
+                                    </p>
+                                  </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-stretch sm:justify-end">
                                   <a
                                     href={authorizedUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold transition-colors shadow-2xs"
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 text-xs sm:text-sm font-semibold transition-colors shadow-2xs flex-1 sm:flex-initial"
                                     title="Open resume in a new browser tab"
                                   >
-                                    <ExternalLink size={13} />
+                                    <ExternalLink size={15} className="text-gray-600" />
                                     <span>Open in new tab</span>
                                   </a>
 
@@ -938,47 +941,18 @@ const Applicants = () => {
                                       handleDownloadResume(selected)
                                     }
                                     disabled={downloadingResume}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
-                                    title="Download PDF to your computer"
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-semibold transition-colors shadow-2xs disabled:opacity-50 cursor-pointer flex-1 sm:flex-initial"
+                                    title="Download PDF to your device"
                                   >
-                                    <Download size={13} />
+                                    <Download size={15} />
                                     <span>
                                       {downloadingResume
                                         ? "Downloading…"
-                                        : "Download PDF"}
+                                        : "Download Resume"}
                                     </span>
                                   </button>
                                 </div>
                               </div>
-
-                              {/* Responsive PDF Viewer Frame */}
-                              <div className="w-full rounded-xl border border-gray-200 overflow-hidden bg-gray-100 shadow-inner">
-                                <iframe
-                                  src={authorizedUrl}
-                                  title="Candidate resume preview"
-                                  className="w-full h-[450px] sm:h-[600px] lg:h-[700px] border-none bg-white"
-                                />
-                              </div>
-
-                              <p className="text-[11px] text-gray-400 text-center">
-                                Having trouble viewing? Use{" "}
-                                <a
-                                  href={authorizedUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-orange-600 underline font-medium"
-                                >
-                                  Open in new tab
-                                </a>{" "}
-                                or{" "}
-                                <button
-                                  onClick={() => handleDownloadResume(selected)}
-                                  className="text-orange-600 underline font-medium cursor-pointer"
-                                >
-                                  Download PDF
-                                </button>
-                                .
-                              </p>
                             </div>
                           );
                         })()
