@@ -35,10 +35,23 @@ const applicationSchema = new mongoose.Schema(
     // rescheduling just overwrites these fields.
     interview: {
       scheduledAt: { type: Date },
-      mode: { type: String, enum: ["Video Call", "Phone Call", "In-Person"], default: "Video Call" },
+      duration: { type: Number, default: 30 },
+      mode: {
+        type: String,
+        enum: ["Video Call", "Phone Call", "In-Person", "video", "phone", "in-person"],
+        default: "Video Call",
+      },
       meetingLink: { type: String, trim: true, default: "" },
       location: { type: String, trim: true, default: "" },
       notes: { type: String, trim: true, default: "" },
+      interviewer: { type: String, trim: true, default: "" },
+      emailStatus: {
+        type: String,
+        enum: ["pending", "sent", "failed"],
+        default: "pending",
+      },
+      emailSentAt: { type: Date },
+      emailError: { type: String, default: "" },
     },
   },
   { timestamps: true }

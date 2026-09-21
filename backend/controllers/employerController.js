@@ -7,6 +7,12 @@ const SavedCandidate = require("../models/SavedCandidate");
 const CompanyMember = require("../models/CompanyMember");
 const sendNotification = require("../utils/sendNotifications");
 const sendMail = require("../utils/sendMail");
+const {
+  formatInterviewDateTime,
+  sendInterviewScheduledEmail,
+  sendInterviewRescheduledEmail,
+  sendInterviewCancelledEmail,
+} = require("../services/interviewEmailService");
 const { recordAdminAudit } = require("../utils/auditLogger");
 const { SYMBOL_BY_CODE } = require("../data/currencies");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
@@ -195,6 +201,8 @@ const createJob = async (req, res) => {
     description,
     // Structured fields (all optional — see models/Job.js).
     department,
+    joiningDate,
+    hiringProcess,
     workMode,
     minExperience,
     maxExperience,
@@ -263,6 +271,8 @@ const createJob = async (req, res) => {
       status: initialStatus,
       description,
       department,
+      joiningDate,
+      hiringProcess,
       workMode,
       minExperience,
       maxExperience,
@@ -390,6 +400,8 @@ const updatableFields = [
   "description",
   // Structured fields (all optional — see models/Job.js).
   "department",
+  "joiningDate",
+  "hiringProcess",
   "workMode",
   "minExperience",
   "maxExperience",
@@ -519,113 +531,213 @@ const updateApplication = async (req, res) => {
     return res.status(400).json({ message: "Invalid status value" });
   }
 
-  if (status === "Interview Scheduled" && !interview?.scheduledAt) {
-    return res.status(400).json({ message: "Please provide an interview date/time." });
+  if (status === "Interview Scheduled") {
+    if (!interview?.scheduledAt) {
+      return res.status(400).json({ message: "Please provide an interview date/time." });
+    }
+    const scheduledDate = new Date(interview.scheduledAt);
+    if (isNaN(scheduledDate.getTime())) {
+      return res.status(400).json({ message: "Please provide a valid interview date/time." });
+    }
   }
 
   try {
-    // Find the application
+    // Find the application with nested job employer and applicant
     const application = await Application.findById(applicationId)
-      .populate("job")
+      .populate({
+        path: "job",
+        populate: { path: "employer", select: "name companyLogo email" },
+      })
       .populate("applicant");
+
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
     }
 
     // Check if the employer owns the job related to the application
-    if (application.job.employer.toString() !== employerId) {
+    const jobEmployerId =
+      application.job?.employer?._id?.toString() ||
+      application.job?.employer?.toString();
+
+    if (jobEmployerId !== employerId) {
       return res
         .status(403)
         .json({ message: "Not authorized to update this application" });
     }
 
+    const previousStatus = application.status;
+    const wasAlreadyScheduled =
+      previousStatus === "Interview Scheduled" &&
+      Boolean(application.interview?.scheduledAt);
+    const wasCancelled =
+      previousStatus === "Interview Scheduled" &&
+      status !== "Interview Scheduled";
+
+    const companyName =
+      application.job?.companyOverride?.name?.trim() ||
+      application.job?.employer?.name?.trim() ||
+      "QuickJobs Employer";
+
+    const candidate = application.applicant;
+    const candidateEmail = candidate?.email?.trim();
+    const isCandidateActive = candidate && candidate.isActive !== false;
+
     // Update status
     application.status = status;
+
+    let emailResult = { sent: null, recipient: candidateEmail || "" };
+
     if (status === "Interview Scheduled") {
       application.interview = {
-        scheduledAt: interview.scheduledAt,
+        scheduledAt: new Date(interview.scheduledAt),
+        duration: interview.duration ? parseInt(interview.duration, 10) || 30 : 30,
         mode: interview.mode || "Video Call",
-        meetingLink: interview.meetingLink || "",
-        location: interview.location || "",
-        notes: interview.notes || "",
+        meetingLink: interview.meetingLink ? interview.meetingLink.trim() : "",
+        location: interview.location ? interview.location.trim() : "",
+        notes: interview.notes ? interview.notes.trim() : "",
+        interviewer: interview.interviewer ? interview.interviewer.trim() : "",
+        emailStatus: "pending",
+        emailSentAt: undefined,
+        emailError: "",
       };
+
+      // In-App Notification
+      const { date, time } = formatInterviewDateTime(application.interview.scheduledAt);
+      const notifType = wasAlreadyScheduled ? "interview_rescheduled" : "interview_scheduled";
+      const notifMsg = wasAlreadyScheduled
+        ? `Your interview for "${application.job.title}" at ${companyName} has been rescheduled to ${date} at ${time}.`
+        : `Your interview for "${application.job.title}" at ${companyName} has been scheduled for ${date} at ${time}.`;
+
+      if (candidate?._id) {
+        await sendNotification({
+          recipient: candidate._id,
+          type: notifType,
+          message: notifMsg,
+          relatedJob: application.job._id,
+          relatedApplication: application._id,
+          link: "/user/applications",
+        });
+      }
+
+      // Candidate email validation & sending
+      if (!candidateEmail || !isCandidateActive) {
+        const errorReason = !candidateEmail
+          ? "Candidate email address not found"
+          : "Candidate account is inactive";
+        console.error(
+          `[InterviewEmail]\nRecipient: ${candidateEmail || "MISSING"}\nApplication: ${application._id}\nStatus: failed\nError: ${errorReason}`
+        );
+        application.interview.emailStatus = "failed";
+        application.interview.emailError = errorReason;
+        emailResult = {
+          sent: false,
+          recipient: candidateEmail || "",
+          message: "Interview scheduled, but candidate email was not found or is inactive.",
+        };
+      } else {
+        const emailFn = wasAlreadyScheduled
+          ? sendInterviewRescheduledEmail
+          : sendInterviewScheduledEmail;
+
+        const mailRes = await emailFn({
+          recipient: candidateEmail,
+          candidateName: candidate.name || "Candidate",
+          companyName,
+          jobTitle: application.job.title,
+          scheduledAt: application.interview.scheduledAt,
+          duration: application.interview.duration,
+          mode: application.interview.mode,
+          meetingLink: application.interview.meetingLink,
+          location: application.interview.location,
+          notes: application.interview.notes,
+          applicationId: application._id,
+        });
+
+        if (mailRes.success) {
+          application.interview.emailStatus = "sent";
+          application.interview.emailSentAt = new Date();
+          application.interview.emailError = "";
+          emailResult = {
+            sent: true,
+            recipient: candidateEmail,
+          };
+        } else {
+          application.interview.emailStatus = "failed";
+          application.interview.emailError = mailRes.error || "Email delivery failed";
+          emailResult = {
+            sent: false,
+            recipient: candidateEmail,
+            message: "Interview scheduled, but confirmation email could not be delivered.",
+          };
+        }
+      }
+    } else {
+      // In-App Notification for non-interview status changes
+      if (candidate?._id) {
+        await sendNotification({
+          recipient: candidate._id,
+          type: "application_update",
+          message: `Your application for "${application.job.title}" has been ${status.toLowerCase()}.`,
+          relatedJob: application.job._id,
+          relatedApplication: application._id,
+          link: "/user/applications",
+        });
+      }
+
+      // Handle interview cancellation if status changed away from Interview Scheduled
+      if (wasCancelled && candidateEmail && isCandidateActive) {
+        const cancelRes = await sendInterviewCancelledEmail({
+          recipient: candidateEmail,
+          candidateName: candidate.name || "Candidate",
+          companyName,
+          jobTitle: application.job.title,
+          reason:
+            status === "Rejected"
+              ? "Application not moving forward at this time"
+              : `Application status updated to ${status}`,
+          applicationId: application._id,
+        });
+
+        emailResult = {
+          sent: cancelRes.success,
+          recipient: candidateEmail,
+          event: "cancelled",
+        };
+      } else if (["Accepted", "Rejected"].includes(status) && candidateEmail && isCandidateActive) {
+        let subject;
+        let text;
+        if (status === "Accepted") {
+          subject = `You're accepted: ${application.job.title} at ${companyName}`;
+          text =
+            `Hi ${candidate.name || "there"},\n\n` +
+            `Great news — your application for "${application.job.title}" at ${companyName} has been accepted. ` +
+            `The employer will be in touch with next steps.\n\n— QuickJobs Team`;
+        } else {
+          subject = `Update on your application: ${application.job.title} at ${companyName}`;
+          text =
+            `Hi ${candidate.name || "there"},\n\n` +
+            `Thank you for applying to "${application.job.title}" at ${companyName}. After careful review, ` +
+            `the employer has decided not to move forward with your application at this time. ` +
+            `We encourage you to keep applying to other roles on QuickJobs.\n\n— QuickJobs Team`;
+        }
+
+        try {
+          await sendMail(candidateEmail, subject, text);
+          emailResult = { sent: true, recipient: candidateEmail };
+        } catch (err) {
+          console.error("Failed to send application status email:", err.message);
+          emailResult = { sent: false, recipient: candidateEmail, message: err.message };
+        }
+      }
     }
+
     await application.save();
 
-    // Create a notification for the jobseeker
-    await sendNotification({
-      recipient: application.applicant._id,
-      type: "application_update",
-      message: `Your application for "${
-        application.job.title
-      }" has been ${status.toLowerCase()}.`,
-      relatedJob: application.job._id,
-      relatedApplication: application._id,
-      link: "/user/applications",
-    });
-
-    // Email the candidate for the three decision-bearing statuses. Pending
-    // and Reviewed are just internal triage states, not something worth
-    // emailing about — Accepted, Rejected, and Interview Scheduled are the
-    // moments a candidate actually needs to hear from us outside the app.
-    //
-    // `emailSent` is reported back in the response below — previously this
-    // was fire-and-forget with no way for the employer to know whether it
-    // actually went out; the toast on the frontend claimed "the candidate
-    // has been emailed" unconditionally, even if sendMail silently failed
-    // (bad EMAIL_USER/EMAIL_PASS, Gmail rejecting it, etc.) and only a
-    // server console line — which the employer never sees — recorded that.
-    let emailSent = null; // null = not applicable for this status
-    if (["Accepted", "Rejected", "Interview Scheduled"].includes(status) && application.applicant?.email) {
-      let subject;
-      let text;
-      if (status === "Interview Scheduled") {
-        const when = new Date(application.interview.scheduledAt).toLocaleString("en-IN", {
-          dateStyle: "full",
-          timeStyle: "short",
-        });
-        subject = `Interview scheduled: ${application.job.title}`;
-        text =
-          `Hi ${application.applicant.name || "there"},\n\n` +
-          `Your interview for "${application.job.title}" has been scheduled.\n\n` +
-          `When: ${when}\n` +
-          `Mode: ${application.interview.mode}\n` +
-          (application.interview.meetingLink ? `Meeting link: ${application.interview.meetingLink}\n` : "") +
-          (application.interview.location ? `Location: ${application.interview.location}\n` : "") +
-          (application.interview.notes ? `\nNotes from the employer:\n${application.interview.notes}\n` : "") +
-          `\nGood luck!\n\n— Quick Jobs`;
-      } else if (status === "Accepted") {
-        subject = `You're accepted: ${application.job.title}`;
-        text =
-          `Hi ${application.applicant.name || "there"},\n\n` +
-          `Great news — your application for "${application.job.title}" has been accepted. ` +
-          `The employer will be in touch with next steps.\n\n— Quick Jobs`;
-      } else {
-        subject = `Update on your application: ${application.job.title}`;
-        text =
-          `Hi ${application.applicant.name || "there"},\n\n` +
-          `Thank you for applying to "${application.job.title}". After careful review, ` +
-          `the employer has decided not to move forward with your application at this time. ` +
-          `We encourage you to keep applying to other roles on Quick Jobs.\n\n— Quick Jobs`;
-      }
-
-      // Awaited now (not fire-and-forget) so the response can honestly
-      // report success/failure — but a failed send still never blocks the
-      // status update itself (the in-app notification above already
-      // succeeded, and the try/catch here means a thrown error just sets
-      // emailSent=false instead of failing the whole request).
-      try {
-        await sendMail(application.applicant.email, subject, text);
-        emailSent = true;
-      } catch (err) {
-        console.error("Failed to send application status email:", err.message);
-        emailSent = false;
-      }
-    }
-
     res.json({
+      success: true,
       message: "Application status updated successfully",
-      emailSent,
+      emailSent: emailResult.sent, // backward compatibility
+      email: emailResult,
       updatedApplication: {
         applicationId: application._id,
         status: application.status,
@@ -634,6 +746,92 @@ const updateApplication = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating application status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Resend interview email for an application with an active scheduled interview
+const resendInterviewEmail = async (req, res) => {
+  const { applicationId } = req.params;
+  const employerId = req.user.id;
+
+  try {
+    const application = await Application.findById(applicationId)
+      .populate({
+        path: "job",
+        populate: { path: "employer", select: "name companyLogo email" },
+      })
+      .populate("applicant");
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    const jobEmployerId =
+      application.job?.employer?._id?.toString() ||
+      application.job?.employer?.toString();
+
+    if (jobEmployerId !== employerId) {
+      return res.status(403).json({ message: "Not authorized to manage this application" });
+    }
+
+    if (application.status !== "Interview Scheduled" || !application.interview?.scheduledAt) {
+      return res.status(400).json({ message: "No active interview scheduled for this application" });
+    }
+
+    const candidate = application.applicant;
+    const candidateEmail = candidate?.email?.trim();
+    if (!candidateEmail || candidate.isActive === false) {
+      return res.status(400).json({
+        success: false,
+        message: "Candidate does not have a valid active email address",
+        email: { sent: false, recipient: candidateEmail || "" },
+      });
+    }
+
+    const companyName =
+      application.job?.companyOverride?.name?.trim() ||
+      application.job?.employer?.name?.trim() ||
+      "QuickJobs Employer";
+
+    const mailRes = await sendInterviewScheduledEmail({
+      recipient: candidateEmail,
+      candidateName: candidate.name || "Candidate",
+      companyName,
+      jobTitle: application.job.title,
+      scheduledAt: application.interview.scheduledAt,
+      duration: application.interview.duration || 30,
+      mode: application.interview.mode || "Video Call",
+      meetingLink: application.interview.meetingLink || "",
+      location: application.interview.location || "",
+      notes: application.interview.notes || "",
+      applicationId: application._id,
+    });
+
+    if (mailRes.success) {
+      application.interview.emailStatus = "sent";
+      application.interview.emailSentAt = new Date();
+      application.interview.emailError = "";
+      await application.save();
+
+      return res.json({
+        success: true,
+        message: `Interview email sent successfully to ${candidateEmail}`,
+        email: { sent: true, recipient: candidateEmail },
+      });
+    } else {
+      application.interview.emailStatus = "failed";
+      application.interview.emailError = mailRes.error || "Email delivery failed";
+      await application.save();
+
+      return res.status(502).json({
+        success: false,
+        message: "Failed to send interview email. Please check server SMTP configuration.",
+        email: { sent: false, recipient: candidateEmail, error: mailRes.error },
+      });
+    }
+  } catch (error) {
+    console.error("Error resending interview email:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -870,7 +1068,7 @@ const getAllApplicantsForEmployer = async (req, res) => {
 
     const [applications, totalApplications, statusCountsRaw] = await Promise.all([
       Application.find(filter)
-        .populate("applicant", "name email profilePic skills qualifications experiences")
+        .populate("applicant", "name email profilePic skills qualifications experiences headline bio socialLinks projects certifications")
         .populate("job", "title")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -1374,4 +1572,5 @@ module.exports = {
   getScheduledInterviews,
   updateEmployerHiringStatus,
   getApplicationResume,
+  resendInterviewEmail,
 };

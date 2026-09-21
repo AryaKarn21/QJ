@@ -9,7 +9,7 @@ const {
   getAllApplicantsForEmployerJobs, updateNotificationPreferences,
   deactivateAccount, getCandidates, toggleSavedCandidate,
   getSavedCandidates, getScheduledInterviews, updateEmployerHiringStatus,
-  getApplicationResume,
+  getApplicationResume, resendInterviewEmail,
 } = require("../controllers/employerController");
 
 // Search companies — searchEmployers was missing from controller so we
@@ -54,6 +54,7 @@ router.post("/jobs", authenticate, authorizeEmployer, createJob);
 router.put("/jobs/:jobId", authenticate, authorizeEmployer, editJob);
 router.patch("/jobs/:jobId", authenticate, authorizeEmployer, editJob);
 router.patch("/applications/:applicationId/status", authenticate, authorizeEmployer, updateApplication);
+router.post("/applications/:applicationId/resend-interview-email", authenticate, authorizeEmployer, resendInterviewEmail);
 router.delete("/jobs/:jobId", authenticate, authorizeEmployer, deleteJob);
 
 // Read-only views of an employer's OWN data — previously gated by the same

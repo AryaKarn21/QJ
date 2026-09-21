@@ -63,6 +63,23 @@ export const POPULAR_JOB_TITLES: { value: string; label: string; group?: string 
   { value: "Other", label: "Other" },
 ];
 
+export const DEPARTMENT_OPTIONS = [
+  { value: "Engineering & Technology", label: "Engineering & Technology" },
+  { value: "Product Management", label: "Product Management" },
+  { value: "Design & Creative", label: "Design & Creative" },
+  { value: "Marketing & Communications", label: "Marketing & Communications" },
+  { value: "Sales & Business Development", label: "Sales & Business Development" },
+  { value: "Customer Success & Support", label: "Customer Success & Support" },
+  { value: "Human Resources & Talent", label: "Human Resources & Talent" },
+  { value: "Finance & Accounting", label: "Finance & Accounting" },
+  { value: "Operations & Administration", label: "Operations & Administration" },
+  { value: "Legal & Compliance", label: "Legal & Compliance" },
+  { value: "Data & Analytics", label: "Data & Analytics" },
+  { value: "Healthcare & Medical", label: "Healthcare & Medical" },
+  { value: "Education & Training", label: "Education & Training" },
+  { value: "Other", label: "Other" },
+];
+
 export const JOB_LEVEL_OPTIONS = [
   { value: "Internship", label: "Internship" },
   { value: "Fresher", label: "Fresher" },
@@ -96,9 +113,59 @@ export const WORK_MODE_OPTIONS = [
   { value: "Other", label: "Other" },
 ];
 
+export const POPULAR_LOCATIONS: { value: string; label: string; group?: string }[] = [
+  // Nepal
+  { value: "Kathmandu, Nepal", label: "Kathmandu, Nepal", group: "Nepal" },
+  { value: "Lalitpur, Nepal", label: "Lalitpur, Nepal", group: "Nepal" },
+  { value: "Bhaktapur, Nepal", label: "Bhaktapur, Nepal", group: "Nepal" },
+  { value: "Pokhara, Nepal", label: "Pokhara, Nepal", group: "Nepal" },
+  { value: "Biratnagar, Nepal", label: "Biratnagar, Nepal", group: "Nepal" },
+  { value: "Butwal, Nepal", label: "Butwal, Nepal", group: "Nepal" },
+  { value: "Chitwan, Nepal", label: "Chitwan, Nepal", group: "Nepal" },
+  { value: "Birgunj, Nepal", label: "Birgunj, Nepal", group: "Nepal" },
+  { value: "Dharan, Nepal", label: "Dharan, Nepal", group: "Nepal" },
+  // India
+  { value: "New Delhi, India", label: "New Delhi, India", group: "India" },
+  { value: "Bengaluru, India", label: "Bengaluru, India", group: "India" },
+  { value: "Mumbai, India", label: "Mumbai, India", group: "India" },
+  { value: "Hyderabad, India", label: "Hyderabad, India", group: "India" },
+  { value: "Pune, India", label: "Pune, India", group: "India" },
+  { value: "Kolkata, India", label: "Kolkata, India", group: "India" },
+  // International
+  { value: "Dubai, UAE", label: "Dubai, UAE", group: "International" },
+  { value: "London, UK", label: "London, UK", group: "International" },
+  { value: "New York, USA", label: "New York, USA", group: "International" },
+  { value: "Toronto, Canada", label: "Toronto, Canada", group: "International" },
+  { value: "Sydney, Australia", label: "Sydney, Australia", group: "International" },
+  // Remote
+  { value: "Remote / Anywhere", label: "Remote / Anywhere", group: "Remote" },
+  { value: "Other", label: "Other" },
+];
+
+export const JOINING_DATE_OPTIONS = [
+  { value: "Immediate (Within 7 days)", label: "Immediate (Within 7 days)" },
+  { value: "Within 15 Days", label: "Within 15 Days" },
+  { value: "Within 30 Days", label: "Within 30 Days" },
+  { value: "Within 45 Days", label: "Within 45 Days" },
+  { value: "Within 60 Days", label: "Within 60 Days" },
+  { value: "Specific Date", label: "Specific Date (Choose calendar date)" },
+  { value: "Flexible / Negotiable", label: "Flexible / Negotiable" },
+  { value: "Other", label: "Other" },
+];
+
+export const HIRING_PROCESS_OPTIONS = [
+  { value: "Resume Screening → HR Round → Offer", label: "Resume Screening → HR Round → Offer" },
+  { value: "Resume Screening → Technical Interview → HR Round → Offer", label: "Resume Screening → Technical Interview → HR Round → Offer" },
+  { value: "Resume Screening → Skill Assessment → Technical Interview → HR Round → Offer", label: "Resume Screening → Skill Assessment → Technical Interview → HR Round → Offer" },
+  { value: "Resume Screening → Assignment → Panel Interview → Offer", label: "Resume Screening → Assignment → Panel Interview → Offer" },
+  { value: "Single Round Interview → Direct Hiring", label: "Single Round Interview → Direct Hiring" },
+  { value: "Walk-in Interview / Immediate Evaluation", label: "Walk-in Interview / Immediate Evaluation" },
+  { value: "Other", label: "Other" },
+];
+
 const EMPTY_FORM = {
   title: "",
-  country: "",
+  country: "Nepal",
   location: "",
   jobtype: "",
   salary: "",
@@ -109,6 +176,8 @@ const EMPTY_FORM = {
   openings: 1,
   description: "",
   department: "",
+  joiningDate: "",
+  hiringProcess: "",
   workMode: "On-site",
   minExperience: "",
   maxExperience: "",
@@ -165,6 +234,9 @@ const PostJob = () => {
   const [categorySelect, setCategorySelect] = useState("");
   const [customCategory, setCustomCategory] = useState("");
 
+  const [departmentSelect, setDepartmentSelect] = useState("");
+  const [customDepartment, setCustomDepartment] = useState("");
+
   const [levelSelect, setLevelSelect] = useState("");
   const [customLevel, setCustomLevel] = useState("");
 
@@ -173,6 +245,19 @@ const PostJob = () => {
 
   const [workModeSelect, setWorkModeSelect] = useState("On-site");
   const [customWorkMode, setCustomWorkMode] = useState("");
+
+  const [countrySelect, setCountrySelect] = useState("Nepal");
+  const [customCountry, setCustomCountry] = useState("");
+
+  const [locationSelect, setLocationSelect] = useState("");
+  const [customLocation, setCustomLocation] = useState("");
+
+  const [joiningDateSelect, setJoiningDateSelect] = useState("");
+  const [customJoiningDate, setCustomJoiningDate] = useState("");
+  const [specificJoiningDate, setSpecificJoiningDate] = useState("");
+
+  const [hiringProcessSelect, setHiringProcessSelect] = useState("");
+  const [customHiringProcess, setCustomHiringProcess] = useState("");
 
   const [step1Errors, setStep1Errors] = useState<Record<string, string>>({});
 
@@ -193,6 +278,22 @@ const PostJob = () => {
     opts.push({ value: "Other", label: "Other" });
     return opts;
   }, [categories]);
+
+  // Public countries list
+  const { data: rawCountries = [] } = useQuery({
+    queryKey: ["countries"],
+    queryFn: fetchCountries,
+  });
+
+  const countryOptions = useMemo(() => {
+    const list = rawCountries.length > 0 ? rawCountries : [
+      "Nepal", "India", "United States", "United Kingdom", "Canada", "Australia",
+      "Germany", "United Arab Emirates", "Singapore", "Japan", "Malaysia", "Bangladesh", "Pakistan", "Sri Lanka"
+    ];
+    const opts = list.map((c: string) => ({ value: c, label: c }));
+    opts.push({ value: "Other", label: "Other" });
+    return opts;
+  }, [rawCountries]);
 
   const { data: currencyData } = useQuery({
     queryKey: ["currencies"],
@@ -237,6 +338,18 @@ const PostJob = () => {
       }
     }
 
+    // Sync Department
+    if (jobData.department) {
+      const isKnown = DEPARTMENT_OPTIONS.some((d) => d.value === jobData.department && d.value !== "Other");
+      if (isKnown) {
+        setDepartmentSelect(jobData.department);
+        setCustomDepartment("");
+      } else {
+        setDepartmentSelect("Other");
+        setCustomDepartment(jobData.department);
+      }
+    }
+
     // Sync Level
     if (jobData.level) {
       const isKnown = JOB_LEVEL_OPTIONS.some((l) => l.value === jobData.level && l.value !== "Other");
@@ -273,9 +386,64 @@ const PostJob = () => {
       }
     }
 
+    // Sync Country
+    if (jobData.country) {
+      const isKnown = countryOptions.some((c) => c.value === jobData.country && c.value !== "Other");
+      if (isKnown) {
+        setCountrySelect(jobData.country);
+        setCustomCountry("");
+      } else {
+        setCountrySelect("Other");
+        setCustomCountry(jobData.country);
+      }
+    }
+
+    // Sync Location
+    if (jobData.location) {
+      const isKnown = POPULAR_LOCATIONS.some((l) => l.value === jobData.location && l.value !== "Other");
+      if (isKnown) {
+        setLocationSelect(jobData.location);
+        setCustomLocation("");
+      } else {
+        setLocationSelect("Other");
+        setCustomLocation(jobData.location);
+      }
+    }
+
+    // Sync Joining Date
+    if (jobData.joiningDate) {
+      const isKnown = JOINING_DATE_OPTIONS.some((j) => j.value === jobData.joiningDate && j.value !== "Other" && j.value !== "Specific Date");
+      if (isKnown) {
+        setJoiningDateSelect(jobData.joiningDate);
+        setCustomJoiningDate("");
+        setSpecificJoiningDate("");
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(jobData.joiningDate)) {
+        setJoiningDateSelect("Specific Date");
+        setSpecificJoiningDate(jobData.joiningDate);
+        setCustomJoiningDate("");
+      } else {
+        setJoiningDateSelect("Other");
+        setCustomJoiningDate(jobData.joiningDate);
+        setSpecificJoiningDate("");
+      }
+    }
+
+    // Sync Hiring Process
+    if (jobData.hiringProcess) {
+      const isKnown = HIRING_PROCESS_OPTIONS.some((h) => h.value === jobData.hiringProcess && h.value !== "Other");
+      if (isKnown) {
+        setHiringProcessSelect(jobData.hiringProcess);
+        setCustomHiringProcess("");
+      } else {
+        setHiringProcessSelect("Other");
+        setCustomHiringProcess(jobData.hiringProcess);
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       ...jobData,
+      country: jobData.country || "Nepal",
       deadline: isEdit && jobData.deadline ? new Date(jobData.deadline).toISOString().split("T")[0] : "",
       openings: jobData.openings || 1,
       workMode: jobData.workMode || "On-site",
@@ -296,7 +464,7 @@ const PostJob = () => {
       overrideTagline: jobData.companyOverride?.tagline || "",
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobData, categories]);
+  }, [jobData, categories, countryOptions]);
 
   const buildPayload = (isDraft: boolean) => {
     const payload: Record<string, unknown> = {
@@ -322,9 +490,10 @@ const PostJob = () => {
     delete payload.overrideTagline;
     delete payload.status;
 
-    // Do not send empty department or country in new workflow
+    // Clean up empty optional fields
     if (!payload.department) delete payload.department;
-    if (!payload.country) delete payload.country;
+    if (!payload.joiningDate) delete payload.joiningDate;
+    if (!payload.hiringProcess) delete payload.hiringProcess;
 
     if (isDraft) {
       payload.status = "Draft";
@@ -419,6 +588,35 @@ const PostJob = () => {
     }
   };
 
+  // Department handlers
+  const handleDepartmentSelect = (val: string) => {
+    setDepartmentSelect(val);
+    if (val === "Other") {
+      setCustomDepartment("");
+      setFormData((prev) => ({ ...prev, department: "" }));
+    } else {
+      setCustomDepartment("");
+      setFormData((prev) => ({ ...prev, department: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.department;
+      return n;
+    });
+  };
+
+  const handleCustomDepartmentChange = (val: string) => {
+    setCustomDepartment(val);
+    setFormData((prev) => ({ ...prev, department: val }));
+    if (step1Errors.department) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.department;
+        return n;
+      });
+    }
+  };
+
   const handleLevelSelect = (val: string) => {
     setLevelSelect(val);
     if (val === "Other") {
@@ -503,6 +701,138 @@ const PostJob = () => {
     }
   };
 
+  // Country handlers
+  const handleCountrySelect = (val: string) => {
+    setCountrySelect(val);
+    if (val === "Other") {
+      setCustomCountry("");
+      setFormData((prev) => ({ ...prev, country: "" }));
+    } else {
+      setCustomCountry("");
+      setFormData((prev) => ({ ...prev, country: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.country;
+      return n;
+    });
+  };
+
+  const handleCustomCountryChange = (val: string) => {
+    setCustomCountry(val);
+    setFormData((prev) => ({ ...prev, country: val }));
+    if (step1Errors.country) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.country;
+        return n;
+      });
+    }
+  };
+
+  // Location handlers
+  const handleLocationSelect = (val: string) => {
+    setLocationSelect(val);
+    if (val === "Other") {
+      setCustomLocation("");
+      setFormData((prev) => ({ ...prev, location: "" }));
+    } else {
+      setCustomLocation("");
+      setFormData((prev) => ({ ...prev, location: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.location;
+      return n;
+    });
+  };
+
+  const handleCustomLocationChange = (val: string) => {
+    setCustomLocation(val);
+    setFormData((prev) => ({ ...prev, location: val }));
+    if (step1Errors.location) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.location;
+        return n;
+      });
+    }
+  };
+
+  // Joining Date handlers
+  const handleJoiningDateSelect = (val: string) => {
+    setJoiningDateSelect(val);
+    if (val === "Specific Date") {
+      setCustomJoiningDate("");
+      setFormData((prev) => ({ ...prev, joiningDate: specificJoiningDate }));
+    } else if (val === "Other") {
+      setSpecificJoiningDate("");
+      setFormData((prev) => ({ ...prev, joiningDate: customJoiningDate }));
+    } else {
+      setCustomJoiningDate("");
+      setSpecificJoiningDate("");
+      setFormData((prev) => ({ ...prev, joiningDate: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.joiningDate;
+      return n;
+    });
+  };
+
+  const handleSpecificJoiningDateChange = (val: string) => {
+    setSpecificJoiningDate(val);
+    setFormData((prev) => ({ ...prev, joiningDate: val }));
+    if (step1Errors.joiningDate) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.joiningDate;
+        return n;
+      });
+    }
+  };
+
+  const handleCustomJoiningDateChange = (val: string) => {
+    setCustomJoiningDate(val);
+    setFormData((prev) => ({ ...prev, joiningDate: val }));
+    if (step1Errors.joiningDate) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.joiningDate;
+        return n;
+      });
+    }
+  };
+
+  // Hiring Process handlers
+  const handleHiringProcessSelect = (val: string) => {
+    setHiringProcessSelect(val);
+    if (val === "Other") {
+      setCustomHiringProcess("");
+      setFormData((prev) => ({ ...prev, hiringProcess: "" }));
+    } else {
+      setCustomHiringProcess("");
+      setFormData((prev) => ({ ...prev, hiringProcess: val }));
+    }
+    setStep1Errors((prev) => {
+      const n = { ...prev };
+      delete n.hiringProcess;
+      return n;
+    });
+  };
+
+  const handleCustomHiringProcessChange = (val: string) => {
+    setCustomHiringProcess(val);
+    setFormData((prev) => ({ ...prev, hiringProcess: val }));
+    if (step1Errors.hiringProcess) {
+      setStep1Errors((prev) => {
+        const n = { ...prev };
+        delete n.hiringProcess;
+        return n;
+      });
+    }
+  };
+
   const validateStep1 = (): boolean => {
     const errs: Record<string, string> = {};
 
@@ -524,7 +854,12 @@ const PostJob = () => {
       errs.jobcategory = "Job category is required.";
     }
 
-    // 3. Job Level
+    // 3. Department (if other selected)
+    if (departmentSelect === "Other" && !customDepartment.trim()) {
+      errs.department = "Please enter your custom department.";
+    }
+
+    // 4. Job Level
     if (levelSelect === "Other") {
       if (!customLevel.trim()) {
         errs.level = "Please enter your custom job level.";
@@ -533,7 +868,7 @@ const PostJob = () => {
       errs.level = "Job level is required.";
     }
 
-    // 4. Job Type
+    // 5. Job Type
     if (jobtypeSelect === "Other") {
       if (!customJobType.trim()) {
         errs.jobtype = "Please enter your custom job type.";
@@ -542,7 +877,7 @@ const PostJob = () => {
       errs.jobtype = "Job type is required.";
     }
 
-    // 5. Work Mode
+    // 6. Work Mode
     if (workModeSelect === "Other") {
       if (!customWorkMode.trim()) {
         errs.workMode = "Please enter your custom work mode.";
@@ -551,19 +886,44 @@ const PostJob = () => {
       errs.workMode = "Work mode is required.";
     }
 
-    // 6. Preferred Location
-    if (!formData.location.trim()) {
+    // 7. Country
+    if (countrySelect === "Other") {
+      if (!customCountry.trim()) {
+        errs.country = "Please enter your country.";
+      }
+    } else if (!formData.country.trim()) {
+      errs.country = "Country is required.";
+    }
+
+    // 8. Preferred Location
+    if (locationSelect === "Other") {
+      if (!customLocation.trim()) {
+        errs.location = "Please enter your preferred location.";
+      }
+    } else if (!formData.location.trim()) {
       errs.location = "Preferred location is required.";
     }
 
-    // 7. Application Deadline
+    // 9. Joining Date (if specific date or other selected)
+    if (joiningDateSelect === "Specific Date" && !specificJoiningDate) {
+      errs.joiningDate = "Please choose a specific target joining date.";
+    } else if (joiningDateSelect === "Other" && !customJoiningDate.trim()) {
+      errs.joiningDate = "Please enter joining timeframe details.";
+    }
+
+    // 10. Hiring Process (if other selected)
+    if (hiringProcessSelect === "Other" && !customHiringProcess.trim()) {
+      errs.hiringProcess = "Please specify your hiring process.";
+    }
+
+    // 11. Application Deadline
     if (!formData.deadline) {
       errs.deadline = "Application deadline is required.";
     } else if (formData.deadline < todayStr) {
       errs.deadline = "Application deadline must be today or a future date.";
     }
 
-    // 8. Openings
+    // 12. Openings
     if (Number(formData.openings) < 1) {
       errs.openings = "Openings must be at least 1.";
     }
@@ -578,6 +938,7 @@ const PostJob = () => {
 
   const REQUIRED_FOR_PUBLISH: { field: keyof typeof EMPTY_FORM; label: string; step: number }[] = [
     { field: "title", label: "Job title", step: 0 },
+    { field: "country", label: "Country", step: 0 },
     { field: "location", label: "Preferred location", step: 0 },
     { field: "jobtype", label: "Job type", step: 0 },
     { field: "jobcategory", label: "Job category", step: 0 },
@@ -781,7 +1142,40 @@ const PostJob = () => {
                 )}
               </div>
 
-              {/* Row 2, Col 1: Job Level * */}
+              {/* Row 2, Col 1: Department */}
+              <div>
+                <CustomSelect
+                  id="job-department-select"
+                  label="Department"
+                  searchable
+                  searchPlaceholder="Search department..."
+                  placeholder="Select Department (Optional)"
+                  value={departmentSelect}
+                  options={DEPARTMENT_OPTIONS}
+                  onChange={handleDepartmentSelect}
+                  error={step1Errors.department && departmentSelect !== "Other" ? step1Errors.department : undefined}
+                />
+                {departmentSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Department <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter department name"
+                      value={customDepartment}
+                      onChange={(e) => handleCustomDepartmentChange(e.target.value)}
+                      className={step1Errors.department ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.department && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.department}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 2, Col 2: Job Level * */}
               <div>
                 <CustomSelect
                   id="job-level-select"
@@ -813,7 +1207,7 @@ const PostJob = () => {
                 )}
               </div>
 
-              {/* Row 2, Col 2: Job Type * */}
+              {/* Row 3, Col 1: Job Type * */}
               <div>
                 <CustomSelect
                   id="job-type-select"
@@ -845,7 +1239,7 @@ const PostJob = () => {
                 )}
               </div>
 
-              {/* Row 3, Col 1: Work Mode * */}
+              {/* Row 3, Col 2: Work Mode * */}
               <div>
                 <CustomSelect
                   id="work-mode-select"
@@ -877,35 +1271,157 @@ const PostJob = () => {
                 )}
               </div>
 
-              {/* Row 3, Col 2: Preferred Location * */}
+              {/* Row 4, Col 1: Country * */}
               <div>
-                <label htmlFor="job-preferred-location" className={labelCls}>
-                  Preferred Location <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="job-preferred-location"
-                  type="text"
-                  name="location"
-                  placeholder="e.g. Kathmandu, Nepal"
-                  value={formData.location}
-                  onChange={(e) => {
-                    handleChange(e);
-                    if (step1Errors.location) {
-                      setStep1Errors((prev) => {
-                        const n = { ...prev };
-                        delete n.location;
-                        return n;
-                      });
-                    }
-                  }}
-                  className={step1Errors.location ? inputErrorCls : inputCls}
+                <CustomSelect
+                  id="job-country-select"
+                  label="Country"
+                  required
+                  searchable
+                  searchPlaceholder="Search country..."
+                  placeholder="Select Country"
+                  value={countrySelect}
+                  options={countryOptions}
+                  onChange={handleCountrySelect}
+                  error={step1Errors.country && countrySelect !== "Other" ? step1Errors.country : undefined}
                 />
-                {step1Errors.location && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.location}</p>
+                {countrySelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Country <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter country name"
+                      value={customCountry}
+                      onChange={(e) => handleCustomCountryChange(e.target.value)}
+                      className={step1Errors.country ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.country && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.country}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Row 4, Col 1: Openings */}
+              {/* Row 4, Col 2: Preferred Location * */}
+              <div>
+                <CustomSelect
+                  id="job-location-select"
+                  label="Preferred Location"
+                  required
+                  searchable
+                  searchPlaceholder="Search city or location..."
+                  placeholder="Select Preferred Location"
+                  value={locationSelect}
+                  options={POPULAR_LOCATIONS}
+                  onChange={handleLocationSelect}
+                  error={step1Errors.location && locationSelect !== "Other" ? step1Errors.location : undefined}
+                />
+                {locationSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Location <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Kathmandu, Nepal or specific city"
+                      value={customLocation}
+                      onChange={(e) => handleCustomLocationChange(e.target.value)}
+                      className={step1Errors.location ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.location && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.location}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 5, Col 1: Target Joining Date */}
+              <div>
+                <CustomSelect
+                  id="job-joining-date-select"
+                  label="Joining Date"
+                  searchable={false}
+                  placeholder="Select Joining Timeframe (Optional)"
+                  value={joiningDateSelect}
+                  options={JOINING_DATE_OPTIONS}
+                  onChange={handleJoiningDateSelect}
+                  error={step1Errors.joiningDate && joiningDateSelect !== "Other" && joiningDateSelect !== "Specific Date" ? step1Errors.joiningDate : undefined}
+                />
+                {joiningDateSelect === "Specific Date" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Specific Joining Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      min={todayStr}
+                      value={specificJoiningDate}
+                      onChange={(e) => handleSpecificJoiningDateChange(e.target.value)}
+                      className={step1Errors.joiningDate ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.joiningDate && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.joiningDate}</p>
+                    )}
+                  </div>
+                )}
+                {joiningDateSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Joining Details <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. After notice period, 2 weeks notice"
+                      value={customJoiningDate}
+                      onChange={(e) => handleCustomJoiningDateChange(e.target.value)}
+                      className={step1Errors.joiningDate ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.joiningDate && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.joiningDate}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 5, Col 2: Hiring Process */}
+              <div>
+                <CustomSelect
+                  id="job-hiring-process-select"
+                  label="Hiring Process"
+                  searchable={false}
+                  placeholder="Select Hiring Process (Optional)"
+                  value={hiringProcessSelect}
+                  options={HIRING_PROCESS_OPTIONS}
+                  onChange={handleHiringProcessSelect}
+                  error={step1Errors.hiringProcess && hiringProcessSelect !== "Other" ? step1Errors.hiringProcess : undefined}
+                />
+                {hiringProcessSelect === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Other Hiring Process <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2 Technical Rounds + Cultural Fit + CEO Discussion"
+                      value={customHiringProcess}
+                      onChange={(e) => handleCustomHiringProcessChange(e.target.value)}
+                      className={step1Errors.hiringProcess ? inputErrorCls : inputCls}
+                      autoFocus
+                    />
+                    {step1Errors.hiringProcess && (
+                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.hiringProcess}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 6, Col 1: Openings */}
               <div>
                 <label htmlFor="job-openings" className={labelCls}>
                   Openings
@@ -934,7 +1450,7 @@ const PostJob = () => {
                 )}
               </div>
 
-              {/* Row 4, Col 2: Application Deadline * */}
+              {/* Row 6, Col 2: Application Deadline * */}
               <div>
                 <label htmlFor="job-deadline" className={labelCls}>
                   Application Deadline <span className="text-red-500">*</span>
@@ -1269,6 +1785,7 @@ const PostJob = () => {
                 <p className="text-gray-600">{displayCompanyName || "Your company"}{displayCompanyTagline ? ` — ${displayCompanyTagline}` : ""}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
                   <span>{formData.location || "—"}{formData.country ? `, ${formData.country}` : ""}</span>
+                  {formData.department && <span className="font-medium text-gray-700">Dept: {formData.department}</span>}
                   <span>{formData.workMode}</span>
                   <span>{formData.jobtype || "—"}</span>
                   <span>{formData.level || "—"}</span>
@@ -1279,6 +1796,16 @@ const PostJob = () => {
                   <div><p className="text-gray-400 text-xs">Openings</p><p className="font-medium">{formData.openings}</p></div>
                   <div><p className="text-gray-400 text-xs">Deadline</p><p className="font-medium">{formData.deadline || "—"}</p></div>
                 </div>
+                {(formData.joiningDate || formData.hiringProcess) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 text-sm bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                    {formData.joiningDate && (
+                      <div><p className="text-gray-400 text-xs">Target Joining Date</p><p className="font-medium text-gray-700 dark:text-gray-200">{formData.joiningDate}</p></div>
+                    )}
+                    {formData.hiringProcess && (
+                      <div><p className="text-gray-400 text-xs">Hiring Process</p><p className="font-medium text-gray-700 dark:text-gray-200">{formData.hiringProcess}</p></div>
+                    )}
+                  </div>
+                )}
                 {formData.overview && <p className="mt-4 text-sm text-gray-600">{formData.overview}</p>}
                 {formData.requiredSkills && (
                   <div className="mt-4 flex flex-wrap gap-2">

@@ -266,13 +266,42 @@ export interface ApplicationListParams {
 
 export interface EmployerApplication {
   applicationId: string;
-  applicant: { _id: string; name: string; email: string; profilePic?: string; skills?: string[]; qualifications?: { degree: string; institution: string; year?: number }[]; experiences?: { jobPosition: string; institution: string; duration: string }[] } | null;
+  applicant: {
+    _id: string;
+    name: string;
+    email: string;
+    profilePic?: string;
+    headline?: string;
+    bio?: string;
+    socialLinks?: {
+      linkedin?: string;
+      twitter?: string;
+      github?: string;
+      website?: string;
+    };
+    skills?: string[];
+    qualifications?: { degree: string; institution: string; year?: number }[];
+    experiences?: { jobPosition: string; institution: string; duration: string; current?: boolean }[];
+    projects?: { title: string; description?: string; link?: string; technologies?: string }[];
+    certifications?: { name: string; issuer?: string; year?: string }[];
+  } | null;
   job: { _id: string; title: string } | null;
   coverLetter: string;
   resume: string;
   howDidYouHear?: string;
   status: "Pending" | "Reviewed" | "Interview Scheduled" | "Accepted" | "Rejected";
-  interview?: { scheduledAt?: string; mode?: string; meetingLink?: string; location?: string; notes?: string };
+  interview?: {
+    scheduledAt?: string;
+    duration?: number;
+    mode?: string;
+    meetingLink?: string;
+    location?: string;
+    notes?: string;
+    interviewer?: string;
+    emailStatus?: "pending" | "sent" | "failed";
+    emailSentAt?: string;
+    emailError?: string;
+  };
   appliedAt: string;
 }
 
@@ -283,6 +312,35 @@ export interface ApplicationListResponse {
   totalApplications: number;
   perPage: number;
   statusCounts: Record<string, number>;
+}
+
+export interface UpdateApplicationResponse {
+  success: boolean;
+  message: string;
+  emailSent?: boolean | null;
+  email?: {
+    sent: boolean;
+    recipient?: string;
+    message?: string;
+    error?: string;
+    event?: string;
+  };
+  updatedApplication: {
+    applicationId: string;
+    status: string;
+    interview?: {
+      scheduledAt?: string;
+      duration?: number;
+      mode?: string;
+      meetingLink?: string;
+      location?: string;
+      notes?: string;
+      interviewer?: string;
+      emailStatus?: "pending" | "sent" | "failed";
+      emailSentAt?: string;
+      emailError?: string;
+    };
+  };
 }
 
 export const getAllApplicantsForEmployerJobs = async (
@@ -315,14 +373,45 @@ export const getAllApplicantsForEmployerJobs = async (
 export const updateApplicationStatus = async (
   applicationId: string,
   newStatus: string,
-  interview?: { scheduledAt: string; mode?: string; meetingLink?: string; location?: string; notes?: string }
-) => {
+  interview?: {
+    scheduledAt: string;
+    duration?: number;
+    mode?: string;
+    meetingLink?: string;
+    location?: string;
+    notes?: string;
+    interviewer?: string;
+  }
+): Promise<UpdateApplicationResponse> => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
 
   const res = await axios.patch(
     `${API_BASE_URL}/api/employer/applications/${applicationId}/status`,
     { status: newStatus, interview },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return res.data;
+};
+
+export const resendInterviewEmail = async (
+  applicationId: string
+): Promise<{
+  success: boolean;
+  message: string;
+  email: { sent: boolean; recipient: string; error?: string };
+}> => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await axios.post(
+    `${API_BASE_URL}/api/employer/applications/${applicationId}/resend-interview-email`,
+    {},
     {
       headers: {
         Authorization: `Bearer ${token}`,

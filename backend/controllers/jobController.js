@@ -64,6 +64,7 @@ const SORT_OPTIONS = {
   oldest: { createdAt: 1 },
   salaryHigh: { salaryMax: -1, salaryMin: -1, createdAt: -1 },
   salaryLow: { salaryMin: 1, salaryMax: 1, createdAt: -1 },
+  deadlineSoon: { deadline: 1 },
   // "Relevance" only really means something alongside a search term; with
   // no ranking model to score matches, newest-first is the most useful
   // stand-in — never a fabricated relevance score.
@@ -326,6 +327,12 @@ const getJobById = async (req, res) => {
 const getJobCountsByCountry = async (req, res) => {
   try {
     const jobCounts = await Job.aggregate([
+      {
+        $match: {
+          status: "Active",
+          country: { $exists: true, $ne: "" },
+        },
+      },
       {
         $group: {
           _id: '$country',

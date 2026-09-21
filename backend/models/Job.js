@@ -49,6 +49,8 @@ const jobSchema = new mongoose.Schema(
     // so every existing reader of `job.salary`/`job.experience` (dashboard
     // tables, admin panel, etc.) keeps working without modification.
     department: { type: String, trim: true, default: "" },
+    joiningDate: { type: String, trim: true, default: "" },
+    hiringProcess: { type: String, trim: true, default: "" },
     workMode: {
       type: String,
       trim: true,

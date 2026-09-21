@@ -230,7 +230,8 @@ const Header: React.FC = () => {
                 known and sufficient. min-w trimmed to 160px so every px
                 here stays budgeted against the logged-in case's real
                 content width. */}
-            {isLoggedIn && (
+            {/* Search — desktop. Excluded on /jobs so the hero search is the single main search area */}
+            {isLoggedIn && !location.pathname.startsWith('/jobs') && (
               <HeaderSearch className="hidden xl:block xl:w-56 min-[1440px]:flex-1 min-[1440px]:min-w-[160px] min-[1440px]:max-w-md mx-2" suggestionSeeds={jobCategories} />
             )}
 

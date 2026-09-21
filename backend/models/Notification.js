@@ -58,6 +58,10 @@ const notificationSchema = new mongoose.Schema(
         // controllers/profileViewController.js. Not re-fired on repeat
         // visits from the same viewer.
         "profile_view",
+        // Interview notifications
+        "interview_scheduled",
+        "interview_rescheduled",
+        "interview_cancelled",
       ],
     },
     message: {

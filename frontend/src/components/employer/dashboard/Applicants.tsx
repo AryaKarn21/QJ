@@ -4,35 +4,103 @@ import {
   getAllApplicantsForEmployerJobs,
   getEmployerJobs,
   updateApplicationStatus,
+  resendInterviewEmail,
   type EmployerApplication,
 } from "../employerApi/api";
 import {
-  Search, ChevronLeft, ChevronRight, FileText, Calendar, User, Mail, Briefcase,
-  X, Download, Eye, ExternalLink, GraduationCap, Sparkles, Filter, RotateCcw,
-  MessageSquare, Video, Phone, Building2, Clock, CheckCircle2, Link2, MapPin,
-  Table, ArrowLeft, AlertCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Calendar,
+  User,
+  Mail,
+  Briefcase,
+  X,
+  Download,
+  Eye,
+  ExternalLink,
+  GraduationCap,
+  Sparkles,
+  Filter,
+  RotateCcw,
+  MessageSquare,
+  Video,
+  Phone,
+  Building2,
+  Clock,
+  CheckCircle2,
+  Link2,
+  MapPin,
+  ArrowLeft,
+  AlertCircle,
+  Globe,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { resolveMediaUrl, resolveResumeUrl, isUnrecoverableResumePath, getAuthorizedApplicationResumeUrl } from "../../../utils/mediaUrl";
+import {
+  resolveMediaUrl,
+  resolveResumeUrl,
+  isUnrecoverableResumePath,
+  getAuthorizedApplicationResumeUrl,
+} from "../../../utils/mediaUrl";
 import { downloadFile } from "../../../utils/downloadFile";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 import { openConversationWith } from "../../../api/messageApi";
 
-const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
-  Pending:              { bg: "bg-amber-50",   text: "text-amber-700",  dot: "bg-amber-400" },
-  Reviewed:             { bg: "bg-blue-50",    text: "text-blue-700",   dot: "bg-blue-400" },
-  "Interview Scheduled":{ bg: "bg-purple-50",  text: "text-purple-700", dot: "bg-purple-400" },
-  Accepted:             { bg: "bg-green-50",   text: "text-green-700",  dot: "bg-green-400" },
-  Rejected:             { bg: "bg-red-50",     text: "text-red-600",    dot: "bg-red-400" },
+const statusConfig: Record<string, { bg: string; text: string; dot: string; border: string }> = {
+  Pending: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    dot: "bg-amber-400",
+    border: "border-amber-200",
+  },
+  Reviewed: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    dot: "bg-blue-400",
+    border: "border-blue-200",
+  },
+  "Interview Scheduled": {
+    bg: "bg-purple-50",
+    text: "text-purple-700",
+    dot: "bg-purple-400",
+    border: "border-purple-200",
+  },
+  Accepted: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    dot: "bg-emerald-400",
+    border: "border-emerald-200",
+  },
+  Rejected: {
+    bg: "bg-rose-50",
+    text: "text-rose-700",
+    dot: "bg-rose-400",
+    border: "border-rose-200",
+  },
 };
 
-const STATUS_OPTIONS = ["Pending", "Reviewed", "Interview Scheduled", "Accepted", "Rejected"];
+const STATUS_OPTIONS = [
+  "Pending",
+  "Reviewed",
+  "Interview Scheduled",
+  "Accepted",
+  "Rejected",
+];
 
 const StatusBadge = ({ status }: { status: string }) => {
-  const cfg = statusConfig[status] ?? { bg: "bg-gray-50", text: "text-gray-600", dot: "bg-gray-400" };
+  const cfg = statusConfig[status] ?? {
+    bg: "bg-gray-50",
+    text: "text-gray-600",
+    dot: "bg-gray-400",
+    border: "border-gray-200",
+  };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.text} border ${cfg.border}`}
+    >
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
       {status}
     </span>
@@ -40,18 +108,33 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const AVATAR_SIZE_CLASSES: Record<number, string> = {
-  8: "h-8 w-8",
-  10: "h-10 w-10",
-  12: "h-12 w-12",
-  14: "h-14 w-14",
+  8: "h-8 w-8 text-xs",
+  10: "h-10 w-10 text-xs",
+  12: "h-12 w-12 text-sm",
+  14: "h-14 w-14 text-base",
+  16: "h-16 w-16 text-lg",
 };
 
-const Avatar = ({ name, photo, size = 8 }: { name?: string; photo?: string; size?: 8 | 10 | 12 | 14 }) => (
-  <div className={`${AVATAR_SIZE_CLASSES[size]} rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden`}>
+const Avatar = ({
+  name,
+  photo,
+  size = 10,
+}: {
+  name?: string;
+  photo?: string;
+  size?: 8 | 10 | 12 | 14 | 16;
+}) => (
+  <div
+    className={`${AVATAR_SIZE_CLASSES[size]} rounded-full bg-orange-100/80 border border-orange-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-2xs`}
+  >
     {photo ? (
-      <img src={resolveMediaUrl(photo)} alt="" className="h-full w-full object-cover" />
+      <img
+        src={resolveMediaUrl(photo)}
+        alt={name || "Applicant avatar"}
+        className="h-full w-full object-cover"
+      />
     ) : (
-      <span className={`${size >= 12 ? 'text-base font-bold' : 'text-xs font-bold'} text-primary`}>
+      <span className="font-bold text-orange-700">
         {(name || "?")[0].toUpperCase()}
       </span>
     )}
@@ -70,7 +153,9 @@ function formatCoverLetter(rawText?: string | null) {
   const subjectMatch = body.match(/^Subject:\s*([^\n\r]+?)(Dear\b|\r|\n|$)/i);
   if (subjectMatch) {
     subject = subjectMatch[1].trim();
-    body = body.slice(subjectMatch[0].length - (subjectMatch[2] ? subjectMatch[2].length : 0)).trim();
+    body = body
+      .slice(subjectMatch[0].length - (subjectMatch[2] ? subjectMatch[2].length : 0))
+      .trim();
   }
 
   let paragraphs: string[] = [];
@@ -90,11 +175,49 @@ function formatCoverLetter(rawText?: string | null) {
   return { subject, paragraphs };
 }
 
+function formatNepalDateTime(isoDateString?: string) {
+  if (!isoDateString) return { date: "Not set", time: "Not set", full: "" };
+  try {
+    const d = new Date(isoDateString);
+    if (isNaN(d.getTime())) return { date: "Not set", time: "Not set", full: "" };
+
+    const dateStr = d.toLocaleDateString("en-US", {
+      timeZone: "Asia/Kathmandu",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const timeStr = d.toLocaleTimeString("en-US", {
+      timeZone: "Asia/Kathmandu",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return {
+      date: dateStr,
+      time: `${timeStr} NPT`,
+      full: `${dateStr} at ${timeStr} NPT`,
+    };
+  } catch {
+    return { date: "Not set", time: "Not set", full: "" };
+  }
+}
+
 const resumeFilename = (name?: string) =>
-  `${(name || "applicant").trim().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase() || "applicant"}-resume.pdf`;
+  `${(name || "applicant")
+    .trim()
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/(^-|-$)/g, "")
+    .toLowerCase() || "applicant"}-resume.pdf`;
 
 const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  new Date(d).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
 const Applicants = () => {
   const [applications, setApplications] = useState<EmployerApplication[]>([]);
@@ -115,7 +238,9 @@ const Applicants = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const [selected, setSelected] = useState<EmployerApplication | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'resume' | 'coverLetter' | 'profile' | 'interview'>('resume');
+  const [selectedTab, setSelectedTab] = useState<
+    "resume" | "coverLetter" | "profile" | "interview"
+  >("resume");
   const [downloadingResume, setDownloadingResume] = useState(false);
 
   const [interviewModalFor, setInterviewModalFor] = useState<string | null>(null);
@@ -125,12 +250,20 @@ const Applicants = () => {
   const [interviewLocation, setInterviewLocation] = useState("");
   const [interviewNotes, setInterviewNotes] = useState("");
   const [schedulingLoading, setSchedulingLoading] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (selected) {
-      setSelectedTab(selected.resume ? 'resume' : 'coverLetter');
+      // Default to resume if available, otherwise cover letter or background
+      if (selected.resume) {
+        setSelectedTab("resume");
+      } else if (selected.coverLetter) {
+        setSelectedTab("coverLetter");
+      } else {
+        setSelectedTab("profile");
+      }
     }
   }, [selected?.applicationId]);
 
@@ -139,7 +272,9 @@ const Applicants = () => {
     d.setDate(d.getDate() + offsetDays);
     d.setHours(hour, 0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
-    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setInterviewDate(formatted);
   };
 
@@ -152,14 +287,20 @@ const Applicants = () => {
       const conv = await openConversationWith(candidateUserId);
       navigate(`/messages/${conv._id}`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Could not open conversation with candidate.");
+      toast.error(
+        err?.response?.data?.message || "Could not open conversation with candidate."
+      );
     }
   };
 
-  const activeFilterCount = [statusFilter, jobFilter, dateFrom, dateTo].filter(Boolean).length;
+  const activeFilterCount = [statusFilter, jobFilter, dateFrom, dateTo].filter(
+    Boolean
+  ).length;
 
   useEffect(() => {
-    getEmployerJobs().then(setJobs).catch(() => setJobs([]));
+    getEmployerJobs()
+      .then(setJobs)
+      .catch(() => setJobs([]));
   }, []);
 
   useEffect(() => {
@@ -167,35 +308,48 @@ const Applicants = () => {
   }, [debouncedSearch, statusFilter, jobFilter, dateFrom, dateTo]);
 
   const fetchIdRef = useRef(0);
-  const fetchApplicants = useCallback(async (opts: { silent?: boolean } = {}) => {
-    const fetchId = ++fetchIdRef.current;
-    if (!opts.silent) setLoading(true);
-    setError(false);
-    try {
-      const res = await getAllApplicantsForEmployerJobs({
-        page,
-        limit: 10,
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
-        jobId: jobFilter || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      });
-      if (fetchId !== fetchIdRef.current) return;
-      setApplications(res.applications);
-      setTotalPages(res.totalPages || 1);
-      setTotalApplications(res.totalApplications || 0);
-      setStatusCounts(res.statusCounts || {});
-    } catch (err) {
-      console.error("Error fetching applicants:", err);
-      if (fetchId === fetchIdRef.current) setError(true);
-    } finally {
-      if (fetchId === fetchIdRef.current && !opts.silent) setLoading(false);
-    }
-  }, [page, debouncedSearch, statusFilter, jobFilter, dateFrom, dateTo]);
+  const fetchApplicants = useCallback(
+    async (opts: { silent?: boolean } = {}) => {
+      const fetchId = ++fetchIdRef.current;
+      if (!opts.silent) setLoading(true);
+      setError(false);
+      try {
+        const res = await getAllApplicantsForEmployerJobs({
+          page,
+          limit: 10,
+          search: debouncedSearch || undefined,
+          status: statusFilter || undefined,
+          jobId: jobFilter || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        });
+        if (fetchId !== fetchIdRef.current) return;
+        setApplications(res.applications);
+        setTotalPages(res.totalPages || 1);
+        setTotalApplications(res.totalApplications || 0);
+        setStatusCounts(res.statusCounts || {});
 
-  useEffect(() => { fetchApplicants(); }, [fetchApplicants]);
-  useAutoRefresh(() => fetchApplicants(), 30000);
+        // Keep selected candidate in sync if open
+        if (selected) {
+          const fresh = res.applications.find(
+            (a) => a.applicationId === selected.applicationId
+          );
+          if (fresh) setSelected(fresh);
+        }
+      } catch (err) {
+        console.error("Error fetching applicants:", err);
+        if (fetchId === fetchIdRef.current) setError(true);
+      } finally {
+        if (fetchId === fetchIdRef.current && !opts.silent) setLoading(false);
+      }
+    },
+    [page, debouncedSearch, statusFilter, jobFilter, dateFrom, dateTo, selected?.applicationId]
+  );
+
+  useEffect(() => {
+    fetchApplicants();
+  }, [fetchApplicants]);
+  useAutoRefresh(() => fetchApplicants({ silent: true }), 30000);
 
   const clearFilters = () => {
     setStatusFilter("");
@@ -205,23 +359,67 @@ const Applicants = () => {
     setSearch("");
   };
 
-  const applyStatusLocally = (applicationId: string, newStatus: string) => {
-    setApplications((prev) => prev.map((a) => (a.applicationId === applicationId ? { ...a, status: newStatus as EmployerApplication["status"] } : a)));
-    setSelected((prev) => (prev && prev.applicationId === applicationId ? { ...prev, status: newStatus as EmployerApplication["status"] } : prev));
+  const applyStatusLocally = (
+    applicationId: string,
+    newStatus: string,
+    updatedInterview?: EmployerApplication["interview"]
+  ) => {
+    setApplications((prev) =>
+      prev.map((a) =>
+        a.applicationId === applicationId
+          ? {
+              ...a,
+              status: newStatus as EmployerApplication["status"],
+              ...(updatedInterview ? { interview: updatedInterview } : {}),
+            }
+          : a
+      )
+    );
+    setSelected((prev) =>
+      prev && prev.applicationId === applicationId
+        ? {
+            ...prev,
+            status: newStatus as EmployerApplication["status"],
+            ...(updatedInterview ? { interview: updatedInterview } : {}),
+          }
+        : prev
+    );
   };
 
-  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+  const handleStatusChange = async (
+    applicationId: string,
+    newStatus: string
+  ) => {
     if (newStatus === "Interview Scheduled") {
       setInterviewModalFor(applicationId);
+      const app = applications.find((a) => a.applicationId === applicationId);
+      if (app?.interview?.scheduledAt) {
+        const d = new Date(app.interview.scheduledAt);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setInterviewDate(
+          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+            d.getHours()
+          )}:${pad(d.getMinutes())}`
+        );
+        setInterviewMode(app.interview.mode || "Video Call");
+        setInterviewLink(app.interview.meetingLink || "");
+        setInterviewLocation(app.interview.location || "");
+        setInterviewNotes(app.interview.notes || "");
+      }
       return;
     }
+
     try {
       const res = await updateApplicationStatus(applicationId, newStatus);
       applyStatusLocally(applicationId, newStatus);
-      if (res?.emailSent === false) {
-        toast.warn(`Status updated to "${newStatus}", but the notification email couldn't be sent.`);
-      } else if (res?.emailSent === true) {
-        toast.success(`Status updated to "${newStatus}". Candidate notified by email.`);
+      if (res?.email?.sent === false || res?.emailSent === false) {
+        toast.warn(
+          `Status updated to "${newStatus}", but notification email could not be sent.`
+        );
+      } else if (res?.email?.sent === true || res?.emailSent === true) {
+        toast.success(
+          `Status updated to "${newStatus}". Candidate notified by email.`
+        );
       } else {
         toast.success(`Status updated to "${newStatus}".`);
       }
@@ -239,19 +437,40 @@ const Applicants = () => {
     }
     setSchedulingLoading(true);
     try {
-      const res = await updateApplicationStatus(interviewModalFor, "Interview Scheduled", {
-        scheduledAt: new Date(interviewDate).toISOString(),
-        mode: interviewMode,
-        meetingLink: interviewLink,
-        location: interviewLocation,
-        notes: interviewNotes,
-      });
-      applyStatusLocally(interviewModalFor, "Interview Scheduled");
-      if (res?.emailSent === false) {
-        toast.warn("Interview scheduled, but we couldn't send the confirmation email — please follow up with the candidate directly.");
+      const res = await updateApplicationStatus(
+        interviewModalFor,
+        "Interview Scheduled",
+        {
+          scheduledAt: new Date(interviewDate).toISOString(),
+          mode: interviewMode,
+          meetingLink: interviewLink,
+          location: interviewLocation,
+          notes: interviewNotes,
+        }
+      );
+
+      applyStatusLocally(
+        interviewModalFor,
+        "Interview Scheduled",
+        res.updatedApplication?.interview
+      );
+
+      if (res?.email?.sent === true) {
+        toast.success(
+          `Interview scheduled — confirmation email sent to ${
+            res.email.recipient || "candidate"
+          }.`
+        );
+      } else if (res?.email?.sent === false) {
+        toast.warn(
+          `Interview scheduled, but confirmation email could not be sent to ${
+            res.email.recipient || "candidate"
+          }. You can retry from the Interview & Stages tab.`
+        );
       } else {
-        toast.success("Interview scheduled — the candidate has been emailed the details.");
+        toast.success("Interview scheduled successfully.");
       }
+
       setInterviewModalFor(null);
       setInterviewDate("");
       setInterviewMode("Video Call");
@@ -266,15 +485,52 @@ const Applicants = () => {
     }
   };
 
+  const handleResendEmail = async (applicationId: string) => {
+    setResendingEmail(true);
+    try {
+      const res = await resendInterviewEmail(applicationId);
+      if (res?.email?.sent) {
+        toast.success(
+          `Interview confirmation email resent to ${res.email.recipient}.`
+        );
+        if (selected && selected.applicationId === applicationId) {
+          setSelected((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  interview: {
+                    ...prev.interview,
+                    emailStatus: "sent",
+                    emailSentAt: new Date().toISOString(),
+                    emailError: "",
+                  },
+                }
+              : prev
+          );
+        }
+      } else {
+        toast.warn(
+          `Could not send email to ${
+            res?.email?.recipient || "candidate"
+          }. Please verify server mail settings.`
+        );
+      }
+    } catch (err: any) {
+      console.error("Failed to resend interview email:", err);
+      toast.error(
+        err?.response?.data?.message || "Failed to resend interview email."
+      );
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const handleDownloadResume = async (applicant: EmployerApplication) => {
     if (!applicant.resume) return;
-    // Applications submitted before the resume-upload fix (see
-    // utils/mediaUrl.ts) stored the server's own filesystem path instead of
-    // a fetchable URL — there's no file to recover, not a transient
-    // network/CORS failure, so give a distinct, honest message instead of
-    // attempting a fetch that can only ever fail.
     if (isUnrecoverableResumePath(applicant.resume)) {
-      toast.error("Resume unavailable — please ask the applicant to upload again");
+      toast.error(
+        "Resume unavailable — please ask the applicant to upload again."
+      );
       return;
     }
     setDownloadingResume(true);
@@ -284,906 +540,1768 @@ const Applicants = () => {
         resumeFilename(applicant.applicant?.name),
         applicant.applicationId
       );
+      toast.success("Resume downloaded successfully.");
     } catch (err) {
       console.error("Resume download failed:", err);
-      toast.error("Couldn't download the resume — try opening it in a new tab instead.");
+      toast.error(
+        "Couldn't download the resume — try opening it in a new tab instead."
+      );
     } finally {
       setDownloadingResume(false);
     }
   };
 
+  // Switch to next or previous candidate inside review workspace
+  const currentSelectedIndex = selected
+    ? applications.findIndex((a) => a.applicationId === selected.applicationId)
+    : -1;
+  const hasPrevCandidate = currentSelectedIndex > 0;
+  const hasNextCandidate =
+    currentSelectedIndex >= 0 && currentSelectedIndex < applications.length - 1;
+
+  const goToPrevCandidate = () => {
+    if (hasPrevCandidate) {
+      setSelected(applications[currentSelectedIndex - 1]);
+    }
+  };
+
+  const goToNextCandidate = () => {
+    if (hasNextCandidate) {
+      setSelected(applications[currentSelectedIndex + 1]);
+    }
+  };
+
   return (
-    <div className="min-h-screen p-4 sm:p-6 bg-gray-50" style={{ maxHeight: "calc(100dvh - 50px)", overflowY: "auto" }}>
-      {/* Page Header */}
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Applications</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {totalApplications} application{totalApplications !== 1 ? "s" : ""} across your job listings
-          </p>
-        </div>
-
-        {/* Status summary strip */}
-        <div className="flex flex-wrap gap-1.5">
-          {STATUS_OPTIONS.map((s) => (
+    <div
+      className="min-h-screen p-4 sm:p-6 lg:p-8 bg-slate-50 text-slate-900"
+      style={{ maxHeight: "calc(100dvh - 50px)", overflowY: "auto" }}
+    >
+      {/* ─────────────────────────────────────────────────────────────
+          CANDIDATE REVIEW WORKSPACE (When an applicant is selected)
+      ───────────────────────────────────────────────────────────── */}
+      {selected ? (
+        <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+          {/* Top Bar: Back Button & Quick Candidate Navigation */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl border border-gray-200/90 shadow-2xs">
             <button
-              key={s}
-              onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-                statusFilter === s ? `${statusConfig[s].bg} ${statusConfig[s].text} ring-1 ring-inset ring-current` : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-50"
-              }`}
+              onClick={() => setSelected(null)}
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-700 hover:text-orange-600 transition-colors cursor-pointer group"
+              title="Return to applications list"
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${statusConfig[s].dot}`} />
-              {s} <span className="font-bold">{statusCounts[s] ?? 0}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Search + filter bar */}
-      <div className="mb-5 space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by candidate name or job title…"
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <button
-            onClick={() => setShowFilters((v) => !v)}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-colors ${
-              showFilters || activeFilterCount > 0 ? "border-primary/40 bg-primary/5 text-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <Filter size={14} /> Filters {activeFilterCount > 0 && <span className="rounded-full bg-primary text-white text-[10px] px-1.5 py-0.5">{activeFilterCount}</span>}
-          </button>
-          {(activeFilterCount > 0 || search) && (
-            <button onClick={clearFilters} className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700">
-              <RotateCcw size={13} /> Reset
-            </button>
-          )}
-        </div>
-
-        {showFilters && (
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:grid-cols-3 lg:grid-cols-4">
-            <div>
-              <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Job</label>
-              <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
-                <option value="">All jobs</option>
-                {jobs.map((j) => <option key={j._id} value={j._id}>{j.title}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
-                <option value="">All statuses</option>
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Applied after</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-            <div>
-              <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Applied before</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {error ? (
-        <div className="bg-white rounded-2xl border border-red-200 p-10 text-center">
-          <p className="text-sm font-medium text-red-600">Couldn't load applications.</p>
-          <button onClick={() => setPage((p) => p)} className="mt-3 text-sm font-medium text-primary hover:underline">Try again</button>
-        </div>
-      ) : loading ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-8">
-          <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 w-32 animate-pulse rounded bg-gray-200" />
-                  <div className="h-3 w-48 animate-pulse rounded bg-gray-100" />
-                </div>
-                <div className="h-7 w-20 animate-pulse rounded-full bg-gray-200" />
+              <div className="p-1 rounded-lg bg-gray-100 group-hover:bg-orange-50 text-gray-600 group-hover:text-orange-600 transition-colors">
+                <ArrowLeft size={16} />
               </div>
-            ))}
-          </div>
-        </div>
-      ) : applications.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-16 text-center">
-          <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-            <Briefcase size={24} className="text-gray-400" />
-          </div>
-          <p className="text-base font-semibold text-gray-700">
-            {activeFilterCount > 0 || search ? "No applications match these filters" : "No applicants yet"}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">
-            {activeFilterCount > 0 || search ? "Try a different search or clear the filters." : "Applications will appear here once candidates apply to your jobs."}
-          </p>
-        </div>
-      ) : selected ? (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col lg:flex-row min-h-[760px] animate-fade-in">
-          {/* ── Left Column: Compact Applicant Queue ── */}
-          <div className="w-full lg:w-[360px] xl:w-[400px] border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50/50 flex flex-col flex-shrink-0">
-            {/* Queue Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">Applicant Queue</h3>
-                <p className="text-xs text-gray-500">{applications.length} applications loaded</p>
+              <span>Back to Applications</span>
+            </button>
+
+            {/* Candidate Index & Next/Prev Controls */}
+            <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-gray-500">
+              {currentSelectedIndex >= 0 && (
+                <span>
+                  Candidate{" "}
+                  <strong className="text-gray-900 font-bold">
+                    {currentSelectedIndex + 1}
+                  </strong>{" "}
+                  of {applications.length}
+                </span>
+              )}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={goToPrevCandidate}
+                  disabled={!hasPrevCandidate}
+                  className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-gray-700 cursor-pointer"
+                  title="Previous candidate"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <button
+                  onClick={goToNextCandidate}
+                  disabled={!hasNextCandidate}
+                  className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-gray-700 cursor-pointer"
+                  title="Next candidate"
+                >
+                  <ChevronRight size={15} />
+                </button>
               </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors cursor-pointer shadow-2xs"
-                title="Return to full table view"
-              >
-                <Table size={13} className="text-primary" />
-                <span>Full Table</span>
-              </button>
-            </div>
-
-            {/* Scrollable list of applicants */}
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-100 max-h-[640px]">
-              {applications.map((applicant) => {
-                const isActive = selected?.applicationId === applicant.applicationId;
-                return (
-                  <button
-                    key={applicant.applicationId}
-                    onClick={() => setSelected(applicant)}
-                    className={`w-full text-left p-3.5 transition-all flex items-start gap-3 cursor-pointer ${
-                      isActive
-                        ? "bg-orange-50/80 border-l-4 border-orange-500 shadow-xs"
-                        : "hover:bg-white/80 bg-transparent border-l-4 border-transparent"
-                    }`}
-                  >
-                    <Avatar name={applicant.applicant?.name} photo={applicant.applicant?.profilePic} size={10} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <p className={`text-sm font-bold truncate ${isActive ? "text-orange-950" : "text-gray-900"}`}>
-                          {applicant.applicant?.name || "No name"}
-                        </p>
-                        <span className="text-[11px] text-gray-400 flex-shrink-0">{formatDate(applicant.appliedAt)}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 truncate mb-1.5">{applicant.job?.title || "Job removed"}</p>
-                      <div className="flex items-center justify-between">
-                        <StatusBadge status={applicant.status} />
-                        {applicant.resume && !isUnrecoverableResumePath(applicant.resume) && (
-                          <span className="text-[10px] font-medium text-gray-400 flex items-center gap-0.5">
-                            <FileText size={10} /> PDF
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Queue Footer */}
-            <div className="p-3 border-t border-gray-200 bg-white flex items-center justify-between">
-              <button
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                disabled={page === 1}
-                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer"
-              >
-                Prev
-              </button>
-              <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
-              <button
-                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                disabled={page === totalPages}
-                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer"
-              >
-                Next
-              </button>
             </div>
           </div>
 
-          {/* ── Right Column: Full Candidate Dossier (Fills 100% of Remaining Width!) ── */}
-          <div className="flex-1 min-w-0 bg-white flex flex-col">
-            {/* Header with Candidate Context & Primary Actions */}
-            <div className="border-b border-gray-200 p-5 bg-gradient-to-r from-gray-50/60 via-white to-orange-50/20">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <Avatar name={selected.applicant?.name} photo={selected.applicant?.profilePic} size={14} />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-xl font-bold text-gray-900 leading-snug truncate">
-                        {selected.applicant?.name || "Applicant"}
+          {/* Desktop 2-Column / Mobile 1-Column Responsive Workspace */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* ── Left / Main Section (Candidate Profile, Tabs, Content) ── */}
+            <div className="lg:col-span-8 space-y-6">
+              {/* 1. Candidate Profile Header */}
+              <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-5 sm:p-6 relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
+                  <Avatar
+                    name={selected.applicant?.name}
+                    photo={selected.applicant?.profilePic}
+                    size={16}
+                  />
+
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                        {selected.applicant?.name || "Candidate"}
                       </h2>
                       <StatusBadge status={selected.status} />
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
-                      <span className="flex items-center gap-1 text-gray-700 font-medium">
-                        <Briefcase size={12} className="text-primary" /> {selected.job?.title || "Job removed"}
-                      </span>
-                      <span className="flex items-center gap-1 text-gray-500">
-                        <Calendar size={12} /> Applied {new Date(selected.appliedAt).toLocaleDateString()}
-                      </span>
+
+                    <p className="text-sm font-semibold text-orange-600 flex items-center gap-1.5">
+                      <Briefcase size={15} />
+                      <span>{selected.job?.title || "Job removed"}</span>
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-500 pt-1">
                       {selected.applicant?.email && (
                         <a
                           href={`mailto:${selected.applicant.email}`}
-                          className="flex items-center gap-1 text-gray-600 hover:text-primary transition-colors"
+                          className="inline-flex items-center gap-1.5 text-gray-600 hover:text-orange-600 transition-colors"
+                          title="Click to email candidate directly"
                         >
-                          <Mail size={12} /> {selected.applicant.email}
+                          <Mail size={13} className="text-gray-400" />
+                          <span>{selected.applicant.email}</span>
                         </a>
                       )}
+
+                      <span className="inline-flex items-center gap-1.5 text-gray-500">
+                        <Calendar size={13} className="text-gray-400" />
+                        <span>Applied: {formatDate(selected.appliedAt)}</span>
+                      </span>
+
                       {selected.howDidYouHear && (
-                        <span className="text-gray-400">Via: {selected.howDidYouHear}</span>
+                        <span className="inline-flex items-center gap-1.5 text-gray-500">
+                          <Link2 size={13} className="text-gray-400" />
+                          <span>Source: {selected.howDidYouHear}</span>
+                        </span>
                       )}
                     </div>
+
+                    {/* Headline if available */}
+                    {selected.applicant?.headline && (
+                      <p className="text-xs text-gray-600 pt-1 italic">
+                        "{selected.applicant.headline}"
+                      </p>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Primary Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={selected.status}
-                    onChange={(e) => handleStatusChange(selected.applicationId, e.target.value)}
-                    className="border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-800 shadow-2xs focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                  >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-
+              {/* Mobile Actions Stack (Visible only on < lg screens) */}
+              <div className="block lg:hidden bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-4 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Actions
+                </h3>
+                <div className="space-y-2">
                   <button
                     onClick={() => {
                       setInterviewModalFor(selected.applicationId);
                       setInterviewDate("");
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold shadow-xs hover:shadow-md active:scale-98 transition-all cursor-pointer"
-                    title="Schedule interview with candidate"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white text-xs font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
+                    style={{
+                      background: "linear-gradient(135deg, #F59E0B, #EA580C)",
+                    }}
                   >
-                    <Calendar size={14} />
-                    <span>Schedule Interview</span>
+                    <Calendar size={15} />
+                    <span>
+                      {selected.status === "Interview Scheduled"
+                        ? "Reschedule Interview"
+                        : "Schedule Interview"}
+                    </span>
                   </button>
 
                   <button
-                    onClick={() => handleMessageCandidate(selected.applicant?._id)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-                    title="Start real-time chat with candidate"
+                    onClick={() =>
+                      handleMessageCandidate(selected.applicant?._id)
+                    }
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
                   >
-                    <MessageSquare size={14} className="text-primary" />
-                    <span>Message</span>
+                    <MessageSquare size={15} className="text-orange-600" />
+                    <span>Message Candidate</span>
                   </button>
 
-                  {selected.resume && !isUnrecoverableResumePath(selected.resume) && (
-                    <button
-                      onClick={() => handleDownloadResume(selected)}
-                      disabled={downloadingResume}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                      title="Download PDF resume"
-                    >
-                      <Download size={14} className="text-gray-500" />
-                      <span>{downloadingResume ? "Downloading…" : "Resume"}</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer ml-1"
-                    title="Close dossier (Return to full table view)"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Navigation Tabs */}
-              <div className="flex items-center gap-1 mt-5 border-b border-gray-200 -mb-5">
-                {[
-                  { key: "resume", label: "Resume Preview", icon: FileText, count: selected.resume ? "PDF" : null },
-                  { key: "coverLetter", label: "Cover Letter", icon: Mail, count: null },
-                  { key: "profile", label: "Candidate Background", icon: User, count: selected.applicant?.skills?.length ?? null },
-                  { key: "interview", label: "Interview & Stages", icon: Calendar, count: selected.status === "Interview Scheduled" ? "Scheduled" : null },
-                ].map(({ key, label, icon: Icon, count }) => {
-                  const isActive = selectedTab === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setSelectedTab(key as any)}
-                      className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                        isActive
-                          ? "border-orange-500 text-orange-600 bg-orange-50/50"
-                          : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Icon size={14} />
-                      <span>{label}</span>
-                      {count && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                          isActive ? "bg-orange-200/80 text-orange-800" : "bg-gray-200/70 text-gray-600"
-                        }`}>
-                          {count}
+                  {selected.resume &&
+                    !isUnrecoverableResumePath(selected.resume) && (
+                      <button
+                        onClick={() => handleDownloadResume(selected)}
+                        disabled={downloadingResume}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        <Download size={15} className="text-gray-500" />
+                        <span>
+                          {downloadingResume
+                            ? "Downloading Resume…"
+                            : "Download Resume"}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Dossier Body Content */}
-            <div className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-280px)]">
-              {/* Tab 1: Resume Preview */}
-              {selectedTab === "resume" && (
-                <div>
-                  {!selected.resume ? (
-                    <div className="rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center bg-gray-50/50">
-                      <FileText size={32} className="mx-auto text-gray-300 mb-3" />
-                      <h4 className="text-base font-bold text-gray-700">No resume attached</h4>
-                      <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
-                        This applicant did not attach a PDF resume or applied using their online profile.
-                      </p>
-                    </div>
-                  ) : isUnrecoverableResumePath(selected.resume) ? (
-                    <div className="rounded-2xl border border-amber-200 p-8 text-center bg-amber-50">
-                      <AlertCircle size={28} className="mx-auto text-amber-600 mb-2" />
-                      <h4 className="text-sm font-bold text-amber-900">Resume file unavailable</h4>
-                      <p className="text-xs text-amber-700 mt-1 max-w-sm mx-auto">
-                        This resume file was stored on an earlier server and is no longer available. You can message the candidate to request a fresh copy.
-                      </p>
-                      <button
-                        onClick={() => handleMessageCandidate(selected.applicant?._id)}
-                        className="mt-3 px-4 py-2 rounded-xl bg-white border border-amber-300 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
-                      >
-                        Message Candidate
                       </button>
-                    </div>
-                  ) : (
-                    (() => {
-                      const authorizedUrl = getAuthorizedApplicationResumeUrl(selected.applicationId);
-                      const cleanUrl = authorizedUrl || resolveResumeUrl(selected.resume);
-                      return (
-                        <div className="space-y-3">
-                          {/* Viewer Toolbar */}
-                          <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600">
-                            <span className="font-semibold text-gray-700 flex items-center gap-1.5">
-                              <FileText size={13} className="text-primary" /> {resumeFilename(selected.applicant?.name)}
-                            </span>
-                            <div className="flex items-center gap-3">
-                              <a
-                                href={cleanUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-primary transition-colors"
-                              >
-                                <ExternalLink size={13} /> Open in new tab
-                              </a>
-                              <button
-                                onClick={() => handleDownloadResume(selected)}
-                                disabled={downloadingResume}
-                                className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark transition-colors cursor-pointer"
-                              >
-                                <Download size={13} /> Download PDF
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Full Height PDF Viewport */}
-                          <iframe
-                            src={cleanUrl}
-                            title="Resume preview"
-                            className="w-full h-[620px] rounded-xl border border-gray-200 bg-white shadow-inner"
-                          />
-                        </div>
-                      );
-                    })()
-                  )}
-                </div>
-              )}
-
-              {/* Tab 2: Formatted Cover Letter */}
-              {selectedTab === "coverLetter" && (() => {
-                const { subject, paragraphs } = formatCoverLetter(selected.coverLetter);
-                return (
-                  <div className="space-y-4 max-w-3xl">
-                    {subject && (
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-orange-50 border border-orange-200 text-xs font-bold text-orange-800 shadow-2xs">
-                        <FileText size={13} className="text-orange-600" />
-                        <span>Subject: {subject}</span>
-                      </div>
                     )}
 
-                    <div className="rounded-2xl border border-gray-200/90 bg-gray-50/60 p-6 sm:p-8 space-y-4 shadow-inner">
-                      {paragraphs.length > 0 ? (
-                        paragraphs.map((p, idx) => (
-                          <p
-                            key={idx}
-                            className={`text-sm leading-relaxed ${
-                              p.startsWith("Dear ")
-                                ? "font-bold text-gray-900 text-base"
-                                : p.startsWith("Best regards") || p.startsWith("Sincerely")
-                                ? "font-semibold text-gray-800 pt-3"
-                                : "text-gray-700 font-normal"
-                            }`}
-                          >
-                            {p}
-                          </p>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">No cover letter provided for this application.</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Tab 3: Candidate Background (Skills, Experience, Education) */}
-              {selectedTab === "profile" && (
-                <div className="space-y-6 max-w-3xl">
-                  {/* Skills Cloud */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2.5 flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-primary" /> Key Skills & Competencies
-                    </h4>
-                    {selected.applicant?.skills && selected.applicant.skills.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {selected.applicant.skills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="rounded-xl bg-orange-50 border border-orange-200 text-orange-800 px-3 py-1 text-xs font-semibold shadow-2xs"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400">No skills specified on candidate profile.</p>
-                    )}
-                  </div>
-
-                  {/* Work Experience Timeline */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
-                      <Briefcase size={13} className="text-primary" /> Work Experience
-                    </h4>
-                    {selected.applicant?.experiences && selected.applicant.experiences.length > 0 ? (
-                      <div className="space-y-3">
-                        {selected.applicant.experiences.map((exp, i) => (
-                          <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
-                            <div className="h-9 w-9 rounded-xl bg-orange-100/70 text-orange-600 flex items-center justify-center flex-shrink-0">
-                              <Briefcase size={16} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900">{exp.jobPosition}</p>
-                              <p className="text-xs text-gray-600">{exp.institution}</p>
-                              <p className="text-xs text-gray-400 mt-1">{exp.duration}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400">No previous experience records listed.</p>
-                    )}
-                  </div>
-
-                  {/* Education */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
-                      <GraduationCap size={13} className="text-primary" /> Education & Qualifications
-                    </h4>
-                    {selected.applicant?.qualifications && selected.applicant.qualifications.length > 0 ? (
-                      <div className="space-y-3">
-                        {selected.applicant.qualifications.map((q, i) => (
-                          <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
-                            <div className="h-9 w-9 rounded-xl bg-blue-100/70 text-blue-600 flex items-center justify-center flex-shrink-0">
-                              <GraduationCap size={16} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900">{q.degree}</p>
-                              <p className="text-xs text-gray-600">{q.institution}{q.year ? `, ${q.year}` : ""}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400">No education qualifications listed.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 4: Interview & Stages */}
-              {selectedTab === "interview" && (
-                <div className="space-y-5 max-w-2xl">
-                  {selected.status === "Interview Scheduled" ? (
-                    <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-6 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
-                            <Calendar size={16} />
-                          </div>
-                          <h4 className="text-sm font-bold text-purple-900">Upcoming Interview Scheduled</h4>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setInterviewModalFor(selected.applicationId);
-                            setInterviewDate("");
-                          }}
-                          className="text-xs font-semibold text-purple-700 hover:text-purple-900 underline cursor-pointer"
-                        >
-                          Reschedule
-                        </button>
-                      </div>
-
-                      {selected.interview?.scheduledAt && (
-                        <p className="text-sm font-semibold text-purple-900 flex items-center gap-2">
-                          <Clock size={15} /> {new Date(selected.interview.scheduledAt).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })}
-                        </p>
-                      )}
-
-                      {selected.interview?.mode && (
-                        <p className="text-xs text-purple-800">
-                          <strong>Mode:</strong> {selected.interview.mode}
-                        </p>
-                      )}
-
-                      {selected.interview?.meetingLink && (
-                        <div>
-                          <a
-                            href={selected.interview.meetingLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors shadow-sm"
-                          >
-                            <Video size={13} /> Join Interview Meeting →
-                          </a>
-                        </div>
-                      )}
-
-                      {selected.interview?.location && (
-                        <p className="text-xs text-purple-800 flex items-center gap-1.5">
-                          <MapPin size={13} /> {selected.interview.location}
-                        </p>
-                      )}
-
-                      {selected.interview?.notes && (
-                        <div className="bg-white/80 p-3 rounded-xl border border-purple-200 text-xs text-purple-900">
-                          <strong>Instructions:</strong> {selected.interview.notes}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center space-y-3">
-                      <Calendar size={28} className="mx-auto text-gray-400" />
-                      <h4 className="text-sm font-bold text-gray-800">No interview scheduled yet</h4>
-                      <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                        Move this applicant forward in your hiring pipeline by setting up an online video interview or phone screening.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setInterviewModalFor(selected.applicationId);
-                          setInterviewDate("");
-                        }}
-                        className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                  <div className="pt-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Update Application Status
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selected.status}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            selected.applicationId,
+                            e.target.value
+                          )
+                        }
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer appearance-none pr-8"
                       >
-                        Schedule Interview Now
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Full Table View when no applicant is selected */
-        <>
-          {/* Desktop Table (Spans 100% of container) */}
-          <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px]">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3.5"><div className="flex items-center gap-1.5"><User size={12} /> Candidate</div></th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3.5"><div className="flex items-center gap-1.5"><Briefcase size={12} /> Job Title</div></th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3.5"><div className="flex items-center gap-1.5"><Calendar size={12} /> Applied</div></th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3.5">Status</th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3.5">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {applications.map((applicant) => (
-                    <tr key={applicant.applicationId} onClick={() => setSelected(applicant)} className="hover:bg-orange-50/40 transition-colors cursor-pointer">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar name={applicant.applicant?.name} photo={applicant.applicant?.profilePic} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-gray-800 truncate">{applicant.applicant?.name || <span className="italic text-gray-400">No name</span>}</p>
-                            <p className="text-xs text-gray-400 truncate">{applicant.applicant?.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4"><span className="text-sm font-medium text-gray-800">{applicant.job?.title || <span className="italic text-gray-400">Job removed</span>}</span></td>
-                      <td className="px-5 py-4"><span className="text-sm text-gray-500">{formatDate(applicant.appliedAt)}</span></td>
-                      <td className="px-5 py-4"><StatusBadge status={applicant.status} /></td>
-                      <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setSelected(applicant)}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-primary bg-white hover:bg-gray-50 border border-gray-200 hover:border-primary/40 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
-                          >
-                            <Eye size={12} className="text-primary" /> Review Dossier
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50">
-              <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-                <ChevronLeft size={15} /> Previous
-              </button>
-              <span className="text-sm text-gray-500">Page <span className="font-semibold text-gray-800">{page}</span> of <span className="font-semibold text-gray-800">{totalPages}</span></span>
-              <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-                Next <ChevronRight size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-3">
-            {applications.map((applicant) => (
-              <button key={applicant.applicationId} onClick={() => setSelected(applicant)} className="w-full text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-4 active:bg-gray-50 transition-colors cursor-pointer">
-                <div className="flex items-start gap-3">
-                  <Avatar name={applicant.applicant?.name} photo={applicant.applicant?.profilePic} size={10} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{applicant.applicant?.name || "No name"}</p>
-                    <p className="text-xs text-gray-500 truncate">{applicant.job?.title || "Job removed"}</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-gray-400">{formatDate(applicant.appliedAt)}</span>
-                      <StatusBadge status={applicant.status} />
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        size={14}
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
                     </div>
                   </div>
                 </div>
-              </button>
-            ))}
-
-            <div className="flex items-center justify-between pt-2">
-              <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl disabled:opacity-40 cursor-pointer">
-                <ChevronLeft size={14} /> Prev
-              </button>
-              <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl disabled:opacity-40 cursor-pointer">
-                Next <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Production-grade Interview Scheduling Modal with z-[100] */}
-      {interviewModalFor && (() => {
-        const modalApp = applications.find((a) => a.applicationId === interviewModalFor) || (selected?.applicationId === interviewModalFor ? selected : null);
-        return (
-          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 my-auto">
-              {/* Modal Header with Candidate Context */}
-              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-orange-50/50 to-amber-50/30">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-11 w-11 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-sm flex-shrink-0">
-                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                      {modalApp?.applicant?.profilePic ? (
-                        <img src={resolveMediaUrl(modalApp.applicant.profilePic)} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-sm font-bold text-orange-600">{(modalApp?.applicant?.name || "C")[0].toUpperCase()}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-gray-900">Schedule Interview</h2>
-                      <span className="text-[11px] font-semibold bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">Invite</span>
-                    </div>
-                    <p className="text-xs text-gray-500 truncate">
-                      Candidate: <span className="font-semibold text-gray-800">{modalApp?.applicant?.name || "Candidate"}</span>
-                      {modalApp?.job?.title ? ` • ${modalApp.job.title}` : ""}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setInterviewModalFor(null)}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
-                  title="Close"
-                >
-                  <X size={18} />
-                </button>
               </div>
 
-              {/* Form Fields */}
-              <div className="p-6 space-y-4">
-                {/* Mode Selection Pills */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    Interview Mode
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
+              {/* 2. Responsive Tabs Navigation */}
+              <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs overflow-hidden">
+                <div className="border-b border-gray-200 bg-gray-50/70 px-2 sm:px-4">
+                  <div
+                    className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth"
+                    role="tablist"
+                  >
                     {[
-                      { mode: "Video Call", icon: Video, label: "Video Call" },
-                      { mode: "Phone Call", icon: Phone, label: "Phone Call" },
-                      { mode: "In-Person", icon: Building2, label: "In-Person" },
-                    ].map(({ mode, icon: Icon, label }) => {
-                      const isSelected = interviewMode === mode;
+                      {
+                        key: "resume",
+                        label: "Resume",
+                        icon: FileText,
+                        badge:
+                          selected.resume &&
+                          !isUnrecoverableResumePath(selected.resume)
+                            ? "PDF"
+                            : null,
+                      },
+                      {
+                        key: "coverLetter",
+                        label: "Cover Letter",
+                        icon: Mail,
+                        badge: selected.coverLetter ? "Provided" : null,
+                      },
+                      {
+                        key: "profile",
+                        label: "Candidate Background",
+                        icon: User,
+                        badge:
+                          (selected.applicant?.skills?.length ?? 0) > 0
+                            ? `${selected.applicant?.skills?.length} skills`
+                            : null,
+                      },
+                      {
+                        key: "interview",
+                        label: "Interview & Stages",
+                        icon: Calendar,
+                        badge:
+                          selected.status === "Interview Scheduled"
+                            ? "Active"
+                            : null,
+                      },
+                    ].map(({ key, label, icon: Icon, badge }) => {
+                      const isActive = selectedTab === key;
                       return (
                         <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setInterviewMode(mode)}
-                          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-orange-500 bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-400/30"
-                              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                          key={key}
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => setSelectedTab(key as any)}
+                          className={`flex items-center gap-2 py-3.5 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 transition-all flex-shrink-0 cursor-pointer ${
+                            isActive
+                              ? "border-orange-500 text-orange-600 bg-white"
+                              : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-white/60"
                           }`}
                         >
-                          <Icon size={14} className={isSelected ? "text-orange-600" : "text-gray-400"} />
+                          <Icon
+                            size={16}
+                            className={
+                              isActive ? "text-orange-600" : "text-gray-400"
+                            }
+                          />
                           <span>{label}</span>
+                          {badge && (
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+                                isActive
+                                  ? "bg-orange-100 text-orange-800"
+                                  : "bg-gray-200/80 text-gray-600"
+                              }`}
+                            >
+                              {badge}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Date & Time */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Date & Time
-                    </label>
-                    <span className="text-[11px] text-gray-400">Local time</span>
-                  </div>
-                  <input
-                    type="datetime-local"
-                    min={new Date().toISOString().slice(0, 16)}
-                    value={interviewDate}
-                    onChange={(e) => setInterviewDate(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors cursor-pointer"
-                  />
-                  {/* Quick Shortcut Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[11px] text-gray-400 mr-1 flex items-center gap-1"><Clock size={11} /> Quick:</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(1, 10)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
-                    >
-                      Tomorrow 10 AM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(1, 14)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
-                    >
-                      Tomorrow 2 PM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(2, 11)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
-                    >
-                      In 2 Days 11 AM
-                    </button>
-                  </div>
-                </div>
-
-                {/* Location / Link */}
-                {interviewMode === "In-Person" ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
-                      Office / Interview Location
-                    </label>
-                    <div className="relative">
-                      <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={interviewLocation}
-                        onChange={(e) => setInterviewLocation(e.target.value)}
-                        placeholder="Company headquarters, Room 402, Building A"
-                        className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                        {interviewMode === "Video Call" ? "Meeting Link" : "Phone Number"}
-                      </label>
-                      {interviewMode === "Video Call" && (
-                        <button
-                          type="button"
-                          onClick={() => setInterviewLink("https://meet.google.com/new")}
-                          className="text-[11px] text-orange-600 hover:text-orange-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Link2 size={11} /> Create Google Meet
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      {interviewMode === "Video Call" ? (
-                        <Video size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                {/* 3. Tab Content Container */}
+                <div className="p-4 sm:p-6 lg:p-7">
+                  {/* ───────────────── TAB 1: RESUME ───────────────── */}
+                  {selectedTab === "resume" && (
+                    <div className="space-y-4">
+                      {!selected.resume ? (
+                        <div className="rounded-2xl border-2 border-dashed border-gray-200 p-10 sm:p-14 text-center bg-gray-50/50">
+                          <FileText
+                            size={36}
+                            className="mx-auto text-gray-300 mb-3"
+                          />
+                          <h4 className="text-base font-bold text-gray-800">
+                            No Resume Attached
+                          </h4>
+                          <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-md mx-auto">
+                            This applicant did not attach a PDF resume file. You
+                            can review their background and profile details or
+                            message them directly.
+                          </p>
+                          <button
+                            onClick={() =>
+                              handleMessageCandidate(selected.applicant?._id)
+                            }
+                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <MessageSquare size={14} className="text-orange-600" />
+                            <span>Request Resume via Message</span>
+                          </button>
+                        </div>
+                      ) : isUnrecoverableResumePath(selected.resume) ? (
+                        <div className="rounded-2xl border border-amber-200 p-8 text-center bg-amber-50">
+                          <AlertCircle
+                            size={32}
+                            className="mx-auto text-amber-600 mb-2"
+                          />
+                          <h4 className="text-sm font-bold text-amber-900">
+                            Resume File Unavailable
+                          </h4>
+                          <p className="text-xs text-amber-700 mt-1 max-w-md mx-auto">
+                            This application references an earlier file path that
+                            is no longer accessible on the current storage. You
+                            can reach out to the applicant to provide a fresh
+                            copy.
+                          </p>
+                          <button
+                            onClick={() =>
+                              handleMessageCandidate(selected.applicant?._id)
+                            }
+                            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-amber-300 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
+                          >
+                            <MessageSquare size={13} />
+                            <span>Message Candidate</span>
+                          </button>
+                        </div>
                       ) : (
-                        <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        (() => {
+                          const authorizedUrl =
+                            getAuthorizedApplicationResumeUrl(
+                              selected.applicationId
+                            ) || resolveResumeUrl(selected.resume);
+                          return (
+                            <div className="space-y-3">
+                              {/* Resume Section Header with Action Buttons */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileText
+                                    size={16}
+                                    className="text-orange-600 flex-shrink-0"
+                                  />
+                                  <span className="text-xs sm:text-sm font-bold text-gray-800 truncate">
+                                    {resumeFilename(selected.applicant?.name)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <a
+                                    href={authorizedUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold transition-colors shadow-2xs"
+                                    title="Open resume in a new browser tab"
+                                  >
+                                    <ExternalLink size={13} />
+                                    <span>Open in new tab</span>
+                                  </a>
+
+                                  <button
+                                    onClick={() =>
+                                      handleDownloadResume(selected)
+                                    }
+                                    disabled={downloadingResume}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                                    title="Download PDF to your computer"
+                                  >
+                                    <Download size={13} />
+                                    <span>
+                                      {downloadingResume
+                                        ? "Downloading…"
+                                        : "Download PDF"}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Responsive PDF Viewer Frame */}
+                              <div className="w-full rounded-xl border border-gray-200 overflow-hidden bg-gray-100 shadow-inner">
+                                <iframe
+                                  src={authorizedUrl}
+                                  title="Candidate resume preview"
+                                  className="w-full h-[450px] sm:h-[600px] lg:h-[700px] border-none bg-white"
+                                />
+                              </div>
+
+                              <p className="text-[11px] text-gray-400 text-center">
+                                Having trouble viewing? Use{" "}
+                                <a
+                                  href={authorizedUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-orange-600 underline font-medium"
+                                >
+                                  Open in new tab
+                                </a>{" "}
+                                or{" "}
+                                <button
+                                  onClick={() => handleDownloadResume(selected)}
+                                  className="text-orange-600 underline font-medium cursor-pointer"
+                                >
+                                  Download PDF
+                                </button>
+                                .
+                              </p>
+                            </div>
+                          );
+                        })()
                       )}
-                      <input
-                        type="text"
-                        value={interviewLink}
-                        onChange={(e) => setInterviewLink(e.target.value)}
-                        placeholder={
-                          interviewMode === "Video Call"
-                            ? "https://meet.google.com/… or Zoom link"
-                            : modalApp?.applicant?.email ? `Contact ${modalApp.applicant.name}` : "+977-… or candidate phone"
-                        }
-                        className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
-                      />
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
-                    Candidate Instructions & Notes (Optional)
-                  </label>
-                  <textarea
-                    value={interviewNotes}
-                    onChange={(e) => setInterviewNotes(e.target.value)}
-                    rows={2}
-                    placeholder="e.g. Please bring your portfolio or prepare for a 15-minute case discussion."
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors resize-none"
-                  />
-                </div>
+                  {/* ────────────── TAB 2: COVER LETTER ────────────── */}
+                  {selectedTab === "coverLetter" && (
+                    <div className="space-y-4 max-w-3xl">
+                      {!selected.coverLetter || !selected.coverLetter.trim() ? (
+                        <div className="rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center bg-gray-50/50">
+                          <Mail
+                            size={32}
+                            className="mx-auto text-gray-300 mb-2"
+                          />
+                          <h4 className="text-sm font-bold text-gray-700">
+                            No cover letter provided.
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1">
+                            The candidate submitted this application without an
+                            attached cover letter.
+                          </p>
+                        </div>
+                      ) : (
+                        (() => {
+                          const { subject, paragraphs } = formatCoverLetter(
+                            selected.coverLetter
+                          );
+                          return (
+                            <div className="space-y-4">
+                              {subject && (
+                                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-orange-50 border border-orange-200 text-xs font-bold text-orange-800 shadow-2xs">
+                                  <FileText
+                                    size={13}
+                                    className="text-orange-600"
+                                  />
+                                  <span>Subject: {subject}</span>
+                                </div>
+                              )}
 
-                {/* Automated notification reassurance */}
-                <div className="flex items-start gap-2.5 rounded-xl bg-orange-50/70 border border-orange-200/70 p-3 text-xs text-orange-800">
-                  <Mail size={15} className="text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span>
-                    An automated calendar invitation and email notification will be sent directly to{" "}
-                    <strong className="font-semibold text-orange-900">{modalApp?.applicant?.email || "the candidate"}</strong>.
-                  </span>
+                              <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 space-y-4 shadow-2xs">
+                                {paragraphs.map((p, idx) => (
+                                  <p
+                                    key={idx}
+                                    className={`text-sm leading-relaxed ${
+                                      p.startsWith("Dear ")
+                                        ? "font-bold text-gray-900 text-base"
+                                        : p.startsWith("Best regards") ||
+                                          p.startsWith("Sincerely")
+                                        ? "font-semibold text-gray-800 pt-3"
+                                        : "text-gray-700 font-normal"
+                                    }`}
+                                  >
+                                    {p}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()
+                      )}
+                    </div>
+                  )}
+
+                  {/* ────────── TAB 3: CANDIDATE BACKGROUND ────────── */}
+                  {selectedTab === "profile" && (
+                    <div className="space-y-6 max-w-3xl">
+                      {/* Check if any background information exists */}
+                      {!selected.applicant?.skills?.length &&
+                      !selected.applicant?.experiences?.length &&
+                      !selected.applicant?.qualifications?.length &&
+                      !selected.applicant?.projects?.length &&
+                      !selected.applicant?.certifications?.length &&
+                      !selected.applicant?.bio &&
+                      !selected.applicant?.socialLinks?.linkedin &&
+                      !selected.applicant?.socialLinks?.website &&
+                      !selected.applicant?.socialLinks?.github ? (
+                        <div className="rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center bg-gray-50/50">
+                          <User
+                            size={32}
+                            className="mx-auto text-gray-300 mb-2"
+                          />
+                          <h4 className="text-sm font-bold text-gray-700">
+                            No candidate background information available.
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1">
+                            This candidate has not populated skills or background
+                            data on their profile yet.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Bio / About */}
+                          {selected.applicant?.bio && (
+                            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/60">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 flex items-center gap-1.5">
+                                <User size={13} className="text-orange-600" />
+                                <span>About Candidate</span>
+                              </h4>
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {selected.applicant.bio}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Social & Web Links */}
+                          {(selected.applicant?.socialLinks?.linkedin ||
+                            selected.applicant?.socialLinks?.website ||
+                            selected.applicant?.socialLinks?.github ||
+                            selected.applicant?.socialLinks?.twitter) && (
+                            <div>
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2.5 flex items-center gap-1.5">
+                                <Globe size={13} className="text-orange-600" />
+                                <span>Links & Profiles</span>
+                              </h4>
+                              <div className="flex flex-wrap gap-2.5">
+                                {selected.applicant.socialLinks.linkedin && (
+                                  <a
+                                    href={selected.applicant.socialLinks.linkedin}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-blue-700 shadow-2xs transition-colors"
+                                  >
+                                    <ExternalLink size={12} />
+                                    <span>LinkedIn</span>
+                                  </a>
+                                )}
+                                {selected.applicant.socialLinks.website && (
+                                  <a
+                                    href={selected.applicant.socialLinks.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-800 shadow-2xs transition-colors"
+                                  >
+                                    <Globe size={12} />
+                                    <span>Portfolio / Website</span>
+                                  </a>
+                                )}
+                                {selected.applicant.socialLinks.github && (
+                                  <a
+                                    href={selected.applicant.socialLinks.github}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-800 shadow-2xs transition-colors"
+                                  >
+                                    <ExternalLink size={12} />
+                                    <span>GitHub</span>
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Skills */}
+                          {selected.applicant?.skills &&
+                            selected.applicant.skills.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2.5 flex items-center gap-1.5">
+                                  <Sparkles
+                                    size={13}
+                                    className="text-orange-600"
+                                  />
+                                  <span>Skills</span>
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {selected.applicant.skills.map((skill) => (
+                                    <span
+                                      key={skill}
+                                      className="rounded-xl bg-orange-50 border border-orange-200 text-orange-800 px-3 py-1 text-xs font-semibold shadow-2xs"
+                                    >
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                          {/* Work Experience */}
+                          {selected.applicant?.experiences &&
+                            selected.applicant.experiences.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                                  <Briefcase
+                                    size={13}
+                                    className="text-orange-600"
+                                  />
+                                  <span>Experience</span>
+                                </h4>
+                                <div className="space-y-3">
+                                  {selected.applicant.experiences.map(
+                                    (exp, i) => (
+                                      <div
+                                        key={i}
+                                        className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white shadow-2xs"
+                                      >
+                                        <div className="h-9 w-9 rounded-xl bg-orange-100/70 text-orange-600 flex items-center justify-center flex-shrink-0">
+                                          <Briefcase size={16} />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-bold text-gray-900 truncate">
+                                              {exp.jobPosition}
+                                            </p>
+                                            {exp.current && (
+                                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 flex-shrink-0">
+                                                Current
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-gray-600 font-medium">
+                                            {exp.institution}
+                                          </p>
+                                          {exp.duration && (
+                                            <p className="text-xs text-gray-400 mt-1">
+                                              {exp.duration}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                          {/* Education */}
+                          {selected.applicant?.qualifications &&
+                            selected.applicant.qualifications.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                                  <GraduationCap
+                                    size={13}
+                                    className="text-orange-600"
+                                  />
+                                  <span>Education</span>
+                                </h4>
+                                <div className="space-y-3">
+                                  {selected.applicant.qualifications.map(
+                                    (q, i) => (
+                                      <div
+                                        key={i}
+                                        className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white shadow-2xs"
+                                      >
+                                        <div className="h-9 w-9 rounded-xl bg-blue-100/70 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                          <GraduationCap size={16} />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-bold text-gray-900">
+                                            {q.degree}
+                                          </p>
+                                          <p className="text-xs text-gray-600">
+                                            {q.institution}
+                                            {q.year ? `, ${q.year}` : ""}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                          {/* Projects if any */}
+                          {selected.applicant?.projects &&
+                            selected.applicant.projects.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                                  <FileText
+                                    size={13}
+                                    className="text-orange-600"
+                                  />
+                                  <span>Projects</span>
+                                </h4>
+                                <div className="space-y-3">
+                                  {selected.applicant.projects.map((proj, i) => (
+                                    <div
+                                      key={i}
+                                      className="p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-1.5"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-sm font-bold text-gray-900">
+                                          {proj.title}
+                                        </p>
+                                        {proj.link && (
+                                          <a
+                                            href={proj.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-orange-600 hover:underline flex items-center gap-1"
+                                          >
+                                            <ExternalLink size={11} /> Link
+                                          </a>
+                                        )}
+                                      </div>
+                                      {proj.description && (
+                                        <p className="text-xs text-gray-600">
+                                          {proj.description}
+                                        </p>
+                                      )}
+                                      {proj.technologies && (
+                                        <p className="text-[11px] text-gray-400">
+                                          Tech: {proj.technologies}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ────────── TAB 4: INTERVIEW & STAGES ────────── */}
+                  {selectedTab === "interview" && (
+                    <div className="space-y-5 max-w-2xl">
+                      {selected.status === "Interview Scheduled" ? (
+                        <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-6 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-9 w-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0">
+                                <Calendar size={18} />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-purple-900">
+                                  Interview Scheduled
+                                </h4>
+                                <p className="text-xs text-purple-700">
+                                  Stage: Preliminary Screening
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setInterviewModalFor(selected.applicationId);
+                                if (selected.interview?.scheduledAt) {
+                                  const d = new Date(
+                                    selected.interview.scheduledAt
+                                  );
+                                  const pad = (n: number) =>
+                                    String(n).padStart(2, "0");
+                                  setInterviewDate(
+                                    `${d.getFullYear()}-${pad(
+                                      d.getMonth() + 1
+                                    )}-${pad(d.getDate())}T${pad(
+                                      d.getHours()
+                                    )}:${pad(d.getMinutes())}`
+                                  );
+                                  setInterviewMode(
+                                    selected.interview.mode || "Video Call"
+                                  );
+                                  setInterviewLink(
+                                    selected.interview.meetingLink || ""
+                                  );
+                                  setInterviewLocation(
+                                    selected.interview.location || ""
+                                  );
+                                  setInterviewNotes(
+                                    selected.interview.notes || ""
+                                  );
+                                }
+                              }}
+                              className="text-xs font-semibold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                            >
+                              Reschedule
+                            </button>
+                          </div>
+
+                          {/* Nepal Time & Date breakdown */}
+                          {selected.interview?.scheduledAt &&
+                            (() => {
+                              const npt = formatNepalDateTime(
+                                selected.interview.scheduledAt
+                              );
+                              return (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white/90 p-4 rounded-xl border border-purple-200/80">
+                                  <div>
+                                    <span className="text-[11px] font-semibold text-gray-500 uppercase">
+                                      Date
+                                    </span>
+                                    <p className="text-sm font-bold text-purple-950 flex items-center gap-1.5 mt-0.5">
+                                      <Calendar
+                                        size={14}
+                                        className="text-purple-600"
+                                      />
+                                      {npt.date}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-[11px] font-semibold text-gray-500 uppercase">
+                                      Time
+                                    </span>
+                                    <p className="text-sm font-bold text-purple-950 flex items-center gap-1.5 mt-0.5">
+                                      <Clock
+                                        size={14}
+                                        className="text-purple-600"
+                                      />
+                                      {npt.time}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                          {/* Interview Mode / Type */}
+                          {selected.interview?.mode && (
+                            <p className="text-xs text-purple-900">
+                              <strong className="font-semibold">Type:</strong>{" "}
+                              {selected.interview.mode}
+                            </p>
+                          )}
+
+                          {/* Join Interview Meeting Button */}
+                          {selected.interview?.meetingLink && (
+                            <div className="pt-1">
+                              <a
+                                href={selected.interview.meetingLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors shadow-sm cursor-pointer"
+                              >
+                                <Video size={15} />
+                                <span>Join Interview</span>
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Physical Location */}
+                          {selected.interview?.location && (
+                            <p className="text-xs text-purple-900 flex items-center gap-1.5">
+                              <MapPin size={14} className="text-purple-600" />
+                              <span>{selected.interview.location}</span>
+                            </p>
+                          )}
+
+                          {/* Notes */}
+                          {selected.interview?.notes && (
+                            <div className="bg-white/90 p-3.5 rounded-xl border border-purple-200/80 text-xs text-purple-950">
+                              <strong className="font-semibold text-purple-900 block mb-1">
+                                Interview Notes:
+                              </strong>
+                              {selected.interview.notes}
+                            </div>
+                          )}
+
+                          {/* Email Notification Status & Resend Button */}
+                          <div className="flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-purple-200/70">
+                            <div className="flex items-center gap-2 text-xs">
+                              <Mail
+                                size={14}
+                                className="text-purple-600 shrink-0"
+                              />
+                              <span className="text-purple-900 font-medium">
+                                Email Notification:
+                              </span>
+                              {selected.interview?.emailStatus === "sent" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  <CheckCircle2 size={11} /> Email Sent
+                                </span>
+                              ) : selected.interview?.emailStatus ===
+                                "failed" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                  <AlertCircle size={11} /> Delivery Failed
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-700">
+                                  Pending Delivery
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={resendingEmail}
+                              onClick={() =>
+                                handleResendEmail(selected.applicationId)
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-800 hover:text-purple-950 bg-white hover:bg-purple-100/80 border border-purple-200 rounded-xl transition-all shadow-2xs hover:shadow-xs disabled:opacity-50 cursor-pointer"
+                            >
+                              <RotateCcw
+                                size={12}
+                                className={resendingEmail ? "animate-spin" : ""}
+                              />
+                              <span>
+                                {resendingEmail ? "Sending…" : "Resend Email"}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-8 sm:p-10 text-center space-y-3">
+                          <Calendar
+                            size={32}
+                            className="mx-auto text-gray-400"
+                          />
+                          <h4 className="text-sm font-bold text-gray-800">
+                            No interview scheduled.
+                          </h4>
+                          <p className="text-xs sm:text-sm text-gray-500 max-w-sm mx-auto">
+                            Move this candidate forward by setting up a video meeting, phone screening, or in-person interview.
+                          </p>
+                          <button
+                            onClick={() => {
+                              setInterviewModalFor(selected.applicationId);
+                              setInterviewDate("");
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                          >
+                            <Calendar size={14} />
+                            <span>Schedule Interview</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* Footer Buttons */}
-              <div className="flex items-center gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setInterviewModalFor(null)}
-                  className="flex-1 border border-gray-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleScheduleInterview}
-                  disabled={schedulingLoading || !interviewDate}
-                  className="flex-1 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg,#F59E0B,#F97316)" }}
-                >
-                  {schedulingLoading ? (
-                    <span>Scheduling…</span>
-                  ) : (
-                    <>
-                      <Calendar size={15} />
-                      <span>Send Invitation</span>
-                    </>
+            {/* ── Right / Action Section (Desktop Sidebar) ── */}
+            <div className="hidden lg:block lg:col-span-4 space-y-5 lg:sticky lg:top-4">
+              <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-5 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 pb-2">
+                  Application Actions
+                </h3>
+
+                {/* Status Dropdown */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Application Status
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selected.status}
+                      onChange={(e) =>
+                        handleStatusChange(
+                          selected.applicationId,
+                          e.target.value
+                        )
+                      }
+                      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold bg-white text-gray-800 shadow-2xs focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer appearance-none pr-8"
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={15}
+                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Primary & Secondary Action Buttons */}
+                <div className="space-y-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setInterviewModalFor(selected.applicationId);
+                      setInterviewDate("");
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white text-xs font-semibold shadow-xs hover:shadow-md active:scale-98 transition-all cursor-pointer"
+                    style={{
+                      background: "linear-gradient(135deg, #F59E0B, #EA580C)",
+                    }}
+                  >
+                    <Calendar size={15} />
+                    <span>
+                      {selected.status === "Interview Scheduled"
+                        ? "Reschedule Interview"
+                        : "Schedule Interview"}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleMessageCandidate(selected.applicant?._id)
+                    }
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <MessageSquare size={15} className="text-orange-600" />
+                    <span>Message Candidate</span>
+                  </button>
+
+                  {selected.resume &&
+                    !isUnrecoverableResumePath(selected.resume) && (
+                      <button
+                        onClick={() => handleDownloadResume(selected)}
+                        disabled={downloadingResume}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        <Download size={15} className="text-gray-500" />
+                        <span>
+                          {downloadingResume
+                            ? "Downloading Resume…"
+                            : "Download Resume"}
+                        </span>
+                      </button>
+                    )}
+                </div>
+
+                {/* Candidate Quick Facts */}
+                <div className="pt-3 border-t border-gray-100 text-xs space-y-2 text-gray-500">
+                  <div className="flex items-center justify-between">
+                    <span>Applied Date</span>
+                    <strong className="text-gray-800 font-semibold">
+                      {formatDate(selected.appliedAt)}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Target Job</span>
+                    <span className="text-gray-800 font-medium truncate max-w-[170px] text-right">
+                      {selected.job?.title || "Removed"}
+                    </span>
+                  </div>
+                  {selected.howDidYouHear && (
+                    <div className="flex items-center justify-between">
+                      <span>Source</span>
+                      <strong className="text-gray-800 font-semibold">
+                        {selected.howDidYouHear}
+                      </strong>
+                    </div>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      ) : (
+        /* ─────────────────────────────────────────────────────────────
+            MAIN APPLICATION LIST VIEW (Table on Tablet/Desktop, Cards on Mobile)
+        ───────────────────────────────────────────────────────────── */
+        <div className="max-w-7xl mx-auto space-y-5">
+          {/* Page Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+                Applications
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                {totalApplications} application
+                {totalApplications !== 1 ? "s" : ""} across your job listings
+              </p>
+            </div>
+
+            {/* Clickable Status Summary Filter Strip */}
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Status filters">
+              {STATUS_OPTIONS.map((s) => {
+                const isSelected = statusFilter === s;
+                const count = statusCounts[s] ?? 0;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(isSelected ? "" : s)}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? `${statusConfig[s].bg} ${statusConfig[s].text} ring-2 ring-orange-500/40 border border-transparent shadow-xs`
+                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-gray-900 shadow-2xs"
+                    }`}
+                    title={`Filter by ${s}`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${statusConfig[s].dot}`}
+                    />
+                    <span>{s}</span>
+                    <span
+                      className={`font-bold ml-0.5 px-1.5 py-0.2 rounded-full text-[11px] ${
+                        isSelected ? "bg-white/80" : "bg-gray-100"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Search + Filter Bar */}
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search
+                  size={15}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by candidate name or job title…"
+                  className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 shadow-2xs"
+                />
+              </div>
+
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className={`flex items-center justify-center gap-1.5 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer shadow-2xs ${
+                  showFilters || activeFilterCount > 0
+                    ? "border-orange-500/40 bg-orange-50 text-orange-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Filter size={14} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 ml-0.5">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {(activeFilterCount > 0 || search) && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset</span>
+                </button>
+              )}
+            </div>
+
+            {/* Expanded Filter Panel */}
+            {showFilters && (
+              <div className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4 shadow-2xs animate-fade-in">
+                <div>
+                  <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Job
+                  </label>
+                  <select
+                    value={jobFilter}
+                    onChange={(e) => setJobFilter(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  >
+                    <option value="">All jobs</option>
+                    {jobs.map((j) => (
+                      <option key={j._id} value={j._id}>
+                        {j.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  >
+                    <option value="">All statuses</option>
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Applied after
+                  </label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  >
+                  </input>
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Applied before
+                  </label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* List Content: Error, Loading, Empty, or Data */}
+          {error ? (
+            <div className="bg-white rounded-2xl border border-rose-200 p-10 text-center shadow-2xs">
+              <AlertCircle size={32} className="mx-auto text-rose-500 mb-2" />
+              <p className="text-sm font-semibold text-rose-700">
+                Unable to load candidate applications.
+              </p>
+              <button
+                onClick={() => fetchApplicants()}
+                className="mt-3 px-4 py-2 rounded-xl bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : loading ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-2xs">
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="h-11 w-11 animate-pulse rounded-full bg-gray-200" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 w-36 animate-pulse rounded bg-gray-200" />
+                      <div className="h-3 w-52 animate-pulse rounded bg-gray-100" />
+                    </div>
+                    <div className="h-7 w-24 animate-pulse rounded-full bg-gray-200" />
+                    <div className="h-8 w-20 animate-pulse rounded-xl bg-gray-100" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : applications.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-14 text-center shadow-2xs">
+              <div className="h-14 w-14 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-3 text-orange-600">
+                <Briefcase size={24} />
+              </div>
+              <p className="text-base font-bold text-gray-800">
+                {activeFilterCount > 0 || search
+                  ? "No applications match these filters"
+                  : "No applicants yet"}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1 max-w-sm mx-auto">
+                {activeFilterCount > 0 || search
+                  ? "Try adjusting your search criteria or resetting filters."
+                  : "Applications will show up here once candidates apply to your job listings."}
+              </p>
+              {(activeFilterCount > 0 || search) && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 px-4 py-2 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors cursor-pointer"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Desktop & Tablet Table (md and up) */}
+              <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px]">
+                    <thead>
+                      <tr className="bg-gray-50/80 border-b border-gray-200">
+                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <User size={13} /> Candidate
+                          </div>
+                        </th>
+                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <Briefcase size={13} /> Job Title
+                          </div>
+                        </th>
+                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={13} /> Applied
+                          </div>
+                        </th>
+                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3.5">
+                          Status
+                        </th>
+                        <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3.5">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {applications.map((applicant) => (
+                        <tr
+                          key={applicant.applicationId}
+                          onClick={() => setSelected(applicant)}
+                          className="hover:bg-orange-50/40 transition-colors cursor-pointer group"
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar
+                                name={applicant.applicant?.name}
+                                photo={applicant.applicant?.profilePic}
+                                size={10}
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors truncate">
+                                  {applicant.applicant?.name || (
+                                    <span className="italic text-gray-400">
+                                      No name
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-400 truncate">
+                                  {applicant.applicant?.email}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <span className="text-sm font-medium text-gray-800">
+                              {applicant.job?.title || (
+                                <span className="italic text-gray-400">
+                                  Job removed
+                                </span>
+                              )}
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <span className="text-sm text-gray-500">
+                              {formatDate(applicant.appliedAt)}
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <StatusBadge status={applicant.status} />
+                          </td>
+
+                          <td
+                            className="px-5 py-4 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => setSelected(applicant)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-98"
+                              title="Review candidate profile and application"
+                            >
+                              <Eye size={13} />
+                              <span>Review</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Desktop Pagination */}
+                <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50/60">
+                  <button
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={page === 1}
+                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Previous</span>
+                  </button>
+
+                  <span className="text-xs text-gray-500">
+                    Page{" "}
+                    <strong className="text-gray-900 font-bold">{page}</strong>{" "}
+                    of {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={page === totalPages}
+                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Mobile Responsive Cards (visible strictly on < md) */}
+              <div className="md:hidden space-y-3">
+                {applications.map((applicant) => (
+                  <div
+                    key={applicant.applicationId}
+                    className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-4 space-y-3"
+                  >
+                    {/* Top Row: Avatar + Name + Status */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Avatar
+                          name={applicant.applicant?.name}
+                          photo={applicant.applicant?.profilePic}
+                          size={10}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">
+                            {applicant.applicant?.name || "Applicant"}
+                          </p>
+                          <p className="text-xs text-gray-500 font-medium truncate">
+                            {applicant.job?.title || "Job removed"}
+                          </p>
+                        </div>
+                      </div>
+                      <StatusBadge status={applicant.status} />
+                    </div>
+
+                    {/* Meta Row: Email & Applied Date */}
+                    <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
+                      <span>Applied: {formatDate(applicant.appliedAt)}</span>
+                      {applicant.resume &&
+                        !isUnrecoverableResumePath(applicant.resume) && (
+                          <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <FileText size={10} /> PDF
+                          </span>
+                        )}
+                    </div>
+
+                    {/* Full-width Touch Review Button */}
+                    <button
+                      onClick={() => setSelected(applicant)}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors shadow-2xs cursor-pointer active:scale-98"
+                    >
+                      <Eye size={14} />
+                      <span>Review</span>
+                    </button>
+                  </div>
+                ))}
+
+                {/* Mobile Pagination */}
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={page === 1}
+                    className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl disabled:opacity-40 cursor-pointer shadow-2xs"
+                  >
+                    <ChevronLeft size={14} /> Prev
+                  </button>
+                  <span className="text-xs text-gray-500">
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={page === totalPages}
+                    className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl disabled:opacity-40 cursor-pointer shadow-2xs"
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          SCHEDULE INTERVIEW MODAL (Fully Responsive, z-[100])
+      ───────────────────────────────────────────────────────────── */}
+      {interviewModalFor &&
+        (() => {
+          const modalApp =
+            applications.find((a) => a.applicationId === interviewModalFor) ||
+            (selected?.applicationId === interviewModalFor ? selected : null);
+          return (
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 my-auto flex flex-col max-h-[92vh]">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 bg-gradient-to-r from-orange-50/60 to-amber-50/40 flex-shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar
+                      name={modalApp?.applicant?.name}
+                      photo={modalApp?.applicant?.profilePic}
+                      size={10}
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold text-gray-900">
+                          Schedule Interview
+                        </h2>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">
+                        Candidate:{" "}
+                        <strong className="text-gray-800 font-semibold">
+                          {modalApp?.applicant?.name || "Candidate"}
+                        </strong>
+                        {modalApp?.job?.title ? ` • ${modalApp.job.title}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setInterviewModalFor(null)}
+                    className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
+                    title="Close modal"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Scrollable Form Body */}
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                  {/* Interview Mode Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                      Interview Type
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {
+                          mode: "Video Call",
+                          icon: Video,
+                          label: "Video Call",
+                        },
+                        {
+                          mode: "Phone Call",
+                          icon: Phone,
+                          label: "Phone Call",
+                        },
+                        {
+                          mode: "In-Person",
+                          icon: Building2,
+                          label: "In-Person",
+                        },
+                      ].map(({ mode, icon: Icon, label }) => {
+                        const isSelected = interviewMode === mode;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setInterviewMode(mode)}
+                            className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? "border-orange-500 bg-orange-50 text-orange-700 shadow-2xs ring-1 ring-orange-400/30"
+                                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            <Icon
+                              size={15}
+                              className={
+                                isSelected ? "text-orange-600" : "text-gray-400"
+                              }
+                            />
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Date & Time with Quick Shortcut Buttons */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        Date & Time
+                      </label>
+                      <span className="text-[11px] text-gray-400">
+                        Local device time
+                      </span>
+                    </div>
+                    <input
+                      type="datetime-local"
+                      min={new Date().toISOString().slice(0, 16)}
+                      value={interviewDate}
+                      onChange={(e) => setInterviewDate(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                    />
+
+                    {/* Quick presets */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[11px] text-gray-400 mr-1 flex items-center gap-1">
+                        <Clock size={11} /> Quick:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDate(1, 10)}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                      >
+                        Tomorrow 10 AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDate(1, 14)}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                      >
+                        Tomorrow 2 PM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDate(2, 11)}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-700 text-gray-600 transition-colors cursor-pointer"
+                      >
+                        In 2 Days 11 AM
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mode-specific Location or Link input */}
+                  {interviewMode === "In-Person" ? (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                        Office / Interview Location
+                      </label>
+                      <div className="relative">
+                        <MapPin
+                          size={15}
+                          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                        />
+                        <input
+                          type="text"
+                          value={interviewLocation}
+                          onChange={(e) =>
+                            setInterviewLocation(e.target.value)
+                          }
+                          placeholder="e.g. Kathmandu Head Office, 3rd Floor Conference Room"
+                          className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                          {interviewMode === "Video Call"
+                            ? "Meeting Link"
+                            : "Phone Number"}
+                        </label>
+                        {interviewMode === "Video Call" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setInterviewLink("https://meet.google.com/new")
+                            }
+                            className="text-[11px] text-orange-600 hover:text-orange-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Link2 size={11} /> Create Google Meet
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        {interviewMode === "Video Call" ? (
+                          <Video
+                            size={15}
+                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                          />
+                        ) : (
+                          <Phone
+                            size={15}
+                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                          />
+                        )}
+                        <input
+                          type="text"
+                          value={interviewLink}
+                          onChange={(e) => setInterviewLink(e.target.value)}
+                          placeholder={
+                            interviewMode === "Video Call"
+                              ? "https://meet.google.com/… or Zoom link"
+                              : modalApp?.applicant?.email
+                              ? `Contact candidate via ${modalApp.applicant.email}`
+                              : "+977-… or candidate phone"
+                          }
+                          className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes / Instructions */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                      Interview Notes / Candidate Instructions
+                    </label>
+                    <textarea
+                      value={interviewNotes}
+                      onChange={(e) => setInterviewNotes(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Please bring your portfolio and prepare for a 20-minute technical review."
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors resize-none"
+                    />
+                  </div>
+
+                  {/* Candidate Notification Reassurance */}
+                  <div className="flex items-start gap-2.5 rounded-xl bg-orange-50 border border-orange-200/70 p-3 text-xs text-orange-900">
+                    <Mail
+                      size={15}
+                      className="text-orange-600 flex-shrink-0 mt-0.5"
+                    />
+                    <span>
+                      An automated invitation and confirmation email will be
+                      sent to{" "}
+                      <strong className="font-semibold text-orange-950">
+                        {modalApp?.applicant?.email || "the candidate"}
+                      </strong>
+                      .
+                    </span>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center gap-3 px-5 py-4 bg-gray-50 border-t border-gray-100 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setInterviewModalFor(null)}
+                    className="flex-1 border border-gray-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleScheduleInterview}
+                    disabled={schedulingLoading || !interviewDate}
+                    className="flex-1 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                    style={{
+                      background: "linear-gradient(135deg, #F59E0B, #EA580C)",
+                    }}
+                  >
+                    {schedulingLoading ? (
+                      <span>Scheduling…</span>
+                    ) : (
+                      <>
+                        <Calendar size={15} />
+                        <span>Schedule Interview</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 };
