@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, Trash2, Globe, HelpCircle } from 'lucide-react';
 import { CefrLanguageLevel } from '../config/countryCVConfigs/types';
+import { LANGUAGES_LIST } from '../config/skillsAndLanguagesData';
 
 interface CefrLanguageEditorProps {
   motherTongue?: string;
@@ -51,13 +52,21 @@ export const CefrLanguageEditor: React.FC<CefrLanguageEditorProps> = ({
         <label className="mb-1 block text-xs font-medium text-slate-600">
           Mother Tongue(s)
         </label>
-        <input
-          type="text"
-          className={fieldClass}
-          placeholder="e.g. Romanian, Bosnian, Arabic, Nepali"
+        <select
+          className={selectClass}
           value={motherTongue}
           onChange={(e) => onMotherTongueChange(e.target.value)}
-        />
+        >
+          <option value="">Select Mother Tongue…</option>
+          {motherTongue && !LANGUAGES_LIST.includes(motherTongue) && (
+            <option value={motherTongue}>{motherTongue}</option>
+          )}
+          {LANGUAGES_LIST.map((lang) => (
+            <option key={lang} value={lang}>
+              {lang}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* CEFR Foreign Languages */}

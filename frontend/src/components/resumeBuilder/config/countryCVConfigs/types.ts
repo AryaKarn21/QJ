@@ -28,6 +28,7 @@ export interface SimpleLanguageItem {
 
 export interface StructuredSkillItem {
   name: string;
+  skill?: string;
   proficiency: string;
 }
 

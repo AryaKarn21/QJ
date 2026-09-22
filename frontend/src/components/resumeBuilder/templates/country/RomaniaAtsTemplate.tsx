@@ -123,14 +123,43 @@ export const RomaniaAtsTemplate: React.FC<Props> = ({ resume }) => {
       </section>
 
       {/* Skills */}
-      {(countryCVInfo.digitalSkills?.length || 0) > 0 || (resume.skills?.length || 0) > 0 ? (
+      {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
+        (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0) ||
+        (countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0) ||
+        (resume.skills && resume.skills.length > 0)) ? (
         <section className="mt-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-black border-b border-slate-400 pb-0.5 mb-1.5">
             Skills & Competencies
           </h2>
           <div className="text-xs text-slate-800 space-y-1">
-            {countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0 && (
-              <p><strong>Digital Skills:</strong> {countryCVInfo.digitalSkills.join(', ')}</p>
+            {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
+              (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
+              <p>
+                <strong>Digital Skills:</strong>{' '}
+                {countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0
+                  ? countryCVInfo.structuredDigitalSkills
+                      .map((s) => {
+                        const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
+                        const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
+                        return name ? `${name}${prof}` : '';
+                      })
+                      .filter(Boolean)
+                      .join(', ')
+                  : (countryCVInfo.digitalSkills || []).join(', ')}
+              </p>
+            )}
+            {countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0 && (
+              <p>
+                <strong>Software Skills:</strong>{' '}
+                {countryCVInfo.structuredSoftwareSkills
+                  .map((s) => {
+                    const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
+                    const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
+                    return name ? `${name}${prof}` : '';
+                  })
+                  .filter(Boolean)
+                  .join(', ')}
+              </p>
             )}
             {resume.skills && resume.skills.length > 0 && (
               <p><strong>Technical & Professional:</strong> {resume.skills.map((s) => s.name).join(', ')}</p>

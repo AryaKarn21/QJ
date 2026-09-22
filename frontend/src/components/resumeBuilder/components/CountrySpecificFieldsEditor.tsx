@@ -103,21 +103,24 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
 
   const addDigitalSkill = () => {
     const available =
-      DIGITAL_SKILLS_LIST.find((s) => !digitalSkills.some((item) => item.name === s)) ||
+      DIGITAL_SKILLS_LIST.find((s) => !digitalSkills.some((item) => (item.name || item.skill) === s)) ||
       DIGITAL_SKILLS_LIST[0];
-    const next = [...digitalSkills, { name: available, proficiency: 'Advanced' }];
+    const next = [...digitalSkills, { name: available, skill: available, proficiency: 'Advanced' }];
     onChange({
       structuredDigitalSkills: next,
-      digitalSkills: next.map((d) => `${d.name} (${d.proficiency})`),
+      digitalSkills: next.map((d) => `${d.name || d.skill} (${d.proficiency})`),
     });
   };
 
   const updateDigitalSkill = (idx: number, patch: Partial<StructuredSkillItem>) => {
     const next = [...digitalSkills];
-    next[idx] = { ...next[idx], ...patch };
+    const updated = { ...next[idx], ...patch };
+    if (patch.name && !patch.skill) updated.skill = patch.name;
+    if (patch.skill && !patch.name) updated.name = patch.skill;
+    next[idx] = updated;
     onChange({
       structuredDigitalSkills: next,
-      digitalSkills: next.map((d) => `${d.name} (${d.proficiency})`),
+      digitalSkills: next.map((d) => `${d.name || d.skill} (${d.proficiency})`),
     });
   };
 
@@ -125,7 +128,7 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
     const next = digitalSkills.filter((_, i) => i !== idx);
     onChange({
       structuredDigitalSkills: next,
-      digitalSkills: next.map((d) => `${d.name} (${d.proficiency})`),
+      digitalSkills: next.map((d) => `${d.name || d.skill} (${d.proficiency})`),
     });
   };
 
@@ -134,21 +137,33 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
 
   const addSoftwareSkill = () => {
     const available =
-      SOFTWARE_SKILLS_LIST.find((s) => !softwareSkills.some((item) => item.name === s)) ||
+      SOFTWARE_SKILLS_LIST.find((s) => !softwareSkills.some((item) => (item.name || item.skill) === s)) ||
       SOFTWARE_SKILLS_LIST[0];
-    const next = [...softwareSkills, { name: available, proficiency: 'Advanced' }];
-    onChange({ structuredSoftwareSkills: next });
+    const next = [...softwareSkills, { name: available, skill: available, proficiency: 'Advanced' }];
+    onChange({
+      structuredSoftwareSkills: next,
+      softwareSkills: next.map((s) => `${s.name || s.skill} (${s.proficiency})`),
+    });
   };
 
   const updateSoftwareSkill = (idx: number, patch: Partial<StructuredSkillItem>) => {
     const next = [...softwareSkills];
-    next[idx] = { ...next[idx], ...patch };
-    onChange({ structuredSoftwareSkills: next });
+    const updated = { ...next[idx], ...patch };
+    if (patch.name && !patch.skill) updated.skill = patch.name;
+    if (patch.skill && !patch.name) updated.name = patch.skill;
+    next[idx] = updated;
+    onChange({
+      structuredSoftwareSkills: next,
+      softwareSkills: next.map((s) => `${s.name || s.skill} (${s.proficiency})`),
+    });
   };
 
   const removeSoftwareSkill = (idx: number) => {
     const next = softwareSkills.filter((_, i) => i !== idx);
-    onChange({ structuredSoftwareSkills: next });
+    onChange({
+      structuredSoftwareSkills: next,
+      softwareSkills: next.map((s) => `${s.name || s.skill} (${s.proficiency})`),
+    });
   };
 
   // ── Memberships (for Gulf/Qatar) ──
@@ -413,18 +428,29 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
 
         <div className="space-y-3 pt-1">
-          {/* Mother Tongue Input */}
+          {/* Mother Tongue Dropdown */}
           <div>
             <label className="text-xs font-semibold text-slate-700 block mb-1">
               Mother tongue(s) <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               className={fieldClass}
-              placeholder="e.g. Nepali, Romanian, English"
               value={countryCVInfo.motherTongue || ''}
               onChange={(e) => onChange({ motherTongue: e.target.value })}
-            />
+              required
+            >
+              <option value="">Select Mother Tongue…</option>
+              {countryCVInfo.motherTongue && !LANGUAGES_LIST.includes(countryCVInfo.motherTongue) && (
+                <option value={countryCVInfo.motherTongue}>
+                  {countryCVInfo.motherTongue}
+                </option>
+              )}
+              {LANGUAGES_LIST.map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+            </select>
           </div>
 
           <p className="text-[11px] text-slate-500 pt-1">
@@ -521,10 +547,14 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                 <div className="flex-1 min-w-[150px]">
                   <select
                     className={fieldClass}
-                    value={ds.name}
-                    onChange={(e) => updateDigitalSkill(idx, { name: e.target.value })}
+                    value={ds.name || (ds as any).skill || ''}
+                    onChange={(e) => updateDigitalSkill(idx, { name: e.target.value, skill: e.target.value })}
                     required
                   >
+                    <option value="">Select Skill…</option>
+                    {ds.name && !DIGITAL_SKILLS_LIST.includes(ds.name) && (
+                      <option value={ds.name}>{ds.name}</option>
+                    )}
                     {DIGITAL_SKILLS_LIST.map((skill) => (
                       <option key={skill} value={skill}>
                         {skill}
@@ -592,10 +622,14 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                 <div className="flex-1 min-w-[150px]">
                   <select
                     className={fieldClass}
-                    value={ss.name}
-                    onChange={(e) => updateSoftwareSkill(idx, { name: e.target.value })}
+                    value={ss.name || (ss as any).skill || ''}
+                    onChange={(e) => updateSoftwareSkill(idx, { name: e.target.value, skill: e.target.value })}
                     required
                   >
+                    <option value="">Select Software…</option>
+                    {ss.name && !SOFTWARE_SKILLS_LIST.includes(ss.name) && (
+                      <option value={ss.name}>{ss.name}</option>
+                    )}
                     {SOFTWARE_SKILLS_LIST.map((soft) => (
                       <option key={soft} value={soft}>
                         {soft}

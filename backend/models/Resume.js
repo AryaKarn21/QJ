@@ -251,12 +251,14 @@ const CountryCVInfoSchema = new mongoose.Schema(
     structuredDigitalSkills: [
       {
         name: { type: String, default: "" },
+        skill: { type: String, default: "" },
         proficiency: { type: String, default: "" },
       },
     ],
     structuredSoftwareSkills: [
       {
         name: { type: String, default: "" },
+        skill: { type: String, default: "" },
         proficiency: { type: String, default: "" },
       },
     ],

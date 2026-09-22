@@ -212,7 +212,14 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                   <span className="font-bold text-slate-900">Digital Skills: </span>
                   {countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0 ? (
                     <span>
-                      {countryCVInfo.structuredDigitalSkills.map((s) => `${s.skill} (${s.proficiency})`).join(' • ')}
+                      {countryCVInfo.structuredDigitalSkills
+                        .map((s) => {
+                          const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
+                          const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
+                          return name ? `${name}${prof}` : '';
+                        })
+                        .filter(Boolean)
+                        .join(' • ')}
                     </span>
                   ) : (
                     <span>{(countryCVInfo.digitalSkills || []).join(' • ')}</span>
@@ -224,7 +231,14 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                 <div>
                   <span className="font-bold text-slate-900">Software Skills: </span>
                   <span>
-                    {countryCVInfo.structuredSoftwareSkills.map((s) => `${s.skill} (${s.proficiency})`).join(' • ')}
+                    {countryCVInfo.structuredSoftwareSkills
+                      .map((s) => {
+                        const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
+                        const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
+                        return name ? `${name}${prof}` : '';
+                      })
+                      .filter(Boolean)
+                      .join(' • ')}
                   </span>
                 </div>
               )}
