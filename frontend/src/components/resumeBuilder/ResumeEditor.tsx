@@ -44,6 +44,7 @@ import { CountrySpecificFieldsEditor } from './components/CountrySpecificFieldsE
 import { DocumentManager } from './components/DocumentManager';
 import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
 import { CvCompletionBar } from './components/CvCompletionBar';
+import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
 import { TargetRoleSelect } from './components/TargetRoleSelect';
 import { UniversalSkillsEditor } from './components/UniversalSkillsEditor';
 
