@@ -293,13 +293,13 @@ const AllJobListing = () => {
       />
 
       {/* 2. Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Back Navigation & Breadcrumb */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl shadow-2xs hover:shadow-xs transition-all hover:text-primary active:scale-95"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl shadow-2xs hover:shadow-xs transition-all hover:text-orange-600 active:scale-95 cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>Back</span>
@@ -308,12 +308,12 @@ const AllJobListing = () => {
           <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
             <span
               onClick={() => navigate('/')}
-              className="hover:text-slate-600 cursor-pointer transition-colors"
+              className="hover:text-orange-600 cursor-pointer transition-colors"
             >
               Home
             </span>
             <span>/</span>
-            <span className="text-slate-700 font-medium">Job Listings</span>
+            <span className="text-slate-800 font-semibold">Job Listings</span>
           </nav>
         </div>
 

@@ -50,11 +50,9 @@ export function useFollowState(userId: string, initialFollowing: boolean): [bool
   const { overrides, setFollowing } = useContext(FollowContext);
 
   useEffect(() => {
-    setFollowing(userId, initialFollowing);
-    // Only re-seed when the target or the freshly-fetched value changes —
-    // not on every render, and not when some OTHER component updates the
-    // shared map (that's the point: this stays whatever this instance's
-    // own last known-good value was until the target/prop actually change).
+    if (!overrides.has(userId)) {
+      setFollowing(userId, initialFollowing);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, initialFollowing]);
 

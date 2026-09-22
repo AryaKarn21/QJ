@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Connection = require("../models/Connection");
+const Follow = require("../models/Follow");
 const User = require("../models/User");
 const sendNotification = require("../utils/sendNotifications");
 const { buildAuthorSnapshot } = require("../utils/userDisplay");
@@ -473,6 +474,10 @@ const getSuggestions = async (req, res) => {
     const ordered = candidateIds.map((id) => byId.get(id)).filter(Boolean);
     const snapshots = await attachCurrentCompany(ordered.map(buildAuthorSnapshot));
 
+    // Follow status for each candidate
+    const followRows = await Follow.find({ follower: myId, following: { $in: candidateIds } }).select("following").lean();
+    const followingSet = new Set(followRows.map((f) => String(f.following)));
+
     // `counts` already holds "shares N accepted connections with me" for
     // every candidate that came from the second-degree-network branch
     // above; anyone not in it (i.e. a filler candidate) shares none —
@@ -480,6 +485,7 @@ const getSuggestions = async (req, res) => {
     const withMutuals = snapshots.map((s) => ({
       ...s,
       mutualCount: counts.get(String(s._id)) || 0,
+      isFollowing: followingSet.has(String(s._id)),
     }));
 
     res.json({ suggestions: withMutuals });

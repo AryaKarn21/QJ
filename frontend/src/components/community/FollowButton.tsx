@@ -28,6 +28,7 @@ export function FollowButton({
   const [following, setFollowing] = useFollowState(userId, initialFollowing);
   const [busy, setBusy] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [justFollowed, setJustFollowed] = useState(false);
 
   if (!isAuthenticated || viewerId === userId) return null;
 
@@ -35,8 +36,12 @@ export function FollowButton({
     e.stopPropagation();
     if (busy) return;
     setBusy(true);
+    setIsHovered(false);
     const previous = following;
     setFollowing(!previous); // optimistic update
+    if (!previous) {
+      setJustFollowed(true);
+    }
     try {
       const { following: nowFollowing } = await toggleFollow(userId);
       setFollowing(nowFollowing);
@@ -46,6 +51,7 @@ export function FollowButton({
       }
     } catch (err: any) {
       setFollowing(previous);
+      setJustFollowed(false);
       const message = err?.response?.data?.message || 'Something went wrong. Please try again.';
       toast.error(message);
     } finally {
@@ -61,20 +67,26 @@ export function FollowButton({
   }[size];
 
   const iconSize = size === 'xs' ? 12 : size === 'sm' ? 13 : 15;
+  const showUnfollow = following && isHovered && !justFollowed && size !== 'xs';
 
   return (
     <button
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setJustFollowed(false);
+      }}
       disabled={busy}
       aria-pressed={following}
-      title={following ? (isHovered ? 'Unfollow' : 'Following') : isCompany ? 'Follow company' : 'Follow'}
+      title={following ? (showUnfollow ? 'Unfollow' : 'Following — click to unfollow') : isCompany ? 'Follow company' : 'Follow'}
       className={`inline-flex items-center justify-center rounded-full font-semibold transition-all duration-200 cursor-pointer disabled:opacity-60 shadow-sm active:scale-95 ${sizeStyles} ${
         following
-          ? isHovered
+          ? showUnfollow
             ? 'border border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-400'
-            : 'border border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+            : isHovered && size === 'xs'
+            ? 'border border-rose-300 bg-rose-50/60 text-rose-600'
+            : 'border border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-400'
           : variant === 'outline'
           ? 'border-2 border-primary text-primary hover:bg-primary hover:text-white'
           : 'bg-primary text-white hover:bg-primary/90 border border-primary hover:shadow-md'
@@ -86,7 +98,7 @@ export function FollowButton({
           <span>{following ? 'Updating…' : 'Following…'}</span>
         </>
       ) : following ? (
-        isHovered ? (
+        showUnfollow ? (
           <>
             <UserMinus size={iconSize} className="stroke-[2.5]" />
             <span>Unfollow</span>
@@ -94,7 +106,7 @@ export function FollowButton({
         ) : (
           <>
             <Check size={iconSize} className="stroke-[2.5] text-emerald-600" />
-            <span>Following</span>
+            <span>{isHovered && size === 'xs' ? 'Unfollow' : 'Following'}</span>
           </>
         )
       ) : (

@@ -141,29 +141,29 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
   };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/40 via-white to-slate-50/50 border-b border-slate-200/70 pt-8 pb-10 sm:pt-12 sm:pb-12 px-4 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/40 via-white to-slate-50/50 border-b border-slate-200/70 pt-6 pb-7 sm:pt-8 sm:pb-9 px-4 sm:px-6 lg:px-8">
       {/* Background soft glow accents */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-gradient-to-r from-orange-200/20 via-amber-200/20 to-blue-200/20 blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-5xl mx-auto text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100/60 text-primary border border-orange-200/60 text-xs font-semibold uppercase tracking-wider mb-4 shadow-2xs">
-          <Sparkles size={14} className="animate-pulse" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100/80 text-orange-700 border border-orange-200 text-xs font-semibold uppercase tracking-wider mb-3 shadow-2xs">
+          <Sparkles size={14} className="animate-pulse text-orange-600" />
           <span>Verified Opportunities</span>
         </div>
 
         {/* Heading & Subheading */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          Find Your Next <span className="text-primary">Opportunity</span>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          Find Your Next <span className="text-orange-600">Opportunity</span>
         </h1>
-        <p className="mt-3 text-slate-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto font-normal">
+        <p className="mt-2 text-slate-600 text-xs sm:text-sm md:text-base max-w-2xl mx-auto font-normal">
           Discover thousands of jobs from top companies around the world
         </p>
 
         {/* Unified Search Bar */}
         <form
           onSubmit={handleSubmit}
-          className="mt-8 max-w-4xl mx-auto bg-white rounded-2xl p-2 sm:p-2.5 shadow-lg shadow-slate-200/60 border border-slate-200/80 flex flex-col md:flex-row gap-2 transition-all duration-200 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10"
+          className="mt-6 max-w-4xl mx-auto bg-white rounded-2xl p-2 sm:p-2.5 shadow-lg shadow-slate-200/50 border border-slate-200/90 flex flex-col md:flex-row gap-2 transition-all duration-200 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-500/10"
         >
           {/* Keyword Input (~45% on desktop) */}
           <div className="relative flex-1 md:w-[45%] flex items-center">
@@ -194,7 +194,7 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
           {/* Search Button (~20% on desktop) */}
           <button
             type="submit"
-            className="w-full md:w-auto md:min-w-[150px] px-7 py-3.5 bg-primary hover:bg-[#e66800] text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
+            className="btn-shine w-full md:w-auto md:min-w-[150px] px-7 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
           >
             <Search size={16} strokeWidth={2.5} />
             <span>Search Jobs</span>
@@ -202,14 +202,14 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
         </form>
 
         {/* Popular Searches Chips */}
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
           <span className="text-slate-500 font-medium">Popular Searches:</span>
           {POPULAR_CHIPS.map((chip) => (
             <button
               key={chip}
               type="button"
               onClick={() => onSelectChip(chip)}
-              className="px-3 py-1 rounded-full bg-white hover:bg-orange-50 border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-primary font-medium transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95"
+              className="px-3.5 py-1 rounded-full bg-white hover:bg-orange-50 border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 font-medium transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
             >
               {chip}
             </button>
@@ -263,7 +263,7 @@ export const JobResultHeader: React.FC<JobResultHeaderProps> = ({
         <div className="space-y-1.5 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-              Showing <span className="text-primary">{total}</span> {total === 1 ? 'job' : 'jobs'}
+              Showing <span className="text-orange-600 font-extrabold">{total}</span> {total === 1 ? 'job' : 'jobs'}
             </h2>
             {/* Mobile filter trigger */}
             <button
@@ -274,7 +274,7 @@ export const JobResultHeader: React.FC<JobResultHeaderProps> = ({
               <SlidersHorizontal size={14} />
               <span>Filters</span>
               {activeFilterCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -296,14 +296,14 @@ export const JobResultHeader: React.FC<JobResultHeaderProps> = ({
                     onClick={() => onSelectLocationBadge?.(isActive ? '' : label)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                       isActive
-                        ? 'bg-primary text-white font-semibold shadow-2xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-primary border border-slate-200/60'
+                        ? 'bg-orange-500 text-white font-semibold shadow-2xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 border border-slate-200/60'
                     }`}
                   >
                     <span>{label}</span>
                     <span
                       className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-white text-primary border border-slate-200'
+                        isActive ? 'bg-white/20 text-white' : 'bg-white text-orange-600 border border-slate-200'
                       }`}
                     >
                       {count}
@@ -325,7 +325,7 @@ export const JobResultHeader: React.FC<JobResultHeaderProps> = ({
               aria-label="Grid View"
               className={`p-1.5 rounded-lg transition-all ${
                 viewMode === 'grid'
-                  ? 'bg-white text-primary shadow-xs font-semibold'
+                  ? 'bg-white text-orange-600 shadow-xs font-semibold'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -337,7 +337,7 @@ export const JobResultHeader: React.FC<JobResultHeaderProps> = ({
               aria-label="List View"
               className={`p-1.5 rounded-lg transition-all ${
                 viewMode === 'list'
-                  ? 'bg-white text-primary shadow-xs font-semibold'
+                  ? 'bg-white text-orange-600 shadow-xs font-semibold'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -354,7 +354,7 @@ export const JobResultHeader: React.FC<JobResultHeaderProps> = ({
               id="sort-by-select"
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
-              className="text-xs sm:text-sm font-medium bg-slate-50 border border-slate-200/90 text-slate-800 rounded-xl px-3.5 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer transition-all"
+              className="text-xs sm:text-sm font-medium bg-slate-50 border border-slate-200/90 text-slate-800 rounded-xl px-3.5 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 cursor-pointer transition-all"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -785,7 +785,7 @@ export const MobileFilterDrawer: React.FC<MobileFilterDrawerProps> = ({
               onApply();
               onClose();
             }}
-            className="flex-1 py-2.5 px-4 text-xs font-semibold text-white bg-primary hover:bg-[#e66800] rounded-xl shadow-sm transition-colors"
+            className="btn-shine flex-1 py-2.5 px-4 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl shadow-sm transition-colors cursor-pointer"
           >
             Apply Filters
           </button>
@@ -920,18 +920,18 @@ export const JobCard: React.FC<JobCardProps> = ({
               type="button"
               onClick={() => onToggleSave(job._id)}
               aria-label={`Save ${job.title} at ${displayName}`}
-              className="p-2.5 rounded-xl border border-slate-200 hover:border-orange-300 text-slate-400 hover:text-primary hover:bg-orange-50/60 transition-all active:scale-95"
+              className="p-2.5 rounded-xl border border-slate-200 hover:border-orange-300 text-slate-400 hover:text-orange-500 hover:bg-orange-50/60 transition-all active:scale-95 cursor-pointer"
             >
               <Bookmark
                 size={18}
                 fill={isSaved ? 'currentColor' : 'none'}
-                className={isSaved ? 'text-primary' : ''}
+                className={isSaved ? 'text-orange-500' : ''}
               />
             </button>
             <button
               type="button"
               onClick={() => onViewDetails(job._id)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-[#e66800] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="btn-shine inline-flex items-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >
               <span>View Details</span>
               <ArrowRight size={15} />
@@ -1072,7 +1072,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         <button
           type="button"
           onClick={() => onViewDetails(job._id)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-[#e66800] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0"
+          className="btn-shine inline-flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
         >
           <span>View Details</span>
           <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />

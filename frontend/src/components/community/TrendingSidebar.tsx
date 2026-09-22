@@ -120,7 +120,7 @@ export function TrendingSidebar() {
                 </div>
                 <FollowButton
                   userId={u._id}
-                  initialFollowing={false}
+                  initialFollowing={u.isFollowing ?? false}
                   isCompany={u.role === 'employer'}
                   size="xs"
                 />
@@ -169,7 +169,7 @@ export function TrendingSidebar() {
                   </button>
                   <FollowButton
                     userId={p._id}
-                    initialFollowing={false}
+                    initialFollowing={p.isFollowing ?? false}
                     size="xs"
                   />
                 </div>
