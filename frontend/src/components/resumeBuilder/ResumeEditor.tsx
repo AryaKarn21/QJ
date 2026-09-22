@@ -42,6 +42,7 @@ import { AtsAnalysisPanel } from './components/AtsAnalysisPanel';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 import { CountrySpecificFieldsEditor } from './components/CountrySpecificFieldsEditor';
 import { DocumentManager } from './components/DocumentManager';
+import { AttachedDocumentsPreview } from './components/AttachedDocumentsPreview';
 import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
 import { CvCompletionBar } from './components/CvCompletionBar';
 import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
@@ -859,9 +860,9 @@ const ResumeEditor: React.FC = () => {
         )}
 
         {/* Supporting Documents (Passport, Certificates, etc.) for European / Country CV Appendix */}
-        {effectiveCountryCode && resume._id && (
+        {(resume._id || id) && (
           <DocumentManager
-            resumeId={resume._id}
+            resumeId={resume._id || id || ''}
             documents={resume.documents || []}
             onDocumentsChange={(docs) => update({ documents: docs })}
           />
@@ -1242,6 +1243,9 @@ const ResumeEditor: React.FC = () => {
             <TemplateRenderer resume={resume} />
           </div>
         </div>
+
+        {/* ── Attached Supporting Documents Live Preview (Passport, Certificates, etc.) ── */}
+        <AttachedDocumentsPreview documents={resume.documents || []} />
       </div>
 
     </div>

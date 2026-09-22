@@ -88,8 +88,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
             </div>
           </div>
 
-          {/* Thin horizontal line spanning across */}
-          <div className="border-b border-slate-300 my-1.5 w-full" />
+          {/* Thin horizontal line spanning across - darker */}
+          <div className="border-b border-slate-500 my-2 w-full" />
 
           {/* Horizontal Personal Information spanning all the way across */}
           <div className="text-[11px] text-slate-700 leading-relaxed">
@@ -109,8 +109,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 1. ABOUT ME */}
         {resume.summary && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
+            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
+              <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">ABOUT ME</h2>
             </div>
             <p className="text-[11.5px] text-slate-700 leading-relaxed whitespace-pre-line">
@@ -122,8 +122,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 2. EDUCATION & TRAINING */}
         {resume.education && resume.education.length > 0 && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
+            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
+              <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                 EDUCATION & TRAINING
               </h2>
@@ -163,8 +163,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 3. WORK EXPERIENCE */}
         {resume.experience && resume.experience.length > 0 && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
+            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
+              <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                 WORK EXPERIENCE
               </h2>
@@ -210,8 +210,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           (countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0) ||
           (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
+            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
+              <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">SKILLS</h2>
             </div>
             <div className="space-y-1 text-[11px] text-slate-700 leading-relaxed">
@@ -334,8 +334,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 7. DRIVING LICENSE */}
         {hasDrivingLicense && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
+            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
+              <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                 DRIVING LICENSE
               </h2>
@@ -366,8 +366,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 8. DECLARATION */}
         {declarationText && (
           <section className="break-inside-avoid pt-1">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
+            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
+              <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                 DECLARATION
               </h2>
@@ -375,6 +375,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
             <p className="text-[10.5px] font-semibold text-slate-700 uppercase tracking-wide leading-relaxed">
               {declarationText}
             </p>
+            <div className="border-b border-slate-400 mt-4 w-52" />
           </section>
         )}
       </div>

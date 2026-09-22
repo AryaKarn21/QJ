@@ -43,8 +43,8 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
   return (
     <section className="break-inside-avoid">
       {/* 1. Header with bullet dot and full-width line */}
-      <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-        <span className="text-slate-400 text-[10px]">●</span>
+      <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-1.5">
+        <span className="text-slate-500 text-[10px]">●</span>
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
           {title}
         </h2>
@@ -52,7 +52,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
 
       {/* 2. Mother Tongue Row with horizontal divider */}
       {motherTongue && (
-        <div className="text-[11px] text-slate-700 border-b border-slate-300 pb-1.5 mb-2">
+        <div className="text-[11px] text-slate-700 border-b border-slate-500 pb-1.5 mb-2">
           <span className="text-slate-600">{motherTongueLabel}:</span>{' '}
           <span className="font-bold text-slate-900 uppercase">{motherTongue}</span>
         </div>
@@ -64,7 +64,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
           <table className="w-full text-left text-[11px] border-collapse">
             <thead>
               {/* Top Header Row: UNDERSTANDING | SPEAKING | WRITING */}
-              <tr className="border-b border-slate-300">
+              <tr className="border-b border-slate-500">
                 <th className="w-[22%] py-1"></th>
                 <th
                   colSpan={2}
@@ -86,7 +86,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
               </tr>
 
               {/* Sub-Header Row: Listening | Reading | Spoken prod | Spoken int */}
-              <tr className="border-b border-slate-300">
+              <tr className="border-b border-slate-500">
                 <th className="py-1"></th>
                 <th className="py-1 text-center font-normal text-slate-700 text-[9.5px]">
                   {listeningLabel}
@@ -107,7 +107,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
               {languages.map((item, idx) => (
                 <tr
                   key={idx}
-                  className="border-b border-slate-300 bg-slate-50/70 hover:bg-slate-100/60 transition-colors"
+                  className="border-b border-slate-500 bg-slate-50/70 hover:bg-slate-100/60 transition-colors"
                 >
                   <td className="py-1.5 px-3 font-bold text-slate-900 uppercase text-[10.5px]">
                     {item.language}
