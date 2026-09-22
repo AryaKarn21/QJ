@@ -45,6 +45,7 @@ import { DocumentManager } from './components/DocumentManager';
 import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
 import { CvCompletionBar } from './components/CvCompletionBar';
 import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
+import { TargetRoleSelect } from './components/TargetRoleSelect';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -69,35 +70,6 @@ const SPACING_PRESETS: { value: 'compact' | 'standard' | 'relaxed'; label: strin
   { value: 'relaxed', label: 'Relaxed' },
 ];
 const SPACING_SCALE: Record<string, number> = { compact: 0.97, standard: 1, relaxed: 1.05 };
-
-const TARGET_ROLE_OPTIONS = [
-  'Data Entry Operator',
-  'Frontend Engineer',
-  'Backend Developer',
-  'Full Stack Developer',
-  'Software Engineer',
-  'Mobile App Developer',
-  'DevOps Engineer',
-  'Dairy Production Worker',
-  'Factory / Production Worker',
-  'Warehouse Worker / Handler',
-  'General Construction Worker',
-  'Electrician',
-  'Plumber / Pipefitter',
-  'Welder / Fabricator',
-  'Driver / Heavy Equipment Operator',
-  'Chef / Cook / Kitchen Helper',
-  'Waiter / Hospitality Staff',
-  'Housekeeping / Cleaner',
-  'Security Guard',
-  'Customer Support Representative',
-  'Sales Executive / Retail Assistant',
-  'Accountant / Cashier',
-  'Administrative Assistant / Clerk',
-  'HR Assistant / Officer',
-  'Nurse / Caregiver',
-  'Other',
-];
 
 const emptyExperience: ExperienceEntry = {
   role: '', company: '', companyId: null, location: '',
@@ -866,43 +838,10 @@ const ResumeEditor: React.FC = () => {
         </div>
         <div>
           <label className={labelClass}>Target Role</label>
-          <div className="space-y-2">
-            <select
-              className={fieldClass}
-              value={
-                TARGET_ROLE_OPTIONS.filter((r) => r !== 'Other').includes(resume.targetRole)
-                  ? resume.targetRole
-                  : resume.targetRole ? 'Other' : ''
-              }
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === 'Other') {
-                  if (TARGET_ROLE_OPTIONS.includes(resume.targetRole)) {
-                    update({ targetRole: '' });
-                  }
-                } else {
-                  update({ targetRole: val });
-                }
-              }}
-            >
-              <option value="">Select Target Role…</option>
-              {TARGET_ROLE_OPTIONS.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-
-            {(!TARGET_ROLE_OPTIONS.filter((r) => r !== 'Other').includes(resume.targetRole) ||
-              resume.targetRole === '') && (
-              <input
-                className={fieldClass}
-                placeholder="Type target role (e.g. Dairy Production Worker, Frontend Engineer)"
-                value={resume.targetRole || ''}
-                onChange={(e) => update({ targetRole: e.target.value })}
-              />
-            )}
-          </div>
+          <TargetRoleSelect
+            value={resume.targetRole || ''}
+            onChange={(val) => update({ targetRole: val })}
+          />
         </div>
 
         {/* Country-Specific Custom Fields (CEFR Languages, Recruiter Availability, etc.) */}

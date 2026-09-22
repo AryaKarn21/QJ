@@ -51,53 +51,55 @@ export const BosniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       style={{ fontFamily: theme.fontFamily }}
     >
       {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-4 pb-4 border-b border-slate-200">
-        <div className="flex items-start gap-4 sm:gap-5 w-full">
-          {/* Candidate Photo */}
-          {personalInfo.photo ? (
-            <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 overflow-hidden rounded-full border-2 border-slate-300 shadow-2xs">
-              <img
-                src={personalInfo.photo}
-                alt={personalInfo.fullName || 'Kandidat'}
-                className="h-full w-full object-cover"
-              />
+      <div className="flex items-start gap-4 sm:gap-6 pb-2">
+        {/* Candidate Photo */}
+        {personalInfo.photo ? (
+          <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 overflow-hidden rounded-full border-2 border-slate-300 shadow-2xs">
+            <img
+              src={personalInfo.photo}
+              alt={personalInfo.fullName || 'Kandidat'}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-full border-2 border-slate-200 bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-lg">
+            {(personalInfo.fullName || 'CV').slice(0, 2).toUpperCase()}
+          </div>
+        )}
+
+        {/* Right Content: Top row (Name & Title on left, Europass on far right), Line, and Horizontal Personal Information */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                {personalInfo.fullName || 'Ime i prezime'}
+              </h1>
+              {resume.targetRole && (
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-0.5">
+                  {resume.targetRole}
+                </p>
+              )}
             </div>
-          ) : (
-            <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-full border-2 border-slate-200 bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-lg">
-              {(personalInfo.fullName || 'CV').slice(0, 2).toUpperCase()}
-            </div>
-          )}
 
-          {/* Candidate Name, Title & Personal Information Line */}
-          <div className="space-y-1 flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 leading-tight">
-              {personalInfo.fullName || 'Ime i prezime'}
-            </h1>
-            {resume.targetRole && (
-              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                {resume.targetRole}
-              </p>
-            )}
-
-            {/* Subtle separator below name */}
-            <div className="border-b border-slate-300 my-1 w-full" />
-
-            {/* Pipe-separated Personal Information */}
-            <div className="text-[11px] text-slate-600 leading-normal pt-0.5">
-              {metaItems.map((item, idx) => (
-                <span key={item.label} className="inline-block mr-1.5">
-                  <span className="font-bold text-slate-900">{item.label}:</span>{' '}
-                  <span className="text-slate-700">{item.value}</span>
-                  {idx < metaItems.length - 1 && <span className="ml-1.5 text-slate-400">|</span>}
-                </span>
-              ))}
+            {/* TOP-RIGHT European / Europass Logo */}
+            <div className="shrink-0 pt-0.5">
+              <EuropassLogo width={138} height={34} />
             </div>
           </div>
-        </div>
 
-        {/* TOP-RIGHT European / Europass Logo */}
-        <div className="shrink-0 self-end sm:self-start pt-0.5">
-          <EuropassLogo width={138} height={34} />
+          {/* Thin horizontal line spanning across */}
+          <div className="border-b border-slate-300 my-1.5 w-full" />
+
+          {/* Horizontal Personal Information spanning all the way across */}
+          <div className="text-[11px] text-slate-700 leading-relaxed">
+            {metaItems.map((item, idx) => (
+              <span key={item.label} className="inline-block mr-1.5 whitespace-nowrap">
+                <span className="font-bold text-slate-900">{item.label}:</span>{' '}
+                <span>{item.value}</span>
+                {idx < metaItems.length - 1 && <span className="ml-1.5 text-slate-400 font-normal">|</span>}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
