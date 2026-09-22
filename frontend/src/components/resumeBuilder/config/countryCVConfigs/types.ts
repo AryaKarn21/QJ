@@ -16,18 +16,23 @@ export interface ProfessionalMembership {
 export interface DrivingLicenseDetails {
   licenseType: string;
   country: string;
+  licenseNumber?: string;
   expiryDate: string;
 }
 
 export interface CountryCVInfo {
   // European & Shared fields
   dateOfBirth?: string;
+  placeOfBirth?: string;
   nationality?: string;
+  gender?: string;
+  passportNumber?: string;
   address?: string;
   city?: string;
   country?: string;
   postalCode?: string;
   drivingLicense?: string;
+  declaration?: string;
   motherTongue?: string;
   cefrLanguages?: CefrLanguageLevel[];
   digitalSkills?: string[];

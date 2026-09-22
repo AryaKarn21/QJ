@@ -3,6 +3,7 @@ import type { Resume } from '../../resumeApi';
 import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { ResumeLink } from '../shared/ResumeLink';
+import { EuropassLogo } from './EuropassLogo';
 
 interface Props {
   resume: Resume;
@@ -20,7 +21,10 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       {/* Header: Personal Information */}
       <div className="flex flex-col sm:flex-row items-start justify-between gap-6 border-b-2 border-slate-900 pb-6">
         <div className="flex-1">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-orange-600">Curriculum Vitae</span>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-orange-600">Curriculum Vitae</span>
+            <EuropassLogo width={135} height={32} />
+          </div>
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">
             {personalInfo.fullName || 'Candidate Name'}
           </h1>

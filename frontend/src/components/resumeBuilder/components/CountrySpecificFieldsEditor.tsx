@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Globe, Plus, Trash2, Shield, Calendar, Clock, MapPin, Award } from 'lucide-react';
+import { Globe, Plus, Trash2, Clock, Car, FileText } from 'lucide-react';
 import { getCountryConfig, CountryCVInfo, ProfessionalMembership } from '../config/countryCVConfigs';
 import { CefrLanguageEditor } from './CefrLanguageEditor';
+import { NationalitySelect } from './NationalitySelect';
+import { GENDER_OPTIONS } from '../config/countryCVConfigs/nationalities';
+import { isValidDateOfBirth } from '../config/countryCVConfigs/fieldValidation';
 
 interface CountrySpecificFieldsEditorProps {
   countryCode: string;
@@ -10,8 +13,8 @@ interface CountrySpecificFieldsEditorProps {
 }
 
 const fieldClass =
-  'w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200';
-const labelClass = 'mb-1 block text-xs font-medium text-slate-600';
+  'w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 bg-white';
+const labelClass = 'mb-1 block text-xs font-semibold text-slate-700';
 
 export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorProps> = ({
   countryCode,
@@ -25,6 +28,8 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
 
   const isGulf = config.features.hasGulfFields;
   const isEuropean = config.features.hasCEFRGrid;
+
+  const dobValidation = isValidDateOfBirth(countryCVInfo.dateOfBirth || '');
 
   const addDigitalSkill = () => {
     const val = digitalSkillDraft.trim();
@@ -62,20 +67,34 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
     onChange({ memberships: current.filter((_, i) => i !== idx) });
   };
 
+  const updateDrivingDetails = (patch: Record<string, string>) => {
+    const current = countryCVInfo.drivingLicenseDetails || {
+      licenseType: countryCVInfo.drivingLicense || '',
+      country: '',
+      licenseNumber: '',
+      expiryDate: '',
+    };
+    const next = { ...current, ...patch };
+    onChange({
+      drivingLicenseDetails: next,
+      drivingLicense: next.licenseType || countryCVInfo.drivingLicense,
+    });
+  };
+
   return (
-    <div className="rounded-xl border border-orange-200 bg-orange-50/30 p-4 sm:p-5 space-y-6">
+    <div className="rounded-xl border border-orange-200 bg-orange-50/20 p-4 sm:p-5 space-y-6">
       {/* Header Banner */}
       <div className="flex items-center justify-between border-b border-orange-200/80 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xl" role="img" aria-label={config.countryName}>
+        <div className="flex items-center gap-2.5">
+          <span className="text-2xl" role="img" aria-label={config.countryName}>
             {config.flag}
           </span>
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              {config.countryName} CV Fields
+              {config.countryName} CV Specifics & Required Details
             </h3>
             <p className="text-[11px] text-slate-500">
-              {config.disclaimer}
+              {config.disclaimer} • All core fields marked with <span className="text-red-500 font-bold">*</span> are required.
             </p>
           </div>
         </div>
@@ -84,16 +103,168 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </span>
       </div>
 
-      {/* Gulf / Qatar Specific Recruiter Snapshot */}
+      {/* Mandatory Personal Demographic Details */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+          <Globe size={13} className="text-orange-500" />
+          Mandatory Personal & Demographic Information
+        </h4>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Date of Birth * */}
+          <div>
+            <label className={labelClass}>
+              Date of Birth <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={`${fieldClass} ${
+                countryCVInfo.dateOfBirth && !dobValidation.valid ? 'border-red-400 bg-red-50/30' : ''
+              }`}
+              placeholder="DD/MM/YYYY (e.g. 29/05/1994)"
+              value={countryCVInfo.dateOfBirth || ''}
+              onChange={(e) => onChange({ dateOfBirth: e.target.value })}
+            />
+            {countryCVInfo.dateOfBirth && !dobValidation.valid ? (
+              <span className="text-[10.5px] text-red-600 font-medium mt-0.5 block">
+                {dobValidation.message}
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-400 mt-0.5 block">Format: DD/MM/YYYY</span>
+            )}
+          </div>
+
+          {/* Place of Birth * */}
+          <div>
+            <label className={labelClass}>
+              Place of Birth <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={fieldClass}
+              placeholder="e.g. BARDIYA, Nepal / Bucharest, Romania"
+              value={countryCVInfo.placeOfBirth || ''}
+              onChange={(e) => onChange({ placeOfBirth: e.target.value })}
+            />
+          </div>
+
+          {/* Nationality * */}
+          <div>
+            <label className={labelClass}>
+              Nationality <span className="text-red-500">*</span>
+            </label>
+            <NationalitySelect
+              value={countryCVInfo.nationality || ''}
+              onChange={(val) => onChange({ nationality: val })}
+              placeholder="Select Nationality (e.g. Nepalese, Romanian)…"
+              required
+            />
+          </div>
+
+          {/* Gender * */}
+          <div>
+            <label className={labelClass}>
+              Gender <span className="text-red-500">*</span>
+            </label>
+            <select
+              className={fieldClass}
+              value={countryCVInfo.gender || ''}
+              onChange={(e) => onChange({ gender: e.target.value })}
+              required
+            >
+              <option value="">Select Gender…</option>
+              {GENDER_OPTIONS.map((g) => (
+                <option key={g.value} value={g.value}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Passport Number (Optional / Displayed in Header if present) */}
+          <div>
+            <label className={labelClass}>
+              Passport Number <span className="text-slate-400 text-[10px] font-normal">(Optional metadata)</span>
+            </label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. PA4439019"
+              value={countryCVInfo.passportNumber || ''}
+              onChange={(e) => onChange({ passportNumber: e.target.value })}
+            />
+          </div>
+
+          {/* Street Address * */}
+          <div>
+            <label className={labelClass}>
+              Street / Work Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={fieldClass}
+              placeholder="e.g. Str. Victoriei nr. 12 / Doha (Work)"
+              value={countryCVInfo.address || ''}
+              onChange={(e) => onChange({ address: e.target.value })}
+            />
+          </div>
+
+          {/* City * */}
+          <div>
+            <label className={labelClass}>
+              City <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={fieldClass}
+              placeholder="e.g. Bucharest / Doha / Kathmandu"
+              value={countryCVInfo.city || ''}
+              onChange={(e) => onChange({ city: e.target.value })}
+            />
+          </div>
+
+          {/* Country * */}
+          <div>
+            <label className={labelClass}>
+              Country <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={fieldClass}
+              placeholder="e.g. Romania / Qatar / Nepal"
+              value={countryCVInfo.country || ''}
+              onChange={(e) => onChange({ country: e.target.value })}
+            />
+          </div>
+
+          {/* Postal Code * */}
+          <div>
+            <label className={labelClass}>
+              Postal Code <span className="text-slate-500 text-[10.5px] font-normal">(if applicable)</span>
+            </label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. 010021"
+              value={countryCVInfo.postalCode || ''}
+              onChange={(e) => onChange({ postalCode: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Gulf / Qatar Recruiter Availability & Status */}
       {isGulf && (
-        <div className="space-y-3">
+        <div className="space-y-3 pt-3 border-t border-orange-200/70">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
             <Clock size={13} className="text-orange-500" />
-            Recruiter Availability & Candidate Status
+            Gulf Recruiter Snapshot & Availability
           </h4>
-          <p className="text-[11px] text-slate-500">
-            Hiring managers in the Gulf prioritize candidate availability and status. All fields are optional.
-          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -130,21 +301,7 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             </div>
 
             <div>
-              <label className={labelClass}>
-                Nationality <span className="text-red-500 font-bold">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                className={fieldClass}
-                placeholder="e.g. Nepali, Indian, Filipino, British"
-                value={countryCVInfo.nationality || ''}
-                onChange={(e) => onChange({ nationality: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>Visa / Work Status (Optional)</label>
+              <label className={labelClass}>Visa / Work Status</label>
               <input
                 type="text"
                 className={fieldClass}
@@ -157,85 +314,83 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
       )}
 
-      {/* European / Romanian / Bosnian Personal Details */}
-      {isEuropean && (
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-            <Globe size={13} className="text-orange-500" />
-            European Personal Details
-          </h4>
-          <p className="text-[11px] text-slate-500">
-            Nationality is mandatory for international and European CV applications. Date of birth and address are optional.
-          </p>
+      {/* DRIVING LICENSE: THE ONLY OPTIONAL FIELD */}
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Car size={15} className="text-slate-500" />
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+              Driving License
+            </span>
+            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">
+              Optional
+            </span>
+          </div>
+          {countryCVInfo.drivingLicense && (
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  drivingLicense: '',
+                  drivingLicenseDetails: undefined,
+                })
+              }
+              className="text-[11px] text-red-500 hover:underline"
+            >
+              Clear License
+            </button>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-500">
+          This is the only optional section. Leave empty if you do not hold a driving license. If left blank, this section is completely hidden from the generated CV and will never trigger an error.
+        </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>
-                Nationality <span className="text-red-500 font-bold">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                className={fieldClass}
-                placeholder="e.g. Romanian, Bosnian, Nepali"
-                value={countryCVInfo.nationality || ''}
-                onChange={(e) => onChange({ nationality: e.target.value })}
-              />
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label className={labelClass}>License Category / Type</label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder={isGulf ? 'e.g. Qatar Light Vehicle Driving License' : 'e.g. Category B, European Driving Licence'}
+              value={countryCVInfo.drivingLicenseDetails?.licenseType || countryCVInfo.drivingLicense || ''}
+              onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
+            />
+          </div>
 
-            <div>
-              <label className={labelClass}>Date of Birth (Optional)</label>
-              <input
-                type="text"
-                className={fieldClass}
-                placeholder="e.g. 15/05/1995 or May 15, 1995"
-                value={countryCVInfo.dateOfBirth || ''}
-                onChange={(e) => onChange({ dateOfBirth: e.target.value })}
-              />
-            </div>
+          <div>
+            <label className={labelClass}>Issuing Country</label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. Romania / Qatar / Nepal"
+              value={countryCVInfo.drivingLicenseDetails?.country || ''}
+              onChange={(e) => updateDrivingDetails({ country: e.target.value })}
+            />
+          </div>
 
-            <div>
-              <label className={labelClass}>Street Address (Optional)</label>
-              <input
-                type="text"
-                className={fieldClass}
-                placeholder="e.g. Str. Victoriei nr. 12"
-                value={countryCVInfo.address || ''}
-                onChange={(e) => onChange({ address: e.target.value })}
-              />
-            </div>
+          <div>
+            <label className={labelClass}>License Number (Optional)</label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. 29452441140"
+              value={countryCVInfo.drivingLicenseDetails?.licenseNumber || ''}
+              onChange={(e) => updateDrivingDetails({ licenseNumber: e.target.value })}
+            />
+          </div>
 
-            <div>
-              <label className={labelClass}>Postal Code / City</label>
-              <input
-                type="text"
-                className={fieldClass}
-                placeholder="e.g. 010021, Bucharest"
-                value={countryCVInfo.city || ''}
-                onChange={(e) => onChange({ city: e.target.value })}
-              />
-            </div>
+          <div>
+            <label className={labelClass}>Expiry Date (Optional)</label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. 17/08/2027"
+              value={countryCVInfo.drivingLicenseDetails?.expiryDate || ''}
+              onChange={(e) => updateDrivingDetails({ expiryDate: e.target.value })}
+            />
           </div>
         </div>
-      )}
-
-      {/* Driving License (both European and Gulf) */}
-      {config.features.hasDrivingLicense && (
-        <div>
-          <label className={labelClass}>Driving License (Optional)</label>
-          <input
-            type="text"
-            className={fieldClass}
-            placeholder={
-              isGulf
-                ? 'e.g. Valid Qatar Light Vehicle Driving License'
-                : 'e.g. Category B, C (European Driving Licence)'
-            }
-            value={countryCVInfo.drivingLicense || ''}
-            onChange={(e) => onChange({ drivingLicense: e.target.value })}
-          />
-        </div>
-      )}
+      </div>
 
       {/* CEFR Language Editor (for Romania & Bosnia) */}
       {config.features.hasCEFRGrid && (
@@ -296,6 +451,27 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
           )}
         </div>
       )}
+
+      {/* Declaration Section */}
+      <div className="pt-2 border-t border-orange-200/60 space-y-2">
+        <div className="flex items-center gap-1.5">
+          <FileText size={13} className="text-orange-500" />
+          <label className={labelClass}>Declaration Statement</label>
+        </div>
+        <p className="text-[11px] text-slate-500">
+          Standard declaration for European-style CVs confirming the honesty and accuracy of all submitted details.
+        </p>
+        <textarea
+          rows={2}
+          className={fieldClass}
+          value={
+            countryCVInfo.declaration !== undefined
+              ? countryCVInfo.declaration
+              : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
+          }
+          onChange={(e) => onChange({ declaration: e.target.value })}
+        />
+      </div>
 
       {/* Professional Memberships (for Qatar) */}
       {config.features.hasMemberships && (

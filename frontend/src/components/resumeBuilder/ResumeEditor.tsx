@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Plus, Trash2, Check, Loader2, ArrowLeft, Palette,
   Sparkles, Download, Save, Layers, ChevronUp, ChevronDown, Eye, EyeOff, LayoutTemplate,
@@ -41,6 +42,8 @@ import { AtsAnalysisPanel } from './components/AtsAnalysisPanel';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 import { CountrySpecificFieldsEditor } from './components/CountrySpecificFieldsEditor';
 import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
+import { CvCompletionBar } from './components/CvCompletionBar';
+import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -410,6 +413,12 @@ const ResumeEditor: React.FC = () => {
     resume?.countryCode || (resume ? getCountryByTemplateId(resume.layout)?.countryCode : '') || '';
   const countryConfig = getCountryConfig(effectiveCountryCode);
 
+  const cvValidation = useMemo(() => {
+    if (!resume || !effectiveCountryCode) return null;
+    const currentTmpl = getTemplateById(resume.layout);
+    return validateCountryCV(resume, currentTmpl?.photoSupported !== false);
+  }, [resume, effectiveCountryCode]);
+
   const previewScaleValue =
     (resume?.fontScale ?? 1) * (SPACING_SCALE[resume?.spacing || 'standard'] ?? 1);
 
@@ -488,6 +497,17 @@ const ResumeEditor: React.FC = () => {
 
   const handleDownloadPDF = async () => {
     if (!resume || downloadingPdf) return;
+
+    if (effectiveCountryCode && cvValidation && !cvValidation.isValid) {
+      toast.error(
+        `Please complete required fields before downloading:\n• ${cvValidation.missingFields.slice(0, 4).join('\n• ')}${
+          cvValidation.missingFields.length > 4 ? `\n• and ${cvValidation.missingFields.length - 4} more` : ''
+        }`,
+        { autoClose: 5000 }
+      );
+      return;
+    }
+
     setDownloadingPdf(true);
     try {
       const fileName = `${resume.personalInfo?.fullName || resume.title || 'resume'}.pdf`.replace(/\s+/g, '_');
@@ -802,6 +822,11 @@ const ResumeEditor: React.FC = () => {
             onDownloadAtsSafePdf={handleDownloadAtsSafePdf}
             downloadingAtsSafePdf={downloadingAtsSafePdf}
           />
+        )}
+
+        {/* Country CV Completion Indicator */}
+        {effectiveCountryCode && cvValidation && (
+          <CvCompletionBar validation={cvValidation} className="mb-3" />
         )}
 
         {/* Title / Target role */}

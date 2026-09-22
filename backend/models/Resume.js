@@ -212,12 +212,16 @@ const MembershipSchema = new mongoose.Schema(
 const CountryCVInfoSchema = new mongoose.Schema(
   {
     dateOfBirth: { type: String, default: "" },
+    placeOfBirth: { type: String, default: "" },
     nationality: { type: String, default: "" },
+    gender: { type: String, default: "" },
+    passportNumber: { type: String, default: "" },
     address: { type: String, default: "" },
     city: { type: String, default: "" },
     country: { type: String, default: "" },
     postalCode: { type: String, default: "" },
     drivingLicense: { type: String, default: "" },
+    declaration: { type: String, default: "" },
     motherTongue: { type: String, default: "" },
     cefrLanguages: [CefrLanguageSchema],
     digitalSkills: [{ type: String }],
@@ -230,6 +234,7 @@ const CountryCVInfoSchema = new mongoose.Schema(
     drivingLicenseDetails: {
       licenseType: { type: String, default: "" },
       country: { type: String, default: "" },
+      licenseNumber: { type: String, default: "" },
       expiryDate: { type: String, default: "" },
     },
   },

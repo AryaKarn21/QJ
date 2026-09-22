@@ -38,6 +38,11 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
             {personalInfo.email && <p><span className="font-semibold text-slate-800">Email:</span> {personalInfo.email}</p>}
             {personalInfo.phone && <p><span className="font-semibold text-slate-800">Mobile:</span> {personalInfo.phone}</p>}
+            {countryCVInfo.dateOfBirth && <p><span className="font-semibold text-slate-800">DOB:</span> {countryCVInfo.dateOfBirth}</p>}
+            {countryCVInfo.placeOfBirth && <p><span className="font-semibold text-slate-800">Birthplace:</span> {countryCVInfo.placeOfBirth}</p>}
+            {countryCVInfo.nationality && <p><span className="font-semibold text-slate-800">Nationality:</span> {countryCVInfo.nationality}</p>}
+            {countryCVInfo.gender && <p><span className="font-semibold text-slate-800">Gender:</span> {countryCVInfo.gender}</p>}
+            {countryCVInfo.passportNumber && <p><span className="font-semibold text-slate-800">Passport:</span> {countryCVInfo.passportNumber}</p>}
             {(countryCVInfo.currentLocation || personalInfo.location) && (
               <p><span className="font-semibold text-slate-800">Location:</span> {countryCVInfo.currentLocation || personalInfo.location}</p>
             )}
