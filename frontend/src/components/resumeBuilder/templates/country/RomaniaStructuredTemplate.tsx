@@ -152,96 +152,105 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         </div>
       )}
 
-      {/* Language Skills */}
+      {/* Language Skills (Europass CEFR Matrix) */}
       {(countryCVInfo.motherTongue ||
         (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
         (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
-        (resume.languages && resume.languages.length > 0)) && (
-        <div className="mt-6 border-b border-slate-200 pb-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
-            Language Skills
-          </h2>
-          <div className="pl-4 space-y-3">
-            {countryCVInfo.motherTongue && (
-              <p className="text-xs">
-                <span className="font-bold text-slate-700">Mother tongue(s):</span>{' '}
-                <span className="font-medium text-slate-900">{countryCVInfo.motherTongue}</span>
-              </p>
-            )}
+        (resume.languages && resume.languages.length > 0)) && (() => {
+        const displayLanguages = (
+          countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+            ? countryCVInfo.cefrLanguages
+            : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+            ? countryCVInfo.simpleLanguages.map((l) => {
+                const lvl = (l as any).level || (l as any).cefrLevel || 'B2';
+                return {
+                  language: l.language,
+                  listening: lvl,
+                  reading: lvl,
+                  spokenProduction: lvl,
+                  spokenInteraction: lvl,
+                  writing: lvl,
+                };
+              })
+            : (resume.languages || []).map((l) => {
+                const lvl = l.level || 'B2';
+                return {
+                  language: l.name,
+                  listening: lvl,
+                  reading: lvl,
+                  spokenProduction: lvl,
+                  spokenInteraction: lvl,
+                  writing: lvl,
+                };
+              })
+        ).filter((l) => Boolean(l.language && l.language.trim()));
 
-            {countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
-                  <thead className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="py-2 px-3">Language</th>
-                      <th className="py-2 px-3">CEFR Proficiency Level</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {countryCVInfo.simpleLanguages.map((l, i) => (
-                      <tr key={i} className="hover:bg-slate-50/80 font-medium text-slate-700">
-                        <td className="py-2 px-3 font-semibold text-slate-900">{l.language}</td>
-                        <td className="py-2 px-3">
-                          <span className="font-bold text-orange-600">{l.level}</span>
-                          {l.level === 'A1' && ' — Basic user'}
-                          {l.level === 'A2' && ' — Basic user'}
-                          {l.level === 'B1' && ' — Independent user'}
-                          {l.level === 'B2' && ' — Independent user'}
-                          {l.level === 'C1' && ' — Proficient user'}
-                          {l.level === 'C2' && ' — Proficient user'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mt-1 text-[10px] text-slate-400 italic">
-                  CEFR Levels: A1 and A2: Basic user — B1 and B2: Independent user — C1 and C2: Proficient user
+        return (
+          <div className="mt-6 border-b border-slate-200 pb-5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+              Language Skills
+            </h2>
+            <div className="pl-4 space-y-3">
+              {countryCVInfo.motherTongue && (
+                <p className="text-xs">
+                  <span className="font-bold text-slate-700">Mother tongue(s):</span>{' '}
+                  <span className="font-bold uppercase text-slate-900">{countryCVInfo.motherTongue}</span>
                 </p>
-              </div>
-            ) : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
-                  <thead className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="py-2 px-3">Other Language</th>
-                      <th className="py-2 px-2">Listening</th>
-                      <th className="py-2 px-2">Reading</th>
-                      <th className="py-2 px-2">Interaction</th>
-                      <th className="py-2 px-2">Production</th>
-                      <th className="py-2 px-2">Writing</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {countryCVInfo.cefrLanguages.map((l, i) => (
-                      <tr key={i} className="hover:bg-slate-50/80 font-medium text-slate-700">
-                        <td className="py-2 px-3 font-semibold text-slate-900">{l.language}</td>
-                        <td className="py-2 px-2 text-orange-600 font-bold">{l.listening}</td>
-                        <td className="py-2 px-2 text-orange-600 font-bold">{l.reading}</td>
-                        <td className="py-2 px-2 text-orange-600 font-bold">{l.spokenInteraction}</td>
-                        <td className="py-2 px-2 text-orange-600 font-bold">{l.spokenProduction}</td>
-                        <td className="py-2 px-2 text-orange-600 font-bold">{l.writing}</td>
+              )}
+
+              {displayLanguages.length > 0 && (
+                <div className="overflow-x-auto border-t border-b border-slate-200 py-1.5">
+                  <table className="w-full text-center text-[10.5px]">
+                    <thead>
+                      <tr className="border-b border-slate-300 font-bold uppercase text-slate-800 text-[10px] tracking-wide">
+                        <th className="py-1 text-left w-28"></th>
+                        <th colSpan={2} className="py-1 border-r border-slate-200">
+                          UNDERSTANDING
+                        </th>
+                        <th colSpan={2} className="py-1 border-r border-slate-200">
+                          SPEAKING
+                        </th>
+                        <th className="py-1">WRITING</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mt-1 text-[10px] text-slate-400 italic">
-                  Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user
-                </p>
-              </div>
-            ) : resume.languages && resume.languages.length > 0 ? (
-              <div className="flex flex-wrap gap-2 text-xs">
-                {resume.languages.map((l, i) => (
-                  <span key={i} className="rounded border border-slate-200 px-2.5 py-1 text-slate-700">
-                    <strong className="text-slate-900">{l.name}:</strong> {l.level}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+                      <tr className="text-[9.5px] text-slate-500 border-b border-slate-200">
+                        <th className="py-1 text-left"></th>
+                        <th className="py-1 font-normal">Listening</th>
+                        <th className="py-1 font-normal border-r border-slate-200">Reading</th>
+                        <th className="py-1 font-normal">Spoken production</th>
+                        <th className="py-1 font-normal border-r border-slate-200">Spoken interaction</th>
+                        <th className="py-1 font-normal"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {displayLanguages.map((lang, idx) => (
+                        <tr
+                          key={idx}
+                          className="border-t border-b border-slate-200 bg-slate-50/70 font-medium"
+                        >
+                          <td className="py-2 px-3 text-left font-bold uppercase text-slate-900 text-[11px]">
+                            {lang.language}
+                          </td>
+                          <td className="py-2 text-slate-800">{lang.listening}</td>
+                          <td className="py-2 text-slate-800 border-r border-slate-100">{lang.reading}</td>
+                          <td className="py-2 text-slate-800">{lang.spokenProduction}</td>
+                          <td className="py-2 text-slate-800 border-r border-slate-100">
+                            {lang.spokenInteraction}
+                          </td>
+                          <td className="py-2 text-slate-800">{lang.writing}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-1.5 text-[9.5px] text-slate-400 italic">
+                    Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Digital Skills & Other Skills */}
       {((countryCVInfo.structuredDigitalSkills?.length || 0) > 0 ||

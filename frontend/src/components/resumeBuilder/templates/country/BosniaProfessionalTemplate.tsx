@@ -232,112 +232,105 @@ export const BosniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 5. JEZIČKE VJEŠTINE (LANGUAGE SKILLS - CEFR TABLE) */}
+        {/* 5. JEZIČKE VJEŠTINE (EUROPASS CEFR TABLE FORMAT) */}
         {(countryCVInfo.motherTongue ||
           (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
           (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
-          (resume.languages && resume.languages.length > 0)) && (
-          <section>
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
-              <span className="text-slate-400 text-xs">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                JEZIČKE VJEŠTINE
-              </h2>
-            </div>
+          (resume.languages && resume.languages.length > 0)) && (() => {
+          const displayLanguages = (
+            countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+              ? countryCVInfo.cefrLanguages
+              : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+              ? countryCVInfo.simpleLanguages.map((l) => {
+                  const lvl = (l as any).level || (l as any).cefrLevel || 'B2';
+                  return {
+                    language: l.language,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                  };
+                })
+              : (resume.languages || []).map((l) => {
+                  const lvl = l.level || 'B2';
+                  return {
+                    language: l.name,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                  };
+                })
+          ).filter((l) => Boolean(l.language && l.language.trim()));
 
-            {countryCVInfo.motherTongue && (
-              <p className="text-[11.5px] font-medium text-slate-800 mb-2.5">
-                Maternji jezik: <span className="font-bold uppercase">{countryCVInfo.motherTongue}</span>
-              </p>
-            )}
+          return (
+            <section>
+              <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
+                <span className="text-slate-400 text-xs">●</span>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  JEZIČKE VJEŠTINE
+                </h2>
+              </div>
 
-            {countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0 ? (
-              <div className="overflow-x-auto border-t border-b border-slate-300 py-2">
-                <table className="w-full text-left text-[11px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 font-bold uppercase text-slate-800 text-[10px]">
-                      <th className="py-1.5 px-3">Jezik</th>
-                      <th className="py-1.5 px-3">CEFR Nivo Poznavanja</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countryCVInfo.simpleLanguages.map((lang, idx) => (
-                      <tr key={idx} className="border-b border-slate-100 last:border-0 font-medium">
-                        <td className="py-1.5 px-3 font-bold uppercase text-slate-900">
-                          {lang.language}
-                        </td>
-                        <td className="py-1.5 px-3 text-slate-700">
-                          <span className="font-semibold text-slate-900">{lang.level}</span>
-                          {lang.level === 'A1' && ' — Osnovni korisnik'}
-                          {lang.level === 'A2' && ' — Osnovni korisnik'}
-                          {lang.level === 'B1' && ' — Samostalni korisnik'}
-                          {lang.level === 'B2' && ' — Samostalni korisnik'}
-                          {lang.level === 'C1' && ' — Iskusni korisnik'}
-                          {lang.level === 'C2' && ' — Iskusni korisnik'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-[9px] text-slate-400 italic mt-1.5">
-                  CEFR Nivoi: A1 i A2: Osnovni korisnik — B1 i B2: Samostalni korisnik — C1 i C2: Iskusni korisnik
+              {countryCVInfo.motherTongue && (
+                <p className="text-[11.5px] font-medium text-slate-800 mb-2">
+                  Maternji jezik: <span className="font-bold uppercase">{countryCVInfo.motherTongue}</span>
                 </p>
-              </div>
-            ) : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 ? (
-              <div className="overflow-x-auto border-t border-b border-slate-300 py-2">
-                <table className="w-full text-center text-[10.5px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 font-bold uppercase text-slate-800">
-                      <th className="py-1 text-left w-24"></th>
-                      <th colSpan={2} className="py-1 border-r border-slate-200">
-                        RAZUMIJEVANJE
-                      </th>
-                      <th colSpan={2} className="py-1 border-r border-slate-200">
-                        GOVOR
-                      </th>
-                      <th className="py-1">PISANJE</th>
-                    </tr>
-                    <tr className="text-[9.5px] text-slate-500 border-b border-slate-200">
-                      <th className="py-1 text-left"></th>
-                      <th className="py-1 font-normal">Slušanje</th>
-                      <th className="py-1 font-normal border-r border-slate-200">Čitanje</th>
-                      <th className="py-1 font-normal">Govorna produkcija</th>
-                      <th className="py-1 font-normal border-r border-slate-200">Govorna interakcija</th>
-                      <th className="py-1 font-normal">Pisanje</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countryCVInfo.cefrLanguages.map((lang, idx) => (
-                      <tr key={idx} className="border-b border-slate-100 last:border-0 font-medium">
-                        <td className="py-1.5 text-left font-bold uppercase text-slate-900">
-                          {lang.language}
-                        </td>
-                        <td className="py-1.5 text-slate-700">{lang.listening}</td>
-                        <td className="py-1.5 text-slate-700 border-r border-slate-100">{lang.reading}</td>
-                        <td className="py-1.5 text-slate-700">{lang.spokenProduction}</td>
-                        <td className="py-1.5 text-slate-700 border-r border-slate-100">
-                          {lang.spokenInteraction}
-                        </td>
-                        <td className="py-1.5 text-slate-700">{lang.writing}</td>
+              )}
+
+              {displayLanguages.length > 0 && (
+                <div className="overflow-x-auto border-t border-b border-slate-300 py-1.5">
+                  <table className="w-full text-center text-[10.5px]">
+                    <thead>
+                      <tr className="border-b border-slate-300 font-bold uppercase text-slate-800 text-[10px] tracking-wide">
+                        <th className="py-1 text-left w-28"></th>
+                        <th colSpan={2} className="py-1 border-r border-slate-200">
+                          RAZUMIJEVANJE
+                        </th>
+                        <th colSpan={2} className="py-1 border-r border-slate-200">
+                          GOVOR
+                        </th>
+                        <th className="py-1">PISANJE</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-[9px] text-slate-400 italic mt-1.5">
-                  Nivoi: A1 i A2: Osnovni korisnik — B1 i B2: Samostalni korisnik — C1 i C2: Iskusni korisnik
-                </p>
-              </div>
-            ) : resume.languages && resume.languages.length > 0 ? (
-              <div className="flex flex-wrap gap-2 text-xs">
-                {resume.languages.map((l, i) => (
-                  <span key={i} className="rounded border border-slate-200 px-2.5 py-1 text-slate-700">
-                    <strong className="text-slate-900">{l.name}:</strong> {l.level}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        )}
+                      <tr className="text-[9.5px] text-slate-500 border-b border-slate-200">
+                        <th className="py-1 text-left"></th>
+                        <th className="py-1 font-normal">Slušanje</th>
+                        <th className="py-1 font-normal border-r border-slate-200">Čitanje</th>
+                        <th className="py-1 font-normal">Govorna produkcija</th>
+                        <th className="py-1 font-normal border-r border-slate-200">Govorna interakcija</th>
+                        <th className="py-1 font-normal"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {displayLanguages.map((lang, idx) => (
+                        <tr
+                          key={idx}
+                          className="border-t border-b border-slate-200 bg-slate-50/70 font-medium"
+                        >
+                          <td className="py-2 px-3 text-left font-bold uppercase text-slate-900 text-[11px]">
+                            {lang.language}
+                          </td>
+                          <td className="py-2 text-slate-800">{lang.listening}</td>
+                          <td className="py-2 text-slate-800 border-r border-slate-100">{lang.reading}</td>
+                          <td className="py-2 text-slate-800">{lang.spokenProduction}</td>
+                          <td className="py-2 text-slate-800 border-r border-slate-100">
+                            {lang.spokenInteraction}
+                          </td>
+                          <td className="py-2 text-slate-800">{lang.writing}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="text-[9px] text-slate-400 italic mt-1.5">
+                    Nivoi: A1 i A2: Osnovni korisnik - B1 i B2: Samostalni korisnik - C1 i C2: Iskusni korisnik
+                  </p>
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* 6. VOZAČKA DOZVOLA (DRIVING LICENSE) */}
         {hasDrivingLicense && (

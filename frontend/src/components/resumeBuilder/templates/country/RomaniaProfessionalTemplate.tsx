@@ -232,112 +232,105 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 5. LANGUAGE SKILLS (CEFR TABLE) */}
+        {/* 5. LANGUAGE SKILLS (EUROPASS CEFR TABLE FORMAT) */}
         {(countryCVInfo.motherTongue ||
           (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
           (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
-          (resume.languages && resume.languages.length > 0)) && (
-          <section>
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
-              <span className="text-slate-400 text-xs">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                LANGUAGE SKILLS
-              </h2>
-            </div>
+          (resume.languages && resume.languages.length > 0)) && (() => {
+          const displayLanguages = (
+            countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+              ? countryCVInfo.cefrLanguages
+              : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+              ? countryCVInfo.simpleLanguages.map((l) => {
+                  const lvl = (l as any).level || (l as any).cefrLevel || 'B2';
+                  return {
+                    language: l.language,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                  };
+                })
+              : (resume.languages || []).map((l) => {
+                  const lvl = l.level || 'B2';
+                  return {
+                    language: l.name,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                  };
+                })
+          ).filter((l) => Boolean(l.language && l.language.trim()));
 
-            {countryCVInfo.motherTongue && (
-              <p className="text-[11.5px] font-medium text-slate-800 mb-2.5">
-                Mother tongue(s): <span className="font-bold uppercase">{countryCVInfo.motherTongue}</span>
-              </p>
-            )}
+          return (
+            <section>
+              <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
+                <span className="text-slate-400 text-xs">●</span>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  LANGUAGE SKILLS
+                </h2>
+              </div>
 
-            {countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0 ? (
-              <div className="overflow-x-auto border-t border-b border-slate-300 py-2">
-                <table className="w-full text-left text-[11px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 font-bold uppercase text-slate-800 text-[10px]">
-                      <th className="py-1.5 px-3">Language</th>
-                      <th className="py-1.5 px-3">CEFR Proficiency Level</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countryCVInfo.simpleLanguages.map((lang, idx) => (
-                      <tr key={idx} className="border-b border-slate-100 last:border-0 font-medium">
-                        <td className="py-1.5 px-3 font-bold uppercase text-slate-900">
-                          {lang.language}
-                        </td>
-                        <td className="py-1.5 px-3 text-slate-700">
-                          <span className="font-semibold text-slate-900">{lang.level}</span>
-                          {lang.level === 'A1' && ' — Basic user'}
-                          {lang.level === 'A2' && ' — Basic user'}
-                          {lang.level === 'B1' && ' — Independent user'}
-                          {lang.level === 'B2' && ' — Independent user'}
-                          {lang.level === 'C1' && ' — Proficient user'}
-                          {lang.level === 'C2' && ' — Proficient user'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-[9px] text-slate-400 italic mt-1.5">
-                  CEFR Levels: A1 and A2: Basic user — B1 and B2: Independent user — C1 and C2: Proficient user
+              {countryCVInfo.motherTongue && (
+                <p className="text-[11.5px] font-medium text-slate-800 mb-2">
+                  Mother tongue(s): <span className="font-bold uppercase">{countryCVInfo.motherTongue}</span>
                 </p>
-              </div>
-            ) : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 ? (
-              <div className="overflow-x-auto border-t border-b border-slate-300 py-2">
-                <table className="w-full text-center text-[10.5px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 font-bold uppercase text-slate-800">
-                      <th className="py-1 text-left w-24"></th>
-                      <th colSpan={2} className="py-1 border-r border-slate-200">
-                        UNDERSTANDING
-                      </th>
-                      <th colSpan={2} className="py-1 border-r border-slate-200">
-                        SPEAKING
-                      </th>
-                      <th className="py-1">WRITING</th>
-                    </tr>
-                    <tr className="text-[9.5px] text-slate-500 border-b border-slate-200">
-                      <th className="py-1 text-left"></th>
-                      <th className="py-1 font-normal">Listening</th>
-                      <th className="py-1 font-normal border-r border-slate-200">Reading</th>
-                      <th className="py-1 font-normal">Spoken production</th>
-                      <th className="py-1 font-normal border-r border-slate-200">Spoken interaction</th>
-                      <th className="py-1 font-normal">Writing</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countryCVInfo.cefrLanguages.map((lang, idx) => (
-                      <tr key={idx} className="border-b border-slate-100 last:border-0 font-medium">
-                        <td className="py-1.5 text-left font-bold uppercase text-slate-900">
-                          {lang.language}
-                        </td>
-                        <td className="py-1.5 text-slate-700">{lang.listening}</td>
-                        <td className="py-1.5 text-slate-700 border-r border-slate-100">{lang.reading}</td>
-                        <td className="py-1.5 text-slate-700">{lang.spokenProduction}</td>
-                        <td className="py-1.5 text-slate-700 border-r border-slate-100">
-                          {lang.spokenInteraction}
-                        </td>
-                        <td className="py-1.5 text-slate-700">{lang.writing}</td>
+              )}
+
+              {displayLanguages.length > 0 && (
+                <div className="overflow-x-auto border-t border-b border-slate-300 py-1.5">
+                  <table className="w-full text-center text-[10.5px]">
+                    <thead>
+                      <tr className="border-b border-slate-300 font-bold uppercase text-slate-800 text-[10px] tracking-wide">
+                        <th className="py-1 text-left w-28"></th>
+                        <th colSpan={2} className="py-1 border-r border-slate-200">
+                          UNDERSTANDING
+                        </th>
+                        <th colSpan={2} className="py-1 border-r border-slate-200">
+                          SPEAKING
+                        </th>
+                        <th className="py-1">WRITING</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-[9px] text-slate-400 italic mt-1.5">
-                  Levels: A1 and A2: Basic user — B1 and B2: Independent user — C1 and C2: Proficient user
-                </p>
-              </div>
-            ) : resume.languages && resume.languages.length > 0 ? (
-              <div className="flex flex-wrap gap-2 text-xs">
-                {resume.languages.map((l, i) => (
-                  <span key={i} className="rounded border border-slate-200 px-2.5 py-1 text-slate-700">
-                    <strong className="text-slate-900">{l.name}:</strong> {l.level}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        )}
+                      <tr className="text-[9.5px] text-slate-500 border-b border-slate-200">
+                        <th className="py-1 text-left"></th>
+                        <th className="py-1 font-normal">Listening</th>
+                        <th className="py-1 font-normal border-r border-slate-200">Reading</th>
+                        <th className="py-1 font-normal">Spoken production</th>
+                        <th className="py-1 font-normal border-r border-slate-200">Spoken interaction</th>
+                        <th className="py-1 font-normal"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {displayLanguages.map((lang, idx) => (
+                        <tr
+                          key={idx}
+                          className="border-t border-b border-slate-200 bg-slate-50/70 font-medium"
+                        >
+                          <td className="py-2 px-3 text-left font-bold uppercase text-slate-900 text-[11px]">
+                            {lang.language}
+                          </td>
+                          <td className="py-2 text-slate-800">{lang.listening}</td>
+                          <td className="py-2 text-slate-800 border-r border-slate-100">{lang.reading}</td>
+                          <td className="py-2 text-slate-800">{lang.spokenProduction}</td>
+                          <td className="py-2 text-slate-800 border-r border-slate-100">
+                            {lang.spokenInteraction}
+                          </td>
+                          <td className="py-2 text-slate-800">{lang.writing}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="text-[9px] text-slate-400 italic mt-1.5">
+                    Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user
+                  </p>
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* 6. CERTIFICATIONS (if provided) */}
         {resume.certifications && resume.certifications.length > 0 && (

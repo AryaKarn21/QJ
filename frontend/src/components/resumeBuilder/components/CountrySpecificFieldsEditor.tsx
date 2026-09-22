@@ -57,35 +57,45 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
   };
 
   // ── Language Skills (Streamlined Language + CEFR Level) ──
-  // Initialize with mother tongue or default if empty
   const languages: SimpleLanguageItem[] = countryCVInfo.simpleLanguages || [
-    { language: countryCVInfo.motherTongue || 'English', cefrLevel: 'B2' },
+    { language: 'English', cefrLevel: 'B2', level: 'B2' },
   ];
+
+  const syncLanguages = (next: SimpleLanguageItem[], extraPatch: Record<string, any> = {}) => {
+    const nextCefr = next.map((l) => {
+      const lvl = l.cefrLevel || (l as any).level || 'B2';
+      return {
+        language: l.language,
+        listening: lvl,
+        reading: lvl,
+        spokenProduction: lvl,
+        spokenInteraction: lvl,
+        writing: lvl,
+      };
+    });
+    onChange({
+      simpleLanguages: next,
+      cefrLanguages: nextCefr,
+      ...extraPatch,
+    });
+  };
 
   const addLanguage = () => {
     const available = LANGUAGES_LIST.find((l) => !languages.some((item) => item.language === l)) || 'English';
-    const next = [...languages, { language: available, cefrLevel: 'B1' }];
-    onChange({
-      simpleLanguages: next,
-      motherTongue: next[0]?.language || countryCVInfo.motherTongue,
-    });
+    const next = [...languages, { language: available, cefrLevel: 'A2', level: 'A2' }];
+    syncLanguages(next);
   };
 
   const updateLanguage = (idx: number, patch: Partial<SimpleLanguageItem>) => {
     const next = [...languages];
-    next[idx] = { ...next[idx], ...patch };
-    onChange({
-      simpleLanguages: next,
-      motherTongue: next[0]?.language || countryCVInfo.motherTongue,
-    });
+    const updatedLevel = patch.cefrLevel || patch.level || next[idx].cefrLevel || (next[idx] as any).level || 'A2';
+    next[idx] = { ...next[idx], ...patch, cefrLevel: updatedLevel, level: updatedLevel };
+    syncLanguages(next);
   };
 
   const removeLanguage = (idx: number) => {
     const next = languages.filter((_, i) => i !== idx);
-    onChange({
-      simpleLanguages: next,
-      motherTongue: next[0]?.language || '',
-    });
+    syncLanguages(next);
   };
 
   // ── Digital Skills (Dropdown + Proficiency) ──
@@ -402,11 +412,25 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
           </button>
         </div>
 
-        <p className="text-[11px] text-slate-500">
-          Select language and CEFR proficiency level (A1 to C2). The first language represents your mother tongue / primary language.
-        </p>
+        <div className="space-y-3 pt-1">
+          {/* Mother Tongue Input */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Mother tongue(s) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. Nepali, Romanian, English"
+              value={countryCVInfo.motherTongue || ''}
+              onChange={(e) => onChange({ motherTongue: e.target.value })}
+            />
+          </div>
 
-        <div className="space-y-2 pt-1">
+          <p className="text-[11px] text-slate-500 pt-1">
+            Other Languages & CEFR Proficiency Matrix (Listening, Reading, Spoken production, Spoken interaction, Writing):
+          </p>
+
           {languages.map((item, idx) => (
             <div
               key={idx}
@@ -414,7 +438,7 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             >
               <div className="flex-1 min-w-[140px]">
                 <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-                  Language {idx === 0 ? '(Primary / Mother Tongue)' : ''} *
+                  Language <span className="text-red-500">*</span>
                 </label>
                 <select
                   className={fieldClass}
