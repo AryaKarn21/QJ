@@ -42,8 +42,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
   );
 
   const declarationText =
-    countryCVInfo.declaration !== undefined
-      ? countryCVInfo.declaration
+    countryCVInfo.declaration && countryCVInfo.declaration.trim()
+      ? countryCVInfo.declaration.replace(/BELEIF/gi, 'BELIEF')
       : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.';
 
   // Section Header Component guaranteeing exact identical styling across all sections
@@ -358,15 +358,13 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         )}
 
         {/* 8. DECLARATION */}
-        {declarationText && (
-          <section className="break-inside-avoid pt-1">
-            <SectionHeading title="DECLARATION" />
-            <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
-              {declarationText.replace(/BELEIF/gi, 'BELIEF')}
-            </p>
-            <div className="border-b border-slate-300 mt-2.5 w-4/5" />
-          </section>
-        )}
+        <section className="break-inside-avoid pt-1">
+          <SectionHeading title="DECLARATION" />
+          <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
+            {declarationText}
+          </p>
+          <div className="border-b border-slate-300 mt-2.5 w-4/5" />
+        </section>
       </div>
     </div>
   );

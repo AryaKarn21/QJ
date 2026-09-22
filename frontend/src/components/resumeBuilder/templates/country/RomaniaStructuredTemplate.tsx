@@ -282,23 +282,22 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       )}
 
       {/* Declaration */}
-      {countryCVInfo.declaration !== '' && (
-        <section className="mt-4 break-inside-avoid">
-          <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-            <span className="text-slate-500 text-[10px]">●</span>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              DECLARATION
-            </h2>
-          </div>
-          <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
-            {(
-              countryCVInfo.declaration ||
-              'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
-            ).replace(/BELEIF/gi, 'BELIEF')}
-          </p>
-          <div className="border-b border-slate-300 mt-2.5 w-4/5" />
-        </section>
-      )}
+      <section className="mt-4 break-inside-avoid">
+        <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
+          <span className="text-slate-500 text-[10px]">●</span>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+            DECLARATION
+          </h2>
+        </div>
+        <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
+          {(
+            countryCVInfo.declaration && countryCVInfo.declaration.trim()
+              ? countryCVInfo.declaration
+              : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
+          ).replace(/BELEIF/gi, 'BELIEF')}
+        </p>
+        <div className="border-b border-slate-300 mt-2.5 w-4/5" />
+      </section>
     </div>
   );
 };
