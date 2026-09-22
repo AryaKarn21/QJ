@@ -290,29 +290,13 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
               DECLARATION
             </h2>
           </div>
-          <p className="text-[10.5px] font-normal text-slate-700 leading-relaxed">
-            {countryCVInfo.declaration ||
-              'I hereby declare that the information given in this CV is true and honest to my knowledge and belief.'}
+          <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
+            {(
+              countryCVInfo.declaration ||
+              'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
+            ).replace(/BELEIF/gi, 'BELIEF')}
           </p>
-          <div className="mt-3 flex items-end justify-between text-[10px] text-slate-600">
-            <div>
-              <p className="font-semibold text-slate-800">
-                {countryCVInfo.signatureName || personalInfo.fullName || 'Candidate'}
-              </p>
-              <p className="text-slate-500">Signature</p>
-            </div>
-            <div>
-              <p className="text-slate-600">
-                <span className="font-semibold">Date:</span>{' '}
-                {countryCVInfo.declarationDate ||
-                  new Date().toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                  })}
-              </p>
-            </div>
-          </div>
+          <div className="border-b border-slate-300 mt-2.5 w-4/5" />
         </section>
       )}
     </div>

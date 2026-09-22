@@ -44,7 +44,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
   const declarationText =
     countryCVInfo.declaration !== undefined
       ? countryCVInfo.declaration
-      : 'I hereby declare that the information given in this CV is true and honest to my knowledge and belief.';
+      : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.';
 
   // Section Header Component guaranteeing exact identical styling across all sections
   const SectionHeading: React.FC<{ title: string }> = ({ title }) => (
@@ -357,32 +357,14 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 8. DECLARATION (COMPACT REGULAR WEIGHT WITH SIGNATURE & DATE) */}
+        {/* 8. DECLARATION */}
         {declarationText && (
           <section className="break-inside-avoid pt-1">
             <SectionHeading title="DECLARATION" />
-            <p className="text-[10.5px] font-normal text-slate-700 leading-relaxed">
-              {declarationText}
+            <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
+              {declarationText.replace(/BELEIF/gi, 'BELIEF')}
             </p>
-            <div className="mt-3 flex items-end justify-between text-[10px] text-slate-600">
-              <div>
-                <p className="font-semibold text-slate-800">
-                  {countryCVInfo.signatureName || personalInfo.fullName || 'Candidate'}
-                </p>
-                <p className="text-slate-500">Signature</p>
-              </div>
-              <div>
-                <p className="text-slate-600">
-                  <span className="font-semibold">Date:</span>{' '}
-                  {countryCVInfo.declarationDate ||
-                    new Date().toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
-                </p>
-              </div>
-            </div>
+            <div className="border-b border-slate-300 mt-2.5 w-4/5" />
           </section>
         )}
       </div>

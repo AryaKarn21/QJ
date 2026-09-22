@@ -651,36 +651,10 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
           value={
             countryCVInfo.declaration !== undefined
               ? countryCVInfo.declaration
-              : 'I hereby declare that the information given in this CV is true and honest to my knowledge and belief.'
+              : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
           }
           onChange={(e) => onChange({ declaration: e.target.value })}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          <div>
-            <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-              Declaration Date (DD/MM/YYYY)
-            </label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="e.g. 29/05/2026"
-              value={countryCVInfo.declarationDate || ''}
-              onChange={(e) => onChange({ declarationDate: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-              Signatory Name
-            </label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="Candidate Full Name"
-              value={countryCVInfo.signatureName || ''}
-              onChange={(e) => onChange({ signatureName: e.target.value })}
-            />
-          </div>
-        </div>
       </div>
 
       {/* 8. Professional Memberships (for Qatar) */}
