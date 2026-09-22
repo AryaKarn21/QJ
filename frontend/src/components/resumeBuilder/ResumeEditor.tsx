@@ -1209,7 +1209,12 @@ const ResumeEditor: React.FC = () => {
 
         {/* Skills */}
         <Section title="Skills">
-          <UniversalSkillsEditor skills={resume.skills || []} onChange={(skills) => update({ skills })} />
+          <UniversalSkillsEditor
+            skills={resume.skills || []}
+            onChange={(skills) => update({ skills })}
+            targetRole={resume.targetRole}
+            onTargetRoleChange={(targetRole) => update({ targetRole })}
+          />
         </Section>
 
         {/* References */}

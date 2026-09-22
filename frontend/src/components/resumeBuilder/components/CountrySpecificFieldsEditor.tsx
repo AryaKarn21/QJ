@@ -533,24 +533,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                   </div>
 
                   <div className="self-end flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedLanguageIdx(isCustomizing ? null : idx)}
-                      className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-2 rounded-lg border transition ${
-                        isCustomizing
-                          ? 'border-orange-300 bg-orange-50 text-orange-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                      title="Fine-tune Listening, Reading, Speaking & Writing"
-                    >
-                      <Sliders size={12} />
-                      <span className="hidden sm:inline">5 Skills</span>
-                      <ChevronDown
-                        size={12}
-                        className={`transition-transform duration-150 ${isCustomizing ? 'rotate-180 text-orange-500' : ''}`}
-                      />
-                    </button>
-
                     {languages.length > 1 && (
                       <button
                         type="button"
@@ -563,80 +545,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                     )}
                   </div>
                 </div>
-
-                {/* Optional Expandable 5-Skill Matrix */}
-                {isCustomizing && (
-                  <div className="pt-2 border-t border-slate-200/80 bg-white p-3 rounded-lg border shadow-xs space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-                      <span>Europass 5-Skill Matrix for {item.language || 'Language'}</span>
-                      <span className="text-[10px] font-normal lowercase text-slate-400">
-                        (Listening, Reading, Spoken prod., Spoken int., Writing)
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      <div>
-                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Listening</span>
-                        <select
-                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
-                          value={cefrEntry.listening || item.cefrLevel || 'A2'}
-                          onChange={(e) => updateCefrSkill(idx, 'listening', e.target.value)}
-                        >
-                          {CEFR_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Reading</span>
-                        <select
-                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
-                          value={cefrEntry.reading || item.cefrLevel || 'A2'}
-                          onChange={(e) => updateCefrSkill(idx, 'reading', e.target.value)}
-                        >
-                          {CEFR_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Spoken Prod.</span>
-                        <select
-                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
-                          value={cefrEntry.spokenProduction || item.cefrLevel || 'A2'}
-                          onChange={(e) => updateCefrSkill(idx, 'spokenProduction', e.target.value)}
-                        >
-                          {CEFR_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Spoken Inter.</span>
-                        <select
-                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
-                          value={cefrEntry.spokenInteraction || item.cefrLevel || 'A2'}
-                          onChange={(e) => updateCefrSkill(idx, 'spokenInteraction', e.target.value)}
-                        >
-                          {CEFR_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Writing</span>
-                        <select
-                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
-                          value={cefrEntry.writing || item.cefrLevel || 'A2'}
-                          onChange={(e) => updateCefrSkill(idx, 'writing', e.target.value)}
-                        >
-                          {CEFR_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -712,10 +620,36 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
           value={
             countryCVInfo.declaration !== undefined
               ? countryCVInfo.declaration
-              : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
+              : 'I hereby declare that the information given in this CV is true and honest to my knowledge and belief.'
           }
           onChange={(e) => onChange({ declaration: e.target.value })}
         />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
+              Declaration Date (DD/MM/YYYY)
+            </label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="e.g. 29/05/2026"
+              value={countryCVInfo.declarationDate || ''}
+              onChange={(e) => onChange({ declarationDate: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
+              Signatory Name
+            </label>
+            <input
+              type="text"
+              className={fieldClass}
+              placeholder="Candidate Full Name"
+              value={countryCVInfo.signatureName || ''}
+              onChange={(e) => onChange({ signatureName: e.target.value })}
+            />
+          </div>
+        </div>
       </div>
 
       {/* 8. Professional Memberships (for Qatar) */}

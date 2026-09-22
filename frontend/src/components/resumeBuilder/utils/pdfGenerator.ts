@@ -162,8 +162,9 @@ export const generatePDF = async (
   pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
   heightLeft -= pageHeight;
 
-  // Only create a second page if there is genuine remaining content (> 5mm)
-  while (heightLeft > 5) {
+  // Only create a second page if there is genuine remaining content (> 12mm)
+  // Prevents accidental ghost second pages caused by minor sub-pixel rendering padding
+  while (heightLeft > 12) {
     position = heightLeft - imgHeight;
     pdf.addPage();
     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);

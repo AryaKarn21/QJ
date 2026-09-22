@@ -44,7 +44,17 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
   const declarationText =
     countryCVInfo.declaration !== undefined
       ? countryCVInfo.declaration
-      : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.';
+      : 'I hereby declare that the information given in this CV is true and honest to my knowledge and belief.';
+
+  // Section Header Component guaranteeing exact identical styling across all sections
+  const SectionHeading: React.FC<{ title: string }> = ({ title }) => (
+    <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5" style={{ breakAfter: 'avoid' }}>
+      <span className="text-slate-500 text-[10px]">●</span>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+        {title}
+      </h2>
+    </div>
+  );
 
   return (
     <div
@@ -52,12 +62,12 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       style={{ fontFamily: theme.fontFamily }}
     >
       {/* ── HEADER: European CV Header with Light Neutral Gray Background (#F4F4F4) ── */}
-      <header className="bg-[#F4F4F4] border-b border-slate-200/90 p-5 sm:p-6 print:p-5">
+      <header className="bg-[#F4F4F4] border-b border-slate-200/90 p-4 sm:p-5 print:p-4">
         <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-5">
           {/* Candidate Photo (Circular, ~40-50mm, vertically centered) */}
           <div className="shrink-0 self-center">
             {personalInfo.photo ? (
-              <div className="h-24 w-24 sm:h-26 sm:w-26 rounded-full overflow-hidden border border-slate-300 shadow-2xs bg-white">
+              <div className="h-24 w-24 sm:h-25 sm:w-25 rounded-full overflow-hidden border border-slate-300 shadow-2xs bg-white">
                 <img
                   src={personalInfo.photo}
                   alt={personalInfo.fullName || 'Candidate Photo'}
@@ -65,7 +75,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                 />
               </div>
             ) : (
-              <div className="h-24 w-24 sm:h-26 sm:w-26 rounded-full border border-slate-300 bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-lg">
+              <div className="h-24 w-24 sm:h-25 sm:w-25 rounded-full border border-slate-300 bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-lg">
                 {(personalInfo.fullName || 'CV').slice(0, 2).toUpperCase()}
               </div>
             )}
@@ -111,16 +121,13 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         </div>
       </header>
 
-      {/* ── SECTIONS (ABOUT ME starts cleanly right after header) ── */}
-      <div className="p-5 sm:p-6 print:p-5 space-y-4">
+      {/* ── SECTIONS (Compact spacing matching Reference CV) ── */}
+      <div className="p-4 sm:p-5 print:p-4 space-y-3.5">
         {/* 1. ABOUT ME */}
         {resume.summary && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
-              <span className="text-slate-500 text-[10px]">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">ABOUT ME</h2>
-            </div>
-            <p className="text-[11.5px] text-slate-700 leading-relaxed whitespace-pre-line">
+            <SectionHeading title="ABOUT ME" />
+            <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-line">
               {resume.summary}
             </p>
           </section>
@@ -129,13 +136,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 2. EDUCATION & TRAINING */}
         {resume.education && resume.education.length > 0 && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
-              <span className="text-slate-500 text-[10px]">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                EDUCATION & TRAINING
-              </h2>
-            </div>
-            <div className="space-y-2.5">
+            <SectionHeading title="EDUCATION & TRAINING" />
+            <div className="space-y-2">
               {resume.education.map((edu, idx) => {
                 const dateStr = formatDateRange(edu.startDate, edu.endDate);
                 const locStr = [edu.location || edu.city, edu.country].filter(Boolean).join(', ');
@@ -143,7 +145,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                 const qualAndInst = [edu.degree || 'EDUCATION', edu.institution].filter(Boolean).join(' — ');
 
                 return (
-                  <div key={idx} className="space-y-0.5 text-[11px]">
+                  <div key={idx} className="space-y-0.5 text-[10.5px]">
                     {headerMeta && (
                       <div className="font-medium text-slate-500 uppercase tracking-wide">
                         {headerMeta}
@@ -170,13 +172,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 3. WORK EXPERIENCE */}
         {resume.experience && resume.experience.length > 0 && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
-              <span className="text-slate-500 text-[10px]">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                WORK EXPERIENCE
-              </h2>
-            </div>
-            <div className="space-y-3">
+            <SectionHeading title="WORK EXPERIENCE" />
+            <div className="space-y-2.5">
               {resume.experience.map((exp, idx) => {
                 const jobTitle = exp.title || (exp as any).role || '';
                 const companyName = exp.company || '';
@@ -186,7 +183,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                 const headerMeta = [dateStr, locStr].filter(Boolean).join(' — ');
 
                 return (
-                  <div key={idx} className="space-y-0.5 text-[11px]">
+                  <div key={idx} className="space-y-0.5 text-[10.5px]">
                     {headerMeta && (
                       <div className="font-medium text-slate-500 uppercase tracking-wide">
                         {headerMeta}
@@ -211,7 +208,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 4. UNIVERSAL SKILLS */}
+        {/* 4. SKILLS (UNIVERSAL INLINE COMPACT FORMAT) */}
         {(() => {
           const allSkillNames: string[] = [];
           const seen = new Set<string>();
@@ -251,11 +248,8 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
 
           return (
             <section className="break-inside-avoid">
-              <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-1.5" style={{ breakAfter: 'avoid' }}>
-                <span className="text-slate-500 text-[10px]">●</span>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">SKILLS</h2>
-              </div>
-              <div className="text-[9.5px] sm:text-[10px] text-slate-700 leading-relaxed">
+              <SectionHeading title="SKILLS" />
+              <div className="text-[10px] sm:text-[10.5px] text-slate-700 leading-relaxed">
                 {allSkillNames.map((skill, idx) => (
                   <span key={idx} className="inline-block">
                     <span className="whitespace-nowrap">{skill}</span>
@@ -269,44 +263,26 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           );
         })()}
 
-        {/* 5. LANGUAGE SKILLS (EUROPASS CEFR GRID AS REQUIRED) */}
+        {/* 5. LANGUAGE SKILLS (STREAMLINED COMPACT 2-COLUMN TABLE) */}
         {(countryCVInfo.motherTongue ||
           (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
           (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
           (resume.languages && resume.languages.length > 0)) && (() => {
           const displayLanguages: FormattedLanguageItem[] = (
-            countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+            countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+              ? countryCVInfo.simpleLanguages.map((l) => ({
+                  language: l.language,
+                  cefrLevel: l.cefrLevel || (l as any).level || 'A2',
+                }))
+              : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
               ? countryCVInfo.cefrLanguages.map((l) => ({
                   language: l.language,
-                  listening: l.listening || 'B2',
-                  reading: l.reading || 'B2',
-                  spokenProduction: l.spokenProduction || l.spokenInteraction || 'B2',
-                  spokenInteraction: l.spokenInteraction || l.spokenProduction || 'B2',
-                  writing: l.writing || 'B2',
+                  cefrLevel: l.listening || l.reading || 'A2',
                 }))
-              : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
-              ? countryCVInfo.simpleLanguages.map((l) => {
-                  const lvl = l.cefrLevel || (l as any).level || 'B2';
-                  return {
-                    language: l.language,
-                    listening: lvl,
-                    reading: lvl,
-                    spokenProduction: lvl,
-                    spokenInteraction: lvl,
-                    writing: lvl,
-                  };
-                })
-              : (resume.languages || []).map((l) => {
-                  const lvl = l.level || 'B2';
-                  return {
-                    language: l.name,
-                    listening: lvl,
-                    reading: lvl,
-                    spokenProduction: lvl,
-                    spokenInteraction: lvl,
-                    writing: lvl,
-                  };
-                })
+              : (resume.languages || []).map((l) => ({
+                  language: l.name,
+                  cefrLevel: l.level || 'A2',
+                }))
           ).filter((l) => Boolean(l.language && l.language.trim()));
 
           return (
@@ -320,15 +296,10 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         {/* 6. CERTIFICATIONS (if provided) */}
         {resume.certifications && resume.certifications.length > 0 && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-              <span className="text-slate-400 text-[10px]">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                CERTIFICATIONS
-              </h2>
-            </div>
+            <SectionHeading title="CERTIFICATIONS" />
             <div className="space-y-1">
               {resume.certifications.map((c, idx) => (
-                <div key={idx} className="text-[11px] text-slate-700">
+                <div key={idx} className="text-[10.5px] text-slate-700">
                   <span className="font-bold text-slate-900">{c.name}</span>
                   {c.issuer && <span> — {c.issuer}</span>}
                   {c.date && <span className="text-slate-500"> ({c.date})</span>}
@@ -338,16 +309,11 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 7. DRIVING LICENSE */}
+        {/* 7. DRIVING LICENSE (if provided) */}
         {hasDrivingLicense && (
           <section className="break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
-              <span className="text-slate-500 text-[10px]">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                DRIVING LICENSE
-              </h2>
-            </div>
-            <div className="text-[11px] text-slate-700">
+            <SectionHeading title="DRIVING LICENSE" />
+            <div className="text-[10.5px] text-slate-700">
               <p>
                 <span className="font-semibold text-slate-800">License Category:</span>{' '}
                 <span className="font-bold text-slate-900">
@@ -370,22 +336,37 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 8. DECLARATION */}
+        {/* 8. DECLARATION (COMPACT REGULAR WEIGHT WITH SIGNATURE & DATE) */}
         {declarationText && (
           <section className="break-inside-avoid pt-1">
-            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2">
-              <span className="text-slate-500 text-[10px]">●</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                DECLARATION
-              </h2>
-            </div>
-            <p className="text-[10.5px] font-semibold text-slate-700 uppercase tracking-wide leading-relaxed">
+            <SectionHeading title="DECLARATION" />
+            <p className="text-[10.5px] font-normal text-slate-700 leading-relaxed">
               {declarationText}
             </p>
-            <div className="border-b border-slate-400 mt-4 w-52" />
+            <div className="mt-3 flex items-end justify-between text-[10px] text-slate-600">
+              <div>
+                <p className="font-semibold text-slate-800">
+                  {countryCVInfo.signatureName || personalInfo.fullName || 'Candidate'}
+                </p>
+                <p className="text-slate-500">Signature</p>
+              </div>
+              <div>
+                <p className="text-slate-600">
+                  <span className="font-semibold">Date:</span>{' '}
+                  {countryCVInfo.declarationDate ||
+                    new Date().toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
+                </p>
+              </div>
+            </div>
           </section>
         )}
       </div>
     </div>
   );
 };
+
+export default RomaniaProfessionalTemplate;

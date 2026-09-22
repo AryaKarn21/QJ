@@ -242,12 +242,12 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         if (allSkillNames.length === 0) return null;
 
         return (
-          <section className="mt-6 border-b border-slate-200 pb-5 break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2" style={{ breakAfter: 'avoid' }}>
+          <section className="mt-4 border-b border-slate-200 pb-4 break-inside-avoid">
+            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5" style={{ breakAfter: 'avoid' }}>
               <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">SKILLS</h2>
             </div>
-            <div className="text-[9.5px] sm:text-[10px] text-slate-700 leading-relaxed">
+            <div className="text-[10px] text-slate-700 leading-relaxed">
               {allSkillNames.map((skill, idx) => (
                 <span key={idx} className="inline-block">
                   <span className="whitespace-nowrap">{skill}</span>
@@ -263,20 +263,57 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
 
       {/* Certifications & Additional Info */}
       {(resume.certifications?.length || 0) > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
-            Certifications & Training
-          </h2>
-          <div className="pl-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <div className="mt-4 border-b border-slate-200 pb-4 break-inside-avoid">
+          <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
+            <span className="text-slate-500 text-[10px]">●</span>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+              Certifications & Training
+            </h2>
+          </div>
+          <div className="pl-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             {resume.certifications.map((c, i) => (
-              <div key={c._id || i} className="rounded border border-slate-200 p-2.5 bg-slate-50">
+              <div key={c._id || i} className="rounded border border-slate-200 p-2 bg-slate-50">
                 <p className="font-bold text-slate-900">{c.name}</p>
                 <p className="text-slate-500 text-[11px]">{c.issuer} {c.year ? `(${c.year})` : ''}</p>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Declaration */}
+      {countryCVInfo.declaration !== '' && (
+        <section className="mt-4 break-inside-avoid">
+          <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
+            <span className="text-slate-500 text-[10px]">●</span>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+              DECLARATION
+            </h2>
+          </div>
+          <p className="text-[10.5px] font-normal text-slate-700 leading-relaxed">
+            {countryCVInfo.declaration ||
+              'I hereby declare that the information given in this CV is true and honest to my knowledge and belief.'}
+          </p>
+          <div className="mt-3 flex items-end justify-between text-[10px] text-slate-600">
+            <div>
+              <p className="font-semibold text-slate-800">
+                {countryCVInfo.signatureName || personalInfo.fullName || 'Candidate'}
+              </p>
+              <p className="text-slate-500">Signature</p>
+            </div>
+            <div>
+              <p className="text-slate-600">
+                <span className="font-semibold">Date:</span>{' '}
+                {countryCVInfo.declarationDate ||
+                  new Date().toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })}
+              </p>
+            </div>
+          </div>
+        </section>
       )}
     </div>
   );
