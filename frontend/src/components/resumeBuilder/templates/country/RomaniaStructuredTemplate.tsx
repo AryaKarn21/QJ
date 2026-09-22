@@ -208,65 +208,105 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         (countryCVInfo.structuredSoftwareSkills?.length || 0) > 0 ||
         (countryCVInfo.digitalSkills?.length || 0) > 0 ||
         (resume.skills?.length || 0) > 0 ||
-        countryCVInfo.otherSkills) && (
-        <div className="mt-6 border-b border-slate-200 pb-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
-            Skills & Competences
-          </h2>
-          <div className="pl-4 space-y-3">
-            {resume.skills && resume.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {resume.skills.map((s, idx) => (
-                  <span key={idx} className="rounded-md bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-800">
-                    {typeof s === 'string' ? s : s.name}
-                  </span>
-                ))}
-              </div>
-            )}
-            {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
-              (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
-              <div className="text-xs text-slate-700">
-                <span className="font-bold text-slate-900">Digital Skills: </span>
-                {countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0 ? (
-                  <span>
-                    {countryCVInfo.structuredDigitalSkills
-                      .map((s) => {
-                        const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
-                        const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
-                        return name ? `${name}${prof}` : '';
-                      })
-                      .filter(Boolean)
-                      .join(' • ')}
-                  </span>
+        Boolean(countryCVInfo.otherSkills && countryCVInfo.otherSkills.trim())) && (
+        <section className="mt-6 border-b border-slate-200 pb-5 break-inside-avoid">
+          <div className="flex items-center gap-1.5 border-b border-slate-500 pb-0.5 mb-2" style={{ breakAfter: 'avoid' }}>
+            <span className="text-slate-500 text-[10px]">●</span>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">SKILLS</h2>
+          </div>
+          {(() => {
+            const renderSkillRow = (skills: string[], label?: string) => {
+              const filtered = skills.map((s) => s.trim()).filter(Boolean);
+              if (filtered.length === 0) return null;
+              return (
+                <div className="text-[9.5px] sm:text-[10px] text-slate-700 leading-relaxed break-inside-avoid">
+                  {label && (
+                    <span className="font-bold text-slate-900 mr-1.5 inline-block select-none">
+                      {label}:
+                    </span>
+                  )}
+                  {filtered.map((skill, idx) => (
+                    <span key={idx} className="inline-block">
+                      <span className="whitespace-nowrap">{skill}</span>
+                      {idx < filtered.length - 1 && (
+                        <span className="mx-1.5 text-slate-400 font-normal select-none">|</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              );
+            };
+
+            const categoryGroups: Record<string, string[]> = {};
+            const allNames: string[] = [];
+            const categoriesSet = new Set<string>();
+
+            (resume.skills || []).forEach((s) => {
+              const name = (typeof s === 'string' ? s : s?.name || '').trim();
+              if (!name) return;
+              allNames.push(name);
+              const cat = (typeof s === 'object' && s?.category && s.category !== 'Other' ? s.category : '').trim();
+              if (cat) categoriesSet.add(cat);
+              const key = cat || 'General';
+              if (!categoryGroups[key]) categoryGroups[key] = [];
+              categoryGroups[key].push(name);
+            });
+
+            const digitalSkillItems = (countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0
+              ? countryCVInfo.structuredDigitalSkills
+                  .map((s) => {
+                    const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
+                    const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
+                    return name ? `${name}${prof}`.trim() : '';
+                  })
+                  .filter(Boolean)
+              : (countryCVInfo.digitalSkills || []).map((s) => (typeof s === 'string' ? s.trim() : '')).filter(Boolean)
+            );
+
+            const softwareSkillItems = (countryCVInfo.structuredSoftwareSkills || [])
+              .map((s) => {
+                const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
+                const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
+                return name ? `${name}${prof}`.trim() : '';
+              })
+              .filter(Boolean);
+
+            const otherSkillsRaw = (countryCVInfo.otherSkills || '').trim();
+            const otherSkillItems = otherSkillsRaw
+              ? otherSkillsRaw.split(/[,|\n]/).map((s) => s.trim()).filter(Boolean)
+              : [];
+
+            return (
+              <div className="space-y-1 text-[9.5px] sm:text-[10px] text-slate-700 leading-relaxed">
+                {categoriesSet.size > 1 ? (
+                  Object.entries(categoryGroups).map(([cat, items]) => (
+                    <React.Fragment key={cat}>
+                      {renderSkillRow(items, cat === 'General' ? undefined : `${cat} Skills`)}
+                    </React.Fragment>
+                  ))
                 ) : (
-                  <span>{(countryCVInfo.digitalSkills || []).join(' • ')}</span>
+                  renderSkillRow(allNames)
+                )}
+
+                {digitalSkillItems.length > 0 && renderSkillRow(digitalSkillItems, 'Digital Skills')}
+                {softwareSkillItems.length > 0 && renderSkillRow(softwareSkillItems, 'Software Skills')}
+
+                {otherSkillsRaw && (
+                  otherSkillItems.length > 1 ? (
+                    renderSkillRow(otherSkillItems, 'Other Skills')
+                  ) : (
+                    <div className="text-[9.5px] sm:text-[10px] text-slate-700 leading-relaxed break-inside-avoid">
+                      <span className="font-bold text-slate-900 mr-1.5 inline-block select-none">
+                        Other Skills:
+                      </span>
+                      <span>{otherSkillsRaw}</span>
+                    </div>
+                  )
                 )}
               </div>
-            )}
-            {countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0 && (
-              <div className="text-xs text-slate-700">
-                <span className="font-bold text-slate-900">Software Skills: </span>
-                <span>
-                  {countryCVInfo.structuredSoftwareSkills
-                    .map((s) => {
-                      const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
-                      const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
-                      return name ? `${name}${prof}` : '';
-                    })
-                    .filter(Boolean)
-                    .join(' • ')}
-                </span>
-              </div>
-            )}
-            {countryCVInfo.otherSkills && (
-              <div className="text-xs text-slate-700 leading-relaxed">
-                <span className="font-bold text-slate-900">Communication & Organizational Skills:</span>{' '}
-                {countryCVInfo.otherSkills}
-              </div>
-            )}
-          </div>
-        </div>
+            );
+          })()}
+        </section>
       )}
 
       {/* Certifications & Additional Info */}

@@ -348,6 +348,11 @@ class TextPdfWriter {
     this.paragraph(items.join('  •  '));
   }
 
+  pipeList(items: string[]) {
+    if (!items.length) return;
+    this.paragraph(items.join(' | '));
+  }
+
   // Unlike generatePDF() (a flat screenshot — no clickable anything, it's
   // just an image), this export draws real text via jsPDF's native APIs,
   // so a link can be made genuinely clickable with `textWithLink`. Runs
@@ -425,7 +430,7 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
   },
   skills: (w, r) => {
     w.heading('Skills');
-    w.commaList((r.skills || []).map((s) => s.name).filter(Boolean));
+    w.pipeList((r.skills || []).map((s) => (typeof s === 'string' ? s : s.name)).filter(Boolean));
   },
   certifications: (w, r) => {
     w.heading('Certifications');
