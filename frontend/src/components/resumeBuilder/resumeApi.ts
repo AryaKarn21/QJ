@@ -195,6 +195,8 @@ export interface PersonalInfo {
  github?: string;
 }
 
+import type { CountryCVInfo } from './config/countryCVConfigs/types';
+
 // A template id from the template registry (e.g. "ats-harvard"), or one of
 // the 3 legacy layout ids ("modern" | "professional" | "executive") for
 // resumes created before the registry existed. Intentionally a plain
@@ -239,6 +241,11 @@ export interface Resume {
   // than reading them directly.
   sectionOrder: string[];
   hiddenSections: string[];
+
+  // Country-specific CV features
+  countryCode?: string; // 'RO', 'BA', 'QA', etc.
+  countryCVInfo?: CountryCVInfo;
+
   status: 'draft' | 'final';
   createdAt: string;
   updatedAt: string;
@@ -247,7 +254,9 @@ export interface Resume {
 export type ResumeSummary = Pick<
   Resume,
   '_id' | 'title' | 'targetRole' | 'layout' | 'theme' | 'status' | 'updatedAt' | 'createdAt'
->;
+> & {
+  countryCode?: string;
+};
 
 export const getMyResumes = async (): Promise<ResumeSummary[]> => {
   const res = await api.get('/api/resumes');
@@ -264,6 +273,8 @@ export const createResume = async (payload: {
   theme: string;
   title?: string;
   targetRole?: string;
+  countryCode?: string;
+  countryCVInfo?: CountryCVInfo;
 }): Promise<Resume> => {
   const res = await api.post('/api/resumes', payload);
   return res.data;
@@ -271,6 +282,18 @@ export const createResume = async (payload: {
 
 export const updateResume = async (id: string, payload: Partial<Resume>): Promise<Resume> => {
   const res = await api.patch(`/api/resumes/${id}`, payload);
+  return res.data;
+};
+
+export const cloneResume = async (
+  id: string,
+  payload: {
+    targetCountryCode?: string;
+    layout?: string;
+    title?: string;
+  }
+): Promise<Resume> => {
+  const res = await api.post(`/api/resumes/${id}/clone`, payload);
   return res.data;
 };
 

@@ -19,7 +19,14 @@ export type PhotoPosition = 'left-circle' | 'left-square' | 'left-sidebar';
 // categories, so the existing filter set never needs to change. Defined
 // here (not in registry.ts) so base template definitions can reference it
 // without importing the full registry module.
-export type TemplateCategory = 'ATS' | 'Professional' | 'Technology' | 'Student' | 'Creative' | 'Worker';
+export type TemplateCategory =
+  | 'ATS'
+  | 'Professional'
+  | 'Technology'
+  | 'Student'
+  | 'Creative'
+  | 'Worker'
+  | 'Country-Specific';
 
 export function photoPositionLabel(pos: PhotoPosition): string {
   switch (pos) {

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { X, CheckCircle2, HardHat, Sparkles, ArrowLeft, Search, ImageIcon, ImageOff, History } from 'lucide-react';
+import { X, CheckCircle2, HardHat, Sparkles, ArrowLeft, Search, ImageIcon, ImageOff, History, Globe } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useCurrentUser } from '../../utils/currentUser';
 import {
@@ -11,6 +11,8 @@ import {
 import { THEME_PRESETS } from './themePresets';
 import { SAMPLE_RESUME } from './templates/shared/sampleResume';
 import { createResume, updateResume } from './resumeApi';
+import { CountrySelectionHub } from './components/CountrySelectionHub';
+import { CountryCVConfig } from './config/countryCVConfigs';
 
 // Every color/font variant of the same base layout shares a `groupId`
 // (see registry.ts) — grouping by it turns "1,500+ nearly-identical
@@ -108,7 +110,6 @@ interface CardProps {
 const TemplateCard: React.FC<CardProps> = ({ group, activeVariant, onSelectVariant, onPreview, onUse, isLoading }) => {
   const Template = activeVariant.component;
   const displayName = activeVariant.baseName ?? activeVariant.name;
-  const hasColorChoices = group.variants.length > 1;
 
   return (
     <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
@@ -209,6 +210,7 @@ type PhotoFilter = 'all' | 'photo' | 'no-photo';
 
 const CATEGORY_TABS: { label: string; value: CategoryFilter; icon?: React.ReactNode }[] = [
   { label: 'All', value: 'All' },
+  { label: 'Country-Specific CVs', value: 'Country-Specific', icon: <Globe size={13} /> },
   { label: 'ATS', value: 'ATS' },
   { label: 'Professional', value: 'Professional' },
   { label: 'Technology', value: 'Technology' },
@@ -306,6 +308,7 @@ const TemplateGallery: React.FC = () => {
   const { isAuthenticated } = useCurrentUser();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
   const [photoFilter, setPhotoFilter] = useState<PhotoFilter>('all');
+  const [countryFilter, setCountryFilter] = useState<'ALL' | 'RO' | 'BA' | 'QA'>('ALL');
   const [query, setQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [preview, setPreview] = useState<TemplateDefinition | null>(null);
@@ -317,16 +320,21 @@ const TemplateGallery: React.FC = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return TEMPLATE_REGISTRY.filter((t) => {
-      if (activeCategory !== 'All' && t.category !== activeCategory) return false;
+      if (activeCategory !== 'All') {
+        if (t.category !== activeCategory) return false;
+      }
+      if (activeCategory === 'Country-Specific' && countryFilter !== 'ALL' && t.countryCode !== countryFilter) {
+        return false;
+      }
       if (photoFilter === 'photo' && !t.photoSupported) return false;
       if (photoFilter === 'no-photo' && t.photoSupported) return false;
       if (q) {
-        const haystack = [t.name, t.baseName, t.description, ...(t.bestFor || [])].join(' ').toLowerCase();
+        const haystack = [t.name, t.baseName, t.description, t.countryCode, ...(t.bestFor || [])].join(' ').toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
-  }, [activeCategory, photoFilter, query]);
+  }, [activeCategory, countryFilter, photoFilter, query]);
 
   // Default: one card per structurally-distinct design (see
   // groupTemplates) — this is what actually fixes "too many templates
@@ -350,6 +358,35 @@ const TemplateGallery: React.FC = () => {
 
   const resetPaging = () => setVisibleCount(PAGE_SIZE);
 
+  const handleCreateCountryCV = async (country: CountryCVConfig) => {
+    if (!isAuthenticated) {
+      toast.info('Please log in to start building your CV.');
+      navigate('/login', { state: { from: { pathname: '/resume' } } });
+      return;
+    }
+    setLoading(country.defaultTemplateId);
+    try {
+      const resume = await createResume({
+        layout: country.defaultTemplateId,
+        theme: 'violet',
+        countryCode: country.countryCode,
+        title: `My ${country.countryName} CV`,
+      });
+      toast.success(`${country.countryName} CV created!`);
+      navigate(`/resume/${resume._id}/edit`);
+    } catch (err: any) {
+      console.error('Failed to create country CV', err);
+      toast.error(err?.response?.data?.message || 'Failed to create country CV.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handlePreviewCountry = (country: CountryCVConfig) => {
+    const tmpl = TEMPLATE_REGISTRY.find((t) => t.id === country.defaultTemplateId);
+    if (tmpl) setPreview(tmpl);
+  };
+
   const handleUse = async (template: TemplateDefinition) => {
     if (loading) return;
 
@@ -362,12 +399,19 @@ const TemplateGallery: React.FC = () => {
     setLoading(template.id);
     try {
       if (resumeId) {
-        await updateResume(resumeId, { layout: template.id });
+        const patch: any = { layout: template.id };
+        if (template.countryCode) patch.countryCode = template.countryCode;
+        await updateResume(resumeId, patch);
         toast.success(`Switched to "${template.name}".`);
         navigate(`/resume/${resumeId}/edit`);
         return;
       }
-      const resume = await createResume({ layout: template.id, theme: 'violet' });
+      const resume = await createResume({
+        layout: template.id,
+        theme: 'violet',
+        countryCode: template.countryCode || '',
+        title: template.countryCode ? `My ${template.name}` : 'Untitled Resume',
+      });
       navigate(`/resume/${resume._id}/edit`);
     } catch (err: any) {
       console.error('Failed to create resume', err);
@@ -474,6 +518,44 @@ const TemplateGallery: React.FC = () => {
             </button>
           ))}
         </div>
+
+        {/* Country-Specific CV Hub & Sub-filters */}
+        {activeCategory === 'Country-Specific' && (
+          <div className="mt-6">
+            <CountrySelectionHub
+              onSelectCountry={handleCreateCountryCV}
+              onPreviewCountry={handlePreviewCountry}
+              selectedCountryCode={countryFilter === 'ALL' ? null : countryFilter}
+            />
+
+            {/* Country Sub-filter Pills */}
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 mr-1">Filter Templates:</span>
+              {[
+                { label: 'All Countries', value: 'ALL' },
+                { label: 'Romania 🇷🇴', value: 'RO' },
+                { label: 'Bosnia & Herzegovina 🇧🇦', value: 'BA' },
+                { label: 'Qatar 🇶🇦', value: 'QA' },
+              ].map((btn) => (
+                <button
+                  key={btn.value}
+                  type="button"
+                  onClick={() => {
+                    setCountryFilter(btn.value as any);
+                    resetPaging();
+                  }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                    countryFilter === btn.value
+                      ? 'bg-orange-500 text-white shadow-xs shadow-orange-500/25'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:border-orange-300 hover:bg-orange-50/50'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Worker hero banner — show only on Worker tab */}
         {activeCategory === 'Worker' && (

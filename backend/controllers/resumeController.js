@@ -18,7 +18,7 @@ function respondResumeError(res, error, action) {
 const getMyResumes = async (req, res) => {
   try {
     const resumes = await Resume.find({ user: req.user.id })
-      .select("title targetRole layout theme status updatedAt createdAt")
+      .select("title targetRole layout theme status updatedAt createdAt countryCode")
       .sort({ updatedAt: -1 });
     res.json(resumes);
   } catch (error) {
@@ -40,14 +40,16 @@ const getResumeById = async (req, res) => {
 // Create a new resume — called when the user picks a template from the gallery
 const createResume = async (req, res) => {
   try {
-    const { layout, theme, title, targetRole } = req.body;
+    const { layout, theme, title, targetRole, countryCode, countryCVInfo } = req.body;
 
     const resume = await Resume.create({
       user: req.user.id,
       layout: layout || "ats-minimal",
       theme: theme || "violet",
-      title: title || "Untitled Resume",
+      title: title || (countryCode ? `Untitled ${countryCode.toUpperCase()} CV` : "Untitled Resume"),
       targetRole: targetRole || "",
+      countryCode: countryCode || "",
+      countryCVInfo: countryCVInfo || {},
       personalInfo: { fullName: req.user.name || "", email: req.user.email || "" },
     });
 
@@ -91,6 +93,8 @@ const UPDATABLE_FIELDS = [
   "workerInfo",
   "workerCategoryId",
   "languageMode",
+  "countryCode",
+  "countryCVInfo",
   "status",
 ];
 
@@ -112,6 +116,37 @@ const updateResume = async (req, res) => {
   }
 };
 
+// Clone an existing resume — copies all experience, education, skills, etc.
+// into a new resume (optionally targeting a new country CV format)
+const cloneResume = async (req, res) => {
+  try {
+    const sourceResume = await Resume.findOne({ _id: req.params.id, user: req.user.id });
+    if (!sourceResume) return res.status(404).json({ message: "Resume not found" });
+
+    const { targetCountryCode, layout, title } = req.body;
+    const cloned = sourceResume.toObject();
+    delete cloned._id;
+    delete cloned.createdAt;
+    delete cloned.updatedAt;
+
+    cloned.countryCode = targetCountryCode !== undefined ? targetCountryCode : (cloned.countryCode || "");
+    if (layout) cloned.layout = layout;
+    if (title) {
+      cloned.title = title;
+    } else {
+      const candidateName = cloned.personalInfo?.fullName || "My Resume";
+      const countrySuffix = cloned.countryCode ? ` - ${cloned.countryCode.toUpperCase()} CV` : " (Copy)";
+      cloned.title = `${candidateName}${countrySuffix}`;
+    }
+    cloned.status = "draft";
+
+    const newResume = await Resume.create(cloned);
+    res.status(201).json(newResume);
+  } catch (error) {
+    respondResumeError(res, error, "cloning");
+  }
+};
+
 const deleteResume = async (req, res) => {
   try {
     const resume = await Resume.findOneAndDelete({ _id: req.params.id, user: req.user.id });
@@ -122,4 +157,4 @@ const deleteResume = async (req, res) => {
   }
 };
 
-module.exports = { getMyResumes, getResumeById, createResume, updateResume, deleteResume };
+module.exports = { getMyResumes, getResumeById, createResume, updateResume, cloneResume, deleteResume };

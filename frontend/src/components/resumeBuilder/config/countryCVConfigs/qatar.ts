@@ -1,0 +1,102 @@
+import { CountryCVConfig } from './types';
+
+export const qatarConfig: CountryCVConfig = {
+  countryCode: 'QA',
+  countryName: 'Qatar',
+  flag: '🇶🇦',
+  marketType: 'Gulf-region professional CV',
+  styleSubtitle: 'Recruiter-focused format',
+  badge: 'Gulf Market Adapted',
+  description:
+    'Tailored for hiring managers and recruiters in Qatar and the GCC region, highlighting key candidate status and core competencies.',
+  disclaimer: 'Adapted format commonly used for professional applications in Qatar and the Gulf region.',
+  defaultTemplateId: 'qa-professional',
+  templateIds: ['qa-professional', 'qa-executive', 'qa-ats', 'qa-modern'],
+  features: {
+    hasCEFRGrid: false,
+    hasDigitalSkills: true,
+    hasGulfFields: true,
+    hasDrivingLicense: true,
+    hasMemberships: true,
+  },
+  optionalFields: [
+    'nationality',
+    'photo',
+    'currentLocation',
+    'noticePeriod',
+    'visaStatus',
+    'availability',
+    'drivingLicense',
+    'memberships',
+  ],
+  sections: [
+    {
+      id: 'personalInfo',
+      name: 'Personal Information & Recruiter Snapshot',
+      description: 'Contact info, current location, nationality, and professional links.',
+      required: true,
+      helpText: 'Recruiters in the Gulf region look for current location and contact channels upfront.',
+    },
+    {
+      id: 'availability',
+      name: 'Availability & Work Status',
+      description: 'Notice period, earliest start date, and work/visa authorization status.',
+      required: false,
+      helpText: 'Optional information to clarify your onboarding readiness (e.g., Transferable Visa with NOC, Immediate Availability).',
+    },
+    {
+      id: 'summary',
+      name: 'Executive / Professional Summary',
+      description: 'Concise, high-impact summary highlighting years of experience and leadership/technical domain.',
+      required: false,
+    },
+    {
+      id: 'coreSkills',
+      name: 'Core Competencies & Key Skills',
+      description: 'Prominent skill chips showcasing your primary functional domains.',
+      required: false,
+    },
+    {
+      id: 'experience',
+      name: 'Professional Experience',
+      description: 'Chronological roles detailing scope, key achievements, and delivered value.',
+      required: true,
+    },
+    {
+      id: 'education',
+      name: 'Education & Qualifications',
+      description: 'University degrees, awarding institutions, countries, and graduation dates.',
+      required: true,
+    },
+    {
+      id: 'certifications',
+      name: 'Certifications & Accreditations',
+      description: 'Industry certifications (e.g. PMP, CFA, AWS, OSHA) and credentials.',
+      required: false,
+    },
+    {
+      id: 'memberships',
+      name: 'Professional Memberships',
+      description: 'Engineering councils, bar associations, or chartered professional bodies.',
+      required: false,
+    },
+    {
+      id: 'languages',
+      name: 'Languages',
+      description: 'Languages spoken and written (e.g. Arabic, English, Urdu, Hindi, Tagalog, etc.).',
+      required: false,
+    },
+    {
+      id: 'drivingLicense',
+      name: 'Driving License',
+      description: 'Valid Qatar / GCC or international driving license details.',
+      required: false,
+    },
+    {
+      id: 'projects',
+      name: 'Key Projects & Assignments',
+      description: 'Significant infrastructure, technology, or business transformation initiatives.',
+      required: false,
+    },
+  ],
+};

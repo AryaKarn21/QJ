@@ -39,8 +39,6 @@ interface User {
     createdAt: string;
 }
 
-import { resolveMediaUrl } from "../../utils/mediaUrl";
-
 const UsersProfile = () => {
     const { id } = useParams<{ id: string }>();
     const [user, setUser] = useState<User | null>(null);

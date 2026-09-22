@@ -47,6 +47,16 @@ import { HospitalityFoodTemplate } from './worker/HospitalityFoodTemplate';
 import { HealthcareSupportTemplate } from './worker/HealthcareSupportTemplate';
 import { RetailCustomerServiceTemplate } from './worker/RetailCustomerServiceTemplate';
 
+// Country-Specific Templates
+import { RomaniaProfessionalTemplate } from './country/RomaniaProfessionalTemplate';
+import { RomaniaStructuredTemplate } from './country/RomaniaStructuredTemplate';
+import { RomaniaAtsTemplate } from './country/RomaniaAtsTemplate';
+import { BosniaProfessionalTemplate } from './country/BosniaProfessionalTemplate';
+import { BosniaAtsTemplate } from './country/BosniaAtsTemplate';
+import { QatarProfessionalTemplate } from './country/QatarProfessionalTemplate';
+import { QatarExecutiveTemplate } from './country/QatarExecutiveTemplate';
+import { QatarAtsTemplate } from './country/QatarAtsTemplate';
+
 // Re-exported from variantTypes.ts (the base-template generator's shared
 // type module) so every existing import of `TemplateCategory` from this
 // file keeps working unchanged.
@@ -56,6 +66,7 @@ export interface TemplateDefinition {
   id: string;
   name: string;
   category: TemplateCategory;
+  countryCode?: string;
   atsFriendly: boolean;
   description: string;
   component: React.FC<{ resume: Resume }>;
@@ -435,6 +446,146 @@ const HAND_WRITTEN_TEMPLATES: TemplateDefinition[] = [
   },
 ];
 
+export const COUNTRY_SPECIFIC_TEMPLATES: TemplateDefinition[] = [
+  // ── Romania 🇷🇴 ────────────────────────────────────────────────────────────
+  {
+    id: 'ro-professional',
+    name: 'Romania Professional',
+    category: 'Country-Specific',
+    countryCode: 'RO',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-circle',
+    bestFor: ['Romania', 'Europe', 'Multinational', 'Corporate'],
+    description: 'Structured European layout adapted for Romania with CEFR language rating bars and digital skills.',
+    component: RomaniaProfessionalTemplate,
+  },
+  {
+    id: 'ro-structured',
+    name: 'Romania Europass-Inspired',
+    category: 'Country-Specific',
+    countryCode: 'RO',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-square',
+    bestFor: ['Romania', 'Europe', 'EU Institutions', 'Academic'],
+    description: 'Modular European-style section blocks with CEFR language proficiency matrix.',
+    component: RomaniaStructuredTemplate,
+  },
+  {
+    id: 'ro-ats',
+    name: 'Romania ATS',
+    category: 'Country-Specific',
+    countryCode: 'RO',
+    atsFriendly: true,
+    photoSupported: false,
+    photoLayout: 'none',
+    bestFor: ['Romania', 'Europe', 'ATS', 'Direct Apply'],
+    description: 'ATS-optimized single-column European format with high parser readability.',
+    component: RomaniaAtsTemplate,
+  },
+  {
+    id: 'ro-modern',
+    name: 'Romania Modern',
+    category: 'Country-Specific',
+    countryCode: 'RO',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-circle',
+    bestFor: ['Romania', 'Europe', 'Tech', 'Startups'],
+    description: 'Clean modern layout adapted for technology and multinational Romanian applications.',
+    component: RomaniaProfessionalTemplate,
+  },
+
+  // ── Bosnia & Herzegovina 🇧🇦 ───────────────────────────────────────────────
+  {
+    id: 'ba-professional',
+    name: 'Bosnia Professional',
+    category: 'Country-Specific',
+    countryCode: 'BA',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-circle',
+    bestFor: ['Bosnia & Herzegovina', 'Balkans', 'Corporate', 'Public Sector'],
+    description: 'Clean European-style CV adapted for Bosnia & Herzegovina employers and regional organizations.',
+    component: BosniaProfessionalTemplate,
+  },
+  {
+    id: 'ba-ats',
+    name: 'Bosnia ATS',
+    category: 'Country-Specific',
+    countryCode: 'BA',
+    atsFriendly: true,
+    photoSupported: false,
+    photoLayout: 'none',
+    bestFor: ['Bosnia & Herzegovina', 'ATS', 'Parser Safe'],
+    description: 'ATS-compliant Bosnian format formatted for institutional and corporate applications.',
+    component: BosniaAtsTemplate,
+  },
+  {
+    id: 'ba-modern',
+    name: 'Bosnia Modern',
+    category: 'Country-Specific',
+    countryCode: 'BA',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-circle',
+    bestFor: ['Bosnia & Herzegovina', 'Modern', 'Bilingual'],
+    description: 'Contemporary European design with optional personal details and driving license.',
+    component: BosniaProfessionalTemplate,
+  },
+
+  // ── Qatar 🇶🇦 ─────────────────────────────────────────────────────────────
+  {
+    id: 'qa-professional',
+    name: 'Qatar Professional',
+    category: 'Country-Specific',
+    countryCode: 'QA',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-circle',
+    bestFor: ['Qatar', 'Gulf', 'GCC', 'Recruiter-focused'],
+    description: 'Recruiter-focused Gulf layout highlighting current location, visa status, notice period, and core skills.',
+    component: QatarProfessionalTemplate,
+  },
+  {
+    id: 'qa-executive',
+    name: 'Qatar Executive',
+    category: 'Country-Specific',
+    countryCode: 'QA',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-square',
+    bestFor: ['Qatar', 'Gulf', 'Executive', 'Leadership', 'Director'],
+    description: 'Executive leadership Gulf layout highlighting strategic competencies, achievements, and affiliations.',
+    component: QatarExecutiveTemplate,
+  },
+  {
+    id: 'qa-ats',
+    name: 'Qatar ATS',
+    category: 'Country-Specific',
+    countryCode: 'QA',
+    atsFriendly: true,
+    photoSupported: false,
+    photoLayout: 'none',
+    bestFor: ['Qatar', 'Gulf', 'Corporate Portals', 'ATS'],
+    description: 'ATS-friendly format tailored for Gulf corporate applicant tracking systems.',
+    component: QatarAtsTemplate,
+  },
+  {
+    id: 'qa-modern',
+    name: 'Qatar Modern',
+    category: 'Country-Specific',
+    countryCode: 'QA',
+    atsFriendly: false,
+    photoSupported: true,
+    photoLayout: 'left-circle',
+    bestFor: ['Qatar', 'Gulf', 'Tech', 'Engineering'],
+    description: 'Modern Gulf professional format for tech, engineering, and corporate roles.',
+    component: QatarProfessionalTemplate,
+  },
+];
+
 /**
  * Composes the full base × theme × photo-position cross product into
  * individually selectable TemplateDefinition entries — this is what takes
@@ -500,7 +651,11 @@ const GENERATED_TEMPLATES: TemplateDefinition[] = generateTemplateVariants();
  * `getTemplateById`/`getTemplatesByCategory` below need no changes to
  * support this — they already just search whatever array this is.
  */
-export const TEMPLATE_REGISTRY: TemplateDefinition[] = [...HAND_WRITTEN_TEMPLATES, ...GENERATED_TEMPLATES];
+export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
+  ...COUNTRY_SPECIFIC_TEMPLATES,
+  ...HAND_WRITTEN_TEMPLATES,
+  ...GENERATED_TEMPLATES,
+];
 
 export function getTemplateById(id: string): TemplateDefinition | undefined {
   return TEMPLATE_REGISTRY.find((t) => t.id === id);

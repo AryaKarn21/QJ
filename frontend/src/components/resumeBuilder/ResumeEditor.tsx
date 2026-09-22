@@ -39,6 +39,8 @@ import { generatePDF, generateAtsSafePDF } from './utils/pdfGenerator';
 import ImageUpload from './components/ImageUpload';
 import { AtsAnalysisPanel } from './components/AtsAnalysisPanel';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
+import { CountrySpecificFieldsEditor } from './components/CountrySpecificFieldsEditor';
+import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -402,6 +404,11 @@ const ResumeEditor: React.FC = () => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showAtsPanel, setShowAtsPanel] = useState(false);
   const [downloadingAtsSafePdf, setDownloadingAtsSafePdf] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
+
+  const effectiveCountryCode =
+    resume?.countryCode || (resume ? getCountryByTemplateId(resume.layout)?.countryCode : '') || '';
+  const countryConfig = getCountryConfig(effectiveCountryCode);
 
   const previewScaleValue =
     (resume?.fontScale ?? 1) * (SPACING_SCALE[resume?.spacing || 'standard'] ?? 1);
@@ -597,22 +604,59 @@ const ResumeEditor: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 lg:flex-row print:block">
+      {/* Mobile Tab Switcher (Edit CV vs Live Preview) */}
+      <div className="flex lg:hidden sticky top-0 z-40 bg-white border-b border-slate-200 p-2.5 justify-center gap-3 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setMobileTab('edit')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+            mobileTab === 'edit'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          ✏️ Edit CV
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('preview')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+            mobileTab === 'preview'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          👁️ Live Preview
+        </button>
+      </div>
 
       {/* ── Form panel ── */}
-      <div className="w-full space-y-6 overflow-y-auto border-b border-slate-200 bg-white p-5 lg:h-dvh lg:w-1/2 lg:border-b-0 lg:border-r print:hidden">
+      <div
+        className={`w-full space-y-6 overflow-y-auto border-b border-slate-200 bg-white p-5 lg:h-dvh lg:w-1/2 lg:border-b-0 lg:border-r print:hidden ${
+          mobileTab === 'preview' ? 'hidden lg:block' : 'block'
+        }`}
+      >
 
         {/* Top bar — wraps on narrow screens instead of overflowing
             horizontally now that there are 5 action buttons + Back. */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <button onClick={() => navigate('/resume')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-            <ArrowLeft size={15} /> Back
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/resume')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+              <ArrowLeft size={15} /> Back
+            </button>
+            {countryConfig && (
+              <span className="flex items-center gap-1.5 rounded-lg bg-orange-50 border border-orange-200/90 px-2.5 py-1 text-xs font-semibold text-orange-700">
+                <span>{countryConfig.flag}</span>
+                <span>{countryConfig.countryName} CV</span>
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => navigate('/resume/history')} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
               <History size={13} /> Saved Resumes
             </button>
             <SaveIndicator state={saveState} />
-            <button onClick={handleManualSave} className="flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100">
+            <button onClick={handleManualSave} className="flex items-center gap-1.5 rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100">
               <Save size={13} /> Save
             </button>
             <button onClick={handleDownloadPDF} disabled={downloadingPdf} className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-60">
@@ -769,6 +813,20 @@ const ResumeEditor: React.FC = () => {
           <label className={labelClass}>Target Role</label>
           <input className={fieldClass} placeholder="e.g. Frontend Engineer" value={resume.targetRole} onChange={(e) => update({ targetRole: e.target.value })} />
         </div>
+
+        {/* Country-Specific Custom Fields (CEFR Languages, Recruiter Availability, etc.) */}
+        {effectiveCountryCode && (
+          <CountrySpecificFieldsEditor
+            countryCode={effectiveCountryCode}
+            countryCVInfo={resume.countryCVInfo}
+            onChange={(patch) =>
+              update({
+                countryCVInfo: { ...(resume.countryCVInfo || {}), ...patch },
+                countryCode: effectiveCountryCode,
+              })
+            }
+          />
+        )}
 
         {/* Personal Information */}
         <Section title="Personal Information">
@@ -1117,7 +1175,11 @@ const ResumeEditor: React.FC = () => {
           box (so the visual page formatting stays correct, matching the
           PDF) instead of the fixed-width content blowing out the page's
           width and causing whole-page horizontal scroll. */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto bg-slate-100 p-6 lg:h-dvh print:bg-white print:p-0 print:overflow-visible">
+      <div
+        className={`flex-1 overflow-x-auto overflow-y-auto bg-slate-100 p-6 lg:h-dvh print:bg-white print:p-0 print:overflow-visible ${
+          mobileTab === 'edit' ? 'hidden lg:block' : 'block'
+        }`}
+      >
         {/* At the default font size/spacing (scale 1) both wrapper styles
             below are `undefined` — this renders byte-for-byte the same DOM
             styling as before the Customize feature existed, so nobody who

@@ -186,6 +186,56 @@ const LanguageSchema = new mongoose.Schema(
   { _id: true }
 );
 
+// Detailed CEFR Language rating (Listening, Reading, Spoken Interaction, Spoken Production, Writing)
+// used for European-style CVs (Romania, Bosnia & Herzegovina, etc.)
+const CefrLanguageSchema = new mongoose.Schema(
+  {
+    language: { type: String, default: "" },
+    listening: { type: String, default: "B2" },
+    reading: { type: String, default: "B2" },
+    spokenInteraction: { type: String, default: "B2" },
+    spokenProduction: { type: String, default: "B2" },
+    writing: { type: String, default: "B2" },
+  },
+  { _id: true }
+);
+
+const MembershipSchema = new mongoose.Schema(
+  {
+    organization: { type: String, default: "" },
+    membershipType: { type: String, default: "" },
+    year: { type: String, default: "" },
+  },
+  { _id: true }
+);
+
+const CountryCVInfoSchema = new mongoose.Schema(
+  {
+    dateOfBirth: { type: String, default: "" },
+    nationality: { type: String, default: "" },
+    address: { type: String, default: "" },
+    city: { type: String, default: "" },
+    country: { type: String, default: "" },
+    postalCode: { type: String, default: "" },
+    drivingLicense: { type: String, default: "" },
+    motherTongue: { type: String, default: "" },
+    cefrLanguages: [CefrLanguageSchema],
+    digitalSkills: [{ type: String }],
+    otherSkills: { type: String, default: "" },
+    currentLocation: { type: String, default: "" },
+    noticePeriod: { type: String, default: "" },
+    visaStatus: { type: String, default: "" },
+    availability: { type: String, default: "" },
+    memberships: [MembershipSchema],
+    drivingLicenseDetails: {
+      licenseType: { type: String, default: "" },
+      country: { type: String, default: "" },
+      expiryDate: { type: String, default: "" },
+    },
+  },
+  { _id: false }
+);
+
 
 // Skills used to be a flat string array. They're now objects so a skill can
 // carry a category + proficiency level. See backend/scripts/migrateResumeSkills.js
@@ -272,6 +322,11 @@ const ResumeSchema = new mongoose.Schema(
       // boxes but shouldn't be asked to write descriptions.
       simpleSkills: [{ type: String }],
     },
+
+    // Country-specific CV configuration
+    // 'RO' (Romania), 'BA' (Bosnia & Herzegovina), 'QA' (Qatar), etc.
+    countryCode: { type: String, default: "" },
+    countryCVInfo: { type: CountryCVInfoSchema, default: () => ({}) },
 
     // Optional links into the existing CRM entities, so a resume can be
     // tied to who it's for and where it's going. All optional — set only
