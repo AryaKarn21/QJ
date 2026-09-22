@@ -19,14 +19,14 @@ export const bosniaConfig: CountryCVConfig = {
     hasDrivingLicense: true,
     hasMemberships: false,
   },
-  optionalFields: ['dateOfBirth', 'nationality', 'photo', 'address', 'drivingLicense'],
+  optionalFields: ['dateOfBirth', 'photo', 'address', 'drivingLicense'],
   sections: [
     {
       id: 'personalInfo',
       name: 'Personal Information',
-      description: 'Contact details, city, and optional personal information.',
+      description: 'Contact details, city, and personal information.',
       required: true,
-      helpText: 'Date of birth, nationality, and photograph are optional and never required by default.',
+      helpText: 'Nationality is mandatory. Date of birth and photograph are optional.',
     },
     {
       id: 'summary',

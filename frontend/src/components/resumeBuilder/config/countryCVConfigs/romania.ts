@@ -19,14 +19,14 @@ export const romaniaConfig: CountryCVConfig = {
     hasDrivingLicense: true,
     hasMemberships: false,
   },
-  optionalFields: ['dateOfBirth', 'nationality', 'photo', 'address', 'drivingLicense'],
+  optionalFields: ['dateOfBirth', 'photo', 'address', 'drivingLicense'],
   sections: [
     {
       id: 'personalInfo',
       name: 'Personal Information',
-      description: 'Contact details, location, and optional personal data.',
+      description: 'Contact details, location, and personal data.',
       required: true,
-      helpText: 'Date of birth, nationality, and photo are optional depending on employer requirements.',
+      helpText: 'Nationality is mandatory. Date of birth and photo are optional depending on employer requirements.',
     },
     {
       id: 'summary',

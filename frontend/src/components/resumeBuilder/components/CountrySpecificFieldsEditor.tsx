@@ -130,6 +130,20 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             </div>
 
             <div>
+              <label className={labelClass}>
+                Nationality <span className="text-red-500 font-bold">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                className={fieldClass}
+                placeholder="e.g. Nepali, Indian, Filipino, British"
+                value={countryCVInfo.nationality || ''}
+                onChange={(e) => onChange({ nationality: e.target.value })}
+              />
+            </div>
+
+            <div>
               <label className={labelClass}>Visa / Work Status (Optional)</label>
               <input
                 type="text"
@@ -143,18 +157,32 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
       )}
 
-      {/* European / Romanian / Bosnian Optional Personal Details */}
+      {/* European / Romanian / Bosnian Personal Details */}
       {isEuropean && (
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
             <Globe size={13} className="text-orange-500" />
-            Optional European Details
+            European Personal Details
           </h4>
           <p className="text-[11px] text-slate-500">
-            These fields are common in European-style CVs. You may leave any field blank if not requested by the employer.
+            Nationality is mandatory for international and European CV applications. Date of birth and address are optional.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>
+                Nationality <span className="text-red-500 font-bold">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                className={fieldClass}
+                placeholder="e.g. Romanian, Bosnian, Nepali"
+                value={countryCVInfo.nationality || ''}
+                onChange={(e) => onChange({ nationality: e.target.value })}
+              />
+            </div>
+
             <div>
               <label className={labelClass}>Date of Birth (Optional)</label>
               <input
@@ -163,17 +191,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                 placeholder="e.g. 15/05/1995 or May 15, 1995"
                 value={countryCVInfo.dateOfBirth || ''}
                 onChange={(e) => onChange({ dateOfBirth: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>Nationality (Optional)</label>
-              <input
-                type="text"
-                className={fieldClass}
-                placeholder="e.g. Romanian, Bosnian, Nepali"
-                value={countryCVInfo.nationality || ''}
-                onChange={(e) => onChange({ nationality: e.target.value })}
               />
             </div>
 
