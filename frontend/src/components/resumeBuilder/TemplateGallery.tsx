@@ -110,6 +110,7 @@ interface CardProps {
 const TemplateCard: React.FC<CardProps> = ({ group, activeVariant, onSelectVariant, onPreview, onUse, isLoading }) => {
   const Template = activeVariant.component;
   const displayName = activeVariant.baseName ?? activeVariant.name;
+  const hasColorChoices = group.variants.length > 1;
 
   return (
     <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
