@@ -26,6 +26,12 @@ async function appendDocumentAppendix(
   const fontBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
   const fontNormal = await mergedPdf.embedFont(StandardFonts.Helvetica);
 
+  const token = localStorage.getItem('token');
+  const authHeaders: Record<string, string> = {};
+  if (token) {
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   for (const doc of appendixDocs) {
     try {
       const isPdf =
@@ -34,7 +40,7 @@ async function appendDocumentAppendix(
         doc.fileUrl.toLowerCase().includes('.pdf?');
 
       if (isPdf) {
-        const res = await fetch(doc.fileUrl);
+        const res = await fetch(doc.fileUrl, { headers: authHeaders });
         const donorBytes = await res.arrayBuffer();
         const donorPdf = await PDFDocument.load(donorBytes);
         const copiedPages = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
@@ -42,7 +48,7 @@ async function appendDocumentAppendix(
           mergedPdf.addPage(page);
         }
       } else {
-        const res = await fetch(doc.fileUrl);
+        const res = await fetch(doc.fileUrl, { headers: authHeaders });
         const imgBytes = await res.arrayBuffer();
         let embeddedImg;
 
@@ -429,8 +435,27 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     });
   },
   skills: (w, r) => {
+    const allSkills: string[] = [];
+    const seen = new Set<string>();
+    const addSkill = (name?: string) => {
+      if (!name) return;
+      const clean = name.replace(/\s*\([^)]*\)/g, '').trim();
+      if (clean && !seen.has(clean.toLowerCase())) {
+        seen.add(clean.toLowerCase());
+        allSkills.push(clean);
+      }
+    };
+    (r.skills || []).forEach((s) => addSkill(typeof s === 'string' ? s : s?.name));
+    const c = r.countryCVInfo;
+    if (c) {
+      (c.structuredDigitalSkills || []).forEach((s) => addSkill(typeof s === 'object' ? s.name || s.skill : s));
+      (c.digitalSkills || []).forEach((s) => addSkill(typeof s === 'string' ? s : (s as any)?.name));
+      (c.structuredSoftwareSkills || []).forEach((s) => addSkill(typeof s === 'object' ? s.name || s.skill : s));
+      if (c.otherSkills) c.otherSkills.split(/[,|\n]/).forEach(addSkill);
+    }
+    if (allSkills.length === 0) return;
     w.heading('Skills');
-    w.pipeList((r.skills || []).map((s) => (typeof s === 'string' ? s : s.name)).filter(Boolean));
+    w.pipeList(allSkills);
   },
   certifications: (w, r) => {
     w.heading('Certifications');

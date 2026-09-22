@@ -123,53 +123,46 @@ export const RomaniaAtsTemplate: React.FC<Props> = ({ resume }) => {
       </section>
 
       {/* Skills */}
-      {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
-        (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0) ||
-        (countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0) ||
-        (resume.skills && resume.skills.length > 0)) ? (
-        <section className="mt-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-black border-b border-slate-400 pb-0.5 mb-1.5">
-            Skills & Competencies
-          </h2>
-          <div className="text-xs text-slate-800 space-y-1">
-            {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
-              (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
-              <p>
-                <strong>Digital Skills:</strong>{' '}
-                {countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0
-                  ? countryCVInfo.structuredDigitalSkills
-                      .map((s) => {
-                        const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
-                        const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
-                        return name ? `${name}${prof}` : '';
-                      })
-                      .filter(Boolean)
-                      .join(', ')
-                  : (countryCVInfo.digitalSkills || []).join(', ')}
-              </p>
-            )}
-            {countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0 && (
-              <p>
-                <strong>Software Skills:</strong>{' '}
-                {countryCVInfo.structuredSoftwareSkills
-                  .map((s) => {
-                    const name = typeof s === 'object' ? (s.name || s.skill || '') : s;
-                    const prof = typeof s === 'object' && s.proficiency ? ` (${s.proficiency})` : '';
-                    return name ? `${name}${prof}` : '';
-                  })
-                  .filter(Boolean)
-                  .join(', ')}
-              </p>
-            )}
-            {resume.skills && resume.skills.length > 0 && (
-              <p><strong>Technical & Professional:</strong> {resume.skills.map((s) => s.name).join(', ')}</p>
-            )}
-            {countryCVInfo.drivingLicense && (
-              <p><strong>Driving License:</strong> {countryCVInfo.drivingLicense}</p>
-            )}
-          </div>
+      {(() => {
+        const allSkillNames: string[] = [];
+        const seen = new Set<string>();
+
+        const addSkill = (raw?: string) => {
+          if (!raw) return;
+          const cleaned = raw.replace(/\s*\([^)]*\)/g, '').trim();
+          if (!cleaned) return;
+          const lower = cleaned.toLowerCase();
+          if (!seen.has(lower)) {
+            seen.add(lower);
+            allSkillNames.push(cleaned);
+          }
+        };
+
+        (resume.skills || []).forEach((s) => addSkill(typeof s === 'string' ? s : s?.name));
+        (countryCVInfo.structuredDigitalSkills || []).forEach((s) => addSkill(typeof s === 'object' ? s.name || s.skill : s));
+        (countryCVInfo.digitalSkills || []).forEach((s) => addSkill(typeof s === 'string' ? s : (s as any)?.name));
+        (countryCVInfo.structuredSoftwareSkills || []).forEach((s) => addSkill(typeof s === 'object' ? s.name || s.skill : s));
+        if (countryCVInfo.otherSkills) countryCVInfo.otherSkills.split(/[,|\n]/).forEach(addSkill);
+
+        if (allSkillNames.length === 0) return null;
+
+        return (
+          <section className="mt-4 break-inside-avoid">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-black border-b border-slate-400 pb-0.5 mb-1.5">
+              Skills
+            </h2>
+            <p className="text-xs text-slate-800 leading-relaxed">
+              {allSkillNames.join(' | ')}
+            </p>
+          </section>
+        );
+      })()}
+      {/* Driving license */}
+      {countryCVInfo.drivingLicense && (
+        <section className="mt-3 text-xs text-slate-800">
+          <p><strong>Driving License:</strong> {countryCVInfo.drivingLicense}</p>
         </section>
-      ) : null}
+      )}
 
       {/* Certifications */}
       {resume.certifications && resume.certifications.length > 0 && (

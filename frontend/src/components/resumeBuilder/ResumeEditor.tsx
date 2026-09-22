@@ -42,11 +42,10 @@ import { AtsAnalysisPanel } from './components/AtsAnalysisPanel';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 import { CountrySpecificFieldsEditor } from './components/CountrySpecificFieldsEditor';
 import { DocumentManager } from './components/DocumentManager';
-import { AttachedDocumentsPreview } from './components/AttachedDocumentsPreview';
 import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
 import { CvCompletionBar } from './components/CvCompletionBar';
-import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
 import { TargetRoleSelect } from './components/TargetRoleSelect';
+import { UniversalSkillsEditor } from './components/UniversalSkillsEditor';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -450,8 +449,37 @@ const ResumeEditor: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     getResumeById(id).then((data) => {
-      setResume(data);
-      resumeRef.current = data;
+      const skills = [...(data.skills || [])];
+      const existingNames = new Set(
+        skills.map((s) => (typeof s === 'string' ? s : s.name || '').trim().toLowerCase())
+      );
+      const c = data.countryCVInfo;
+      if (c) {
+        (c.structuredDigitalSkills || []).forEach((s) => {
+          const name = (typeof s === 'object' ? s.name || s.skill : s || '').trim();
+          if (name && !existingNames.has(name.toLowerCase())) {
+            skills.push({ name, category: 'Other', level: 'Intermediate' });
+            existingNames.add(name.toLowerCase());
+          }
+        });
+        (c.digitalSkills || []).forEach((s) => {
+          const clean = typeof s === 'string' ? s.replace(/\s*\([^)]*\)/g, '').trim() : '';
+          if (clean && !existingNames.has(clean.toLowerCase())) {
+            skills.push({ name: clean, category: 'Other', level: 'Intermediate' });
+            existingNames.add(clean.toLowerCase());
+          }
+        });
+        (c.structuredSoftwareSkills || []).forEach((s) => {
+          const name = (typeof s === 'object' ? s.name || s.skill : s || '').trim();
+          if (name && !existingNames.has(name.toLowerCase())) {
+            skills.push({ name, category: 'Other', level: 'Intermediate' });
+            existingNames.add(name.toLowerCase());
+          }
+        });
+      }
+      const normalizedData = { ...data, skills };
+      setResume(normalizedData);
+      resumeRef.current = normalizedData;
       setLoading(false);
     });
   }, [id]);
@@ -1180,7 +1208,7 @@ const ResumeEditor: React.FC = () => {
 
         {/* Skills */}
         <Section title="Skills">
-          <SkillsInput skills={resume.skills} onChange={(skills) => update({ skills })} />
+          <UniversalSkillsEditor skills={resume.skills || []} onChange={(skills) => update({ skills })} />
         </Section>
 
         {/* References */}
@@ -1243,9 +1271,6 @@ const ResumeEditor: React.FC = () => {
             <TemplateRenderer resume={resume} />
           </div>
         </div>
-
-        {/* ── Attached Supporting Documents Live Preview (Passport, Certificates, etc.) ── */}
-        <AttachedDocumentsPreview documents={resume.documents || []} />
       </div>
 
     </div>
