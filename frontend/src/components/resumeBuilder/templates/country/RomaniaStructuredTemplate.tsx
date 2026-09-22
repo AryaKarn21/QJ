@@ -107,7 +107,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
                   {formatDateRange(exp.startDate, exp.endDate, exp.current)}
                 </div>
                 <div className="md:col-span-9">
-                  <h3 className="font-bold text-sm text-slate-900">{exp.role}</h3>
+                  <h3 className="font-bold text-sm text-slate-900">{exp.role || exp.title || ''}</h3>
                   <p className="font-semibold text-orange-600">
                     {exp.company}{exp.location ? ` • ${exp.location}` : ''}
                   </p>
@@ -152,46 +152,35 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         </div>
       )}
 
-      {/* Language Skills (Europass CEFR Matrix) */}
+      {/* Language Skills (Simplified 2-Column Table) */}
       {(countryCVInfo.motherTongue ||
         (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
         (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
         (resume.languages && resume.languages.length > 0)) && (() => {
-        const displayLanguages = (
-          countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
-            ? countryCVInfo.cefrLanguages
-            : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
-            ? countryCVInfo.simpleLanguages.map((l) => {
-                const lvl = (l as any).level || (l as any).cefrLevel || 'B2';
-                return {
-                  language: l.language,
-                  listening: lvl,
-                  reading: lvl,
-                  spokenProduction: lvl,
-                  spokenInteraction: lvl,
-                  writing: lvl,
-                };
-              })
-            : (resume.languages || []).map((l) => {
-                const lvl = l.level || 'B2';
-                return {
-                  language: l.name,
-                  listening: lvl,
-                  reading: lvl,
-                  spokenProduction: lvl,
-                  spokenInteraction: lvl,
-                  writing: lvl,
-                };
-              })
+        const displayLanguages: { language: string; level: string }[] = (
+          countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+            ? countryCVInfo.simpleLanguages.map((l) => ({
+                language: l.language,
+                level: (l as any).level || (l as any).cefrLevel || 'B2',
+              }))
+            : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+            ? countryCVInfo.cefrLanguages.map((l) => ({
+                language: l.language,
+                level: l.listening || l.reading || l.spokenProduction || l.spokenInteraction || l.writing || 'B2',
+              }))
+            : (resume.languages || []).map((l) => ({
+                language: l.name,
+                level: l.level || 'B2',
+              }))
         ).filter((l) => Boolean(l.language && l.language.trim()));
 
         return (
-          <div className="mt-6 border-b border-slate-200 pb-5">
+          <div className="mt-6 border-b border-slate-200 pb-5 break-inside-avoid">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
               Language Skills
             </h2>
-            <div className="pl-4 space-y-3">
+            <div className="pl-4 space-y-2">
               {countryCVInfo.motherTongue && (
                 <p className="text-xs">
                   <span className="font-bold text-slate-700">Mother tongue(s):</span>{' '}
@@ -200,51 +189,27 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
               )}
 
               {displayLanguages.length > 0 && (
-                <div className="overflow-x-auto border-t border-b border-slate-200 py-1.5">
-                  <table className="w-full text-center text-[10.5px]">
+                <div className="max-w-md overflow-x-auto">
+                  <table className="w-full text-left text-[11px] border border-slate-300">
                     <thead>
-                      <tr className="border-b border-slate-300 font-bold uppercase text-slate-800 text-[10px] tracking-wide">
-                        <th className="py-1 text-left w-28"></th>
-                        <th colSpan={2} className="py-1 border-r border-slate-200">
-                          UNDERSTANDING
-                        </th>
-                        <th colSpan={2} className="py-1 border-r border-slate-200">
-                          SPEAKING
-                        </th>
-                        <th className="py-1">WRITING</th>
-                      </tr>
-                      <tr className="text-[9.5px] text-slate-500 border-b border-slate-200">
-                        <th className="py-1 text-left"></th>
-                        <th className="py-1 font-normal">Listening</th>
-                        <th className="py-1 font-normal border-r border-slate-200">Reading</th>
-                        <th className="py-1 font-normal">Spoken production</th>
-                        <th className="py-1 font-normal border-r border-slate-200">Spoken interaction</th>
-                        <th className="py-1 font-normal"></th>
+                      <tr className="border-b border-slate-300 bg-slate-50 font-bold uppercase text-slate-800 text-[10px] tracking-wide">
+                        <th className="py-1.5 px-3 border-r border-slate-300">Language</th>
+                        <th className="py-1.5 px-3">CEFR Level</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200">
                       {displayLanguages.map((lang, idx) => (
-                        <tr
-                          key={idx}
-                          className="border-t border-b border-slate-200 bg-slate-50/70 font-medium"
-                        >
-                          <td className="py-2 px-3 text-left font-bold uppercase text-slate-900 text-[11px]">
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="py-1.5 px-3 font-semibold text-slate-900 border-r border-slate-300 uppercase">
                             {lang.language}
                           </td>
-                          <td className="py-2 text-slate-800">{lang.listening}</td>
-                          <td className="py-2 text-slate-800 border-r border-slate-100">{lang.reading}</td>
-                          <td className="py-2 text-slate-800">{lang.spokenProduction}</td>
-                          <td className="py-2 text-slate-800 border-r border-slate-100">
-                            {lang.spokenInteraction}
+                          <td className="py-1.5 px-3 font-medium text-slate-800">
+                            {lang.level}
                           </td>
-                          <td className="py-2 text-slate-800">{lang.writing}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <p className="mt-1.5 text-[9.5px] text-slate-400 italic">
-                    Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user
-                  </p>
                 </div>
               )}
             </div>

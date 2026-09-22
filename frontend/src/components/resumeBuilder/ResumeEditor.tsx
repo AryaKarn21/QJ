@@ -70,6 +70,35 @@ const SPACING_PRESETS: { value: 'compact' | 'standard' | 'relaxed'; label: strin
 ];
 const SPACING_SCALE: Record<string, number> = { compact: 0.97, standard: 1, relaxed: 1.05 };
 
+const TARGET_ROLE_OPTIONS = [
+  'Data Entry Operator',
+  'Frontend Engineer',
+  'Backend Developer',
+  'Full Stack Developer',
+  'Software Engineer',
+  'Mobile App Developer',
+  'DevOps Engineer',
+  'Dairy Production Worker',
+  'Factory / Production Worker',
+  'Warehouse Worker / Handler',
+  'General Construction Worker',
+  'Electrician',
+  'Plumber / Pipefitter',
+  'Welder / Fabricator',
+  'Driver / Heavy Equipment Operator',
+  'Chef / Cook / Kitchen Helper',
+  'Waiter / Hospitality Staff',
+  'Housekeeping / Cleaner',
+  'Security Guard',
+  'Customer Support Representative',
+  'Sales Executive / Retail Assistant',
+  'Accountant / Cashier',
+  'Administrative Assistant / Clerk',
+  'HR Assistant / Officer',
+  'Nurse / Caregiver',
+  'Other',
+];
+
 const emptyExperience: ExperienceEntry = {
   role: '', company: '', companyId: null, location: '',
   startDate: '', endDate: '', current: false, description: '',
@@ -837,7 +866,43 @@ const ResumeEditor: React.FC = () => {
         </div>
         <div>
           <label className={labelClass}>Target Role</label>
-          <input className={fieldClass} placeholder="e.g. Frontend Engineer" value={resume.targetRole} onChange={(e) => update({ targetRole: e.target.value })} />
+          <div className="space-y-2">
+            <select
+              className={fieldClass}
+              value={
+                TARGET_ROLE_OPTIONS.filter((r) => r !== 'Other').includes(resume.targetRole)
+                  ? resume.targetRole
+                  : resume.targetRole ? 'Other' : ''
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'Other') {
+                  if (TARGET_ROLE_OPTIONS.includes(resume.targetRole)) {
+                    update({ targetRole: '' });
+                  }
+                } else {
+                  update({ targetRole: val });
+                }
+              }}
+            >
+              <option value="">Select Target Role…</option>
+              {TARGET_ROLE_OPTIONS.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+
+            {(!TARGET_ROLE_OPTIONS.filter((r) => r !== 'Other').includes(resume.targetRole) ||
+              resume.targetRole === '') && (
+              <input
+                className={fieldClass}
+                placeholder="Type target role (e.g. Dairy Production Worker, Frontend Engineer)"
+                value={resume.targetRole || ''}
+                onChange={(e) => update({ targetRole: e.target.value })}
+              />
+            )}
+          </div>
         </div>
 
         {/* Country-Specific Custom Fields (CEFR Languages, Recruiter Availability, etc.) */}
@@ -935,8 +1000,8 @@ const ResumeEditor: React.FC = () => {
           {resume.experience.map((exp, i) => (
             <EntryCard key={exp._id || i} removeLabel="Remove experience" onRemove={() => update({ experience: resume.experience.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <input className={fieldClass} placeholder="Role / Job Title" value={exp.role}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { role: e.target.value })} />
+                <input className={fieldClass} placeholder="Role / Job Title" value={exp.role || exp.title || ''}
+                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { role: e.target.value, title: e.target.value })} />
                 <input className={fieldClass} placeholder="Company" value={exp.company}
                   onChange={(e) => updateArrayItem(resume, update, 'experience', i, { company: e.target.value, companyId: null })} />
                 <input className={fieldClass} placeholder="Location" value={exp.location}

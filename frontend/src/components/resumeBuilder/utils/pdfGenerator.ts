@@ -147,7 +147,7 @@ export const generatePDF = async (
   const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF('p', 'mm', 'a4');
   const imgWidth = 210;
-  const pageHeight = 295;
+  const pageHeight = 297;
   const imgHeight = (canvas.height * imgWidth) / canvas.width;
   let heightLeft = imgHeight;
 
@@ -156,7 +156,8 @@ export const generatePDF = async (
   pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
   heightLeft -= pageHeight;
 
-  while (heightLeft >= 0) {
+  // Only create a second page if there is genuine remaining content (> 5mm)
+  while (heightLeft > 5) {
     position = heightLeft - imgHeight;
     pdf.addPage();
     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
