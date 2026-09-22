@@ -278,14 +278,11 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             </select>
           </div>
 
-          {/* Street / Work Address * */}
+          {/* Street / Work Address */}
           <div>
-            <label className={labelClass}>
-              Street / Work Address <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>Street / Work Address</label>
             <input
               type="text"
-              required
               className={fieldClass}
               placeholder="e.g. Str. Victoriei nr. 12 / Qatar (Work)"
               value={countryCVInfo.address || ''}
@@ -300,14 +297,12 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             country={countryCVInfo.country || ''}
             city={countryCVInfo.city || ''}
             postalCode={countryCVInfo.postalCode || ''}
-            onCountryChange={(val) => onChange({ country: val })}
-            onCityChange={(val) => onChange({ city: val })}
-            onPostalCodeChange={(val) => onChange({ postalCode: val })}
+            onLocationChange={(patch) => onChange(patch)}
           />
         </div>
       </div>
 
-      {/* 2. DRIVING LICENSE (REQUIRED) */}
+      {/* 2. DRIVING LICENSE */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
         <div className="flex items-center gap-2">
           <Car size={16} className="text-orange-500" />
@@ -317,16 +312,13 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {/* License Type * */}
+          {/* License Type */}
           <div>
-            <label className={labelClass}>
-              License Type <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>License Category / Type</label>
             <select
               className={fieldClass}
               value={drivingDetails.licenseType || ''}
               onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
-              required
             >
               <option value="">Select License Type…</option>
               {DRIVING_LICENSE_TYPES.map((lt) => (
@@ -337,16 +329,13 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             </select>
           </div>
 
-          {/* Country * */}
+          {/* Country */}
           <div>
-            <label className={labelClass}>
-              Issuing Country <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>Issuing Country</label>
             <select
               className={fieldClass}
               value={drivingDetails.country || ''}
               onChange={(e) => updateDrivingDetails({ country: e.target.value })}
-              required
             >
               <option value="">Select Country…</option>
               {SUPPORTED_COUNTRIES_LIST.map((c) => (
@@ -357,14 +346,11 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             </select>
           </div>
 
-          {/* License Number * */}
+          {/* License Number */}
           <div>
-            <label className={labelClass}>
-              License Number <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>License Number</label>
             <input
               type="text"
-              required
               className={fieldClass}
               placeholder="e.g. 29452441140"
               value={drivingDetails.licenseNumber || ''}
@@ -372,14 +358,11 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             />
           </div>
 
-          {/* Issue Date * */}
+          {/* Issue Date */}
           <div>
-            <label className={labelClass}>
-              Issue Date <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>Issue Date</label>
             <input
               type="text"
-              required
               className={fieldClass}
               placeholder="DD/MM/YYYY (e.g. 15/08/2020)"
               value={drivingDetails.issueDate || ''}
@@ -387,14 +370,11 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             />
           </div>
 
-          {/* Expiry Date * */}
+          {/* Expiry Date */}
           <div className="sm:col-span-2">
-            <label className={labelClass}>
-              Expiry Date <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>Expiry Date</label>
             <input
               type="text"
-              required
               className={fieldClass}
               placeholder="DD/MM/YYYY (e.g. 17/08/2027)"
               value={drivingDetails.expiryDate || ''}
