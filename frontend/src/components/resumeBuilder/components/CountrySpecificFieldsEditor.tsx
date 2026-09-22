@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
-import { Globe, Plus, Trash2, Clock, Car, FileText } from 'lucide-react';
-import { getCountryConfig, CountryCVInfo, ProfessionalMembership } from '../config/countryCVConfigs';
-import { CefrLanguageEditor } from './CefrLanguageEditor';
+import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor } from 'lucide-react';
+import { getCountryConfig, CountryCVInfo, ProfessionalMembership, SimpleLanguageItem, StructuredSkillItem } from '../config/countryCVConfigs';
 import { NationalitySelect } from './NationalitySelect';
+import { CascadingLocationSelect } from './CascadingLocationSelect';
 import { GENDER_OPTIONS } from '../config/countryCVConfigs/nationalities';
 import { isValidDateOfBirth } from '../config/countryCVConfigs/fieldValidation';
+import {
+  LANGUAGES_LIST,
+  CEFR_LEVELS,
+  DIGITAL_SKILLS_LIST,
+  SOFTWARE_SKILLS_LIST,
+  SKILL_PROFICIENCIES,
+  DRIVING_LICENSE_TYPES,
+} from '../config/skillsAndLanguagesData';
+import { SUPPORTED_COUNTRIES_LIST } from '../config/locationData';
 
 interface CountrySpecificFieldsEditorProps {
   countryCode: string;
@@ -22,7 +31,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
   onChange,
 }) => {
   const config = getCountryConfig(countryCode);
-  const [digitalSkillDraft, setDigitalSkillDraft] = useState('');
 
   if (!config) return null;
 
@@ -31,29 +39,114 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
 
   const dobValidation = isValidDateOfBirth(countryCVInfo.dateOfBirth || '');
 
+  // ── Driving License Details ──
+  const drivingDetails = countryCVInfo.drivingLicenseDetails || {
+    licenseType: countryCVInfo.drivingLicense || '',
+    country: countryCVInfo.country || '',
+    licenseNumber: '',
+    issueDate: '',
+    expiryDate: '',
+  };
+
+  const updateDrivingDetails = (patch: Record<string, string>) => {
+    const next = { ...drivingDetails, ...patch };
+    onChange({
+      drivingLicenseDetails: next,
+      drivingLicense: next.licenseType,
+    });
+  };
+
+  // ── Language Skills (Streamlined Language + CEFR Level) ──
+  // Initialize with mother tongue or default if empty
+  const languages: SimpleLanguageItem[] = countryCVInfo.simpleLanguages || [
+    { language: countryCVInfo.motherTongue || 'English', cefrLevel: 'B2' },
+  ];
+
+  const addLanguage = () => {
+    const available = LANGUAGES_LIST.find((l) => !languages.some((item) => item.language === l)) || 'English';
+    const next = [...languages, { language: available, cefrLevel: 'B1' }];
+    onChange({
+      simpleLanguages: next,
+      motherTongue: next[0]?.language || countryCVInfo.motherTongue,
+    });
+  };
+
+  const updateLanguage = (idx: number, patch: Partial<SimpleLanguageItem>) => {
+    const next = [...languages];
+    next[idx] = { ...next[idx], ...patch };
+    onChange({
+      simpleLanguages: next,
+      motherTongue: next[0]?.language || countryCVInfo.motherTongue,
+    });
+  };
+
+  const removeLanguage = (idx: number) => {
+    const next = languages.filter((_, i) => i !== idx);
+    onChange({
+      simpleLanguages: next,
+      motherTongue: next[0]?.language || '',
+    });
+  };
+
+  // ── Digital Skills (Dropdown + Proficiency) ──
+  const digitalSkills: StructuredSkillItem[] = countryCVInfo.structuredDigitalSkills || [];
+
   const addDigitalSkill = () => {
-    const val = digitalSkillDraft.trim();
-    if (!val) return;
-    const current = countryCVInfo.digitalSkills || [];
-    if (!current.includes(val)) {
-      onChange({ digitalSkills: [...current, val] });
-    }
-    setDigitalSkillDraft('');
+    const available =
+      DIGITAL_SKILLS_LIST.find((s) => !digitalSkills.some((item) => item.name === s)) ||
+      DIGITAL_SKILLS_LIST[0];
+    const next = [...digitalSkills, { name: available, proficiency: 'Advanced' }];
+    onChange({
+      structuredDigitalSkills: next,
+      digitalSkills: next.map((d) => `${d.name} (${d.proficiency})`),
+    });
   };
 
-  const removeDigitalSkill = (skill: string) => {
-    const current = countryCVInfo.digitalSkills || [];
-    onChange({ digitalSkills: current.filter((s) => s !== skill) });
+  const updateDigitalSkill = (idx: number, patch: Partial<StructuredSkillItem>) => {
+    const next = [...digitalSkills];
+    next[idx] = { ...next[idx], ...patch };
+    onChange({
+      structuredDigitalSkills: next,
+      digitalSkills: next.map((d) => `${d.name} (${d.proficiency})`),
+    });
   };
 
+  const removeDigitalSkill = (idx: number) => {
+    const next = digitalSkills.filter((_, i) => i !== idx);
+    onChange({
+      structuredDigitalSkills: next,
+      digitalSkills: next.map((d) => `${d.name} (${d.proficiency})`),
+    });
+  };
+
+  // ── Software Skills (Dropdown + Proficiency) ──
+  const softwareSkills: StructuredSkillItem[] = countryCVInfo.structuredSoftwareSkills || [];
+
+  const addSoftwareSkill = () => {
+    const available =
+      SOFTWARE_SKILLS_LIST.find((s) => !softwareSkills.some((item) => item.name === s)) ||
+      SOFTWARE_SKILLS_LIST[0];
+    const next = [...softwareSkills, { name: available, proficiency: 'Advanced' }];
+    onChange({ structuredSoftwareSkills: next });
+  };
+
+  const updateSoftwareSkill = (idx: number, patch: Partial<StructuredSkillItem>) => {
+    const next = [...softwareSkills];
+    next[idx] = { ...next[idx], ...patch };
+    onChange({ structuredSoftwareSkills: next });
+  };
+
+  const removeSoftwareSkill = (idx: number) => {
+    const next = softwareSkills.filter((_, i) => i !== idx);
+    onChange({ structuredSoftwareSkills: next });
+  };
+
+  // ── Memberships (for Gulf/Qatar) ──
   const addMembership = () => {
     const current = countryCVInfo.memberships || [];
-    const newEntry: ProfessionalMembership = {
-      organization: '',
-      membershipType: 'Member',
-      year: '',
-    };
-    onChange({ memberships: [...current, newEntry] });
+    onChange({
+      memberships: [...current, { organization: '', membershipType: 'Member', year: '' }],
+    });
   };
 
   const updateMembership = (idx: number, patch: Partial<ProfessionalMembership>) => {
@@ -65,20 +158,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
   const removeMembership = (idx: number) => {
     const current = countryCVInfo.memberships || [];
     onChange({ memberships: current.filter((_, i) => i !== idx) });
-  };
-
-  const updateDrivingDetails = (patch: Record<string, string>) => {
-    const current = countryCVInfo.drivingLicenseDetails || {
-      licenseType: countryCVInfo.drivingLicense || '',
-      country: '',
-      licenseNumber: '',
-      expiryDate: '',
-    };
-    const next = { ...current, ...patch };
-    onChange({
-      drivingLicenseDetails: next,
-      drivingLicense: next.licenseType || countryCVInfo.drivingLicense,
-    });
   };
 
   return (
@@ -94,7 +173,8 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
               {config.countryName} CV Specifics & Required Details
             </h3>
             <p className="text-[11px] text-slate-500">
-              {config.disclaimer} • All core fields marked with <span className="text-red-500 font-bold">*</span> are required.
+              {config.disclaimer} • Complete every field marked with{' '}
+              <span className="text-red-500 font-bold">*</span>.
             </p>
           </div>
         </div>
@@ -103,14 +183,29 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </span>
       </div>
 
-      {/* Mandatory Personal Demographic Details */}
+      {/* 1. PERSONAL INFORMATION */}
       <div className="space-y-3">
         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
           <Globe size={13} className="text-orange-500" />
-          Mandatory Personal & Demographic Information
+          Personal Information
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Passport Number * */}
+          <div>
+            <label className={labelClass}>
+              Passport Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={fieldClass}
+              placeholder="e.g. PA4439019"
+              value={countryCVInfo.passportNumber || ''}
+              onChange={(e) => onChange({ passportNumber: e.target.value })}
+            />
+          </div>
+
           {/* Date of Birth * */}
           <div>
             <label className={labelClass}>
@@ -158,7 +253,7 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <NationalitySelect
               value={countryCVInfo.nationality || ''}
               onChange={(val) => onChange({ nationality: val })}
-              placeholder="Select Nationality (e.g. Nepalese, Romanian)…"
+              placeholder="Select Nationality…"
               required
             />
           </div>
@@ -183,21 +278,7 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             </select>
           </div>
 
-          {/* Passport Number (Optional / Displayed in Header if present) */}
-          <div>
-            <label className={labelClass}>
-              Passport Number <span className="text-slate-400 text-[10px] font-normal">(Optional metadata)</span>
-            </label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="e.g. PA4439019"
-              value={countryCVInfo.passportNumber || ''}
-              onChange={(e) => onChange({ passportNumber: e.target.value })}
-            />
-          </div>
-
-          {/* Street Address * */}
+          {/* Street / Work Address * */}
           <div>
             <label className={labelClass}>
               Street / Work Address <span className="text-red-500">*</span>
@@ -206,59 +287,347 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
               type="text"
               required
               className={fieldClass}
-              placeholder="e.g. Str. Victoriei nr. 12 / Doha (Work)"
+              placeholder="e.g. Str. Victoriei nr. 12 / Qatar (Work)"
               value={countryCVInfo.address || ''}
               onChange={(e) => onChange({ address: e.target.value })}
             />
           </div>
+        </div>
 
-          {/* City * */}
+        {/* Cascading Country → City → Postal Code */}
+        <div className="pt-2">
+          <CascadingLocationSelect
+            country={countryCVInfo.country || ''}
+            city={countryCVInfo.city || ''}
+            postalCode={countryCVInfo.postalCode || ''}
+            onCountryChange={(val) => onChange({ country: val })}
+            onCityChange={(val) => onChange({ city: val })}
+            onPostalCodeChange={(val) => onChange({ postalCode: val })}
+          />
+        </div>
+      </div>
+
+      {/* 2. DRIVING LICENSE (REQUIRED) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <Car size={16} className="text-orange-500" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+            DRIVING LICENSE
+          </h4>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* License Type * */}
           <div>
             <label className={labelClass}>
-              City <span className="text-red-500">*</span>
+              License Type <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              required
+            <select
               className={fieldClass}
-              placeholder="e.g. Bucharest / Doha / Kathmandu"
-              value={countryCVInfo.city || ''}
-              onChange={(e) => onChange({ city: e.target.value })}
-            />
+              value={drivingDetails.licenseType || ''}
+              onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
+              required
+            >
+              <option value="">Select License Type…</option>
+              {DRIVING_LICENSE_TYPES.map((lt) => (
+                <option key={lt} value={lt}>
+                  {lt}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Country * */}
           <div>
             <label className={labelClass}>
-              Country <span className="text-red-500">*</span>
+              Issuing Country <span className="text-red-500">*</span>
+            </label>
+            <select
+              className={fieldClass}
+              value={drivingDetails.country || ''}
+              onChange={(e) => updateDrivingDetails({ country: e.target.value })}
+              required
+            >
+              <option value="">Select Country…</option>
+              {SUPPORTED_COUNTRIES_LIST.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* License Number * */}
+          <div>
+            <label className={labelClass}>
+              License Number <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               className={fieldClass}
-              placeholder="e.g. Romania / Qatar / Nepal"
-              value={countryCVInfo.country || ''}
-              onChange={(e) => onChange({ country: e.target.value })}
+              placeholder="e.g. 29452441140"
+              value={drivingDetails.licenseNumber || ''}
+              onChange={(e) => updateDrivingDetails({ licenseNumber: e.target.value })}
             />
           </div>
 
-          {/* Postal Code * */}
+          {/* Issue Date * */}
           <div>
             <label className={labelClass}>
-              Postal Code <span className="text-slate-500 text-[10.5px] font-normal">(if applicable)</span>
+              Issue Date <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
+              required
               className={fieldClass}
-              placeholder="e.g. 010021"
-              value={countryCVInfo.postalCode || ''}
-              onChange={(e) => onChange({ postalCode: e.target.value })}
+              placeholder="DD/MM/YYYY (e.g. 15/08/2020)"
+              value={drivingDetails.issueDate || ''}
+              onChange={(e) => updateDrivingDetails({ issueDate: e.target.value })}
+            />
+          </div>
+
+          {/* Expiry Date * */}
+          <div className="sm:col-span-2">
+            <label className={labelClass}>
+              Expiry Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              className={fieldClass}
+              placeholder="DD/MM/YYYY (e.g. 17/08/2027)"
+              value={drivingDetails.expiryDate || ''}
+              onChange={(e) => updateDrivingDetails({ expiryDate: e.target.value })}
             />
           </div>
         </div>
       </div>
 
-      {/* Gulf / Qatar Recruiter Availability & Status */}
+      {/* 3. LANGUAGE SKILLS (STREAMLINED LANGUAGE + CEFR DROPDOWN ONLY) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe size={16} className="text-orange-500" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              LANGUAGE SKILLS
+            </h4>
+          </div>
+          <button
+            type="button"
+            onClick={addLanguage}
+            className="flex items-center gap-1 rounded-md bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-600 hover:bg-orange-100"
+          >
+            <Plus size={12} /> Add Language
+          </button>
+        </div>
+
+        <p className="text-[11px] text-slate-500">
+          Select language and CEFR proficiency level (A1 to C2). The first language represents your mother tongue / primary language.
+        </p>
+
+        <div className="space-y-2 pt-1">
+          {languages.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5"
+            >
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
+                  Language {idx === 0 ? '(Primary / Mother Tongue)' : ''} *
+                </label>
+                <select
+                  className={fieldClass}
+                  value={item.language}
+                  onChange={(e) => updateLanguage(idx, { language: e.target.value })}
+                  required
+                >
+                  <option value="">Select Language…</option>
+                  {LANGUAGES_LIST.map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-36">
+                <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
+                  CEFR Level *
+                </label>
+                <select
+                  className={fieldClass}
+                  value={item.cefrLevel}
+                  onChange={(e) => updateLanguage(idx, { cefrLevel: e.target.value as any })}
+                  required
+                >
+                  <option value="">Select Level…</option>
+                  {CEFR_LEVELS.map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {languages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeLanguage(idx)}
+                  className="rounded-md p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 mt-4"
+                  title="Remove Language"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. DIGITAL SKILLS (DROPDOWN + PROFICIENCY) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Monitor size={16} className="text-orange-500" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              DIGITAL SKILLS
+            </h4>
+          </div>
+          <button
+            type="button"
+            onClick={addDigitalSkill}
+            className="flex items-center gap-1 rounded-md bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-600 hover:bg-orange-100"
+          >
+            <Plus size={12} /> Add Digital Skill
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {digitalSkills.length === 0 ? (
+            <p className="text-[11px] text-slate-400 italic">
+              Click "+ Add Digital Skill" to select digital competencies (e.g. Microsoft Office, Google Workspace).
+            </p>
+          ) : (
+            digitalSkills.map((ds, idx) => (
+              <div
+                key={idx}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5"
+              >
+                <div className="flex-1 min-w-[150px]">
+                  <select
+                    className={fieldClass}
+                    value={ds.name}
+                    onChange={(e) => updateDigitalSkill(idx, { name: e.target.value })}
+                    required
+                  >
+                    {DIGITAL_SKILLS_LIST.map((skill) => (
+                      <option key={skill} value={skill}>
+                        {skill}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-36">
+                  <select
+                    className={fieldClass}
+                    value={ds.proficiency}
+                    onChange={(e) => updateDigitalSkill(idx, { proficiency: e.target.value as any })}
+                    required
+                  >
+                    {SKILL_PROFICIENCIES.map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeDigitalSkill(idx)}
+                  className="rounded-md p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                  title="Remove Skill"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 5. SOFTWARE SKILLS (DROPDOWN + PROFICIENCY) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Code2 size={16} className="text-orange-500" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              SOFTWARE SKILLS
+            </h4>
+          </div>
+          <button
+            type="button"
+            onClick={addSoftwareSkill}
+            className="flex items-center gap-1 rounded-md bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-600 hover:bg-orange-100"
+          >
+            <Plus size={12} /> Add Software Skill
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {softwareSkills.length === 0 ? (
+            <p className="text-[11px] text-slate-400 italic">
+              Click "+ Add Software Skill" to add applications and platforms (e.g. Microsoft Excel, Photoshop, AutoCAD).
+            </p>
+          ) : (
+            softwareSkills.map((ss, idx) => (
+              <div
+                key={idx}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5"
+              >
+                <div className="flex-1 min-w-[150px]">
+                  <select
+                    className={fieldClass}
+                    value={ss.name}
+                    onChange={(e) => updateSoftwareSkill(idx, { name: e.target.value })}
+                    required
+                  >
+                    {SOFTWARE_SKILLS_LIST.map((soft) => (
+                      <option key={soft} value={soft}>
+                        {soft}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-36">
+                  <select
+                    className={fieldClass}
+                    value={ss.proficiency}
+                    onChange={(e) => updateSoftwareSkill(idx, { proficiency: e.target.value as any })}
+                    required
+                  >
+                    {SKILL_PROFICIENCIES.map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeSoftwareSkill(idx)}
+                  className="rounded-md p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                  title="Remove Software"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 6. Gulf Recruiter Status (If Qatar) */}
       {isGulf && (
         <div className="space-y-3 pt-3 border-t border-orange-200/70">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -314,153 +683,12 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
       )}
 
-      {/* DRIVING LICENSE: THE ONLY OPTIONAL FIELD */}
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Car size={15} className="text-slate-500" />
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-              Driving License
-            </span>
-            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">
-              Optional
-            </span>
-          </div>
-          {countryCVInfo.drivingLicense && (
-            <button
-              type="button"
-              onClick={() =>
-                onChange({
-                  drivingLicense: '',
-                  drivingLicenseDetails: undefined,
-                })
-              }
-              className="text-[11px] text-red-500 hover:underline"
-            >
-              Clear License
-            </button>
-          )}
-        </div>
-        <p className="text-[11px] text-slate-500">
-          This is the only optional section. Leave empty if you do not hold a driving license. If left blank, this section is completely hidden from the generated CV and will never trigger an error.
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          <div>
-            <label className={labelClass}>License Category / Type</label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder={isGulf ? 'e.g. Qatar Light Vehicle Driving License' : 'e.g. Category B, European Driving Licence'}
-              value={countryCVInfo.drivingLicenseDetails?.licenseType || countryCVInfo.drivingLicense || ''}
-              onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Issuing Country</label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="e.g. Romania / Qatar / Nepal"
-              value={countryCVInfo.drivingLicenseDetails?.country || ''}
-              onChange={(e) => updateDrivingDetails({ country: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>License Number (Optional)</label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="e.g. 29452441140"
-              value={countryCVInfo.drivingLicenseDetails?.licenseNumber || ''}
-              onChange={(e) => updateDrivingDetails({ licenseNumber: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Expiry Date (Optional)</label>
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="e.g. 17/08/2027"
-              value={countryCVInfo.drivingLicenseDetails?.expiryDate || ''}
-              onChange={(e) => updateDrivingDetails({ expiryDate: e.target.value })}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* CEFR Language Editor (for Romania & Bosnia) */}
-      {config.features.hasCEFRGrid && (
-        <div className="pt-2 border-t border-orange-200/60">
-          <CefrLanguageEditor
-            motherTongue={countryCVInfo.motherTongue}
-            onMotherTongueChange={(val) => onChange({ motherTongue: val })}
-            cefrLanguages={countryCVInfo.cefrLanguages}
-            onCefrLanguagesChange={(langs) => onChange({ cefrLanguages: langs })}
-          />
-        </div>
-      )}
-
-      {/* Digital Skills (European formats) */}
-      {config.features.hasDigitalSkills && (
-        <div className="pt-2 border-t border-orange-200/60 space-y-2">
-          <label className={labelClass}>Digital & Software Skills (Chips)</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              className={fieldClass}
-              placeholder="e.g. Microsoft Excel, SAP, Python, Docker, Figma"
-              value={digitalSkillDraft}
-              onChange={(e) => setDigitalSkillDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addDigitalSkill();
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={addDigitalSkill}
-              className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700 shrink-0"
-            >
-              Add
-            </button>
-          </div>
-          {(countryCVInfo.digitalSkills || []).length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {countryCVInfo.digitalSkills!.map((skill) => (
-                <span
-                  key={skill}
-                  className="flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-700 shadow-2xs"
-                >
-                  {skill}
-                  <button
-                    type="button"
-                    onClick={() => removeDigitalSkill(skill)}
-                    className="text-slate-400 hover:text-red-500 ml-0.5"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Declaration Section */}
+      {/* 7. DECLARATION */}
       <div className="pt-2 border-t border-orange-200/60 space-y-2">
         <div className="flex items-center gap-1.5">
           <FileText size={13} className="text-orange-500" />
           <label className={labelClass}>Declaration Statement</label>
         </div>
-        <p className="text-[11px] text-slate-500">
-          Standard declaration for European-style CVs confirming the honesty and accuracy of all submitted details.
-        </p>
         <textarea
           rows={2}
           className={fieldClass}
@@ -473,18 +701,13 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         />
       </div>
 
-      {/* Professional Memberships (for Qatar) */}
+      {/* 8. Professional Memberships (for Qatar) */}
       {config.features.hasMemberships && (
         <div className="pt-2 border-t border-orange-200/60 space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Professional Memberships & Accreditations
-              </h4>
-              <p className="text-[11px] text-slate-500">
-                e.g. Qatar Society of Engineers, Chartered Institute, Bar Association.
-              </p>
-            </div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              Professional Memberships
+            </h4>
             <button
               type="button"
               onClick={addMembership}
@@ -495,7 +718,10 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
           </div>
 
           {(countryCVInfo.memberships || []).map((m, idx) => (
-            <div key={idx} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5">
+            <div
+              key={idx}
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5"
+            >
               <input
                 type="text"
                 className={`${fieldClass} flex-2`}

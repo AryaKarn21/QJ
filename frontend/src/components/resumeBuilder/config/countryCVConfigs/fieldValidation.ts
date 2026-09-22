@@ -57,42 +57,83 @@ export const isValidDateOfBirth = (dob: string): { valid: boolean; message?: str
 export const validateCountryCV = (resume: Resume, templateHasPhoto: boolean = true): CVValidationResult => {
   const p = resume.personalInfo || ({} as any);
   const c = resume.countryCVInfo || {};
+  const d = c.drivingLicenseDetails || {};
 
   const dobValidation = isValidDateOfBirth(c.dateOfBirth || '');
   const emailValid = Boolean(p.email && isValidEmail(p.email));
   const phoneValid = Boolean(p.phone && p.phone.trim().length >= 6);
   const fullNameValid = Boolean(p.fullName && p.fullName.trim().length >= 2);
-  const targetRoleValid = Boolean((resume.targetRole && resume.targetRole.trim().length >= 2) || (resume.title && resume.title !== 'Untitled Resume'));
+  const targetRoleValid = Boolean(
+    (resume.targetRole && resume.targetRole.trim().length >= 2) ||
+      (resume.title && resume.title !== 'Untitled Resume')
+  );
+  const passportValid = Boolean(c.passportNumber && c.passportNumber.trim().length >= 3);
   const placeOfBirthValid = Boolean(c.placeOfBirth && c.placeOfBirth.trim().length >= 2);
   const nationalityValid = Boolean(c.nationality && c.nationality.trim().length >= 2);
   const genderValid = Boolean(c.gender && c.gender.trim().length >= 2);
-  const addressValid = Boolean((c.address && c.address.trim().length >= 2) || (p.location && p.location.trim().length >= 2));
+  const addressValid = Boolean(
+    (c.address && c.address.trim().length >= 2) ||
+      (p.location && p.location.trim().length >= 2)
+  );
   const cityValid = Boolean(c.city && c.city.trim().length >= 2);
   const countryValid = Boolean(c.country && c.country.trim().length >= 2);
+  const postalCodeValid = Boolean(c.postalCode && c.postalCode.trim().length >= 2);
   const summaryValid = Boolean(resume.summary && resume.summary.trim().length >= 15);
   const photoValid = !templateHasPhoto || Boolean(p.photo && p.photo.trim().length > 0);
-  
-  const experienceValid = Boolean(resume.experience && resume.experience.length > 0 && resume.experience.some(e => e.company && e.title));
-  const educationValid = Boolean(resume.education && resume.education.length > 0 && resume.education.some(ed => ed.institution || ed.degree));
-  const languagesValid = Boolean(c.motherTongue && c.motherTongue.trim().length >= 2) || (Boolean(resume.languages && resume.languages.length > 0));
-  const skillsValid = Boolean((resume.skills && resume.skills.length > 0) || (c.digitalSkills && c.digitalSkills.length > 0));
+
+  // Driving license is REQUIRED
+  const drivingLicenseValid = Boolean(
+    (d.licenseType || c.drivingLicense) &&
+      (d.country || c.country) &&
+      d.licenseNumber &&
+      d.licenseNumber.trim().length >= 3 &&
+      d.issueDate &&
+      d.expiryDate
+  );
+
+  // Experience, Education, Languages, Skills
+  const experienceValid = Boolean(
+    resume.experience &&
+      resume.experience.length > 0 &&
+      resume.experience.some((e) => e.company && (e as any).role || e.title)
+  );
+  const educationValid = Boolean(
+    resume.education &&
+      resume.education.length > 0 &&
+      resume.education.some((ed) => ed.institution || ed.degree)
+  );
+  const languagesValid = Boolean(
+    (c.simpleLanguages &&
+      c.simpleLanguages.length > 0 &&
+      c.simpleLanguages.every((l) => l.language && l.cefrLevel)) ||
+      (c.motherTongue && c.motherTongue.trim().length >= 2)
+  );
+  const skillsValid = Boolean(
+    (resume.skills && resume.skills.length > 0) ||
+      (c.digitalSkills && c.digitalSkills.length > 0) ||
+      (c.structuredDigitalSkills && c.structuredDigitalSkills.length > 0) ||
+      (c.structuredSoftwareSkills && c.structuredSoftwareSkills.length > 0)
+  );
 
   const fields: ValidationField[] = [
     { id: 'fullName', label: 'Full Name', isRequired: true, isComplete: fullNameValid },
     { id: 'professionalTitle', label: 'Professional Title', isRequired: true, isComplete: targetRoleValid },
+    { id: 'passportNumber', label: 'Passport Number', isRequired: true, isComplete: passportValid },
     { id: 'dateOfBirth', label: 'Date of Birth', isRequired: true, isComplete: dobValidation.valid, errorMessage: dobValidation.message },
     { id: 'placeOfBirth', label: 'Place of Birth', isRequired: true, isComplete: placeOfBirthValid },
     { id: 'nationality', label: 'Nationality', isRequired: true, isComplete: nationalityValid },
     { id: 'gender', label: 'Gender', isRequired: true, isComplete: genderValid },
     { id: 'phone', label: 'Phone Number', isRequired: true, isComplete: phoneValid },
     { id: 'email', label: 'Email', isRequired: true, isComplete: emailValid },
-    { id: 'address', label: 'Address', isRequired: true, isComplete: addressValid },
-    { id: 'city', label: 'City', isRequired: true, isComplete: cityValid },
     { id: 'country', label: 'Country', isRequired: true, isComplete: countryValid },
+    { id: 'city', label: 'City', isRequired: true, isComplete: cityValid },
+    { id: 'postalCode', label: 'Postal Code', isRequired: true, isComplete: postalCodeValid },
+    { id: 'address', label: 'Street / Work Address', isRequired: true, isComplete: addressValid },
+    { id: 'drivingLicense', label: 'Driving License', isRequired: true, isComplete: drivingLicenseValid },
     { id: 'summary', label: 'About Me / Professional Summary', isRequired: true, isComplete: summaryValid },
     { id: 'workExperience', label: 'Work Experience', isRequired: true, isComplete: experienceValid },
     { id: 'education', label: 'Education & Training', isRequired: true, isComplete: educationValid },
-    { id: 'languages', label: 'Language Skills (Mother Tongue)', isRequired: true, isComplete: languagesValid },
+    { id: 'languages', label: 'Language Skills (Language & CEFR Level)', isRequired: true, isComplete: languagesValid },
     { id: 'skills', label: 'Skills', isRequired: true, isComplete: skillsValid },
   ];
 
@@ -100,7 +141,6 @@ export const validateCountryCV = (resume: Resume, templateHasPhoto: boolean = tr
     fields.push({ id: 'photo', label: 'Profile Photo', isRequired: true, isComplete: photoValid });
   }
 
-  // Driving license is explicitly optional — NOT in total required count, NOT in missing list
   const requiredFields = fields.filter((f) => f.isRequired);
   const completedCount = requiredFields.filter((f) => f.isComplete).length;
   const totalRequiredCount = requiredFields.length;

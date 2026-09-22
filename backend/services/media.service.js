@@ -79,9 +79,10 @@ const FOLDER_MAP = {
   blog_images:          "qj/blog-images",
   cms_images:           "qj/cms-images",
   community_media:      "qj/community",
+  resume_documents:     "qj/resumes/documents",
 };
 
-const ANY_TYPE_FOLDERS = new Set(["message_attachments", "community_media"]);
+const ANY_TYPE_FOLDERS = new Set(["message_attachments", "community_media", "resume_documents"]);
 
 function isCloudinaryUrl(stored) {
   return typeof stored === "string" && stored.startsWith("https://res.cloudinary.com/");

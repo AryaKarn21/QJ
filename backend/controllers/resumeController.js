@@ -1,4 +1,5 @@
 const Resume = require("../models/Resume");
+const { persistUpload, deleteStoredFile } = require("../services/media.service");
 
 // Mongoose ValidationError/CastError (bad enum value, malformed ObjectId,
 // ...) is the client's fault — 400, with the real reason. Anything else
@@ -95,6 +96,7 @@ const UPDATABLE_FIELDS = [
   "languageMode",
   "countryCode",
   "countryCVInfo",
+  "documents",
   "status",
 ];
 
@@ -157,4 +159,95 @@ const deleteResume = async (req, res) => {
   }
 };
 
-module.exports = { getMyResumes, getResumeById, createResume, updateResume, cloneResume, deleteResume };
+// Upload supporting documents (Passport, Certificate, etc.)
+const uploadResumeDocument = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({ _id: req.params.id, user: req.user.id });
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No document file provided." });
+    }
+
+    const fileUrl = await persistUpload(req.file, "resume_documents", req.user.id);
+    const newDoc = {
+      documentType: req.body.documentType || "other",
+      name: (req.body.name || req.file.originalname || "Supporting Document").trim(),
+      fileUrl,
+      mimeType: req.file.mimetype || "",
+      fileSize: req.file.size || 0,
+      includeInDownload: true,
+      sortOrder: (resume.documents || []).length,
+    };
+
+    resume.documents.push(newDoc);
+    await resume.save();
+
+    const createdDoc = resume.documents[resume.documents.length - 1];
+    res.status(201).json({ message: "Document uploaded successfully", document: createdDoc, documents: resume.documents });
+  } catch (error) {
+    respondResumeError(res, error, "uploading document to");
+  }
+};
+
+const deleteResumeDocument = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({ _id: req.params.id, user: req.user.id });
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+    const doc = resume.documents.id(req.params.docId);
+    if (!doc) return res.status(404).json({ message: "Document not found" });
+
+    if (doc.fileUrl) {
+      try {
+        await deleteStoredFile(doc.fileUrl);
+      } catch (err) {
+        console.warn("Could not delete stored file:", err);
+      }
+    }
+
+    resume.documents.pull({ _id: req.params.docId });
+    await resume.save();
+
+    res.json({ message: "Document deleted successfully", documents: resume.documents });
+  } catch (error) {
+    respondResumeError(res, error, "deleting document from");
+  }
+};
+
+const toggleResumeDocument = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({ _id: req.params.id, user: req.user.id });
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+    const doc = resume.documents.id(req.params.docId);
+    if (!doc) return res.status(404).json({ message: "Document not found" });
+
+    if (req.body.includeInDownload !== undefined) {
+      doc.includeInDownload = Boolean(req.body.includeInDownload);
+    }
+    if (req.body.name) {
+      doc.name = req.body.name.trim();
+    }
+    if (req.body.sortOrder !== undefined) {
+      doc.sortOrder = req.body.sortOrder;
+    }
+
+    await resume.save();
+    res.json({ message: "Document updated successfully", document: doc, documents: resume.documents });
+  } catch (error) {
+    respondResumeError(res, error, "updating document in");
+  }
+};
+
+module.exports = {
+  getMyResumes,
+  getResumeById,
+  createResume,
+  updateResume,
+  cloneResume,
+  deleteResume,
+  uploadResumeDocument,
+  deleteResumeDocument,
+  toggleResumeDocument,
+};

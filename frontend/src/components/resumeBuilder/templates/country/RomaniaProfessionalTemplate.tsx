@@ -23,7 +23,12 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
     { label: 'Email', value: personalInfo.email },
     {
       label: 'Address',
-      value: [countryCVInfo.address, countryCVInfo.city, countryCVInfo.country || personalInfo.location]
+      value: [
+        countryCVInfo.address,
+        countryCVInfo.city,
+        countryCVInfo.postalCode,
+        countryCVInfo.country || personalInfo.location,
+      ]
         .filter(Boolean)
         .join(', '),
     },
@@ -182,25 +187,56 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
 
         {/* 4. SKILLS */}
         {((resume.skills && resume.skills.length > 0) ||
+          (countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
+          (countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0) ||
           (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
           <section>
             <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
               <span className="text-slate-400 text-xs">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">SKILLS</h2>
             </div>
-            <div className="text-[11.5px] text-slate-700 leading-relaxed">
-              {[
-                ...(resume.skills || []).map((s) => (typeof s === 'string' ? s : s.name)),
-                ...(countryCVInfo.digitalSkills || []),
-              ]
-                .filter(Boolean)
-                .join(' | ')}
+            <div className="space-y-2 text-[11.5px] text-slate-700">
+              {resume.skills && resume.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(resume.skills || []).map((s, idx) => (
+                    <span key={idx} className="rounded bg-slate-100 px-2.5 py-0.5 font-medium text-slate-800">
+                      {typeof s === 'string' ? s : s.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
+                (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
+                <div>
+                  <span className="font-bold text-slate-900">Digital Skills: </span>
+                  {countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0 ? (
+                    <span>
+                      {countryCVInfo.structuredDigitalSkills.map((s) => `${s.skill} (${s.proficiency})`).join(' • ')}
+                    </span>
+                  ) : (
+                    <span>{(countryCVInfo.digitalSkills || []).join(' • ')}</span>
+                  )}
+                </div>
+              )}
+
+              {countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0 && (
+                <div>
+                  <span className="font-bold text-slate-900">Software Skills: </span>
+                  <span>
+                    {countryCVInfo.structuredSoftwareSkills.map((s) => `${s.skill} (${s.proficiency})`).join(' • ')}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
         )}
 
         {/* 5. LANGUAGE SKILLS (CEFR TABLE) */}
-        {(countryCVInfo.motherTongue || (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0)) && (
+        {(countryCVInfo.motherTongue ||
+          (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
+          (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
+          (resume.languages && resume.languages.length > 0)) && (
           <section>
             <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
               <span className="text-slate-400 text-xs">●</span>
@@ -215,7 +251,39 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
               </p>
             )}
 
-            {countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 && (
+            {countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0 ? (
+              <div className="overflow-x-auto border-t border-b border-slate-300 py-2">
+                <table className="w-full text-left text-[11px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 font-bold uppercase text-slate-800 text-[10px]">
+                      <th className="py-1.5 px-3">Language</th>
+                      <th className="py-1.5 px-3">CEFR Proficiency Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {countryCVInfo.simpleLanguages.map((lang, idx) => (
+                      <tr key={idx} className="border-b border-slate-100 last:border-0 font-medium">
+                        <td className="py-1.5 px-3 font-bold uppercase text-slate-900">
+                          {lang.language}
+                        </td>
+                        <td className="py-1.5 px-3 text-slate-700">
+                          <span className="font-semibold text-slate-900">{lang.level}</span>
+                          {lang.level === 'A1' && ' — Basic user'}
+                          {lang.level === 'A2' && ' — Basic user'}
+                          {lang.level === 'B1' && ' — Independent user'}
+                          {lang.level === 'B2' && ' — Independent user'}
+                          {lang.level === 'C1' && ' — Proficient user'}
+                          {lang.level === 'C2' && ' — Proficient user'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-[9px] text-slate-400 italic mt-1.5">
+                  CEFR Levels: A1 and A2: Basic user — B1 and B2: Independent user — C1 and C2: Proficient user
+                </p>
+              </div>
+            ) : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 ? (
               <div className="overflow-x-auto border-t border-b border-slate-300 py-2">
                 <table className="w-full text-center text-[10.5px]">
                   <thead>
@@ -259,7 +327,15 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                   Levels: A1 and A2: Basic user — B1 and B2: Independent user — C1 and C2: Proficient user
                 </p>
               </div>
-            )}
+            ) : resume.languages && resume.languages.length > 0 ? (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {resume.languages.map((l, i) => (
+                  <span key={i} className="rounded border border-slate-200 px-2.5 py-1 text-slate-700">
+                    <strong className="text-slate-900">{l.name}:</strong> {l.level}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </section>
         )}
 
@@ -284,7 +360,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 7. DRIVING LICENSE — ONLY DISPLAYED IF USER PROVIDED IT */}
+        {/* 7. DRIVING LICENSE */}
         {hasDrivingLicense && (
           <section>
             <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1 mb-2.5">
@@ -295,13 +371,18 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
             </div>
             <div className="text-[11.5px] text-slate-700">
               <p>
-                <span className="font-semibold text-slate-800">License:</span>{' '}
-                {countryCVInfo.drivingLicenseDetails?.licenseType || countryCVInfo.drivingLicense}
+                <span className="font-semibold text-slate-800">License Category:</span>{' '}
+                <span className="font-bold text-slate-900">
+                  {countryCVInfo.drivingLicenseDetails?.licenseType || countryCVInfo.drivingLicense}
+                </span>
                 {countryCVInfo.drivingLicenseDetails?.country && (
                   <span> ({countryCVInfo.drivingLicenseDetails.country})</span>
                 )}
                 {countryCVInfo.drivingLicenseDetails?.licenseNumber && (
-                  <span> • No: {countryCVInfo.drivingLicenseDetails.licenseNumber}</span>
+                  <span> • License No: {countryCVInfo.drivingLicenseDetails.licenseNumber}</span>
+                )}
+                {countryCVInfo.drivingLicenseDetails?.issueDate && (
+                  <span> • Issued: {countryCVInfo.drivingLicenseDetails.issueDate}</span>
                 )}
                 {countryCVInfo.drivingLicenseDetails?.expiryDate && (
                   <span> • Expires: {countryCVInfo.drivingLicenseDetails.expiryDate}</span>

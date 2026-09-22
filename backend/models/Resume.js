@@ -209,6 +209,23 @@ const MembershipSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const ResumeDocumentSchema = new mongoose.Schema(
+  {
+    documentType: {
+      type: String,
+      enum: ["passport", "certificate", "education", "experience", "training", "other"],
+      default: "other",
+    },
+    name: { type: String, required: true },
+    fileUrl: { type: String, required: true },
+    mimeType: { type: String, default: "" },
+    fileSize: { type: Number, default: 0 },
+    includeInDownload: { type: Boolean, default: true },
+    sortOrder: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
 const CountryCVInfoSchema = new mongoose.Schema(
   {
     dateOfBirth: { type: String, default: "" },
@@ -224,7 +241,25 @@ const CountryCVInfoSchema = new mongoose.Schema(
     declaration: { type: String, default: "" },
     motherTongue: { type: String, default: "" },
     cefrLanguages: [CefrLanguageSchema],
+    simpleLanguages: [
+      {
+        language: { type: String, default: "" },
+        cefrLevel: { type: String, default: "" },
+      },
+    ],
     digitalSkills: [{ type: String }],
+    structuredDigitalSkills: [
+      {
+        name: { type: String, default: "" },
+        proficiency: { type: String, default: "" },
+      },
+    ],
+    structuredSoftwareSkills: [
+      {
+        name: { type: String, default: "" },
+        proficiency: { type: String, default: "" },
+      },
+    ],
     otherSkills: { type: String, default: "" },
     currentLocation: { type: String, default: "" },
     noticePeriod: { type: String, default: "" },
@@ -235,6 +270,7 @@ const CountryCVInfoSchema = new mongoose.Schema(
       licenseType: { type: String, default: "" },
       country: { type: String, default: "" },
       licenseNumber: { type: String, default: "" },
+      issueDate: { type: String, default: "" },
       expiryDate: { type: String, default: "" },
     },
   },
@@ -332,6 +368,7 @@ const ResumeSchema = new mongoose.Schema(
     // 'RO' (Romania), 'BA' (Bosnia & Herzegovina), 'QA' (Qatar), etc.
     countryCode: { type: String, default: "" },
     countryCVInfo: { type: CountryCVInfoSchema, default: () => ({}) },
+    documents: [ResumeDocumentSchema],
 
     // Optional links into the existing CRM entities, so a resume can be
     // tied to who it's for and where it's going. All optional — set only

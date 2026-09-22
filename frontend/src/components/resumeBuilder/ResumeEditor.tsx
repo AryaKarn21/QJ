@@ -41,6 +41,7 @@ import ImageUpload from './components/ImageUpload';
 import { AtsAnalysisPanel } from './components/AtsAnalysisPanel';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 import { CountrySpecificFieldsEditor } from './components/CountrySpecificFieldsEditor';
+import { DocumentManager } from './components/DocumentManager';
 import { getCountryConfig, getCountryByTemplateId } from './config/countryCVConfigs';
 import { CvCompletionBar } from './components/CvCompletionBar';
 import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
@@ -512,7 +513,7 @@ const ResumeEditor: React.FC = () => {
     try {
       const fileName = `${resume.personalInfo?.fullName || resume.title || 'resume'}.pdf`.replace(/\s+/g, '_');
       const templateName = getTemplateById(resume.layout)?.name || resume.layout;
-      await generatePDF(previewRef, fileName, resume.layout, templateName);
+      await generatePDF(previewRef, fileName, resume.layout, templateName, resume);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
       setAiError('Could not generate the PDF. Please try again.');
@@ -850,6 +851,15 @@ const ResumeEditor: React.FC = () => {
                 countryCode: effectiveCountryCode,
               })
             }
+          />
+        )}
+
+        {/* Supporting Documents (Passport, Certificates, etc.) for European / Country CV Appendix */}
+        {effectiveCountryCode && resume._id && (
+          <DocumentManager
+            resumeId={resume._id}
+            documents={resume.documents || []}
+            onDocumentsChange={(docs) => update({ documents: docs })}
           />
         )}
 

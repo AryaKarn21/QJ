@@ -204,6 +204,18 @@ import type { CountryCVInfo } from './config/countryCVConfigs/types';
 // without needing a type (or database schema) change here.
 export type ResumeLayout = string;
 
+export interface ResumeDocument {
+  _id: string;
+  documentType: 'passport' | 'certificate' | 'education' | 'experience' | 'training' | 'other';
+  name: string;
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  includeInDownload: boolean;
+  sortOrder: number;
+  createdAt?: string;
+}
+
 export interface Resume {
   _id: string;
   user: string;
@@ -245,6 +257,7 @@ export interface Resume {
   // Country-specific CV features
   countryCode?: string; // 'RO', 'BA', 'QA', etc.
   countryCVInfo?: CountryCVInfo;
+  documents?: ResumeDocument[];
 
   status: 'draft' | 'final';
   createdAt: string;
@@ -299,4 +312,31 @@ export const cloneResume = async (
 
 export const deleteResume = async (id: string): Promise<void> => {
   await api.delete(`/api/resumes/${id}`);
+};
+
+export const uploadResumeDocument = async (
+  resumeId: string,
+  formData: FormData
+): Promise<{ message: string; document: ResumeDocument; documents: ResumeDocument[] }> => {
+  const res = await api.post(`/api/resumes/${resumeId}/documents`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+};
+
+export const deleteResumeDocument = async (
+  resumeId: string,
+  docId: string
+): Promise<{ message: string; documents: ResumeDocument[] }> => {
+  const res = await api.delete(`/api/resumes/${resumeId}/documents/${docId}`);
+  return res.data;
+};
+
+export const toggleResumeDocument = async (
+  resumeId: string,
+  docId: string,
+  patch: Partial<ResumeDocument>
+): Promise<{ message: string; document: ResumeDocument; documents: ResumeDocument[] }> => {
+  const res = await api.patch(`/api/resumes/${resumeId}/documents/${docId}`, patch);
+  return res.data;
 };

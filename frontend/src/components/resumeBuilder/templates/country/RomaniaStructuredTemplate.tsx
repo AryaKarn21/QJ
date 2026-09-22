@@ -33,6 +33,9 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
           </p>
 
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
+            {countryCVInfo.passportNumber && (
+              <p><span className="font-semibold text-slate-800">Passport:</span> {countryCVInfo.passportNumber}</p>
+            )}
             {personalInfo.email && (
               <p><span className="font-semibold text-slate-800">Email:</span> {personalInfo.email}</p>
             )}
@@ -42,7 +45,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
             {(personalInfo.location || countryCVInfo.city || countryCVInfo.country) && (
               <p>
                 <span className="font-semibold text-slate-800">Address:</span>{' '}
-                {[countryCVInfo.address, countryCVInfo.city, countryCVInfo.country || personalInfo.location]
+                {[countryCVInfo.address, countryCVInfo.city, countryCVInfo.postalCode, countryCVInfo.country || personalInfo.location]
                   .filter(Boolean)
                   .join(', ')}
               </p>
@@ -53,8 +56,14 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
             {countryCVInfo.dateOfBirth && (
               <p><span className="font-semibold text-slate-800">Date of birth:</span> {countryCVInfo.dateOfBirth}</p>
             )}
-            {countryCVInfo.drivingLicense && (
-              <p><span className="font-semibold text-slate-800">Driving Licence:</span> {countryCVInfo.drivingLicense}</p>
+            {(countryCVInfo.drivingLicense || countryCVInfo.drivingLicenseDetails?.licenseType) && (
+              <p className="sm:col-span-2">
+                <span className="font-semibold text-slate-800">Driving Licence:</span>{' '}
+                {countryCVInfo.drivingLicenseDetails?.licenseType || countryCVInfo.drivingLicense}
+                {countryCVInfo.drivingLicenseDetails?.country && ` (${countryCVInfo.drivingLicenseDetails.country})`}
+                {countryCVInfo.drivingLicenseDetails?.licenseNumber && ` • No: ${countryCVInfo.drivingLicenseDetails.licenseNumber}`}
+                {countryCVInfo.drivingLicenseDetails?.expiryDate && ` • Expires: ${countryCVInfo.drivingLicenseDetails.expiryDate}`}
+              </p>
             )}
             {personalInfo.linkedin && (
               <div className="sm:col-span-2 pt-0.5">
@@ -143,77 +152,137 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         </div>
       )}
 
-      {/* Languages (CEFR Matrix) */}
-      <div className="mt-6 border-b border-slate-200 pb-5">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
-          Language Skills
-        </h2>
-        <div className="pl-4 space-y-3">
-          {countryCVInfo.motherTongue && (
-            <p className="text-xs">
-              <span className="font-bold text-slate-700">Mother tongue(s):</span>{' '}
-              <span className="font-medium text-slate-900">{countryCVInfo.motherTongue}</span>
-            </p>
-          )}
-
-          {countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
-                <thead className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="py-2 px-3">Other Language</th>
-                    <th className="py-2 px-2">Listening</th>
-                    <th className="py-2 px-2">Reading</th>
-                    <th className="py-2 px-2">Interaction</th>
-                    <th className="py-2 px-2">Production</th>
-                    <th className="py-2 px-2">Writing</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {countryCVInfo.cefrLanguages.map((l, i) => (
-                    <tr key={i} className="hover:bg-slate-50/80 font-medium text-slate-700">
-                      <td className="py-2 px-3 font-semibold text-slate-900">{l.language}</td>
-                      <td className="py-2 px-2 text-orange-600 font-bold">{l.listening}</td>
-                      <td className="py-2 px-2 text-orange-600 font-bold">{l.reading}</td>
-                      <td className="py-2 px-2 text-orange-600 font-bold">{l.spokenInteraction}</td>
-                      <td className="py-2 px-2 text-orange-600 font-bold">{l.spokenProduction}</td>
-                      <td className="py-2 px-2 text-orange-600 font-bold">{l.writing}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="mt-1 text-[10px] text-slate-400 italic">
-                Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user
-              </p>
-            </div>
-          ) : resume.languages && resume.languages.length > 0 ? (
-            <div className="flex flex-wrap gap-2 text-xs">
-              {resume.languages.map((l, i) => (
-                <span key={i} className="rounded border border-slate-200 px-2.5 py-1 text-slate-700">
-                  <strong className="text-slate-900">{l.name}:</strong> {l.level}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Digital Skills & Other Skills */}
-      {((countryCVInfo.digitalSkills?.length || 0) > 0 || (resume.skills?.length || 0) > 0 || countryCVInfo.otherSkills) && (
+      {/* Language Skills */}
+      {(countryCVInfo.motherTongue ||
+        (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
+        (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
+        (resume.languages && resume.languages.length > 0)) && (
         <div className="mt-6 border-b border-slate-200 pb-5">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
-            Digital & Technical Skills
+            Language Skills
           </h2>
           <div className="pl-4 space-y-3">
-            {countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {countryCVInfo.digitalSkills.map((s, idx) => (
-                  <span key={idx} className="rounded-md bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-800">
-                    {s}
+            {countryCVInfo.motherTongue && (
+              <p className="text-xs">
+                <span className="font-bold text-slate-700">Mother tongue(s):</span>{' '}
+                <span className="font-medium text-slate-900">{countryCVInfo.motherTongue}</span>
+              </p>
+            )}
+
+            {countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+                  <thead className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-3">Language</th>
+                      <th className="py-2 px-3">CEFR Proficiency Level</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {countryCVInfo.simpleLanguages.map((l, i) => (
+                      <tr key={i} className="hover:bg-slate-50/80 font-medium text-slate-700">
+                        <td className="py-2 px-3 font-semibold text-slate-900">{l.language}</td>
+                        <td className="py-2 px-3">
+                          <span className="font-bold text-orange-600">{l.level}</span>
+                          {l.level === 'A1' && ' — Basic user'}
+                          {l.level === 'A2' && ' — Basic user'}
+                          {l.level === 'B1' && ' — Independent user'}
+                          {l.level === 'B2' && ' — Independent user'}
+                          {l.level === 'C1' && ' — Proficient user'}
+                          {l.level === 'C2' && ' — Proficient user'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-1 text-[10px] text-slate-400 italic">
+                  CEFR Levels: A1 and A2: Basic user — B1 and B2: Independent user — C1 and C2: Proficient user
+                </p>
+              </div>
+            ) : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+                  <thead className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-3">Other Language</th>
+                      <th className="py-2 px-2">Listening</th>
+                      <th className="py-2 px-2">Reading</th>
+                      <th className="py-2 px-2">Interaction</th>
+                      <th className="py-2 px-2">Production</th>
+                      <th className="py-2 px-2">Writing</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {countryCVInfo.cefrLanguages.map((l, i) => (
+                      <tr key={i} className="hover:bg-slate-50/80 font-medium text-slate-700">
+                        <td className="py-2 px-3 font-semibold text-slate-900">{l.language}</td>
+                        <td className="py-2 px-2 text-orange-600 font-bold">{l.listening}</td>
+                        <td className="py-2 px-2 text-orange-600 font-bold">{l.reading}</td>
+                        <td className="py-2 px-2 text-orange-600 font-bold">{l.spokenInteraction}</td>
+                        <td className="py-2 px-2 text-orange-600 font-bold">{l.spokenProduction}</td>
+                        <td className="py-2 px-2 text-orange-600 font-bold">{l.writing}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-1 text-[10px] text-slate-400 italic">
+                  Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user
+                </p>
+              </div>
+            ) : resume.languages && resume.languages.length > 0 ? (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {resume.languages.map((l, i) => (
+                  <span key={i} className="rounded border border-slate-200 px-2.5 py-1 text-slate-700">
+                    <strong className="text-slate-900">{l.name}:</strong> {l.level}
                   </span>
                 ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Digital Skills & Other Skills */}
+      {((countryCVInfo.structuredDigitalSkills?.length || 0) > 0 ||
+        (countryCVInfo.structuredSoftwareSkills?.length || 0) > 0 ||
+        (countryCVInfo.digitalSkills?.length || 0) > 0 ||
+        (resume.skills?.length || 0) > 0 ||
+        countryCVInfo.otherSkills) && (
+        <div className="mt-6 border-b border-slate-200 pb-5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+            Skills & Competences
+          </h2>
+          <div className="pl-4 space-y-3">
+            {resume.skills && resume.skills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {resume.skills.map((s, idx) => (
+                  <span key={idx} className="rounded-md bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-800">
+                    {typeof s === 'string' ? s : s.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            {((countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0) ||
+              (countryCVInfo.digitalSkills && countryCVInfo.digitalSkills.length > 0)) && (
+              <div className="text-xs text-slate-700">
+                <span className="font-bold text-slate-900">Digital Skills: </span>
+                {countryCVInfo.structuredDigitalSkills && countryCVInfo.structuredDigitalSkills.length > 0 ? (
+                  <span>
+                    {countryCVInfo.structuredDigitalSkills.map((s) => `${s.skill} (${s.proficiency})`).join(' • ')}
+                  </span>
+                ) : (
+                  <span>{(countryCVInfo.digitalSkills || []).join(' • ')}</span>
+                )}
+              </div>
+            )}
+            {countryCVInfo.structuredSoftwareSkills && countryCVInfo.structuredSoftwareSkills.length > 0 && (
+              <div className="text-xs text-slate-700">
+                <span className="font-bold text-slate-900">Software Skills: </span>
+                <span>
+                  {countryCVInfo.structuredSoftwareSkills.map((s) => `${s.skill} (${s.proficiency})`).join(' • ')}
+                </span>
               </div>
             )}
             {countryCVInfo.otherSkills && (

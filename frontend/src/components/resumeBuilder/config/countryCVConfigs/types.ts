@@ -17,7 +17,18 @@ export interface DrivingLicenseDetails {
   licenseType: string;
   country: string;
   licenseNumber?: string;
+  issueDate?: string;
   expiryDate: string;
+}
+
+export interface SimpleLanguageItem {
+  language: string;
+  cefrLevel: string;
+}
+
+export interface StructuredSkillItem {
+  name: string;
+  proficiency: string;
 }
 
 export interface CountryCVInfo {
@@ -35,7 +46,10 @@ export interface CountryCVInfo {
   declaration?: string;
   motherTongue?: string;
   cefrLanguages?: CefrLanguageLevel[];
+  simpleLanguages?: SimpleLanguageItem[];
   digitalSkills?: string[];
+  structuredDigitalSkills?: StructuredSkillItem[];
+  structuredSoftwareSkills?: StructuredSkillItem[];
   otherSkills?: string;
 
   // Qatar & Gulf-region fields
