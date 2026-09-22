@@ -66,7 +66,7 @@ const BRAND = {
   primaryHover: '#FFF7ED',
   primaryShadow: 'rgba(249,115,22,.25)',
   gradient: 'linear-gradient(135deg,#F59E0B,#F97316)',
-  pageBg: '#FFF8F3',
+  pageBg: '#F8FAFC',
 };
 
 const UserDashboardLayout = () => {
@@ -118,9 +118,9 @@ const UserDashboardLayout = () => {
           aria-modal={sidebarOpen || undefined}
           aria-label="Job seeker navigation"
           style={{
-            position: 'fixed', top: 0, left: 0, height: '100dvh', width: 256,
-            background: '#fff', borderRight: '1px solid #E5E7EB',
-            boxShadow: '2px 0 24px rgba(0,0,0,.06)',
+            position: 'fixed', top: 0, left: 0, height: '100dvh', width: 248,
+            background: '#fff', borderRight: '1px solid #E2E8F0',
+            boxShadow: '2px 0 24px rgba(0,0,0,.04)',
             display: 'flex', flexDirection: 'column', zIndex: 100,
             transition: 'transform .22s cubic-bezier(.4,0,.2,1)',
           }}
@@ -130,10 +130,10 @@ const UserDashboardLayout = () => {
           // plain inline style can never outrank.
           className={`jobseeker-sidebar${sidebarOpen ? ' open' : ''}`}
         >
-          <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          <div style={{ height: 64, padding: '0 18px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxSizing: 'border-box' }}
             onClick={() => navigate('/')}
           >
-            <img src={logo} alt="Quick Jobs" style={{ height: 46, width: 'auto', objectFit: 'contain' }} />
+            <img src={logo} alt="Quick Jobs" style={{ height: 38, width: 'auto', objectFit: 'contain' }} />
             <button
               style={{ display: 'none' }}
               className="sidebar-close-mobile"
@@ -207,7 +207,7 @@ const UserDashboardLayout = () => {
             <div style={{ fontSize: 11.5, lineHeight: 1.5, opacity: .82, marginBottom: 12 }}>
               Priority applications, resume review, and profile boost.
             </div>
-            <button style={{ background: 'rgba(255,255,255,.22)', border: '1px solid rgba(255,255,255,.3)', color: '#fff', padding: '5px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="btn-shine" style={{ background: 'rgba(255,255,255,.25)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Upgrade Now →
             </button>
           </div>
@@ -238,9 +238,9 @@ const UserDashboardLayout = () => {
 
         {/* ══ NAVBAR ════════════════════════════════════════════════ */}
         <header style={{
-          position: 'fixed', top: 0, left: 256, right: 0, height: 72,
-          background: '#fff', borderBottom: '1px solid #E5E7EB',
-          display: 'flex', alignItems: 'center', gap: 12, padding: '0 28px',
+          position: 'fixed', top: 0, left: 248, right: 0, height: 64,
+          background: '#fff', borderBottom: '1px solid #E2E8F0',
+          display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px',
           zIndex: 90,
         }} className="jobseeker-navbar">
 
@@ -295,7 +295,7 @@ const UserDashboardLayout = () => {
         </header>
 
         {/* ══ MAIN ══════════════════════════════════════════════════ */}
-        <main style={{ flex: 1, marginLeft: 256, paddingTop: 72, minHeight: '100dvh', background: BRAND.pageBg }} className="jobseeker-main">
+        <main style={{ flex: 1, marginLeft: 248, paddingTop: 64, minHeight: '100dvh', background: BRAND.pageBg }} className="jobseeker-main">
           <Outlet />
         </main>
       </div>
@@ -312,9 +312,6 @@ const UserDashboardLayout = () => {
               <button onClick={() => setShowLogout(false)} style={{ flex: 1, padding: 10, borderRadius: 10, border: '1px solid #E5E7EB', background: BRAND.pageBg, color: '#111827', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Cancel
               </button>
-
-
-              m
               <button onClick={handleLogout} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', background: '#EF4444', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Sign out
               </button>
@@ -325,7 +322,7 @@ const UserDashboardLayout = () => {
 
       <style>{`
         @media (max-width: 768px) {
-          .jobseeker-sidebar { transform: translateX(-256px) !important; padding-bottom: env(safe-area-inset-bottom); }
+          .jobseeker-sidebar { transform: translateX(-248px) !important; padding-bottom: env(safe-area-inset-bottom); }
           .jobseeker-sidebar.open { transform: translateX(0) !important; }
           .sidebar-close-mobile { display: flex !important; width: 32px; height: 32px; align-items: center; justify-content: center; }
           .jobseeker-navbar {

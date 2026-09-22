@@ -83,9 +83,9 @@ const Stats: React.FC = () => {
       className="py-10 sm:py-12 lg:py-14"
       style={{
         position: 'relative',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFF8F3 100%)',
-        borderTop: '1px solid #FFE4CC',
-        borderBottom: '1px solid #FFE4CC',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+        borderTop: '1px solid #E2E8F0',
+        borderBottom: '1px solid #E2E8F0',
         overflow: 'hidden',
       }}
     >

@@ -169,7 +169,7 @@ const Candidates = () => {
     });
 
     return (
-        <div className="min-h-screen bg-[#FFF8F3] p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 lg:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Header */}
                 <div>

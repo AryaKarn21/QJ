@@ -68,13 +68,13 @@ const TemplatePreviewModal: React.FC<PreviewModalProps> = ({ template, onClose, 
               </span>
             )}
             {template.photoSupported && (
-              <span className="flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">
+              <span className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
                 <ImageIcon size={11} /> Photo
               </span>
             )}
             <button
               onClick={onUse}
-              className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+              className="btn-shine rounded-lg bg-orange-500 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 transition shadow-sm shadow-orange-500/25"
             >
               Use This Template
             </button>
@@ -150,7 +150,7 @@ const TemplateCard: React.FC<CardProps> = ({ group, activeVariant, onSelectVaria
             </span>
           )}
           {activeVariant.photoSupported ? (
-            <span className="flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10.5px] font-medium text-violet-700">
+            <span className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10.5px] font-medium text-orange-700">
               <ImageIcon size={10} /> Photo
             </span>
           ) : (
@@ -181,7 +181,7 @@ const TemplateCard: React.FC<CardProps> = ({ group, activeVariant, onSelectVaria
                   title={theme?.name || variant.themeId}
                   aria-label={`Preview in ${theme?.name || 'this'} color`}
                   className={`h-5 w-5 shrink-0 rounded-full ring-offset-1 transition ${
-                    isActive ? 'ring-2 ring-violet-500' : 'ring-1 ring-slate-200 hover:ring-slate-400'
+                    isActive ? 'ring-2 ring-orange-500' : 'ring-1 ring-slate-200 hover:ring-slate-400'
                   }`}
                   style={{ backgroundColor: theme?.accent || '#94a3b8' }}
                 />
@@ -193,7 +193,7 @@ const TemplateCard: React.FC<CardProps> = ({ group, activeVariant, onSelectVaria
         <button
           onClick={onUse}
           disabled={isLoading}
-          className="mt-3 w-full rounded-lg bg-violet-600 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+          className="btn-shine mt-3 w-full rounded-lg bg-orange-500 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-60 transition shadow-sm shadow-orange-500/20"
         >
           {isLoading ? 'Applying…' : 'Use Template'}
         </button>
@@ -237,10 +237,10 @@ const POPULAR_WORKER_ROLES = [
 ];
 
 const WorkerHeroBanner: React.FC<{ onRoleClick: () => void }> = ({ onRoleClick }) => (
-  <div className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5">
+  <div className="mb-6 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50/90 via-amber-50/50 to-orange-50/90 p-5 shadow-sm">
     <div className="flex items-start gap-3">
-      <div className="rounded-lg bg-[#e67e22]/10 p-2">
-        <HardHat size={22} className="text-[#e67e22]" />
+      <div className="rounded-lg bg-orange-500/10 p-2">
+        <HardHat size={22} className="text-orange-500" />
       </div>
       <div className="flex-1">
         <h3 className="text-[15px] font-bold text-slate-800">Build a Resume for Your Job</h3>
@@ -253,7 +253,7 @@ const WorkerHeroBanner: React.FC<{ onRoleClick: () => void }> = ({ onRoleClick }
             <button
               key={role}
               onClick={onRoleClick}
-              className="rounded-full border border-[#e67e22]/40 bg-white px-2.5 py-1 text-[11px] font-medium text-[#c0511a] hover:bg-[#e67e22] hover:text-white transition"
+              className="rounded-full border border-orange-200 bg-white px-2.5 py-1 text-[11px] font-medium text-orange-700 hover:bg-orange-500 hover:text-white transition shadow-sm"
             >
               {role}
             </button>
@@ -267,15 +267,15 @@ const WorkerHeroBanner: React.FC<{ onRoleClick: () => void }> = ({ onRoleClick }
 // ── AI Banner ──────────────────────────────────────────────────────────────────
 
 const AiBanner: React.FC<{ onBuild: () => void }> = ({ onBuild }) => (
-  <div className="mb-8 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 p-5">
+  <div className="mb-8 rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50/80 via-amber-50/50 to-orange-50/80 p-5 shadow-sm">
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-violet-600 p-2.5 flex-shrink-0">
+        <div className="rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 p-2.5 flex-shrink-0 text-white shadow-sm shadow-orange-500/30">
           <Sparkles size={20} className="text-white" />
         </div>
         <div>
           <h3 className="text-[15px] font-bold text-slate-800">
-            Let AI Build Your Resume Automatically
+            ✨ Let AI Build Your Resume Automatically
           </h3>
           <p className="mt-0.5 text-[12.5px] text-slate-500">
             Just tell us about yourself — your experience, skills, and education.
@@ -285,9 +285,9 @@ const AiBanner: React.FC<{ onBuild: () => void }> = ({ onBuild }) => (
       </div>
       <button
         onClick={onBuild}
-        className="flex-shrink-0 flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 transition-colors shadow-sm shadow-violet-200 whitespace-nowrap"
+        className="btn-shine flex-shrink-0 flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-500/25 whitespace-nowrap"
       >
-        <Sparkles size={14} /> Build with AI
+        <Sparkles size={14} /> Build with AI →
       </button>
     </div>
   </div>
@@ -410,11 +410,11 @@ const TemplateGallery: React.FC = () => {
               {resumeId ? 'Choose a New Template' : 'Choose a Template'}
             </h2>
             <p className="mt-0.5 text-sm text-slate-600">
-              <span className="font-bold text-violet-600">{TEMPLATE_REGISTRY.length.toLocaleString()}</span> templates
+              <span className="font-bold text-orange-600">{TEMPLATE_REGISTRY.length.toLocaleString()}</span> templates
               {' — '}{groups.length.toLocaleString()} unique layouts, each in multiple colors/fonts.{' '}
               <button
                 onClick={() => { setShowAllVariants((v) => !v); resetPaging(); }}
-                className="font-medium text-violet-600 underline hover:text-violet-700"
+                className="font-medium text-orange-600 underline hover:text-orange-700"
               >
                 {showAllVariants ? 'Group by layout' : `Show all ${totalVariants.toLocaleString()} individually`}
               </button>
@@ -433,7 +433,7 @@ const TemplateGallery: React.FC = () => {
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); resetPaging(); }}
                 placeholder="Search templates…"
-                className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </div>
           </div>
@@ -447,7 +447,7 @@ const TemplateGallery: React.FC = () => {
               onClick={() => { setActiveCategory(tab.value); resetPaging(); }}
               className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 activeCategory === tab.value
-                  ? 'bg-violet-600 text-white'
+                  ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25'
                   : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100'
               }`}
             >

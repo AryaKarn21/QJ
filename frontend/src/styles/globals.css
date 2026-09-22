@@ -5,20 +5,27 @@
    the global reset, and the animation keyframes below. */
 
 :root {
-  /* --primary: #A75233; */
-  --primary: #48a733;
-  --secondary: #F2F2F2;
-  --dark: #333333;
+  --primary: #F97316;
+  --primary-hover: #EA580C;
+  --primary-light: #FFF7ED;
+  --primary-border: #FED7AA;
+  --primary-dark: #C2410C;
+  --secondary: #F8FAFC;
+  --dark: #0F172A;
+  --text-secondary: #64748B;
   --light: #FFFFFF;
-  --success: #4CAF50;
-  --warning: #FF9800;
-  --error: #F44336;
-  --gray-100: #F9F9F9;
-  --gray-200: #E0E0E0;
-  --gray-300: #CCCCCC;
-  --gray-400: #999999;
-  --gray-500: #666666;
-  --gray-600: #444444;
+  --success: #16A34A;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+  --error: #DC2626;
+  --info: #2563EB;
+  --gray-50: #F8FAFC;
+  --gray-100: #F1F5F9;
+  --gray-200: #E2E8F0;
+  --gray-300: #CBD5E1;
+  --gray-400: #94A3B8;
+  --gray-500: #64748B;
+  --gray-600: #475569;
 }
 
 * {

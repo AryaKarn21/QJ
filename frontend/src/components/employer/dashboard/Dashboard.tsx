@@ -39,7 +39,7 @@ import { CommunityPostsPreview } from '../../community/CommunityPostsPreview';
 
 
 const T = {
-  bg:      '#FFF8F3',
+  bg:      '#F8FAFC',
   card:    '#FFFFFF',
   border:  '#E5E7EB',
   active:  '#FFEDD5',

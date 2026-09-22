@@ -39,8 +39,8 @@ const CallToAction: React.FC = () => {
       className="py-10 sm:py-12 lg:py-14"
       style={{
         position: 'relative',
-        background: 'linear-gradient(180deg, #FFF8F3 0%, #FFFFFF 100%)',
-        borderTop: '1px solid #FFE4CC',
+        background: 'linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)',
+        borderTop: '1px solid #E2E8F0',
         overflow: 'hidden',
       }}
     >

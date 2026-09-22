@@ -32,7 +32,14 @@
 @layer base {
   html {
     height: 100%;
+    font-size: 15px;
     -webkit-text-size-adjust: 100%;
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 14.5px; /* ~90% visual density on desktop */
+    }
   }
 
   html,
@@ -44,6 +51,8 @@
 
   body {
     min-height: 100dvh;
+    color: #0F172A;
+    background-color: #F8FAFC;
   }
 
   #root {
@@ -57,6 +66,102 @@
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
+    --primary: #F97316;
+    --primary-hover: #EA580C;
+    --primary-light: #FFF7ED;
+    --primary-border: #FED7AA;
+  }
+}
+
+/* ── Orange Premium Shine Sweep Effect ───────────────────────────── */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.btn-shine:hover::after {
+  transform: rotate(25deg) translate(350%, 0);
+}
+
+/* ── Standardized Design System Utilities ────────────────────────── */
+@layer components {
+  .qj-container {
+    max-width: 1440px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .qj-container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .qj-container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  .qj-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background-color: #FFFFFF;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease-in-out;
+  }
+
+  .qj-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .qj-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    background-color: #EA580C;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(234, 88, 12, 0.2);
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+  }
+
+  .qj-btn-primary:hover {
+    background-color: #C2410C;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.3);
+  }
+
+  .qj-btn-primary:active {
+    transform: scale(0.98);
   }
 }
 

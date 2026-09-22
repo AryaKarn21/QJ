@@ -133,7 +133,7 @@ const UserDashboard = () => {
   const recentMessages = conversations.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-[#FFF8F3] p-6 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
+    <div className="min-h-screen bg-[#F8FAFC] p-6 overflow-auto" style={{ maxHeight: "calc(100dvh - 50px)" }}>
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* ── Welcome bar ── */}

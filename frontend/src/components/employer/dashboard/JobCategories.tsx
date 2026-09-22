@@ -241,7 +241,7 @@ const JobCategories: React.FC = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-[#FFF8F3] min-h-full">
+    <div className="p-4 sm:p-6 md:p-8 bg-[#F8FAFC] min-h-full">
       <div className="mx-auto max-w-6xl space-y-6">
 
         {/* Back Navigation */}

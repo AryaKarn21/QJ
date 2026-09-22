@@ -211,51 +211,32 @@ const Header: React.FC = () => {
             viewport well past that instead of going fluid-then-flat right
             at the activation point — extra margin, not the binding
             constraint. */}
-        <div className="max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 transition-all duration-300">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 transition-all duration-300">
 
             {/* Logo */}
             <Link to="/" className="flex items-center shrink-0 group focus:outline-none">
               <div className="relative overflow-hidden p-1 rounded-xl transition-transform duration-300 group-hover:scale-105 active:scale-95">
-                <img src={StarLogo} alt="QuickJobs Logo" className="h-8 w-auto sm:h-10 lg:h-11 object-contain drop-shadow-sm" />
+                <img src={StarLogo} alt="QuickJobs Logo" className="h-7 w-auto sm:h-9 object-contain drop-shadow-xs" />
               </div>
             </Link>
 
-            {/* Search — desktop. Hidden through `lg` (the compact search
-                icon in the icon row covers that range instead) so it never
-                fights the nav pills for space in the tightest range
-                (1024-1279px) — appears at `xl` (1280px), the same tier the
-                full messages/notifications/profile row appears at, and goes
-                elastic at 1440px+ once the full available width is already
-                known and sufficient. min-w trimmed to 160px so every px
-                here stays budgeted against the logged-in case's real
-                content width. */}
             {/* Search — desktop. Excluded on /jobs so the hero search is the single main search area */}
             {isLoggedIn && !location.pathname.startsWith('/jobs') && (
-              <HeaderSearch className="hidden xl:block xl:w-56 min-[1440px]:flex-1 min-[1440px]:min-w-[160px] min-[1440px]:max-w-md mx-2" suggestionSeeds={jobCategories} />
+              <HeaderSearch className="hidden xl:block xl:w-52 min-[1440px]:flex-1 min-[1440px]:min-w-[150px] min-[1440px]:max-w-xs mx-2" suggestionSeeds={jobCategories} />
             )}
 
-            {/* Desktop Nav — gated to `lg` (1024px, standard tablet-landscape
-                /laptop width) instead of a custom 1440px breakpoint. 1440px
-                left every laptop and tablet screen — the vast majority of
-                "desktop" traffic — stuck in the mobile hamburger/bottom-tab
-                UI, which is exactly backwards. Fitting content at 1024px
-                instead required shrinking it further, not just moving the
-                breakpoint: pills use tighter padding/gap below `xl`, and
-                Blog/About Us/Contact stay grouped in the "More" dropdown
-                next to Categories so only 4 links + 2 dropdowns need to fit.
-                Below `lg`, nav links live in the hamburger drawer instead
-                (see the compact icon row and shared drawer further down). */}
-            <nav className="hidden lg:flex shrink-0 items-center gap-0.5 xl:space-x-1 bg-slate-100/60 p-1 rounded-2xl border border-slate-200/50 backdrop-blur-sm">
+            {/* Desktop Nav */}
+            <nav className="hidden lg:flex shrink-0 items-center gap-0.5 xl:space-x-1 bg-slate-100/70 p-1 rounded-2xl border border-slate-200/60 backdrop-blur-xs">
               {PRIMARY_NAV_ITEMS.map((item) => {
                 const isHome = item.path === '/';
                 const isActive = isHome ? location.pathname === '/' : location.pathname.startsWith(item.path);
                 return (
                   <Link key={item.name} to={item.path}
-                    className={`px-2 xl:px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 group relative whitespace-nowrap ${
-                      isActive ? 'bg-white text-primary font-semibold shadow-sm border border-slate-200/60 scale-[1.02]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    className={`px-2.5 xl:px-3 py-1.5 text-xs xl:text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 group relative whitespace-nowrap ${
+                      isActive ? 'bg-white text-orange-600 font-semibold shadow-xs border border-orange-200/70 scale-[1.01]' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                     }`}>
-                    <span className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-700'}`}>
+                    <span className={`transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-orange-600' : 'text-slate-400 group-hover:text-slate-700'}`}>
                       {item.icon}
                     </span>
                     <span>{item.name}</span>
@@ -346,106 +327,94 @@ const Header: React.FC = () => {
                 <>
                   {/* Desktop login/register */}
                   <div className="hidden sm:flex items-center space-x-2">
-                    <Link to="/login" className="px-4 py-2.5 text-xs min-[1440px]:text-sm font-semibold text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200">
+                    <Link to="/login" className="px-3.5 py-2 text-xs xl:text-sm font-semibold text-slate-700 hover:text-orange-600 hover:bg-slate-100/80 rounded-xl transition-all duration-200">
                       Log In
                     </Link>
-                    <Link to="/signup" className="relative group inline-flex items-center justify-center px-4 sm:px-5 py-2.5 text-xs min-[1440px]:text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-md shadow-primary/25 transition-all duration-200 active:scale-95">
+                    <Link to="/signup" className="relative group inline-flex items-center justify-center px-4 py-2 text-xs xl:text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl shadow-xs shadow-orange-500/25 transition-all duration-200 active:scale-95 btn-shine">
                       <span className="relative z-10 flex items-center gap-1.5">
                         <span>Register</span>
-                        <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                        <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
                       </span>
                     </Link>
                   </div>
                   {/* Mobile: hamburger for not-logged-in */}
                   <button type="button" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="lg:hidden p-2.5 text-slate-700 hover:text-primary hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
+                    className="lg:hidden p-2.5 text-slate-700 hover:text-orange-600 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition-all duration-200 active:scale-95"
                     aria-label="Toggle Mobile Menu">
                     {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                   </button>
                 </>
               ) : (
                 <>
-                  {/* Desktop: messages + notifications + profile. Deferred
-                      to `xl` (1280px), one tier past the nav's own `lg` —
-                      at lg-xl this full cluster plus the full search bar
-                      would outweigh what the nav pills leave free, so that
-                      range keeps the compact icon row below instead
-                      (search icon, notifications, avatar) and only gains
-                      the full row/search bar once there's real room. */}
-                  <div className="hidden xl:flex items-center space-x-1.5">
+                  <div className="hidden xl:flex items-center space-x-1">
                     <Link to="/messages" aria-label="Messages"
-                      className="p-2.5 text-slate-600 hover:text-primary hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
-                      <MessageCircle size={20} />
+                      className="p-2 text-slate-600 hover:text-orange-600 hover:bg-slate-100/80 rounded-xl transition-all duration-200 active:scale-95">
+                      <MessageCircle size={18} />
                     </Link>
-                    <div className="p-1 rounded-xl hover:bg-slate-100/80 transition-all duration-200">
+                    <div className="p-0.5 rounded-xl hover:bg-slate-100/80 transition-all duration-200">
                       <NotificationBell />
                     </div>
                     <div className="relative ml-1" ref={profileDropdownRef}>
                       <button type="button"
                         onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                        className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl border border-slate-200/80 hover:border-primary/30 hover:bg-slate-50 transition-all duration-200 active:scale-95"
+                        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl border border-slate-200/80 hover:border-orange-500/30 hover:bg-slate-50 transition-all duration-200 active:scale-95"
                         aria-label="Profile menu">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <div className="w-7 h-7 rounded-lg overflow-hidden bg-orange-500 flex items-center justify-center flex-shrink-0 shadow-2xs">
                           {userInfo?.avatar ? (
                             <img src={resolveMediaUrl(userInfo.avatar)} alt={userInfo.name} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-white text-sm font-bold">{initial}</span>
+                            <span className="text-white text-xs font-bold">{initial}</span>
                           )}
                         </div>
-                        {/* Name text deliberately gated to a higher tier
-                            than the rest of this cluster (xl, not lg) — at
-                            lg-xl every px is needed for search+nav+icons; an
-                            avatar-only profile button (still has the
-                            chevron/tooltip) is enough there. */}
                         <div className="hidden xl:block text-left">
-                          <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] min-[1760px]:max-w-[150px] truncate">{userInfo?.name}</p>
+                          <p className="text-xs font-semibold text-slate-800 leading-tight max-w-[90px] truncate">{userInfo?.name}</p>
                         </div>
-                        <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={13} className={`text-slate-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180 text-orange-600' : ''}`} />
                       </button>
 
                       {isProfileDropdownOpen && (
                         <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/80 overflow-hidden z-50">
-                          <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-primary/5 to-orange-50/50">
+                          <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-orange-50/60 to-amber-50/40">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+                              <div className="w-9 h-9 rounded-xl overflow-hidden bg-orange-500 flex items-center justify-center flex-shrink-0 shadow-2xs">
                                 {userInfo?.avatar ? (
                                   <img src={resolveMediaUrl(userInfo.avatar)} alt={userInfo.name} className="w-full h-full object-cover" />
                                 ) : (
-                                  <span className="text-white text-base font-bold">{initial}</span>
+                                  <span className="text-white text-sm font-bold">{initial}</span>
                                 )}
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-slate-900 truncate">{userInfo?.name}</p>
-                                <p className="text-xs text-primary font-medium">{roleLabel}</p>
+                                <p className="text-xs text-orange-600 font-semibold">{roleLabel}</p>
                               </div>
                             </div>
                           </div>
-                          <div className="py-1.5">
+                          <div className="py-1.5 text-xs">
                             <button onClick={() => { navigate(getDashboardPath()); setIsProfileDropdownOpen(false); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
-                              <LayoutDashboard size={16} className="text-slate-400" /><span className="font-medium">Dashboard</span>
+                              className="w-full flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-left font-medium">
+                              <LayoutDashboard size={15} className="text-slate-400" /><span>Dashboard</span>
                             </button>
                             <button onClick={() => { navigate(getProfilePath()); setIsProfileDropdownOpen(false); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
-                              <User size={16} className="text-slate-400" /><span className="font-medium">My Profile</span>
+                              className="w-full flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-left font-medium">
+                              <User size={15} className="text-slate-400" /><span>My Profile</span>
                             </button>
                             <button onClick={() => { navigate('/community/profile-views'); setIsProfileDropdownOpen(false); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
-                              <Eye size={16} className="text-slate-400" /><span className="font-medium">Who Viewed My Profile</span>
+                              className="w-full flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-left font-medium">
+                              <Eye size={15} className="text-slate-400" /><span>Who Viewed My Profile</span>
                             </button>
                             <button onClick={() => { navigate('/messages'); setIsProfileDropdownOpen(false); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
-                              <MessageCircle size={16} className="text-slate-400" /><span className="font-medium">Messages</span>
+                              className="w-full flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-left font-medium">
+                              <MessageCircle size={15} className="text-slate-400" /><span>Messages</span>
                             </button>
                             {userInfo?.role === 'jobseeker' && (
                               <button onClick={() => { navigate('/resume'); setIsProfileDropdownOpen(false); }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
-                                <FileText size={16} className="text-slate-400" /><span className="font-medium">Resume Builder</span>
+                                className="w-full flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-left font-medium">
+                                <FileText size={15} className="text-slate-400" /><span>Resume Builder</span>
                               </button>
                             )}
                             <button onClick={() => { navigate(getSettingsPath()); setIsProfileDropdownOpen(false); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors text-left">
-                              <Settings size={16} className="text-slate-400" /><span className="font-medium">Settings</span>
+                              className="w-full flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-left font-medium">
+                              <Settings size={15} className="text-slate-400" /><span>Settings</span>
                             </button>
                           </div>
                           <div className="border-t border-slate-100 py-1.5">

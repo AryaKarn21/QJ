@@ -76,8 +76,8 @@ const BRAND = {
   primaryLight: '#FFEDD5',  // orange-100 — active nav background
   primaryHover: '#FFF7ED',  // orange-50 — nav hover background
   primaryShadow: 'rgba(249,115,22,.25)',
-  gradient: 'linear-gradient(135deg,#F59E0B,#F97316)', // amber → orange, matches Profile.tsx's banner family
-  pageBg: '#FFF8F3',        // warm cream, matches Profile.tsx's page background
+  gradient: 'linear-gradient(135deg,#F59E0B,#F97316)', // amber → orange
+  pageBg: '#F8FAFC',        // crisp slate-50 background
 };
 
 // Static placeholder rows for the notification dropdown — there's no
@@ -169,9 +169,9 @@ const DashboardLayout = () => {
           aria-modal={sidebarOpen || undefined}
           aria-label="Employer navigation"
           style={{
-            position: 'fixed', top: 0, left: 0, height: '100dvh', width: 256,
-            background: '#fff', borderRight: '1px solid #E5E7EB',
-            boxShadow: '2px 0 24px rgba(0,0,0,.06)',
+            position: 'fixed', top: 0, left: 0, height: '100dvh', width: 248,
+            background: '#fff', borderRight: '1px solid #E2E8F0',
+            boxShadow: '2px 0 24px rgba(0,0,0,.04)',
             display: 'flex', flexDirection: 'column', zIndex: 100,
             transition: 'transform .22s cubic-bezier(.4,0,.2,1)',
           }}
@@ -186,9 +186,9 @@ const DashboardLayout = () => {
           {/* Logo */}
           <div
             style={{
-              height: 72,
-              padding: '0 20px',
-              borderBottom: '1px solid #E5E7EB',
+              height: 64,
+              padding: '0 18px',
+              borderBottom: '1px solid #E2E8F0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -197,7 +197,7 @@ const DashboardLayout = () => {
             }}
             onClick={() => navigate('/')}
           >
-            <img src={logo} alt="Quick Jobs" style={{ height: 42, width: 'auto', objectFit: 'contain' }} />
+            <img src={logo} alt="Quick Jobs" style={{ height: 38, width: 'auto', objectFit: 'contain' }} />
             <button
               style={{ display: 'none' }}
               className="sidebar-close-mobile"
@@ -274,7 +274,7 @@ const DashboardLayout = () => {
             <div style={{ fontSize: 11.5, lineHeight: 1.5, opacity: .82, marginBottom: 12 }}>
               Post unlimited jobs, access AI candidate ranking & analytics.
             </div>
-            <button style={{ background: 'rgba(255,255,255,.22)', border: '1px solid rgba(255,255,255,.3)', color: '#fff', padding: '5px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="btn-shine" style={{ background: 'rgba(255,255,255,.25)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Upgrade Now →
             </button>
           </div>
@@ -306,8 +306,8 @@ const DashboardLayout = () => {
         {/* ══ NAVBAR ════════════════════════════════════════════════ */}
         <header
           style={{
-            position: 'fixed', top: 0, left: 256, right: 0, height: 72,
-            background: '#fff', borderBottom: '1px solid #E5E7EB',
+            position: 'fixed', top: 0, left: 248, right: 0, height: 64,
+            background: '#fff', borderBottom: '1px solid #E2E8F0',
             display: 'flex', alignItems: 'center', flexWrap: 'nowrap',
             gap: 10, padding: '0 24px',
             zIndex: 90, boxSizing: 'border-box',
@@ -508,7 +508,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* ══ MAIN ══════════════════════════════════════════════════ */}
-        <main style={{ flex: 1, marginLeft: 256, paddingTop: 72, minHeight: '100dvh', background: BRAND.pageBg }} className="employer-main">
+        <main style={{ flex: 1, marginLeft: 248, paddingTop: 64, minHeight: '100dvh', background: BRAND.pageBg }} className="employer-main">
           <Outlet />
         </main>
       </div>
@@ -544,7 +544,7 @@ const DashboardLayout = () => {
           }
         }
         @media (max-width: 768px) {
-          .employer-sidebar { transform: translateX(-256px) !important; padding-bottom: env(safe-area-inset-bottom); }
+          .employer-sidebar { transform: translateX(-248px) !important; padding-bottom: env(safe-area-inset-bottom); }
           .employer-sidebar.open { transform: translateX(0) !important; }
           .sidebar-close-mobile { display: flex !important; width: 32px; height: 32px; align-items: center; justify-content: center; }
           .employer-navbar {

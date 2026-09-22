@@ -294,7 +294,7 @@ export const Sidebar: React.FC = () => {
         className={`fixed inset-y-0 left-0 z-50 flex h-dvh flex-col border-r border-slate-800/80 bg-gradient-to-b from-[#0B1020] via-[#0F172A] to-[#121A2C] text-slate-200 backdrop-blur-xl transition-all duration-300 ease-in-out select-none
           w-[min(320px,85vw)] md:static md:z-auto md:h-screen md:w-[320px] md:translate-x-0
           ${mobileNavOpen ? 'translate-x-0 shadow-2xl shadow-orange-950/20' : '-translate-x-full'}
-          ${sidebarCollapsed ? 'md:w-[80px]' : 'md:w-[280px] lg:w-[300px]'}
+          ${sidebarCollapsed ? 'md:w-[72px]' : 'md:w-[250px] lg:w-[260px]'}
         `}
       >
         {/* Top Header / Branding */}

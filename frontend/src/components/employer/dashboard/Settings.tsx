@@ -135,7 +135,7 @@ const EmployerSettings = () => {
   const passwordMatch = newPassword && confirmPassword ? newPassword === confirmPassword : null;
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-[#FFF8F3] min-h-full">
+    <div className="p-4 sm:p-6 md:p-8 bg-[#F8FAFC] min-h-full">
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Back Navigation */}
