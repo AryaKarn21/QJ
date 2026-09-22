@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor } from 'lucide-react';
-import { getCountryConfig, CountryCVInfo, ProfessionalMembership, SimpleLanguageItem, StructuredSkillItem } from '../config/countryCVConfigs';
+import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor, ChevronDown, Sliders } from 'lucide-react';
+import { getCountryConfig, CountryCVInfo, ProfessionalMembership, SimpleLanguageItem, StructuredSkillItem, CefrLanguageLevel } from '../config/countryCVConfigs';
 import { NationalitySelect } from './NationalitySelect';
+import { PlaceOfBirthSelect } from './PlaceOfBirthSelect';
 import { CascadingLocationSelect } from './CascadingLocationSelect';
 import { GENDER_OPTIONS } from '../config/countryCVConfigs/nationalities';
 import { isValidDateOfBirth } from '../config/countryCVConfigs/fieldValidation';
@@ -38,6 +39,7 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
   const isEuropean = config.features.hasCEFRGrid;
 
   const dobValidation = isValidDateOfBirth(countryCVInfo.dateOfBirth || '');
+  const [expandedLanguageIdx, setExpandedLanguageIdx] = useState<number | null>(null);
 
   // ── Driving License Details ──
   const drivingDetails = countryCVInfo.drivingLicenseDetails || {
@@ -95,7 +97,28 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
 
   const removeLanguage = (idx: number) => {
     const next = languages.filter((_, i) => i !== idx);
+    if (expandedLanguageIdx === idx) setExpandedLanguageIdx(null);
     syncLanguages(next);
+  };
+
+  const updateCefrSkill = (
+    idx: number,
+    skill: 'listening' | 'reading' | 'spokenProduction' | 'spokenInteraction' | 'writing',
+    level: string
+  ) => {
+    const currentList = countryCVInfo.cefrLanguages || [];
+    const baseLang = languages[idx] || { language: 'English', cefrLevel: 'A2' };
+    const baseEntry: CefrLanguageLevel = currentList[idx] || {
+      language: baseLang.language,
+      listening: (baseLang.cefrLevel as any) || 'A2',
+      reading: (baseLang.cefrLevel as any) || 'A2',
+      spokenProduction: (baseLang.cefrLevel as any) || 'A2',
+      spokenInteraction: (baseLang.cefrLevel as any) || 'A2',
+      writing: (baseLang.cefrLevel as any) || 'A2',
+    };
+    const updated = [...currentList];
+    updated[idx] = { ...baseEntry, [skill]: level as any };
+    onChange({ cefrLanguages: updated });
   };
 
   // ── Digital Skills (Dropdown + Proficiency) ──
@@ -260,13 +283,11 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <label className={labelClass}>
               Place of Birth <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              required
-              className={fieldClass}
-              placeholder="e.g. BARDIYA, Nepal / Bucharest, Romania"
+            <PlaceOfBirthSelect
               value={countryCVInfo.placeOfBirth || ''}
-              onChange={(e) => onChange({ placeOfBirth: e.target.value })}
+              onChange={(val) => onChange({ placeOfBirth: val })}
+              placeholder="Select or type Place of Birth…"
+              required
             />
           </div>
 
@@ -457,61 +478,168 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             Other Languages & CEFR Proficiency Matrix (Listening, Reading, Spoken production, Spoken interaction, Writing):
           </p>
 
-          {languages.map((item, idx) => (
-            <div
-              key={idx}
-              className="flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5"
-            >
-              <div className="flex-1 min-w-[140px]">
-                <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-                  Language <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className={fieldClass}
-                  value={item.language}
-                  onChange={(e) => updateLanguage(idx, { language: e.target.value })}
-                  required
-                >
-                  <option value="">Select Language…</option>
-                  {LANGUAGES_LIST.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {lang}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {languages.map((item, idx) => {
+            const cefrEntry = countryCVInfo.cefrLanguages?.[idx] || {
+              listening: item.cefrLevel || 'A2',
+              reading: item.cefrLevel || 'A2',
+              spokenProduction: item.cefrLevel || 'A2',
+              spokenInteraction: item.cefrLevel || 'A2',
+              writing: item.cefrLevel || 'A2',
+            };
+            const isCustomizing = expandedLanguageIdx === idx;
 
-              <div className="w-36">
-                <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-                  CEFR Level *
-                </label>
-                <select
-                  className={fieldClass}
-                  value={item.cefrLevel}
-                  onChange={(e) => updateLanguage(idx, { cefrLevel: e.target.value as any })}
-                  required
-                >
-                  <option value="">Select Level…</option>
-                  {CEFR_LEVELS.map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      {lvl}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            return (
+              <div
+                key={idx}
+                className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2.5 transition"
+              >
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
+                      Language <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className={fieldClass}
+                      value={item.language}
+                      onChange={(e) => updateLanguage(idx, { language: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Language…</option>
+                      {LANGUAGES_LIST.map((lang) => (
+                        <option key={lang} value={lang}>
+                          {lang}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {languages.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeLanguage(idx)}
-                  className="rounded-md p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 mt-4"
-                  title="Remove Language"
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-          ))}
+                  <div className="w-32">
+                    <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
+                      Overall Level *
+                    </label>
+                    <select
+                      className={fieldClass}
+                      value={item.cefrLevel}
+                      onChange={(e) => updateLanguage(idx, { cefrLevel: e.target.value as any })}
+                      required
+                    >
+                      <option value="">Select Level…</option>
+                      {CEFR_LEVELS.map((lvl) => (
+                        <option key={lvl} value={lvl}>
+                          {lvl}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="self-end flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLanguageIdx(isCustomizing ? null : idx)}
+                      className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-2 rounded-lg border transition ${
+                        isCustomizing
+                          ? 'border-orange-300 bg-orange-50 text-orange-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      title="Fine-tune Listening, Reading, Speaking & Writing"
+                    >
+                      <Sliders size={12} />
+                      <span className="hidden sm:inline">5 Skills</span>
+                      <ChevronDown
+                        size={12}
+                        className={`transition-transform duration-150 ${isCustomizing ? 'rotate-180 text-orange-500' : ''}`}
+                      />
+                    </button>
+
+                    {languages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeLanguage(idx)}
+                        className="rounded-lg p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                        title="Remove Language"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Optional Expandable 5-Skill Matrix */}
+                {isCustomizing && (
+                  <div className="pt-2 border-t border-slate-200/80 bg-white p-3 rounded-lg border shadow-xs space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                      <span>Europass 5-Skill Matrix for {item.language || 'Language'}</span>
+                      <span className="text-[10px] font-normal lowercase text-slate-400">
+                        (Listening, Reading, Spoken prod., Spoken int., Writing)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      <div>
+                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Listening</span>
+                        <select
+                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
+                          value={cefrEntry.listening || item.cefrLevel || 'A2'}
+                          onChange={(e) => updateCefrSkill(idx, 'listening', e.target.value)}
+                        >
+                          {CEFR_LEVELS.map((lvl) => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Reading</span>
+                        <select
+                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
+                          value={cefrEntry.reading || item.cefrLevel || 'A2'}
+                          onChange={(e) => updateCefrSkill(idx, 'reading', e.target.value)}
+                        >
+                          {CEFR_LEVELS.map((lvl) => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Spoken Prod.</span>
+                        <select
+                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
+                          value={cefrEntry.spokenProduction || item.cefrLevel || 'A2'}
+                          onChange={(e) => updateCefrSkill(idx, 'spokenProduction', e.target.value)}
+                        >
+                          {CEFR_LEVELS.map((lvl) => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Spoken Inter.</span>
+                        <select
+                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
+                          value={cefrEntry.spokenInteraction || item.cefrLevel || 'A2'}
+                          onChange={(e) => updateCefrSkill(idx, 'spokenInteraction', e.target.value)}
+                        >
+                          {CEFR_LEVELS.map((lvl) => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-medium text-slate-500 mb-0.5">Writing</span>
+                        <select
+                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold bg-white"
+                          value={cefrEntry.writing || item.cefrLevel || 'A2'}
+                          onChange={(e) => updateCefrSkill(idx, 'writing', e.target.value)}
+                        >
+                          {CEFR_LEVELS.map((lvl) => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

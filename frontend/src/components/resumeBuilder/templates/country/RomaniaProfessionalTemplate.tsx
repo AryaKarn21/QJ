@@ -3,6 +3,7 @@ import type { Resume } from '../../resumeApi';
 import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { EuropassLogo } from './EuropassLogo';
+import { EuropassLanguageSkillsTable, FormattedLanguageItem } from '../../components/EuropassLanguageSkillsTable';
 
 interface Props {
   resume: Resume;
@@ -261,68 +262,51 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 5. LANGUAGE SKILLS (SIMPLIFIED 2-COLUMN TABLE AS REQUIRED) */}
+        {/* 5. LANGUAGE SKILLS (EUROPASS CEFR GRID AS REQUIRED) */}
         {(countryCVInfo.motherTongue ||
           (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
           (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
           (resume.languages && resume.languages.length > 0)) && (() => {
-          const displayLanguages: { language: string; level: string }[] = (
-            countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
-              ? countryCVInfo.simpleLanguages.map((l) => ({
-                  language: l.language,
-                  level: (l as any).level || (l as any).cefrLevel || 'B2',
-                }))
-              : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+          const displayLanguages: FormattedLanguageItem[] = (
+            countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
               ? countryCVInfo.cefrLanguages.map((l) => ({
                   language: l.language,
-                  level: l.listening || l.reading || l.spokenProduction || l.spokenInteraction || l.writing || 'B2',
+                  listening: l.listening || 'B2',
+                  reading: l.reading || 'B2',
+                  spokenProduction: l.spokenProduction || l.spokenInteraction || 'B2',
+                  spokenInteraction: l.spokenInteraction || l.spokenProduction || 'B2',
+                  writing: l.writing || 'B2',
                 }))
-              : (resume.languages || []).map((l) => ({
-                  language: l.name,
-                  level: l.level || 'B2',
-                }))
+              : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+              ? countryCVInfo.simpleLanguages.map((l) => {
+                  const lvl = l.cefrLevel || (l as any).level || 'B2';
+                  return {
+                    language: l.language,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                  };
+                })
+              : (resume.languages || []).map((l) => {
+                  const lvl = l.level || 'B2';
+                  return {
+                    language: l.name,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                  };
+                })
           ).filter((l) => Boolean(l.language && l.language.trim()));
 
           return (
-            <section className="break-inside-avoid">
-              <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-                <span className="text-slate-400 text-[10px]">●</span>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                  LANGUAGE SKILLS
-                </h2>
-              </div>
-
-              {countryCVInfo.motherTongue && (
-                <p className="text-[11.5px] font-medium text-slate-800 mb-2">
-                  Mother tongue(s): <span className="font-bold uppercase">{countryCVInfo.motherTongue}</span>
-                </p>
-              )}
-
-              {displayLanguages.length > 0 && (
-                <div className="max-w-md overflow-x-auto">
-                  <table className="w-full text-left text-[11px] border border-slate-300">
-                    <thead>
-                      <tr className="border-b border-slate-300 bg-slate-50 font-bold uppercase text-slate-800 text-[10px] tracking-wide">
-                        <th className="py-1.5 px-3 border-r border-slate-300">Language</th>
-                        <th className="py-1.5 px-3">CEFR Level</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {displayLanguages.map((lang, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50">
-                          <td className="py-1.5 px-3 font-semibold text-slate-900 border-r border-slate-300 uppercase">
-                            {lang.language}
-                          </td>
-                          <td className="py-1.5 px-3 font-medium text-slate-800">
-                            {lang.level}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+            <EuropassLanguageSkillsTable
+              motherTongue={countryCVInfo.motherTongue}
+              languages={displayLanguages}
+            />
           );
         })()}
 
