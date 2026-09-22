@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor, ChevronDown, Sliders } from 'lucide-react';
+import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor, ChevronDown, Sliders, Sparkles } from 'lucide-react';
 import { getCountryConfig, CountryCVInfo, ProfessionalMembership, SimpleLanguageItem, StructuredSkillItem, CefrLanguageLevel } from '../config/countryCVConfigs';
 import { NationalitySelect } from './NationalitySelect';
 import { PlaceOfBirthSelect } from './PlaceOfBirthSelect';
@@ -15,11 +15,17 @@ import {
   DRIVING_LICENSE_TYPES,
 } from '../config/skillsAndLanguagesData';
 import { SUPPORTED_COUNTRIES_LIST } from '../config/locationData';
+import type { SkillEntry } from '../resumeApi';
+import { UniversalSkillsEditor } from './UniversalSkillsEditor';
 
 interface CountrySpecificFieldsEditorProps {
   countryCode: string;
   countryCVInfo?: CountryCVInfo;
   onChange: (patch: Partial<CountryCVInfo>) => void;
+  skills?: SkillEntry[];
+  onSkillsChange?: (skills: SkillEntry[]) => void;
+  targetRole?: string;
+  onTargetRoleChange?: (role: string) => void;
 }
 
 const fieldClass =
@@ -30,6 +36,10 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
   countryCode,
   countryCVInfo = {},
   onChange,
+  skills,
+  onSkillsChange,
+  targetRole,
+  onTargetRoleChange,
 }) => {
   const config = getCountryConfig(countryCode);
 
@@ -430,7 +440,28 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
       </div>
 
-      {/* 3. LANGUAGE SKILLS (STREAMLINED LANGUAGE + CEFR DROPDOWN ONLY) */}
+      {/* 3. SKILLS & TRADE SPECIALIZATIONS */}
+      {skills !== undefined && onSkillsChange && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-orange-500" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              SKILLS & TRADE SPECIALIZATIONS
+            </h4>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Intelligent skills recommended for your Target Job. Select relevant skills or add your custom skills.
+          </p>
+          <UniversalSkillsEditor
+            skills={skills}
+            onChange={onSkillsChange}
+            targetRole={targetRole}
+            onTargetRoleChange={onTargetRoleChange}
+          />
+        </div>
+      )}
+
+      {/* 4. LANGUAGE SKILLS (STREAMLINED LANGUAGE + CEFR DROPDOWN ONLY) */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

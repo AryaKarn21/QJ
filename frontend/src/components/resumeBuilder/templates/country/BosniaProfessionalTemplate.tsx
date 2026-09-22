@@ -263,26 +263,47 @@ export const BosniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           );
         })()}
 
-        {/* 5. JEZIČKE VJEŠTINE (LANGUAGE SKILLS - COMPACT 2-COLUMN TABLE) */}
+        {/* 5. JEZIČKE VJEŠTINE (EUROPASS 5-SKILL CEFR MATRIX) */}
         {(countryCVInfo.motherTongue ||
           (countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0) ||
           (countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0) ||
           (resume.languages && resume.languages.length > 0)) && (() => {
           const displayLanguages: FormattedLanguageItem[] = (
-            countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
-              ? countryCVInfo.simpleLanguages.map((l) => ({
-                  language: l.language,
-                  cefrLevel: l.cefrLevel || (l as any).level || 'A2',
-                }))
-              : countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
+            countryCVInfo.cefrLanguages && countryCVInfo.cefrLanguages.length > 0
               ? countryCVInfo.cefrLanguages.map((l) => ({
                   language: l.language,
-                  cefrLevel: l.listening || l.reading || 'A2',
+                  listening: l.listening || 'A2',
+                  reading: l.reading || 'A2',
+                  spokenProduction: l.spokenProduction || l.spokenInteraction || 'A2',
+                  spokenInteraction: l.spokenInteraction || l.spokenProduction || 'A2',
+                  writing: l.writing || 'A2',
+                  cefrLevel: l.listening || 'A2',
                 }))
-              : (resume.languages || []).map((l) => ({
-                  language: l.name,
-                  cefrLevel: l.level || 'A2',
-                }))
+              : countryCVInfo.simpleLanguages && countryCVInfo.simpleLanguages.length > 0
+              ? countryCVInfo.simpleLanguages.map((l) => {
+                  const lvl = l.cefrLevel || (l as any).level || 'A2';
+                  return {
+                    language: l.language,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                    cefrLevel: lvl,
+                  };
+                })
+              : (resume.languages || []).map((l) => {
+                  const lvl = l.level || 'A2';
+                  return {
+                    language: l.name,
+                    listening: lvl,
+                    reading: lvl,
+                    spokenProduction: lvl,
+                    spokenInteraction: lvl,
+                    writing: lvl,
+                    cefrLevel: lvl,
+                  };
+                })
           ).filter((l) => Boolean(l.language && l.language.trim()));
 
           return (

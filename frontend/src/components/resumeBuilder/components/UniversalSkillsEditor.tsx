@@ -158,6 +158,27 @@ export const UniversalSkillsEditor: React.FC<UniversalSkillsEditorProps> = ({
     (item) => !existingNamesLower.has(item.toLowerCase())
   );
 
+  // Identify best-matching preset job for dropdown
+  const matchedPreset = PRESET_TARGET_JOBS.find((job) => {
+    const sLow = selectedRole.toLowerCase();
+    if (sLow.includes('dairy') || sLow.includes('milk')) return job === 'Dairy Production Worker';
+    if (sLow.includes('clean') || sLow.includes('housekeep') || sLow.includes('maid')) return job === 'Cleaner / Housekeeper';
+    if (sLow.includes('driver') || sLow.includes('driving')) return job === 'Driver';
+    if (sLow.includes('construct') || sLow.includes('mason') || sLow.includes('brick')) return job === 'Construction Worker';
+    if (sLow.includes('warehouse') || sLow.includes('handler') || sLow.includes('stock')) return job === 'Warehouse Worker';
+    if (sLow.includes('kitchen') || sLow.includes('cook') || sLow.includes('chef')) return job === 'Kitchen Helper';
+    if (sLow.includes('waiter') || sLow.includes('restaurant') || sLow.includes('server')) return job === 'Waiter / Restaurant Worker';
+    if (sLow.includes('security') || sLow.includes('guard')) return job === 'Security Guard';
+    if (sLow.includes('factory') || sLow.includes('assembly') || sLow.includes('machine')) return job === 'Factory Worker';
+    if (sLow.includes('farm') || sLow.includes('agri') || sLow.includes('crop')) return job === 'Farm / Agriculture Worker';
+    if (sLow.includes('electric')) return job === 'Electrician';
+    if (sLow.includes('plumb')) return job === 'Plumber';
+    if (sLow.includes('weld')) return job === 'Welder';
+    if (sLow.includes('data entry') || sLow.includes('clerk') || sLow.includes('typing')) return job === 'Data Entry Operator';
+    if (sLow.includes('software') || sLow.includes('developer') || sLow.includes('engineer')) return job === 'Software Developer';
+    return job.toLowerCase() === sLow;
+  });
+
   return (
     <div ref={containerRef} className="space-y-4">
       {/* ── PART 1: TARGET JOB SELECTOR ── */}
@@ -168,13 +189,13 @@ export const UniversalSkillsEditor: React.FC<UniversalSkillsEditorProps> = ({
             TARGET JOB
           </label>
           <span className="text-[10.5px] text-slate-500">
-            Select to see tailor-made skill suggestions
+            Recommended skills update for this trade
           </span>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
           <select
-            value={PRESET_TARGET_JOBS.includes(selectedRole) ? selectedRole : 'Custom'}
+            value={matchedPreset || 'Custom'}
             onChange={(e) => {
               if (e.target.value !== 'Custom') {
                 handleRoleChange(e.target.value);
@@ -187,7 +208,7 @@ export const UniversalSkillsEditor: React.FC<UniversalSkillsEditorProps> = ({
                 {job}
               </option>
             ))}
-            {!PRESET_TARGET_JOBS.includes(selectedRole) && (
+            {!matchedPreset && (
               <option value="Custom">Custom: {selectedRole}</option>
             )}
           </select>
@@ -195,7 +216,7 @@ export const UniversalSkillsEditor: React.FC<UniversalSkillsEditorProps> = ({
           <input
             type="text"
             className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200"
-            placeholder="Or type custom job title..."
+            placeholder="Or type custom job title (e.g. Dairy Product, Driver)..."
             value={selectedRole}
             onChange={(e) => handleRoleChange(e.target.value)}
           />

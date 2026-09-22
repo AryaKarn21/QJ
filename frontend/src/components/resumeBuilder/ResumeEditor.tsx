@@ -885,6 +885,10 @@ const ResumeEditor: React.FC = () => {
                 countryCode: effectiveCountryCode,
               })
             }
+            skills={resume.skills || []}
+            onSkillsChange={(skills) => update({ skills })}
+            targetRole={resume.targetRole}
+            onTargetRoleChange={(targetRole) => update({ targetRole })}
           />
         )}
 
