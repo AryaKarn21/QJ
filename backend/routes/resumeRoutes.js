@@ -12,6 +12,7 @@ const {
   uploadResumeDocument,
   deleteResumeDocument,
   toggleResumeDocument,
+  getResumeDocumentFile,
 } = require("../controllers/resumeController");
 
 router.get("/", authenticate, getMyResumes);
@@ -22,6 +23,7 @@ router.patch("/:id", authenticate, updateResume);
 router.delete("/:id", authenticate, deleteResume);
 
 router.post("/:id/documents", authenticate, resumeDocumentUpload, uploadResumeDocument);
+router.get("/:id/documents/:docId/file", authenticate, getResumeDocumentFile);
 router.patch("/:id/documents/:docId", authenticate, toggleResumeDocument);
 router.delete("/:id/documents/:docId", authenticate, deleteResumeDocument);
 

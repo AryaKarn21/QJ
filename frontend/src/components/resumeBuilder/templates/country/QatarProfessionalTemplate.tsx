@@ -246,26 +246,6 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         </section>
       )}
 
-      {/* Supporting Documents */}
-      {resume.documents && resume.documents.filter((d) => d.includeInDownload).length > 0 && (
-        <section className="mt-5 break-inside-avoid">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2">
-            Supporting Documents
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            {resume.documents
-              .filter((d) => d.includeInDownload)
-              .map((doc, i) => (
-                <div key={doc._id || i} className="flex items-center justify-between rounded border border-slate-200 p-2 bg-slate-50">
-                  <span className="font-semibold text-slate-800">{doc.name}</span>
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Attached
-                  </span>
-                </div>
-              ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 };

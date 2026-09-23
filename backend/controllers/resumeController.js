@@ -1,5 +1,7 @@
+const path = require("path");
+const fs = require("fs");
 const Resume = require("../models/Resume");
-const { persistUpload, deleteStoredFile } = require("../services/media.service");
+const { persistUpload, deleteStoredFile, getCloudinaryPrivateDownloadUrl, isCloudinaryUrl } = require("../services/media.service");
 
 // Mongoose ValidationError/CastError (bad enum value, malformed ObjectId,
 // ...) is the client's fault — 400, with the real reason. Anything else
@@ -242,6 +244,48 @@ const toggleResumeDocument = async (req, res) => {
   }
 };
 
+const getResumeDocumentFile = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({ _id: req.params.id, user: req.user.id });
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+    const doc = resume.documents.id(req.params.docId);
+    if (!doc) return res.status(404).json({ message: "Document not found" });
+
+    const fileUrl = doc.fileUrl;
+    if (!fileUrl) {
+      return res.status(404).json({ message: "File URL not found" });
+    }
+
+    const isDownload = req.query.download === "true";
+    const cleanFilename = `${(doc.name || "document").replace(/[^a-zA-Z0-9_-]/g, "_")}${doc.mimeType === "application/pdf" ? ".pdf" : ""}`;
+
+    // If Cloudinary URL, sign it with private download URL to bypass 401
+    if (isCloudinaryUrl(fileUrl)) {
+      const signedUrl = getCloudinaryPrivateDownloadUrl(fileUrl, isDownload ? cleanFilename : undefined);
+      return res.redirect(signedUrl || fileUrl);
+    }
+
+    // If external URL
+    if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+      return res.redirect(fileUrl);
+    }
+
+    // If local file on disk
+    const localPath = path.join(__dirname, "..", fileUrl);
+    if (fs.existsSync(localPath)) {
+      if (isDownload) {
+        return res.download(localPath, cleanFilename);
+      }
+      return res.sendFile(localPath);
+    }
+
+    return res.status(404).json({ message: "Document file not found on disk." });
+  } catch (error) {
+    respondResumeError(res, error, "accessing document file for");
+  }
+};
+
 module.exports = {
   getMyResumes,
   getResumeById,
@@ -252,4 +296,5 @@ module.exports = {
   uploadResumeDocument,
   deleteResumeDocument,
   toggleResumeDocument,
+  getResumeDocumentFile,
 };

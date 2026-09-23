@@ -1287,8 +1287,12 @@ const ResumeEditor: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Attached Supporting Documents Live Preview (Appendix Pages) ── */}
-        <AttachedDocumentsPreview documents={resume.documents || []} />
+        {/* ── Attached Supporting Documents ── */}
+        <AttachedDocumentsPreview
+          documents={resume.documents || []}
+          resumeId={resume._id}
+          onDownloadCV={handleDownloadPDF}
+        />
       </div>
 
     </div>

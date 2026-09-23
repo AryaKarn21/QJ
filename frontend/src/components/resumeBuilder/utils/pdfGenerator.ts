@@ -1,13 +1,10 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { toast } from 'react-toastify';
 import { logResumeBuild } from './aiUsageApi';
-import type { Resume, ResumeDocument } from '../resumeApi';
+import type { Resume } from '../resumeApi';
 import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCustomSectionId } from '../templates/shared/sections';
 import { getFontFamilyPreset } from '../themePresets';
 import { sanitizeResumeLink } from '../templates/shared/ResumeLink';
-import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 // Same combined fontScale × spacing multiplier ResumeEditor.tsx's live
 // preview applies via CSS `zoom` — kept here too so the exported PDF's
@@ -15,160 +12,8 @@ import { resolveMediaUrl } from '../../../utils/mediaUrl';
 const SPACING_SCALE: Record<string, number> = { compact: 0.97, standard: 1, relaxed: 1.05 };
 const combinedScale = (resume: Resume) => (resume.fontScale ?? 1) * (SPACING_SCALE[resume.spacing || 'standard'] ?? 1);
 
-async function appendDocumentAppendix(
-  mainPdfBytes: ArrayBuffer,
-  documents: ResumeDocument[]
-): Promise<Uint8Array> {
-  const appendixDocs = documents.filter((d) => d.includeInDownload && d.fileUrl);
-  if (appendixDocs.length === 0) {
-    return new Uint8Array(mainPdfBytes);
-  }
-
-  const mergedPdf = await PDFDocument.load(mainPdfBytes);
-  const fontBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
-  const fontNormal = await mergedPdf.embedFont(StandardFonts.Helvetica);
-
-  const token = localStorage.getItem('token');
-  const authHeaders: Record<string, string> = {};
-  if (token) {
-    authHeaders['Authorization'] = `Bearer ${token}`;
-  }
-
-  let failedCount = 0;
-
-  for (const doc of appendixDocs) {
-    try {
-      const resolvedUrl = resolveMediaUrl(doc.fileUrl);
-      if (!resolvedUrl) {
-        throw new Error('Could not resolve document URL');
-      }
-
-      const isExternal =
-        resolvedUrl.startsWith('https://res.cloudinary.com/') ||
-        (resolvedUrl.startsWith('https://') &&
-          typeof window !== 'undefined' &&
-          !resolvedUrl.includes(window.location.hostname));
-
-      const headers = isExternal ? {} : authHeaders;
-
-      const res = await fetch(resolvedUrl, { headers });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-
-      const isPdf =
-        doc.mimeType === 'application/pdf' ||
-        resolvedUrl.toLowerCase().endsWith('.pdf') ||
-        resolvedUrl.toLowerCase().includes('.pdf?');
-
-      if (isPdf) {
-        const donorBytes = await res.arrayBuffer();
-        const donorPdf = await PDFDocument.load(donorBytes);
-        const copiedPages = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
-        for (const page of copiedPages) {
-          mergedPdf.addPage(page);
-        }
-      } else {
-        const imgBytes = await res.arrayBuffer();
-        let embeddedImg;
-
-        try {
-          if (doc.mimeType === 'image/png' || resolvedUrl.toLowerCase().endsWith('.png')) {
-            embeddedImg = await mergedPdf.embedPng(imgBytes);
-          } else {
-            embeddedImg = await mergedPdf.embedJpg(imgBytes);
-          }
-        } catch {
-          try {
-            const blob = new Blob([imgBytes], { type: doc.mimeType || 'image/jpeg' });
-            const objectUrl = URL.createObjectURL(blob);
-            const img = new Image();
-            await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = reject;
-              img.src = objectUrl;
-            });
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth || 800;
-            canvas.height = img.naturalHeight || 600;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0);
-            const pngDataUrl = canvas.toDataURL('image/png');
-            URL.revokeObjectURL(objectUrl);
-            embeddedImg = await mergedPdf.embedPng(pngDataUrl);
-          } catch (conversionErr) {
-            console.error('Failed to convert image for appendix:', doc.name, conversionErr);
-          }
-        }
-
-        if (embeddedImg) {
-          const pageWidth = 595.28;
-          const pageHeight = 841.89;
-          const page = mergedPdf.addPage([pageWidth, pageHeight]);
-
-          page.drawText('DOCUMENT APPENDIX', {
-            x: 40,
-            y: pageHeight - 42,
-            size: 13,
-            font: fontBold,
-            color: rgb(0.12, 0.16, 0.23),
-          });
-
-          const typeLabel = (doc.documentType || 'Document').toUpperCase();
-          page.drawText(`${typeLabel} — ${doc.name}`, {
-            x: 40,
-            y: pageHeight - 58,
-            size: 10,
-            font: fontNormal,
-            color: rgb(0.39, 0.45, 0.55),
-          });
-
-          page.drawLine({
-            start: { x: 40, y: pageHeight - 66 },
-            end: { x: pageWidth - 40, y: pageHeight - 66 },
-            thickness: 1,
-            color: rgb(0.88, 0.91, 0.94),
-          });
-
-          const maxW = pageWidth - 80;
-          const maxH = pageHeight - 110;
-          const dims = embeddedImg.scale(1);
-          const scale = Math.min(maxW / dims.width, maxH / dims.height, 1);
-          const renderW = dims.width * scale;
-          const renderH = dims.height * scale;
-          const renderX = (pageWidth - renderW) / 2;
-          const renderY = (pageHeight - 85 - renderH) / 2 + 30;
-
-          page.drawImage(embeddedImg, {
-            x: renderX,
-            y: renderY,
-            width: renderW,
-            height: renderH,
-          });
-        }
-      }
-    } catch (err) {
-      failedCount++;
-      console.error(`Failed to append document to PDF: ${doc.name}`, err);
-    }
-  }
-
-  if (failedCount > 0) {
-    try {
-      toast.warn(
-        failedCount === 1
-          ? 'Supporting document could not be loaded.'
-          : `${failedCount} supporting documents could not be loaded.`
-      );
-    } catch {
-      // Ignore if toast is unmounted
-    }
-  }
-
-  return await mergedPdf.save();
-}
-
 export const generatePDF = async (
+
   elementRef: React.RefObject<HTMLDivElement>,
   fileName: string,
   templateId?: string,
@@ -226,25 +71,7 @@ export const generatePDF = async (
     }
   }
 
-  const appendixDocs = (resume?.documents || []).filter((d) => d.includeInDownload && d.fileUrl);
-
-  if (appendixDocs.length > 0) {
-    try {
-      const mainBytes = pdf.output('arraybuffer');
-      const finalPdfBytes = await appendDocumentAppendix(mainBytes, appendixDocs);
-      const blob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    } catch (appendErr) {
-      console.error('Appendix merge error, falling back to direct save:', appendErr);
-      pdf.save(fileName);
-    }
-  } else {
-    pdf.save(fileName);
-  }
+  pdf.save(fileName);
 
   if (templateId) {
     logResumeBuild(templateId, templateName, 'downloaded');
@@ -656,24 +483,7 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
     }
   }
 
-  const appendixDocs = (resume.documents || []).filter((d) => d.includeInDownload && d.fileUrl);
-  if (appendixDocs.length > 0) {
-    try {
-      const mainBytes = w.pdf.output('arraybuffer');
-      const finalPdfBytes = await appendDocumentAppendix(mainBytes, appendixDocs);
-      const blob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    } catch (appendErr) {
-      console.error('Appendix merge error in ATS safe PDF:', appendErr);
-      w.pdf.save(fileName);
-    }
-  } else {
-    w.pdf.save(fileName);
-  }
+  w.pdf.save(fileName);
 
   if (resume.layout) {
     logResumeBuild(resume.layout, 'ats-safe-text-pdf', 'downloaded');
