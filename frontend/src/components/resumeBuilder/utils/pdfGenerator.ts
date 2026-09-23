@@ -448,10 +448,6 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
     renderedSections.add(sectionId);
   }
 
-  // If this is a country CV with supporting documents and not in section order, render them
-  if (resume.documents && resume.documents.some((d) => d.includeInDownload) && !renderedSections.has('documents')) {
-    SECTION_RENDERERS['documents']?.(w, resume);
-  }
 
   // If this is a country CV with declaration and not in section order, render it
   if (resume.countryCVInfo && !renderedSections.has('declaration')) {

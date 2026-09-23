@@ -49,7 +49,6 @@ import { TargetRoleSelect } from './components/TargetRoleSelect';
 import { UniversalSkillsEditor } from './components/UniversalSkillsEditor';
 import { PdfCustomizationToolbar } from './components/PdfCustomizationToolbar';
 import { A4PageContainer } from './components/A4PageContainer';
-import { AttachedDocumentsPreview } from './components/AttachedDocumentsPreview';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -1286,13 +1285,6 @@ const ResumeEditor: React.FC = () => {
             </A4PageContainer>
           </div>
         </div>
-
-        {/* ── Attached Supporting Documents ── */}
-        <AttachedDocumentsPreview
-          documents={resume.documents || []}
-          resumeId={resume._id}
-          onDownloadCV={handleDownloadPDF}
-        />
       </div>
 
     </div>

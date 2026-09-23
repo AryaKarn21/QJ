@@ -43,10 +43,10 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
   if (!motherTongue && (!languages || languages.length === 0)) return null;
 
   return (
-    <section className="break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+    <section>
       {/* 1. Header with bullet dot and full-width divider */}
-      <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-2" style={{ breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
-        <span className="text-[#334155] text-[10px]">●</span>
+      <div className="flex items-center gap-1.5 border-b border-slate-400 pb-0.5 mb-2" style={{ breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
+        <span className="text-slate-500 text-[10px]">●</span>
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
           {title}
         </h2>
@@ -54,7 +54,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
 
       {/* 2. Mother Tongue Row with subtle divider */}
       {motherTongue && (
-        <div className="text-[10.5px] text-slate-700 border-b border-slate-400 pb-1 mb-1.5">
+        <div className="text-[10.5px] text-slate-700 border-b border-slate-300 pb-1 mb-1.5">
           <span className="text-slate-600">{motherTongueLabel}:</span>{' '}
           <span className="font-bold text-slate-900 uppercase">{motherTongue}</span>
         </div>
@@ -66,7 +66,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
           <table className="w-full text-left text-[10.5px] border-collapse">
             <thead>
               {/* Top Header Row: UNDERSTANDING | SPEAKING | WRITING */}
-              <tr className="border-b border-slate-300">
+              <tr className="border-y border-slate-300">
                 <th className="w-[20%] py-1"></th>
                 <th
                   colSpan={2}
@@ -110,9 +110,12 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
                 return (
                   <tr
                     key={idx}
-                    className="border-b border-slate-300 bg-slate-50/50 hover:bg-slate-100/50 transition-colors"
+                    className={`border-b border-slate-300 break-inside-avoid ${
+                      idx % 2 === 0 ? 'bg-[#f1f5f9]' : 'bg-white'
+                    }`}
+                    style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
                   >
-                    <td className="py-1.5 px-2 font-bold text-slate-900 uppercase text-[10.5px]">
+                    <td className="py-1.5 px-2 font-bold text-slate-900 uppercase text-[10px]">
                       {item.language}
                     </td>
                     <td className="py-1.5 text-center font-medium text-slate-800 text-[10px]">
@@ -137,7 +140,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
           </table>
 
           {/* 4. Description legend matching reference */}
-          <p className="text-[9px] italic text-slate-500 mt-1.5">
+          <p className="text-[9px] italic text-slate-500 mt-1">
             {levelsLegend}
           </p>
         </div>

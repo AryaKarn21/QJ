@@ -46,10 +46,10 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       ? countryCVInfo.declaration.replace(/BELEIF/gi, 'BELIEF')
       : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.';
 
-  // Section Header Component guaranteeing exact identical styling across all sections (1.5px dark navy/blue-gray)
+  // Section Header Component guaranteeing exact identical styling across all sections matching reference
   const SectionHeading: React.FC<{ title: string }> = ({ title }) => (
-    <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-2" style={{ breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
-      <span className="text-[#334155] text-[10px]">●</span>
+    <div className="flex items-center gap-1.5 border-b border-slate-400 pb-0.5 mb-2" style={{ breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
+      <span className="text-slate-500 text-[10px]">●</span>
       <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
         {title}
       </h2>

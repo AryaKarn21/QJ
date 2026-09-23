@@ -10,9 +10,11 @@ import {
   AlertCircle,
   Plus,
   FileCheck,
+  ExternalLink,
 } from 'lucide-react';
 import type { ResumeDocument } from '../resumeApi';
 import { uploadResumeDocument, deleteResumeDocument, toggleResumeDocument } from '../resumeApi';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 interface DocumentManagerProps {
   resumeId: string;
@@ -224,15 +226,24 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewDoc(doc)}
-                    className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100"
-                    title="Preview Document"
+                  <a
+                    href={(() => {
+                      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                      if (resumeId && doc._id) {
+                        const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com').replace(/\/+$/, '');
+                        const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+                        return `${apiBase}/api/resumes/${resumeId}/documents/${doc._id}/file${qs}`;
+                      }
+                      return resolveMediaUrl(doc.fileUrl);
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition"
+                    title="Open document in new tab"
                   >
-                    <Eye size={12} />
-                    <span>Preview</span>
-                  </button>
+                    <ExternalLink size={12} />
+                    <span>Open in tab</span>
+                  </a>
                   <button
                     type="button"
                     onClick={() => handleDelete(doc._id)}
