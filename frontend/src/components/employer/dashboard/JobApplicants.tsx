@@ -101,7 +101,11 @@ const JobApplicants = () => {
             {data.applicants.length === 0 ? (
                 <p>No applicants yet.</p>
             ) : (
-                <div className="overflow-x-auto">
+                <>
+                {/* Desktop/tablet: table. Seven columns is too dense to
+                    scroll-and-read on a phone, so below md it's replaced
+                    by the stacked card list instead. */}
+                <div className="hidden overflow-x-auto md:block">
                     <table className="w-full table-auto border-collapse text-sm">
                         <thead>
                             <tr className="bg-gray-100 text-left">
@@ -187,12 +191,92 @@ const JobApplicants = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile: stacked cards */}
+                <div className="space-y-3 md:hidden">
+                    {data.applicants.map((applicant) => (
+                        <div key={applicant.applicationId} className="rounded-lg border p-4">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="truncate font-semibold text-gray-900">
+                                        {applicant.applicant?.name || (<span className="italic text-gray-400">No name</span>)}
+                                    </p>
+                                    <p className="truncate text-sm text-gray-500">
+                                        {applicant.applicant?.email || (<span className="italic text-gray-400">No email</span>)}
+                                    </p>
+                                </div>
+                                <span
+                                    className={`shrink-0 px-2 py-1 rounded text-xs ${statusColors[applicant.status as keyof typeof statusColors] || statusColors.Default
+                                        }`}
+                                >
+                                    {applicant.status}
+                                </span>
+                            </div>
+
+                            <p className="mt-2 text-xs text-gray-500">
+                                Applied {new Date(applicant.appliedAt).toLocaleDateString()}
+                            </p>
+
+                            <button
+                                onClick={() => setSelectedCoverLetter(applicant.coverLetter)}
+                                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                            >
+                                View cover letter
+                            </button>
+
+                            <div className="mt-3">
+                                {applicant.resume && !isUnrecoverableResumePath(applicant.resume) ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <a
+                                            href={getAuthorizedApplicationResumeUrl(applicant.applicationId) || resolveResumeUrl(applicant.resume)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <button className="flex items-center text-white bg-primary px-3 py-1.5 rounded text-xs hover:bg-primary/90">
+                                                <Eye size={13} className="mr-1" />
+                                                Resume
+                                            </button>
+                                        </a>
+                                        <button
+                                            onClick={() => downloadFile(resolveResumeUrl(applicant.resume), resumeFilename(applicant.applicant?.name), applicant.applicationId)}
+                                            className="flex items-center text-gray-700 bg-gray-100 border border-gray-300 px-2.5 py-1.5 rounded text-xs hover:bg-gray-200"
+                                            title="Download Resume"
+                                        >
+                                            <Download size={13} className="mr-1" />
+                                            Download
+                                        </button>
+                                    </div>
+                                ) : applicant.resume ? (
+                                    <span className="text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs inline-block">
+                                        Resume unavailable — please ask the applicant to upload again
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-400 text-xs">No resume</span>
+                                )}
+                            </div>
+
+                            <select
+                                value={applicant.status}
+                                onChange={(e) =>
+                                    handleStatusChange(applicant.applicationId, e.target.value)
+                                }
+                                className="mt-3 w-full border rounded px-2 py-2 text-sm"
+                            >
+                                <option value="Pending">Pending</option>
+                                <option value="Reviewed">Reviewed</option>
+                                <option value="Accepted">Accepted</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                    ))}
+                </div>
+                </>
             )}
 
             {/* Modal */}
             {selectedCoverLetter && (
-                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg max-h-[80dvh] overflow-y-auto">
                         <p className="text-sm text-gray-800 whitespace-pre-wrap">{selectedCoverLetter}</p>
                         <div className="mt-4 text-right">
                             <button

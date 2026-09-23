@@ -253,7 +253,9 @@ const UserDashboardLayout = () => {
             <Menu size={20} />
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', borderRadius: 10, padding: '0 14px', height: 40, maxWidth: 380, width: '100%', transition: 'all .15s' }}
+          <div
+            className="jobseeker-navbar-search"
+            style={{ display: 'flex', alignItems: 'center', gap: 10, background: BRAND.pageBg, border: '1px solid #E5E7EB', borderRadius: 10, padding: '0 14px', height: 40, maxWidth: 380, flex: '1 1 auto', minWidth: 0, transition: 'all .15s' }}
             onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = BRAND.primary}
             onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'}
           >
@@ -273,7 +275,7 @@ const UserDashboardLayout = () => {
 
           <div style={{ flex: 1 }} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 36, border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 12.5, color: '#64748B', background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <div className="jobseeker-header-date" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 36, border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 12.5, color: '#64748B', background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <Calendar size={13} />
             <span>{today}</span>
           </div>
@@ -328,9 +330,19 @@ const UserDashboardLayout = () => {
           .jobseeker-navbar {
             left: 0 !important;
             padding: 0 calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left)) !important;
+            gap: 8px !important;
           }
           .mobile-menu-btn-jobseeker { display: flex !important; }
           .jobseeker-main { margin-left: 0 !important; }
+          /* Hamburger + search + people-search + bell + messages + avatar
+             don't all fit next to the date pill once the sidebar collapses
+             to a drawer below 768px — drop the pill first (least useful). */
+          .jobseeker-header-date { display: none !important; }
+        }
+        /* Below ~480px even the icon row alone is tight against the search
+           box — same crowding fix as the employer shell's navbar. */
+        @media (max-width: 480px) {
+          .jobseeker-navbar-search { display: none !important; }
         }
       `}</style>
     </>

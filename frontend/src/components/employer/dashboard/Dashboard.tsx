@@ -358,74 +358,116 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#FAFAFA' }}>
-                {['Candidate', 'Position', 'Applied', 'Status', 'Resume'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {applications.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
-                    <p style={{ fontSize: 13, color: T.muted }}>No applications yet. Post a job to start receiving candidates.</p>
-                    <button onClick={() => navigate('/employer/postjob')} style={{ marginTop: 12, padding: '8px 20px', background: T.accent, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Post a Job
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                applications.map((app, i) => (
-                  <tr key={app.id || i} style={{ transition: 'background .1s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FAFBFC'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {app.avatar ? (
-                          <img src={resolveMediaUrl(app.avatar)} alt={app.name} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} onError={e => (e.target as HTMLImageElement).style.display = 'none'} />
-                        ) : (
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#FDBA74,#F97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: '#fff', flexShrink: 0 }}>
-                            {app.name?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
-                        )}
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{app.name}</div>
-                          <div style={{ fontSize: 11.5, color: T.muted }}>{app.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '11px 16px', fontSize: 13, color: T.text, borderBottom: '1px solid #E5E7EB' }}>{app.position}</td>
-                    <td style={{ padding: '11px 16px', fontSize: 12.5, color: T.muted, borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap' }}>
-                      {app.appliedAt ? format(new Date(app.appliedAt), 'MMM d, yyyy') : '—'}
-                    </td>
-                    <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
-                      <Badge status={app.status} />
-                    </td>
-                    <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
-                      {app.resume && !isUnrecoverableResumePath(app.resume) ? (
-                        <a href={resolveResumeUrl(app.resume)} target="_blank" rel="noreferrer"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}>
-                          <Eye size={13} /> View
-                        </a>
-                      ) : app.resume ? (
-                        <span title="Resume unavailable — please ask the applicant to upload again" style={{ fontSize: 12, color: T.muted, cursor: 'default' }}>
-                          Unavailable
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: T.muted }}>—</span>
-                      )}
-                    </td>
+        {applications.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
+            <p style={{ fontSize: 13, color: T.muted }}>No applications yet. Post a job to start receiving candidates.</p>
+            <button onClick={() => navigate('/employer/postjob')} style={{ marginTop: 12, padding: '8px 20px', background: T.accent, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Post a Job
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Desktop/tablet: table. A table this dense either overflows
+                horizontally or gets crushed unreadable on a phone, so
+                below md it's replaced by the stacked card list instead. */}
+            <div className="hidden md:block" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#FAFAFA' }}>
+                    {['Candidate', 'Position', 'Applied', 'Status', 'Resume'].map(h => (
+                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11.5, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {applications.map((app, i) => (
+                    <tr key={app.id || i} style={{ transition: 'background .1s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FAFBFC'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {app.avatar ? (
+                            <img src={resolveMediaUrl(app.avatar)} alt={app.name} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} onError={e => (e.target as HTMLImageElement).style.display = 'none'} />
+                          ) : (
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#FDBA74,#F97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: '#fff', flexShrink: 0 }}>
+                              {app.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{app.name}</div>
+                            <div style={{ fontSize: 11.5, color: T.muted }}>{app.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '11px 16px', fontSize: 13, color: T.text, borderBottom: '1px solid #E5E7EB' }}>{app.position}</td>
+                      <td style={{ padding: '11px 16px', fontSize: 12.5, color: T.muted, borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap' }}>
+                        {app.appliedAt ? format(new Date(app.appliedAt), 'MMM d, yyyy') : '—'}
+                      </td>
+                      <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
+                        <Badge status={app.status} />
+                      </td>
+                      <td style={{ padding: '11px 16px', borderBottom: '1px solid #E5E7EB' }}>
+                        {app.resume && !isUnrecoverableResumePath(app.resume) ? (
+                          <a href={resolveResumeUrl(app.resume)} target="_blank" rel="noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}>
+                            <Eye size={13} /> View
+                          </a>
+                        ) : app.resume ? (
+                          <span title="Resume unavailable — please ask the applicant to upload again" style={{ fontSize: 12, color: T.muted, cursor: 'default' }}>
+                            Unavailable
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: T.muted }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile: stacked cards */}
+            <div className="md:hidden" style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {applications.map((app, i) => (
+                <div key={app.id || i} style={{ border: '1px solid #E5E7EB', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {app.avatar ? (
+                      <img src={resolveMediaUrl(app.avatar)} alt={app.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} onError={e => (e.target as HTMLImageElement).style.display = 'none'} />
+                    ) : (
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#FDBA74,#F97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
+                        {app.name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.name}</div>
+                      <div style={{ fontSize: 11.5, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.position}</div>
+                    </div>
+                    <Badge status={app.status} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px solid #F1F5F9' }}>
+                    <span style={{ fontSize: 12, color: T.muted }}>
+                      {app.appliedAt ? format(new Date(app.appliedAt), 'MMM d, yyyy') : '—'}
+                    </span>
+                    {app.resume && !isUnrecoverableResumePath(app.resume) ? (
+                      <a href={resolveResumeUrl(app.resume)} target="_blank" rel="noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}>
+                        <Eye size={13} /> View Resume
+                      </a>
+                    ) : app.resume ? (
+                      <span title="Resume unavailable — please ask the applicant to upload again" style={{ fontSize: 12, color: T.muted, cursor: 'default' }}>
+                        Unavailable
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, color: T.muted }}>—</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {totalPages > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #E5E7EB' }}>

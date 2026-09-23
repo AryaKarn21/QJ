@@ -1022,13 +1022,21 @@ const PostJob = () => {
         <h2 className="text-2xl font-bold mb-1 text-gray-900">
           {isEdit ? "Edit Job" : duplicateFrom ? "Duplicate Job" : "Post a Job"}
         </h2>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 mb-3 sm:mb-6">
           {sourceStatus === "Draft" && isEdit ? "Continuing a saved draft — " : ""}
           Step {step + 1} of {STEPS.length}: {STEPS[step]}
         </p>
 
-        {/* Step indicator */}
-        <div className="flex items-center mb-8 overflow-x-auto pb-2 scrollbar-none">
+        {/* Step indicator — compact progress bar on phones (the circle
+            row below is too wide to read at a glance under ~400px even
+            with horizontal scroll), full clickable step row from sm up */}
+        <div className="sm:hidden mb-8 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          />
+        </div>
+        <div className="hidden sm:flex items-center mb-8 overflow-x-auto pb-2 scrollbar-none">
           {STEPS.map((label, i) => (
             <React.Fragment key={label}>
               <button
@@ -1832,7 +1840,7 @@ const PostJob = () => {
                   You can also save it as a draft and come back later.
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
                 <button type="button" onClick={handleSaveDraft} disabled={mutation.isPending} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50">
                   {mutation.isPending ? "Saving..." : "Save as Draft"}
                 </button>
@@ -1843,12 +1851,15 @@ const PostJob = () => {
             </div>
           )}
 
-          {/* Step navigation */}
-          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+          {/* Step navigation — stacked on phones (Back/Cancel full-width
+              below, Draft/Next side-by-side above) instead of one row,
+              since Back + Save as Draft + Next together don't fit a
+              320px-wide screen without clipping the Next button. */}
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => (step === 0 ? navigate("/employer/dashboard") : goBack())}
-              className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ChevronLeft size={16} /> {step === 0 ? "Cancel" : "Back"}
             </button>
@@ -1859,7 +1870,7 @@ const PostJob = () => {
                   type="button"
                   onClick={handleSaveDraft}
                   disabled={mutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-primary transition-colors disabled:opacity-50"
+                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-500 hover:text-primary transition-colors disabled:opacity-50"
                 >
                   Save as Draft
                 </button>
@@ -1868,7 +1879,7 @@ const PostJob = () => {
                 <button
                   type="button"
                   onClick={goNext}
-                  className="flex items-center gap-1.5 px-6 py-2.5 bg-primary text-white font-medium text-sm rounded-xl shadow-sm hover:shadow hover:bg-[#e66800] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-6 py-2.5 bg-primary text-white font-medium text-sm rounded-xl shadow-sm hover:shadow hover:bg-[#e66800] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
                 >
                   {step === STEPS.length - 2 ? "Review to Publish" : "Next"} <ChevronRight size={16} />
                 </button>

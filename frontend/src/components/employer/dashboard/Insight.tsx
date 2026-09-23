@@ -200,25 +200,30 @@ const Insight: React.FC = () => {
             {top4ConversionRates.length === 0 ? (
               <ChartEmptyState message="No conversion data yet." />
             ) : (
-              <PieChart width={250} height={250}>
-                <Pie
-                  data={top4ConversionRates} // Use top4ConversionRates here
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40} // Doughnut effect
-                  outerRadius={80}
-                  paddingAngle={2}
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                  dataKey="value"
-                >
-                    {top4ConversionRates.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} stroke="#fff" strokeWidth={2} />
-                    ))}
-                </Pie>
-                <Tooltip />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 12 }} />
-              </PieChart>
+              // Fixed 250px width used to overflow narrow phone viewports
+              // (this card is full-width below lg) — ResponsiveContainer
+              // scales it to the card instead, same as the bar chart above.
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={top4ConversionRates} // Use top4ConversionRates here
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40} // Doughnut effect
+                    outerRadius={80}
+                    paddingAngle={2}
+                    labelLine={false}
+                    label={renderCustomizedLabel}
+                    dataKey="value"
+                  >
+                      {top4ConversionRates.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} stroke="#fff" strokeWidth={2} />
+                      ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
             )}
           </div>
         </div>
