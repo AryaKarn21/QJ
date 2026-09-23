@@ -218,7 +218,7 @@ exports.resolveReportAction = async (req, res) => {
     if (report.reporter) {
       sendNotification({
         recipient: report.reporter,
-        type: "system_announcement",
+        type: "general_announcement",
         message: `Your report regarding a ${report.targetType} has been reviewed and marked as ${status}.`,
         link: "/user/dashboard",
       });
