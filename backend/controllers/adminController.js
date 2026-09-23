@@ -1297,7 +1297,7 @@ const getAllBlogsAdmin = async (req, res) => {
     const query = {};
     if (status === "published") {
       query.isPublished = true;
-    } else if (status === "draft") {
+    } else if (status === "draft" || status === "drafts") {
       query.isPublished = false;
     }
     if (category && category !== "all") {

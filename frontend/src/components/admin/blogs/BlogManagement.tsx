@@ -62,10 +62,8 @@ export const BlogManagement: React.FC = () => {
         page,
         limit: 12,
       });
-      if (res.success) {
-        setBlogs(res.blogs);
-        setTotalPages(res.pagination?.totalPages || 1);
-      }
+      setBlogs(res.blogs || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to fetch blogs');
     } finally {
