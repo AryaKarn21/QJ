@@ -19,6 +19,7 @@ import {
   AtSign,
   FileText,
   Image as ImageIcon,
+  Flag,
 } from 'lucide-react';
 import { toggleLikePost, toggleBookmarkPost, deletePost, updatePost } from '../../api/communityApi';
 import { summarizePost } from '../../api/communityAiApi';
@@ -31,6 +32,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { PollWidget } from './PollWidget';
 import { CommentSection } from './CommentSection';
 import { ShareModal } from './ShareModal';
+import { ReportPostModal } from './ReportPostModal';
 import type { CommunityPost } from '../../types/community';
 
 function timeAgo(dateStr: string): string {
@@ -80,11 +82,13 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   const [saving, setSaving] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const editMentionRef = useRef<MentionTextareaHandle>(null);
 
   const isOwner = userId === post.author._id;
   const isSuperAdmin = role === 'superadmin' || role === 'admin';
   const canManage = isOwner || isSuperAdmin;
+  const canReport = isAuthenticated && !isOwner;
   const displayAs = post.company || post.author;
 
   const requireAuth = (fn: () => void) => {
@@ -253,7 +257,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
           </div>
         </div>
 
-        {canManage && (
+        {(canManage || canReport) && (
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
@@ -264,21 +268,36 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
             </button>
             {menuOpen && (
               <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                <button
-                  onClick={startEditing}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-dark hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-700"
-                >
-                  <Pencil size={14} className="text-primary" /> Edit
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setConfirmDeleteOpen(true);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-gray-100 dark:hover:bg-slate-700"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
+                {canManage && (
+                  <>
+                    <button
+                      onClick={startEditing}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-dark hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      <Pencil size={14} className="text-primary" /> Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setConfirmDeleteOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </>
+                )}
+                {canReport && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setReportModalOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <Flag size={14} /> Report Post
+                  </button>
+                )}
                 {isSuperAdmin && (
                   <Link
                     to="/admin/community/flagged-posts"
@@ -543,6 +562,15 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
         confirmLabel="Delete Post"
         loading={deleting}
       />
+
+      {/* Report Post */}
+      {reportModalOpen && (
+        <ReportPostModal
+          targetType="post"
+          targetId={post._id}
+          onClose={() => setReportModalOpen(false)}
+        />
+      )}
 
       {/* Poll */}
       {post.type === 'poll' && post.pollData && (

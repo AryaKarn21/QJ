@@ -185,6 +185,17 @@ export const fetchCompanyAbout = async (companyId: string): Promise<CompanyAbout
   return res.data.profile;
 };
 
+// --- Reporting ---
+export const reportContent = async (data: {
+  targetType: 'user' | 'job' | 'post' | 'comment' | 'blog';
+  targetId: string;
+  reason: string;
+  description?: string;
+}) => {
+  const res = await axios.post(`${API_BASE_URL}/api/reports`, data, getAuthHeader());
+  return res.data as { message: string; report: { _id: string } };
+};
+
 // --- Admin moderation ---
 export const fetchFlaggedPosts = async (page = 1): Promise<FeedPage> => {
   const res = await axios.get(`${API_BASE_URL}/api/admin/community/flagged-posts`, { ...getAuthHeader(), params: { page } });

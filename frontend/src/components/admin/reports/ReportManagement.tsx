@@ -75,16 +75,14 @@ export const ReportManagement: React.FC = () => {
 
   // Selected report for action modal
   const [activeReport, setActiveReport] = useState<ReportItem | null>(null);
-  const [actionType, setActionType] = useState<'warn' | 'remove_content' | 'suspend_user' | 'dismiss' | 'other'>('dismiss');
+  const [actionType, setActionType] = useState<'none' | 'removed_content' | 'suspended_user' | 'warned_user' | 'dismissed'>('dismissed');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
       const data = await getReportStats();
-      if (data.success) {
-        setStats(data.stats);
-      }
+      setStats({ total: data.total, pending: data.pending, resolved: data.resolved, dismissed: data.dismissed });
     } catch {
       // Non-blocking
     }
@@ -100,10 +98,8 @@ export const ReportManagement: React.FC = () => {
         page,
         limit: 15,
       });
-      if (res.success) {
-        setReports(res.reports);
-        setTotalPages(res.pagination.totalPages || 1);
-      }
+      setReports(res.reports || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to load moderation reports');
     } finally {
@@ -141,11 +137,11 @@ export const ReportManagement: React.FC = () => {
     setActiveReport(report);
     setResolutionNotes('');
     if (report.targetType === 'user') {
-      setActionType('warn');
+      setActionType('warned_user');
     } else if (['post', 'comment', 'job', 'blog'].includes(report.targetType)) {
-      setActionType('remove_content');
+      setActionType('removed_content');
     } else {
-      setActionType('dismiss');
+      setActionType('dismissed');
     }
   };
 
@@ -155,7 +151,8 @@ export const ReportManagement: React.FC = () => {
     try {
       await resolveReport(activeReport._id, {
         action: actionType,
-        resolutionNotes,
+        status: actionType === 'dismissed' ? 'dismissed' : 'resolved',
+        adminNotes: resolutionNotes,
       });
       toast.success('Report resolved successfully and action recorded.');
       setActiveReport(null);
@@ -345,9 +342,9 @@ export const ReportManagement: React.FC = () => {
                         <span className="text-sm font-bold text-slate-900 dark:text-white">
                           Reason: {report.reason}
                         </span>
-                        {report.customReason && (
+                        {report.description && (
                           <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-                            &ldquo;{report.customReason}&rdquo;
+                            &ldquo;{report.description}&rdquo;
                           </p>
                         )}
                       </div>
@@ -407,15 +404,15 @@ export const ReportManagement: React.FC = () => {
                       <div className="flex items-center gap-2 pt-1 text-xs text-slate-500">
                         <span>Reported by:</span>
                         <span className="font-medium text-slate-700 dark:text-slate-300">
-                          {report.reportedBy?.name || 'Anonymous user'} ({report.reportedBy?.role || 'User'})
+                          {report.reporter?.name || 'Anonymous user'} ({report.reporter?.role || 'User'})
                         </span>
                       </div>
 
                       {/* Resolution Log if resolved */}
                       {report.resolvedBy && (
                         <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
-                          <span className="font-semibold">Resolved by {report.resolvedBy.name}</span>: Action: &ldquo;{report.actionTaken}&rdquo;
-                          {report.resolutionNotes && <p className="mt-0.5 text-[11px] opacity-90">Note: {report.resolutionNotes}</p>}
+                          <span className="font-semibold">Resolved by {report.resolvedBy.name}</span>: Action: &ldquo;{report.adminAction}&rdquo;
+                          {report.adminNotes && <p className="mt-0.5 text-[11px] opacity-90">Note: {report.adminNotes}</p>}
                         </div>
                       )}
                     </div>
@@ -494,8 +491,8 @@ export const ReportManagement: React.FC = () => {
               <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3 border border-slate-100 dark:border-slate-800">
                 <p className="text-slate-500">Target Type: <span className="font-semibold text-slate-800 dark:text-slate-200 uppercase">{activeReport.targetType}</span></p>
                 <p className="text-slate-500 mt-1">Reason: <span className="font-semibold text-slate-800 dark:text-slate-200">{activeReport.reason}</span></p>
-                {activeReport.customReason && (
-                  <p className="mt-1 text-slate-600 dark:text-slate-300 italic">&ldquo;{activeReport.customReason}&rdquo;</p>
+                {activeReport.description && (
+                  <p className="mt-1 text-slate-600 dark:text-slate-300 italic">&ldquo;{activeReport.description}&rdquo;</p>
                 )}
               </div>
 
@@ -508,11 +505,11 @@ export const ReportManagement: React.FC = () => {
                   onChange={(e: any) => setActionType(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
-                  <option value="dismiss">Dismiss Report (No Violation Found)</option>
-                  <option value="warn">Issue Official Warning to User</option>
-                  <option value="remove_content">Remove / Unpublish Flagged Content</option>
-                  <option value="suspend_user">Suspend / Deactivate User Account</option>
-                  <option value="other">Custom Resolution</option>
+                  <option value="dismissed">Dismiss Report (No Violation Found)</option>
+                  <option value="warned_user">Issue Official Warning to User</option>
+                  <option value="removed_content">Remove / Unpublish Flagged Content</option>
+                  <option value="suspended_user">Suspend / Deactivate User Account</option>
+                  <option value="none">Custom Resolution</option>
                 </select>
               </div>
 

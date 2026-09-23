@@ -879,7 +879,7 @@ export interface ReportItem {
   _id: string;
   targetType: 'user' | 'job' | 'post' | 'comment' | 'blog';
   targetId: string;
-  reportedBy: {
+  reporter: {
     _id: string;
     name: string;
     email: string;
@@ -887,10 +887,8 @@ export interface ReportItem {
     role?: string;
   };
   reason: string;
-  customReason?: string;
-  evidenceUrl?: string;
+  description?: string;
   status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
-  targetSnapshot?: any;
   targetPreview?: any;
   resolvedBy?: {
     _id: string;
@@ -898,8 +896,8 @@ export interface ReportItem {
     email: string;
   };
   resolvedAt?: string;
-  resolutionNotes?: string;
-  actionTaken?: string;
+  adminNotes?: string;
+  adminAction?: 'none' | 'removed_content' | 'suspended_user' | 'warned_user' | 'dismissed';
   createdAt: string;
   updatedAt: string;
 }
@@ -912,19 +910,29 @@ export const getAllReports = async (params?: {
   limit?: number;
 }) => {
   const res = await axios.get(`${API_BASE_URL}/api/reports`, { ...getAuthConfig(), params });
-  return res.data;
+  return res.data as { reports: ReportItem[]; total: number; page: number; totalPages: number };
 };
 
 export const getReportStats = async () => {
   const res = await axios.get(`${API_BASE_URL}/api/reports/stats`, getAuthConfig());
-  return res.data;
+  return res.data as {
+    total: number;
+    pending: number;
+    resolved: number;
+    dismissed: number;
+    byType: Record<string, { total: number; pending: number }>;
+  };
 };
 
 export const resolveReport = async (
   reportId: string,
-  data: { action: 'warn' | 'remove_content' | 'suspend_user' | 'dismiss' | 'other'; resolutionNotes?: string; targetAction?: any }
+  data: {
+    action: 'none' | 'removed_content' | 'suspended_user' | 'warned_user' | 'dismissed';
+    status?: 'reviewed' | 'resolved' | 'dismissed';
+    adminNotes?: string;
+  }
 ) => {
-  const res = await axios.patch(`${API_BASE_URL}/api/reports/${reportId}/resolve`, data, getAuthConfig());
+  const res = await axios.patch(`${API_BASE_URL}/api/reports/${reportId}/action`, data, getAuthConfig());
   return res.data;
 };
 
