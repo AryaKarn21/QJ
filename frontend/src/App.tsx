@@ -429,7 +429,16 @@ function AppWrapper() {
           covering the last ~56px of content, with no further scroll room to
           reveal it. */}
       {!shouldHideHeaderFooter && isAuthenticated && (
-        <div className="lg:hidden h-14 flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} aria-hidden="true" />
+        // min-h-14, not h-14: Tailwind's h-* sets a *fixed* height, and
+        // under this app's border-box sizing, padding-bottom on a
+        // fixed-height element is absorbed into it rather than adding on
+        // top — so the safe-area padding below was silently a no-op and
+        // this spacer under-reserved space by exactly the device's
+        // safe-area inset on any phone with gesture nav / a notch. The
+        // real nav bar in Header.tsx doesn't have this bug because its
+        // padding lives on the outer <nav>, which has no fixed height of
+        // its own to clamp it.
+        <div className="lg:hidden min-h-14 flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} aria-hidden="true" />
       )}
 
       <Chatbot />
