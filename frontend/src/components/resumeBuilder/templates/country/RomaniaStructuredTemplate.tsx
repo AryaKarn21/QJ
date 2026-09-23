@@ -24,7 +24,9 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold uppercase tracking-widest text-orange-600">Curriculum Vitae</span>
-            <EuropassLogo width={135} height={32} />
+            {resume.showLogo !== 'none' && resume.showLogo !== 'no' && (
+              <EuropassLogo width={135} height={32} />
+            )}
           </div>
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">
             {personalInfo.fullName || 'Candidate Name'}
@@ -281,10 +283,40 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
         </div>
       )}
 
+      {/* Supporting Documents */}
+      {resume.documents && resume.documents.filter((d) => d.includeInDownload).length > 0 && (
+        <section className="mt-4 break-inside-avoid">
+          <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-1.5">
+            <span className="text-[#334155] text-[10px]">●</span>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+              SUPPORTING DOCUMENTS
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10.5px]">
+            {resume.documents
+              .filter((d) => d.includeInDownload)
+              .map((doc, idx) => (
+                <div
+                  key={doc._id || idx}
+                  className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200/90 rounded px-2.5 py-1.5"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{doc.name}</p>
+                    <p className="text-[9px] uppercase tracking-wider text-slate-500">{doc.documentType}</p>
+                  </div>
+                  <span className="shrink-0 text-[9.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                    Attached
+                  </span>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+
       {/* Declaration */}
-      <section className="mt-4 break-inside-avoid">
-        <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
-          <span className="text-slate-500 text-[10px]">●</span>
+      <section className="mt-4 break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+        <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-1.5">
+          <span className="text-[#334155] text-[10px]">●</span>
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
             DECLARATION
           </h2>
@@ -296,7 +328,6 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
               : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.'
           ).replace(/BELEIF/gi, 'BELIEF')}
         </p>
-        <div className="border-b border-slate-300 mt-2.5 w-4/5" />
       </section>
     </div>
   );

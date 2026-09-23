@@ -228,6 +228,8 @@ export interface Resume {
   fontFamily: string;
   fontScale: number;
   spacing: 'compact' | 'standard' | 'relaxed';
+  pageNumbering?: 'no' | 'all' | 'first' | 'last' | 'none';
+  showLogo?: 'no' | 'all' | 'first' | 'none';
   personalInfo: PersonalInfo;
   summary: string;
   experience: ExperienceEntry[];

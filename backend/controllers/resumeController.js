@@ -71,6 +71,8 @@ const UPDATABLE_FIELDS = [
   "fontFamily",
   "fontScale",
   "spacing",
+  "pageNumbering",
+  "showLogo",
   "personalInfo",
   "summary",
   "experience",

@@ -333,6 +333,10 @@ const ResumeSchema = new mongoose.Schema(
     // preview and the exported PDF (raster and ATS-safe text paths).
     fontScale: { type: Number, default: 1, min: 0.85, max: 1.15 },
     spacing: { type: String, enum: ["compact", "standard", "relaxed"], default: "standard" },
+    // Page number control: 'all' | 'first' | 'last' | 'none'
+    pageNumbering: { type: String, default: "all" },
+    // Logo display control: 'all' | 'first' | 'none'
+    showLogo: { type: String, default: "all" },
 
     // Manpower job category slug — see frontend/src/components/resumeBuilder/config/workerCategories.ts
     // for the full list. Named `workerCategoryId`, NOT `jobCategoryId`, to

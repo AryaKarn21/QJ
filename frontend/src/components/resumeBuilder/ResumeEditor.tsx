@@ -47,6 +47,9 @@ import { CvCompletionBar } from './components/CvCompletionBar';
 import { validateCountryCV } from './config/countryCVConfigs/fieldValidation';
 import { TargetRoleSelect } from './components/TargetRoleSelect';
 import { UniversalSkillsEditor } from './components/UniversalSkillsEditor';
+import { PdfCustomizationToolbar } from './components/PdfCustomizationToolbar';
+import { A4PageContainer } from './components/A4PageContainer';
+import { AttachedDocumentsPreview } from './components/AttachedDocumentsPreview';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -1254,33 +1257,38 @@ const ResumeEditor: React.FC = () => {
           PDF) instead of the fixed-width content blowing out the page's
           width and causing whole-page horizontal scroll. */}
       <div
-        className={`flex-1 overflow-x-auto overflow-y-auto bg-slate-100 p-6 lg:h-dvh print:bg-white print:p-0 print:overflow-visible ${
+        className={`flex-1 overflow-x-auto overflow-y-auto bg-slate-100 p-4 sm:p-6 lg:h-dvh print:bg-white print:p-0 print:overflow-visible ${
           mobileTab === 'edit' ? 'hidden lg:block' : 'block'
         }`}
       >
-        {/* At the default font size/spacing (scale 1) both wrapper styles
-            below are `undefined` — this renders byte-for-byte the same DOM
-            styling as before the Customize feature existed, so nobody who
-            never touches those controls sees any change. Away from
-            default, `previewInnerRef` gets `transform: scale()` (the CSS
-            property html2canvas actually supports — `zoom` is confirmed
-            unsupported) and the outer `previewRef` is explicitly sized to
-            that transform's real on-screen box (measured via the
-            useLayoutEffect above with getBoundingClientRect, which DOES
-            reflect a transform, unlike offsetWidth/Height) so both the
-            on-screen layout and the html2canvas/PDF capture use the same
-            correctly-sized box instead of clipping to the pre-transform size. */}
+        {/* PDF Customization Toolbar: Template, Colour style, Text size, Show logo, Page number */}
+        <div className="max-w-[800px] mx-auto print:hidden">
+          <PdfCustomizationToolbar
+            resume={resume}
+            onUpdate={update}
+            onChangeTemplate={() => navigate(`/resume?resumeId=${resume._id}`)}
+          />
+        </div>
+
+        {/* Live resume preview wrapped in A4 multi-page container */}
         <div
           ref={previewRef}
+          className="mx-auto flex flex-col items-center"
           style={scaledCaptureDims ? { width: scaledCaptureDims.width, height: scaledCaptureDims.height, position: 'relative' } : undefined}
         >
           <div
             ref={previewInnerRef}
-            style={previewScale !== 1 ? { transform: `scale(${previewScale})`, transformOrigin: 'top left', width: 720 } : undefined}
+            className="w-full flex flex-col items-center"
+            style={previewScale !== 1 ? { transform: `scale(${previewScale})`, transformOrigin: 'top center' } : undefined}
           >
-            <TemplateRenderer resume={resume} />
+            <A4PageContainer resume={resume}>
+              <TemplateRenderer resume={resume} />
+            </A4PageContainer>
           </div>
         </div>
+
+        {/* ── Attached Supporting Documents Live Preview (Appendix Pages) ── */}
+        <AttachedDocumentsPreview documents={resume.documents || []} />
       </div>
 
     </div>

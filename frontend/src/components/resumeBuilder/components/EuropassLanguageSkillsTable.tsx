@@ -43,10 +43,10 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
   if (!motherTongue && (!languages || languages.length === 0)) return null;
 
   return (
-    <section className="break-inside-avoid">
+    <section className="break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
       {/* 1. Header with bullet dot and full-width divider */}
-      <div className="flex items-center gap-1.5 border-b border-slate-400 pb-0.5 mb-1.5">
-        <span className="text-slate-500 text-[10px]">●</span>
+      <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-2" style={{ breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
+        <span className="text-[#334155] text-[10px]">●</span>
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
           {title}
         </h2>

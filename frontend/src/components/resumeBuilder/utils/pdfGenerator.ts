@@ -1,11 +1,13 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { toast } from 'react-toastify';
 import { logResumeBuild } from './aiUsageApi';
 import type { Resume, ResumeDocument } from '../resumeApi';
 import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCustomSectionId } from '../templates/shared/sections';
 import { getFontFamilyPreset } from '../themePresets';
 import { sanitizeResumeLink } from '../templates/shared/ResumeLink';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 // Same combined fontScale × spacing multiplier ResumeEditor.tsx's live
 // preview applies via CSS `zoom` — kept here too so the exported PDF's
@@ -32,15 +34,34 @@ async function appendDocumentAppendix(
     authHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  let failedCount = 0;
+
   for (const doc of appendixDocs) {
     try {
+      const resolvedUrl = resolveMediaUrl(doc.fileUrl);
+      if (!resolvedUrl) {
+        throw new Error('Could not resolve document URL');
+      }
+
+      const isExternal =
+        resolvedUrl.startsWith('https://res.cloudinary.com/') ||
+        (resolvedUrl.startsWith('https://') &&
+          typeof window !== 'undefined' &&
+          !resolvedUrl.includes(window.location.hostname));
+
+      const headers = isExternal ? {} : authHeaders;
+
+      const res = await fetch(resolvedUrl, { headers });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+
       const isPdf =
         doc.mimeType === 'application/pdf' ||
-        doc.fileUrl.toLowerCase().endsWith('.pdf') ||
-        doc.fileUrl.toLowerCase().includes('.pdf?');
+        resolvedUrl.toLowerCase().endsWith('.pdf') ||
+        resolvedUrl.toLowerCase().includes('.pdf?');
 
       if (isPdf) {
-        const res = await fetch(doc.fileUrl, { headers: authHeaders });
         const donorBytes = await res.arrayBuffer();
         const donorPdf = await PDFDocument.load(donorBytes);
         const copiedPages = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
@@ -48,12 +69,11 @@ async function appendDocumentAppendix(
           mergedPdf.addPage(page);
         }
       } else {
-        const res = await fetch(doc.fileUrl, { headers: authHeaders });
         const imgBytes = await res.arrayBuffer();
         let embeddedImg;
 
         try {
-          if (doc.mimeType === 'image/png' || doc.fileUrl.toLowerCase().endsWith('.png')) {
+          if (doc.mimeType === 'image/png' || resolvedUrl.toLowerCase().endsWith('.png')) {
             embeddedImg = await mergedPdf.embedPng(imgBytes);
           } else {
             embeddedImg = await mergedPdf.embedJpg(imgBytes);
@@ -128,7 +148,20 @@ async function appendDocumentAppendix(
         }
       }
     } catch (err) {
-      console.error('Failed to append document to PDF:', doc.name, err);
+      failedCount++;
+      console.error(`Failed to append document to PDF: ${doc.name}`, err);
+    }
+  }
+
+  if (failedCount > 0) {
+    try {
+      toast.warn(
+        failedCount === 1
+          ? 'Supporting document could not be loaded.'
+          : `${failedCount} supporting documents could not be loaded.`
+      );
+    } catch {
+      // Ignore if toast is unmounted
     }
   }
 
@@ -144,31 +177,53 @@ export const generatePDF = async (
 ) => {
   if (!elementRef.current) return;
 
-  const canvas = await html2canvas(elementRef.current, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-  });
-
-  const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF('p', 'mm', 'a4');
-  const imgWidth = 210;
+  const pageWidth = 210;
   const pageHeight = 297;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  let heightLeft = imgHeight;
 
-  let position = 0;
+  // Check if element contains discrete .resume-page sheets (from A4PageContainer)
+  const pageElements = Array.from(
+    elementRef.current.querySelectorAll<HTMLElement>('.resume-page')
+  );
 
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  if (pageElements.length > 0) {
+    for (let i = 0; i < pageElements.length; i++) {
+      const pageEl = pageElements[i];
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      if (i > 0) {
+        pdf.addPage('a4', 'p');
+      }
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+    }
+  } else {
+    // Continuous fallback if .resume-page is not present
+    const canvas = await html2canvas(elementRef.current, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+    });
 
-  // Only create a second page if there is genuine remaining content (> 12mm)
-  // Prevents accidental ghost second pages caused by minor sub-pixel rendering padding
-  while (heightLeft > 12) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    const imgData = canvas.toDataURL('image/png');
+    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight, undefined, 'FAST');
     heightLeft -= pageHeight;
+
+    while (heightLeft > 12) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+    }
   }
 
   const appendixDocs = (resume?.documents || []).filter((d) => d.includeInDownload && d.fileUrl);
@@ -191,8 +246,6 @@ export const generatePDF = async (
     pdf.save(fileName);
   }
 
-  // Fire-and-forget usage tracking — feeds the admin AI Center dashboard.
-  // Never awaited/blocking: a logging failure must never affect the download.
   if (templateId) {
     logResumeBuild(templateId, templateName, 'downloaded');
   }
@@ -521,6 +574,22 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     w.heading('Languages');
     w.commaList((r.languages || []).map((l) => `${l.name} (${l.level})`).filter(Boolean));
   },
+  documents: (w, r) => {
+    const docs = (r.documents || []).filter((d) => d.includeInDownload);
+    if (!docs.length) return;
+    w.heading('Supporting Documents');
+    docs.forEach((doc) => {
+      w.entryHeader(doc.name, (doc.documentType || 'Document').toUpperCase());
+    });
+  },
+  declaration: (w, r) => {
+    const text =
+      r.countryCVInfo?.declaration && r.countryCVInfo.declaration.trim()
+        ? r.countryCVInfo.declaration.replace(/BELEIF/gi, 'BELIEF')
+        : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.';
+    w.heading('Declaration');
+    w.paragraph(text);
+  },
 };
 
 export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
@@ -537,6 +606,8 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
   w.name(p.fullName || resume.title || 'Resume');
   w.contactLine([p.email, p.phone, p.location, p.linkedin, p.github, p.website]);
 
+  const renderedSections = new Set<string>();
+
   for (const sectionId of getVisibleOrderedSections(resume)) {
     if (isCustomSectionId(sectionId)) {
       const content = getCustomSectionContent(resume, sectionId);
@@ -547,6 +618,42 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
       continue;
     }
     SECTION_RENDERERS[sectionId]?.(w, resume);
+    renderedSections.add(sectionId);
+  }
+
+  // If this is a country CV with supporting documents and not in section order, render them
+  if (resume.documents && resume.documents.some((d) => d.includeInDownload) && !renderedSections.has('documents')) {
+    SECTION_RENDERERS['documents']?.(w, resume);
+  }
+
+  // If this is a country CV with declaration and not in section order, render it
+  if (resume.countryCVInfo && !renderedSections.has('declaration')) {
+    SECTION_RENDERERS['declaration']?.(w, resume);
+  }
+
+  // Draw professional footer page numbering on ATS Safe PDF
+  const pageOption = resume.pageNumbering || 'all';
+  if (pageOption !== 'no' && pageOption !== 'none') {
+    const totalPages = w.pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      const showOnThisPage =
+        pageOption === 'all' ||
+        (pageOption === 'first' && i === 1) ||
+        (pageOption === 'last' && i === totalPages);
+
+      if (showOnThisPage) {
+        w.pdf.setPage(i);
+        w.pdf.setFont('helvetica', 'normal');
+        w.pdf.setFontSize(8.5);
+        w.pdf.setTextColor(100, 116, 139);
+        w.pdf.setDrawColor(226, 232, 240);
+        w.pdf.setLineWidth(0.3);
+        w.pdf.line(MARGIN, 287, PAGE_WIDTH - MARGIN, 287);
+        const text = `Page ${i} of ${totalPages}`;
+        const textWidth = w.pdf.getTextWidth(text);
+        w.pdf.text(text, PAGE_WIDTH - MARGIN - textWidth, 292);
+      }
+    }
   }
 
   const appendixDocs = (resume.documents || []).filter((d) => d.includeInDownload && d.fileUrl);

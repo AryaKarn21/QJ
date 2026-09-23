@@ -46,10 +46,10 @@ export const BosniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       ? countryCVInfo.declaration.replace(/BELEIF/gi, 'BELIEF')
       : 'I HEREBY DECLARE THAT THE INFORMATION GIVEN IN THIS CV IS TRUE AND HONEST TO MY KNOWLEDGE AND BELIEF.';
 
-  // Section Header Component guaranteeing exact identical styling across all sections
+  // Section Header Component guaranteeing exact identical styling across all sections (1.5px dark navy/blue-gray)
   const SectionHeading: React.FC<{ title: string }> = ({ title }) => (
-    <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5" style={{ breakAfter: 'avoid' }}>
-      <span className="text-slate-500 text-[10px]">●</span>
+    <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-2" style={{ breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
+      <span className="text-[#334155] text-[10px]">●</span>
       <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
         {title}
       </h2>
@@ -97,9 +97,11 @@ export const BosniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
               </div>
 
               {/* TOP-RIGHT Europass Logo */}
-              <div className="shrink-0 self-center sm:self-start pt-0.5">
-                <EuropassLogo width={124} height={30} />
-              </div>
+              {resume.showLogo !== 'none' && resume.showLogo !== 'no' && (
+                <div className="shrink-0 self-center sm:self-start pt-0.5">
+                  <EuropassLogo width={124} height={30} />
+                </div>
+              )}
             </div>
 
             {/* Subtle horizontal divider extending across candidate info area */}
@@ -359,13 +361,37 @@ export const BosniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
+        {/* Supporting Documents (visible in CV body) */}
+        {resume.documents && resume.documents.filter((d) => d.includeInDownload).length > 0 && (
+          <section className="break-inside-avoid">
+            <SectionHeading title="SUPPORTING DOCUMENTS" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10.5px]">
+              {resume.documents
+                .filter((d) => d.includeInDownload)
+                .map((doc, idx) => (
+                  <div
+                    key={doc._id || idx}
+                    className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200/90 rounded px-2.5 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{doc.name}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-slate-500">{doc.documentType}</p>
+                    </div>
+                    <span className="shrink-0 text-[9.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                      Attached
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </section>
+        )}
+
         {/* 8. IZJAVA (DECLARATION) */}
-        <section className="break-inside-avoid pt-1">
+        <section className="break-inside-avoid pt-1" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
           <SectionHeading title="DECLARATION" />
           <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-800 leading-relaxed uppercase">
             {declarationText}
           </p>
-          <div className="border-b border-slate-300 mt-2.5 w-4/5" />
         </section>
       </div>
     </div>
