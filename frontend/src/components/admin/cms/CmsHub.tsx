@@ -11,12 +11,15 @@ import {
   GraduationCap,
   HelpCircle,
   LayoutTemplate,
+  Mail,
   Pencil,
   Plus,
   Save,
   Search,
+  Send,
   Sparkles,
   Trash2,
+  Users,
 } from 'lucide-react';
 import { DataTable, DataTableColumn } from '../../ui/DataTable';
 import { Drawer } from '../../ui/Drawer';
@@ -42,8 +45,10 @@ import {
   getCmsPages,
   getFaqs,
   getHomepageContentAdmin,
+  getNewsletterStats,
   saveCmsPage,
   saveHomepageContent,
+  sendNewsletterBroadcast,
   toggleBlogPublish,
   toggleCmsPagePublish,
   updateCareerTip,
@@ -52,7 +57,7 @@ import {
   uploadCmsImage,
 } from '../adminApi/api';
 
-type TabId = 'blogs' | 'pages' | 'faqs' | 'career-tips' | 'legal' | 'homepage';
+type TabId = 'blogs' | 'pages' | 'faqs' | 'career-tips' | 'legal' | 'homepage' | 'newsletter';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'blogs', label: 'Blogs', icon: <BookText size={14} /> },
@@ -61,6 +66,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'career-tips', label: 'Career Tips', icon: <GraduationCap size={14} /> },
   { id: 'legal', label: 'Legal', icon: <FileText size={14} /> },
   { id: 'homepage', label: 'Homepage', icon: <LayoutTemplate size={14} /> },
+  { id: 'newsletter', label: 'Newsletter', icon: <Mail size={14} /> },
 ];
 
 // Every ReactQuill instance on this page lives inside a Drawer whose
@@ -236,6 +242,7 @@ export const CmsHub: React.FC = () => {
       {activeTab === 'career-tips' && <CareerTipsTab />}
       {activeTab === 'legal' && <LegalTab />}
       {activeTab === 'homepage' && <HomepageTab />}
+      {activeTab === 'newsletter' && <NewsletterTab />}
     </div>
   );
 };
@@ -1274,6 +1281,104 @@ function HomepageTab() {
           <Save size={15} /> {saving ? 'Saving…' : 'Save'}
         </button>
         {savedAt && <span className="text-xs text-slate-400">Saved at {savedAt.toLocaleTimeString()}</span>}
+      </div>
+    </div>
+  );
+}
+
+function NewsletterTab() {
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [lastResult, setLastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['newsletterStats'],
+    queryFn: getNewsletterStats,
+    retry: false,
+  });
+
+  const handleSend = async () => {
+    if (!subject.trim() || !message.trim()) {
+      toast.error('Subject and message are required.');
+      return;
+    }
+    if (!window.confirm(`Send this email to ${stats?.active ?? 'all'} active subscriber(s)? This can't be undone.`)) {
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await sendNewsletterBroadcast({ subject: subject.trim(), message: message.trim() });
+      toast.success(res.message);
+      setLastResult({ sent: res.sent, failed: res.failed, total: res.total });
+      setSubject('');
+      setMessage('');
+    } catch (err) {
+      console.error('Error sending newsletter broadcast:', err);
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || 'Failed to send newsletter.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <Users size={16} className="text-slate-400" />
+          {isLoading ? (
+            <SkeletonText width="w-24" height="h-4" />
+          ) : (
+            <span>
+              <strong className="text-slate-900 dark:text-white">{stats?.active ?? 0}</strong> active subscriber
+              {stats?.active === 1 ? '' : 's'}
+              {stats && stats.total > stats.active ? ` (${stats.total} total, incl. unsubscribed)` : ''}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <section className="space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <Send size={16} /> Compose broadcast
+        </h3>
+        <p className="text-xs text-slate-400">
+          Sent immediately to every active subscriber, with a one-click unsubscribe link appended automatically. This
+          can't be undone once sent.
+        </p>
+        <Field label="Subject">
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            placeholder="This week's top jobs on QuickJobs"
+          />
+        </Field>
+        <Field label="Message">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={8}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            placeholder="Write the newsletter body here. Plain text — line breaks are preserved."
+          />
+        </Field>
+      </section>
+
+      <div className="flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+        <button
+          onClick={handleSend}
+          disabled={sending || !stats?.active}
+          className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+        >
+          <Send size={15} /> {sending ? 'Sending…' : `Send to ${stats?.active ?? 0} subscribers`}
+        </button>
+        {lastResult && (
+          <span className="text-xs text-slate-400">
+            Last send: {lastResult.sent} delivered{lastResult.failed ? `, ${lastResult.failed} failed` : ''}
+          </span>
+        )}
       </div>
     </div>
   );

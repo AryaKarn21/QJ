@@ -936,6 +936,20 @@ export const resolveReport = async (
   return res.data;
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// Newsletter (CMS Newsletter tab)
+// ─────────────────────────────────────────────────────────────────────────
+
+export const getNewsletterStats = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/newsletter/stats`, getAuthConfig());
+  return res.data as { total: number; active: number };
+};
+
+export const sendNewsletterBroadcast = async (data: { subject: string; message: string }) => {
+  const res = await axios.post(`${API_BASE_URL}/api/newsletter/broadcast`, data, getAuthConfig());
+  return res.data as { message: string; sent: number; failed: number; total: number };
+};
+
 export const updateUserStatus = async (
   userId: string,
   status: 'active' | 'deactivated' | 'suspended',

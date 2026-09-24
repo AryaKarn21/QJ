@@ -13,6 +13,8 @@ const {
   deriveExperienceString,
 } = require("../utils/jobHelpers");
 const { recordAdminAudit } = require("../utils/auditLogger");
+const sendMail = require("../utils/sendMail");
+const { notifyNewsletterOfNewJob } = require("../services/jobAlertEmailService");
 
 // GET /api/jobs/meta/countries — public. The single list the job-posting
 // form's Country <select> reads (see postjobs.tsx) — the same array
@@ -463,6 +465,26 @@ const applyInJob = async (req, res) => {
       });
     }
 
+    // Email confirmations — best-effort, same pattern as sendNotification's
+    // own error handling: a mail failure must never fail an application
+    // that already saved successfully, so both are fire-and-forget with
+    // their own try/catch rather than awaited inline in the main flow.
+    if (user.email) {
+      const companyName = job.companyOverride?.name || job.employer?.name || "";
+      sendMail(
+        user.email,
+        `Application submitted: ${job.title}`,
+        `Hi ${user.name},\n\nYour application for "${job.title}"${companyName ? ` at ${companyName}` : ""} has been submitted successfully. The employer has been notified and will review it shortly.\n\nYou can track this application from your QuickJobs dashboard.\n\n— QuickJobs`
+      ).catch((err) => console.error("Failed to send application confirmation email:", err.message));
+    }
+    if (job.employer?.email) {
+      sendMail(
+        job.employer.email,
+        `New application: ${job.title}`,
+        `${user.name} just applied to your job posting "${job.title}".\n\nReview the application from your QuickJobs employer dashboard: applicants list for this job.\n\n— QuickJobs`
+      ).catch((err) => console.error("Failed to send employer application-notification email:", err.message));
+    }
+
     res.status(201).json({ message: "Application submitted successfully" });
   } catch (error) {
     if (error.code === "CLOUD_STORAGE_NOT_CONFIGURED") {
@@ -795,6 +817,7 @@ const updateJobStatus = async (req, res) => {
       }
     }
 
+    const wasPending = job.status === "Pending";
     job.status = status;
     await job.save();
 
@@ -806,6 +829,17 @@ const updateJobStatus = async (req, res) => {
         contentId: job._id,
         details: { title: job.title, newStatus: status },
       });
+    }
+
+    // Fire on the first Pending -> Active transition only (real approval of
+    // a brand-new posting) — not on every later Active <-> Inactive toggle,
+    // which would otherwise re-alert subscribers about a job they were
+    // already told about.
+    if (wasPending && status === "Active") {
+      const populatedJob = await Job.findById(job._id).populate("employer", "name");
+      notifyNewsletterOfNewJob(populatedJob).catch((err) =>
+        console.error("Failed to dispatch new-job alert emails:", err.message)
+      );
     }
 
     res.json({ message: `Job status updated to ${status}`, job });
