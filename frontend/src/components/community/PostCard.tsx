@@ -252,7 +252,12 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               <p className="truncate text-xs text-gray-500">{displayAs.headline}</p>
             )}
             <p className="text-xs text-gray-400">
-              {timeAgo(post.createdAt)} {isEdited && '· Edited'}
+              {timeAgo(post.createdAt)}{' '}
+              {isEdited && (
+                <span title={post.editedBy?.editedAt ? new Date(post.editedBy.editedAt).toLocaleString() : undefined}>
+                  · {post.editedBy?.name ? `Edited by ${post.editedBy.name}` : 'Edited'}
+                </span>
+              )}
             </p>
           </div>
         </div>

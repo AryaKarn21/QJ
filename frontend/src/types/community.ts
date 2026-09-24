@@ -192,6 +192,7 @@ export interface CommunityPost {
   moderation: { status: 'approved' | 'pending' | 'flagged' | 'removed'; flags: string[]; reason?: string };
   isPinned: boolean;
   isEdited: boolean;
+  editedBy?: { userId: string; name: string; role: string; editedAt: string } | null;
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;

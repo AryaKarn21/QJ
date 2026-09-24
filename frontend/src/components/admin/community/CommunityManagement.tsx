@@ -16,6 +16,8 @@ import {
   Filter,
   Check,
   X,
+  Pencil,
+  RotateCcw,
 } from 'lucide-react';
 import {
   getAllCommunityPostsAdmin,
@@ -23,6 +25,7 @@ import {
   getAllCommunityCommentsAdmin,
   deleteCommunityCommentAdmin,
 } from '../adminApi/api';
+import { updatePost as updateCommunityPost } from '../../../api/communityApi';
 
 export const CommunityManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,6 +41,9 @@ export const CommunityManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [editingPost, setEditingPost] = useState<any | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Sync tab with URL
   const handleTabChange = (tab: 'posts' | 'flagged' | 'comments') => {
@@ -58,10 +64,8 @@ export const CommunityManagement: React.FC = () => {
         page,
         limit: 15,
       });
-      if (res.success) {
-        setPosts(res.posts);
-        setTotalPages(res.pagination?.totalPages || 1);
-      }
+      setPosts(res.posts || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to fetch community posts');
     } finally {
@@ -77,10 +81,8 @@ export const CommunityManagement: React.FC = () => {
         page,
         limit: 15,
       });
-      if (res.success) {
-        setComments(res.comments);
-        setTotalPages(res.pagination?.totalPages || 1);
-      }
+      setComments(res.comments || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to fetch comments');
     } finally {
@@ -96,13 +98,41 @@ export const CommunityManagement: React.FC = () => {
     }
   }, [activeTab, fetchPosts, fetchComments]);
 
-  const handleUpdatePostStatus = async (postId: string, status: string) => {
+  const handleUpdatePostStatus = async (postId: string, action: 'approve' | 'flag' | 'delete' | 'restore') => {
     try {
-      await updateCommunityPostStatusAdmin(postId, status, `Admin updated status to ${status}`);
-      toast.success(`Post marked as ${status}`);
+      await updateCommunityPostStatusAdmin(postId, action, `Admin action: ${action}`);
+      toast.success(
+        action === 'delete' ? 'Post removed from the community feed.' : `Post ${action}d successfully.`
+      );
       fetchPosts();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to update post status');
+    }
+  };
+
+  const openEditModal = (post: any) => {
+    setEditingPost(post);
+    setEditDraft(post.content || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPost) return;
+    setSavingEdit(true);
+    try {
+      // Reuses the same PATCH /api/community/posts/:postId endpoint every
+      // user's own "Edit" button hits — postController.js's updatePost
+      // already authorizes owner-or-superadmin server-side and stamps
+      // editedBy when a superadmin edits someone else's post, so the post
+      // stays attributed to its original author with a distinct
+      // "Edited by <admin name>" trail, not a second admin-only endpoint.
+      await updateCommunityPost(editingPost._id, editDraft);
+      toast.success('Post updated.');
+      setEditingPost(null);
+      fetchPosts();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update post');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -313,10 +343,16 @@ export const CommunityManagement: React.FC = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => openEditModal(post)}
+                        className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
                       {status !== 'approved' && (
                         <button
-                          onClick={() => handleUpdatePostStatus(post._id, 'approved')}
+                          onClick={() => handleUpdatePostStatus(post._id, 'approve')}
                           className="flex items-center gap-1 rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-600"
                         >
                           <Check size={13} /> Approve
@@ -324,18 +360,29 @@ export const CommunityManagement: React.FC = () => {
                       )}
                       {status !== 'flagged' && (
                         <button
-                          onClick={() => handleUpdatePostStatus(post._id, 'flagged')}
+                          onClick={() => handleUpdatePostStatus(post._id, 'flag')}
                           className="flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400"
                         >
                           <AlertTriangle size={13} /> Flag
                         </button>
                       )}
-                      {status !== 'removed' && (
+                      {isRemoved ? (
                         <button
-                          onClick={() => handleUpdatePostStatus(post._id, 'removed')}
+                          onClick={() => handleUpdatePostStatus(post._id, 'restore')}
+                          className="flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-400"
+                        >
+                          <RotateCcw size={13} /> Restore
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Delete this post? It will be removed from the community feed — this can be undone with Restore.')) {
+                              handleUpdatePostStatus(post._id, 'delete');
+                            }
+                          }}
                           className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
                         >
-                          <Trash2 size={13} /> Remove
+                          <Trash2 size={13} /> Delete
                         </button>
                       )}
                     </div>
@@ -371,6 +418,53 @@ export const CommunityManagement: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Post Modal */}
+      {editingPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Edit Post</h3>
+              <button
+                onClick={() => setEditingPost(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500">
+              Original author: <span className="font-semibold text-slate-700 dark:text-slate-300">{editingPost.author?.name || 'Unknown'}</span>.
+              Editing as Super Admin will not change the author — it will be marked "Edited by Super Admin".
+            </p>
+
+            <textarea
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              rows={8}
+              className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+
+            <div className="mt-4 flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingPost(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingEdit || !editDraft.trim()}
+                onClick={handleSaveEdit}
+                className="flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-orange-600 disabled:opacity-50"
+              >
+                {savingEdit ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

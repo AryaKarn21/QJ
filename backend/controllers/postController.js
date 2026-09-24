@@ -541,6 +541,18 @@ const updatePost = async (req, res) => {
     post.isEdited = true;
     post.editedAt = new Date();
 
+    // Distinguish an admin moderation edit from the author's own edit — the
+    // post stays attributed to its original author (post.author is never
+    // touched here), this is purely "who else touched it".
+    if (isSuperAdmin && !isOwner) {
+      post.editedBy = {
+        userId: req.user._id,
+        name: req.user.name,
+        role: req.user.role,
+        editedAt: new Date(),
+      };
+    }
+
     const moderation = await moderateText(post.content);
     if (!post.moderation) post.moderation = {};
     post.moderation.status = moderation.status;

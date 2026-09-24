@@ -141,6 +141,18 @@ const postSchema = new mongoose.Schema(
     isPinned: { type: Boolean, default: false },
     isEdited: { type: Boolean, default: false },
     editedAt: { type: Date },
+    // Set only when someone other than the author edits the post (currently
+    // only possible for a superadmin — see postController.js's updatePost).
+    // The post's `author` field is never changed, so a moderator edit never
+    // gets misattributed as the original author's own words; this is the
+    // separate "who actually touched this" audit trail the UI reads to
+    // show "Edited by <name>" instead of a bare "Edited".
+    editedBy: {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      name: { type: String },
+      role: { type: String },
+      editedAt: { type: Date },
+    },
     isDeleted: { type: Boolean, default: false }, // soft delete — keeps comment/like history intact
   },
   { timestamps: true }

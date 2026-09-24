@@ -997,10 +997,14 @@ export const getAllCommunityPostsAdmin = async (params?: {
   return res.data;
 };
 
-export const updateCommunityPostStatusAdmin = async (postId: string, status: string, notes?: string) => {
+export const updateCommunityPostStatusAdmin = async (
+  postId: string,
+  action: 'approve' | 'flag' | 'delete' | 'restore',
+  reason?: string
+) => {
   const res = await axios.patch(
     `${API_BASE_URL}/api/admin/community/posts/${postId}/status`,
-    { status, notes },
+    { action, reason },
     getAuthConfig()
   );
   return res.data;

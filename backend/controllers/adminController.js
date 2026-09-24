@@ -1210,6 +1210,14 @@ const updateCommunityPostStatusAdmin = async (req, res) => {
       post.moderation.status = "approved";
       post.moderation.reviewedBy = req.user._id;
       post.moderation.reviewedAt = new Date();
+    } else if (action === "flag") {
+      // Manual admin flag — stays visible (unlike hide/delete) but marked
+      // for follow-up review, same moderation.status a user report or the
+      // AI moderator would set.
+      post.moderation.status = "flagged";
+      post.moderation.reason = reason || "Flagged by administrator for review.";
+      post.moderation.reviewedBy = req.user._id;
+      post.moderation.reviewedAt = new Date();
     } else {
       return res.status(400).json({ message: "Invalid action." });
     }
