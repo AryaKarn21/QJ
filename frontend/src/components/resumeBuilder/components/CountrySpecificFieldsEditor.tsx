@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor, ChevronDown, Sliders, Sparkles } from 'lucide-react';
 import { getCountryConfig, CountryCVInfo, ProfessionalMembership, SimpleLanguageItem, StructuredSkillItem, CefrLanguageLevel } from '../config/countryCVConfigs';
 import { NationalitySelect } from './NationalitySelect';
+import { LanguageSelect } from './LanguageSelect';
 import { PlaceOfBirthSelect } from './PlaceOfBirthSelect';
 import { CascadingLocationSelect } from './CascadingLocationSelect';
 import { GENDER_OPTIONS } from '../config/countryCVConfigs/nationalities';
@@ -485,24 +486,13 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <label className="text-xs font-semibold text-slate-700 block mb-1">
               Mother tongue(s) <span className="text-red-500">*</span>
             </label>
-            <select
-              className={fieldClass}
+            <LanguageSelect
               value={countryCVInfo.motherTongue || ''}
-              onChange={(e) => onChange({ motherTongue: e.target.value })}
+              onChange={(val) => onChange({ motherTongue: val })}
+              options={LANGUAGES_LIST}
+              placeholder="Select Mother Tongue…"
               required
-            >
-              <option value="">Select Mother Tongue…</option>
-              {countryCVInfo.motherTongue && !LANGUAGES_LIST.includes(countryCVInfo.motherTongue) && (
-                <option value={countryCVInfo.motherTongue}>
-                  {countryCVInfo.motherTongue}
-                </option>
-              )}
-              {LANGUAGES_LIST.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <p className="text-[11px] text-slate-500 pt-1">
@@ -529,19 +519,13 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                     <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
                       Language <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      className={fieldClass}
+                    <LanguageSelect
                       value={item.language}
-                      onChange={(e) => updateLanguage(idx, { language: e.target.value })}
+                      onChange={(val) => updateLanguage(idx, { language: val })}
+                      options={LANGUAGES_LIST}
+                      placeholder="Select Language…"
                       required
-                    >
-                      <option value="">Select Language…</option>
-                      {LANGUAGES_LIST.map((lang) => (
-                        <option key={lang} value={lang}>
-                          {lang}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div className="w-32">

@@ -42,11 +42,33 @@ function getGeminiModel(modelName = "gemini-flash-latest") {
 
   return {
     generateContent: async (prompt) => {
-      const response = await cachedClient.models.generateContent({
-        model: modelName,
-        contents: prompt,
-      });
-      return { response: { text: () => response.text } };
+      try {
+        const response = await cachedClient.models.generateContent({
+          model: modelName,
+          contents: prompt,
+        });
+        return { response: { text: () => response.text } };
+      } catch (error) {
+        // Gemini's "model is currently experiencing high demand" 503s are
+        // genuinely transient — Google's own guidance for this exact error
+        // is "usually temporary, try again later". One short, silent retry
+        // here resolves a real fraction of these without the user having to
+        // notice a failure and manually click "try again" themselves. Only
+        // retries the transient case (UNAVAILABLE/503/overloaded) — an
+        // invalid key, exhausted quota, or malformed request will fail the
+        // same way twice, so those still surface immediately.
+        const status = error.status || error.response?.status;
+        const message = String(error.message || '');
+        const isTransient = status === 503 || /UNAVAILABLE|overloaded/i.test(message);
+        if (!isTransient) throw error;
+
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        const response = await cachedClient.models.generateContent({
+          model: modelName,
+          contents: prompt,
+        });
+        return { response: { text: () => response.text } };
+      }
     },
   };
 }
