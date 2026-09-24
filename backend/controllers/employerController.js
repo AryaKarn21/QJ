@@ -189,6 +189,7 @@ const createJob = async (req, res) => {
     title,
     country,
     location,
+    preferredLocations,
     jobtype,
     salary,
     experience,
@@ -256,10 +257,24 @@ const createJob = async (req, res) => {
     // "Pending".
     const initialStatus = status === "Draft" ? "Draft" : "Pending";
 
+    // preferredLocations is additive to `location` (see models/Job.js) —
+    // derive whichever side of the pair the client didn't send so both
+    // stay populated and in sync: an employer picking 3 locations still
+    // gets a real `location` (the first one) for every existing read path
+    // that only ever knew about a single location; a legacy client sending
+    // only `location` still gets a real one-item `preferredLocations`.
+    const cleanedPreferredLocations = Array.isArray(preferredLocations)
+      ? preferredLocations.map((l) => String(l).trim()).filter(Boolean)
+      : [];
+    const resolvedLocation = cleanedPreferredLocations[0] || location;
+    const resolvedPreferredLocations =
+      cleanedPreferredLocations.length > 0 ? cleanedPreferredLocations : location ? [location] : [];
+
     const job = new Job({
       title,
       country,
-      location,
+      location: resolvedLocation,
+      preferredLocations: resolvedPreferredLocations,
       jobtype,
       salary: deriveSalaryString({ salary, salaryMin, salaryMax, currency, salaryPeriod }),
       experience: deriveExperienceString({ experience, minExperience, maxExperience }),
@@ -389,6 +404,7 @@ const updatableFields = [
   "title",
   "country",
   "location",
+  "preferredLocations",
   "jobtype",
   "salary",
   "experience",
@@ -426,6 +442,12 @@ updatableFields.forEach((field) => {
     job[field] = req.body[field];
   }
 });
+
+// Keep the legacy single `location` field in sync with the first selected
+// preferred location — same reasoning as createJob's derivation above.
+if (Array.isArray(req.body.preferredLocations) && req.body.preferredLocations.length > 0) {
+  job.location = req.body.preferredLocations[0];
+}
 
 // Keep the legacy `salary`/`experience` strings in sync when the
 // structured fields changed but no explicit string was sent — same

@@ -4,6 +4,7 @@ const UPDATABLE_JOB_FIELDS = [
   "title",
   "country",
   "location",
+  "preferredLocations",
   "jobtype",
   "salary",
   "experience",

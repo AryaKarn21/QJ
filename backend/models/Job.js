@@ -21,6 +21,14 @@ const jobSchema = new mongoose.Schema(
       default: "",
     },
     location: { type: String, required: requiredUnlessDraft, trim: true },
+    // Optional multi-location support, additive to `location` (kept as the
+    // single source of truth every existing read path — job cards, search
+    // filter, job details — already uses). When an employer selects more
+    // than one location, `location` stays the first one (so nothing reading
+    // only `location` breaks or shows blank) and the full set lives here.
+    // A job posted before this field existed simply has an empty array,
+    // identical to today's single-location behavior.
+    preferredLocations: { type: [String], default: [] },
     jobtype: {
       type: String,
       required: requiredUnlessDraft,

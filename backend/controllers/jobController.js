@@ -88,7 +88,19 @@ const getJobs = async (req, res) => {
 
     const filters = {};
     const andConditions = [];
-    if (location) { filters.location = { $regex: location, $options: "i" }; }
+    if (location) {
+      // A job posted with multiple preferred locations should match a
+      // search on ANY of them, not just the legacy single `location` field
+      // (which only ever holds the first one) — Mongo's $regex against an
+      // array field already matches per-element, so this is one $or, not a
+      // second query.
+      andConditions.push({
+        $or: [
+          { location: { $regex: location, $options: "i" } },
+          { preferredLocations: { $regex: location, $options: "i" } },
+        ],
+      });
+    }
     if (jobtype) filters.jobtype = jobtype;
     // Powers the homepage's "Explore Jobs by Field" section — an exact(ish)
     // category match, distinct from `search` below which fuzzy-matches
@@ -690,6 +702,14 @@ const updateJob = async (req, res) => {
         job[field] = req.body[field];
       }
     });
+
+    // Keep the legacy single `location` field in sync with the first
+    // selected preferred location — every existing read path (job cards,
+    // search filter, job details) reads `location` alone, so it must never
+    // go stale/blank just because an employer edited preferredLocations.
+    if (Array.isArray(req.body.preferredLocations) && req.body.preferredLocations.length > 0) {
+      job.location = req.body.preferredLocations[0];
+    }
 
     if (req.body.salary === undefined && (req.body.salaryMin !== undefined || req.body.salaryMax !== undefined)) {
       job.salary = deriveSalaryString({

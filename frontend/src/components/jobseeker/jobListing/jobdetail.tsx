@@ -384,7 +384,13 @@ const JobDetailPage = () => {
                     </div>
                     {displayTagline && <p className="text-gray-400 text-xs mb-2">{displayTagline}</p>}
                     <div className="flex flex-wrap text-sm text-gray-500 gap-x-3 gap-y-1 mt-1">
-                      <span><MapPin size={14} className="inline mr-1" />{job.location}{job.country ? `, ${job.country}` : ''}</span>
+                      <span>
+                        <MapPin size={14} className="inline mr-1" />
+                        {Array.isArray((job as any).preferredLocations) && (job as any).preferredLocations.length > 1
+                          ? (job as any).preferredLocations.join(' · ')
+                          : job.location}
+                        {job.country ? `, ${job.country}` : ''}
+                      </span>
                       {job.workMode && <span><Globe size={14} className="inline mr-1" />{job.workMode}</span>}
                       <span><Clock size={14} className="inline mr-1" />{job.jobtype}</span>
                       {isExpired && (

@@ -12,6 +12,7 @@ import ReactQuill from "react-quill";
 import { SkeletonText, SkeletonBlock } from "../../ui/Skeleton";
 import "react-quill/dist/quill.snow.css";
 import { TagInput } from "../../common/TagInput";
+import { LocationMultiSelect } from "./LocationMultiSelect";
 import {
   CalendarClock, Check, ChevronLeft, ChevronRight, Building2, Pencil,
   Globe, Linkedin, Target, Heart, MapPin, Gift, Users, Calendar, ExternalLink,
@@ -167,6 +168,11 @@ const EMPTY_FORM = {
   title: "",
   country: "Nepal",
   location: "",
+  // Additive to `location` (backend/models/Job.js) — an employer can pick
+  // 1, 2, 3+ locations here; `location` itself stays in sync with the
+  // first one so every existing display/search/summary that only reads
+  // `location` keeps working unchanged.
+  preferredLocations: [] as string[],
   jobtype: "",
   salary: "",
   experience: "",
@@ -248,9 +254,6 @@ const PostJob = () => {
 
   const [countrySelect, setCountrySelect] = useState("Nepal");
   const [customCountry, setCustomCountry] = useState("");
-
-  const [locationSelect, setLocationSelect] = useState("");
-  const [customLocation, setCustomLocation] = useState("");
 
   const [joiningDateSelect, setJoiningDateSelect] = useState("");
   const [customJoiningDate, setCustomJoiningDate] = useState("");
@@ -398,16 +401,16 @@ const PostJob = () => {
       }
     }
 
-    // Sync Location
-    if (jobData.location) {
-      const isKnown = POPULAR_LOCATIONS.some((l) => l.value === jobData.location && l.value !== "Other");
-      if (isKnown) {
-        setLocationSelect(jobData.location);
-        setCustomLocation("");
-      } else {
-        setLocationSelect("Other");
-        setCustomLocation(jobData.location);
-      }
+    // Sync Preferred Location(s) — a job saved before preferredLocations
+    // existed simply has an empty array on the server, so fall back to
+    // wrapping the single legacy `location` string.
+    {
+      const existing = Array.isArray((jobData as any).preferredLocations) && (jobData as any).preferredLocations.length > 0
+        ? (jobData as any).preferredLocations
+        : jobData.location
+        ? [jobData.location]
+        : [];
+      setFormData((prev) => ({ ...prev, preferredLocations: existing }));
     }
 
     // Sync Joining Date
@@ -730,26 +733,11 @@ const PostJob = () => {
     }
   };
 
-  // Location handlers
-  const handleLocationSelect = (val: string) => {
-    setLocationSelect(val);
-    if (val === "Other") {
-      setCustomLocation("");
-      setFormData((prev) => ({ ...prev, location: "" }));
-    } else {
-      setCustomLocation("");
-      setFormData((prev) => ({ ...prev, location: val }));
-    }
-    setStep1Errors((prev) => {
-      const n = { ...prev };
-      delete n.location;
-      return n;
-    });
-  };
-
-  const handleCustomLocationChange = (val: string) => {
-    setCustomLocation(val);
-    setFormData((prev) => ({ ...prev, location: val }));
+  // Location handler — keeps the legacy single `location` field in sync
+  // with the first selected preferred location, same convention the
+  // backend (createJob/editJob) applies on save.
+  const handlePreferredLocationsChange = (locations: string[]) => {
+    setFormData((prev) => ({ ...prev, preferredLocations: locations, location: locations[0] || "" }));
     if (step1Errors.location) {
       setStep1Errors((prev) => {
         const n = { ...prev };
@@ -895,13 +883,9 @@ const PostJob = () => {
       errs.country = "Country is required.";
     }
 
-    // 8. Preferred Location
-    if (locationSelect === "Other") {
-      if (!customLocation.trim()) {
-        errs.location = "Please enter your preferred location.";
-      }
-    } else if (!formData.location.trim()) {
-      errs.location = "Preferred location is required.";
+    // 8. Preferred Location(s)
+    if (formData.preferredLocations.length === 0) {
+      errs.location = "Please select at least one preferred location.";
     }
 
     // 9. Joining Date (if specific date or other selected)
@@ -1313,38 +1297,18 @@ const PostJob = () => {
                 )}
               </div>
 
-              {/* Row 4, Col 2: Preferred Location * */}
+              {/* Row 4, Col 2: Preferred Location(s) * — multi-select chips,
+                  1, 2, 3, or more on the same field */}
               <div>
-                <CustomSelect
-                  id="job-location-select"
-                  label="Preferred Location"
-                  required
-                  searchable
-                  searchPlaceholder="Search city or location..."
-                  placeholder="Select Preferred Location"
-                  value={locationSelect}
+                <label className={labelCls}>
+                  Preferred Location <span className="text-red-500">*</span>
+                </label>
+                <LocationMultiSelect
+                  value={formData.preferredLocations}
+                  onChange={handlePreferredLocationsChange}
                   options={POPULAR_LOCATIONS}
-                  onChange={handleLocationSelect}
-                  error={step1Errors.location && locationSelect !== "Other" ? step1Errors.location : undefined}
+                  error={step1Errors.location}
                 />
-                {locationSelect === "Other" && (
-                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <label className="block mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                      Other Location <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Kathmandu, Nepal or specific city"
-                      value={customLocation}
-                      onChange={(e) => handleCustomLocationChange(e.target.value)}
-                      className={step1Errors.location ? inputErrorCls : inputCls}
-                      autoFocus
-                    />
-                    {step1Errors.location && (
-                      <p className="text-xs text-red-500 mt-1 font-medium">{step1Errors.location}</p>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Row 5, Col 1: Target Joining Date */}
@@ -1792,7 +1756,10 @@ const PostJob = () => {
                 <h3 className="text-xl font-bold text-gray-800">{formData.title || "Untitled job"}</h3>
                 <p className="text-gray-600">{displayCompanyName || "Your company"}{displayCompanyTagline ? ` — ${displayCompanyTagline}` : ""}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
-                  <span>{formData.location || "—"}{formData.country ? `, ${formData.country}` : ""}</span>
+                  <span>
+                    {formData.preferredLocations.length > 0 ? formData.preferredLocations.join(", ") : "—"}
+                    {formData.country ? `, ${formData.country}` : ""}
+                  </span>
                   {formData.department && <span className="font-medium text-gray-700">Dept: {formData.department}</span>}
                   <span>{formData.workMode}</span>
                   <span>{formData.jobtype || "—"}</span>
