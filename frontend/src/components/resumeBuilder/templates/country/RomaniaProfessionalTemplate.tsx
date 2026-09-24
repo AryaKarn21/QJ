@@ -92,7 +92,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
   // one-offs).
   const SectionHeading: React.FC<{ title: string }> = ({ title }) => (
     <div
-      className="flex items-center gap-2 border-b pb-1 mb-2.5"
+      className="flex items-center gap-2 border-b pb-2 mb-3"
       style={{ borderColor: HAIRLINE, breakAfter: 'avoid', pageBreakAfter: 'avoid' }}
     >
       <span className="h-[5px] w-[5px] rounded-full shrink-0" style={{ backgroundColor: GOLD }} />

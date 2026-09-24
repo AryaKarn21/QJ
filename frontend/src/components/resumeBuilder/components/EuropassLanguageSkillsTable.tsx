@@ -56,7 +56,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
     <section className="break-inside-avoid">
       {/* 1. Header with bullet dot and full-width divider — same design
           system as every other SectionHeading in the consuming templates. */}
-      <div className="flex items-center gap-2 border-b pb-1 mb-2.5" style={{ borderColor: HAIRLINE, breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
+      <div className="flex items-center gap-2 border-b pb-2 mb-3" style={{ borderColor: HAIRLINE, breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
         <span className="h-[5px] w-[5px] rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
         <h2 className="text-[11.5px] font-bold uppercase tracking-[0.12em]" style={{ color: INK }}>
           {title}
