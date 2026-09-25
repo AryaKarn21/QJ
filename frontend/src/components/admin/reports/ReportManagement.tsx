@@ -27,6 +27,7 @@ import {
   resolveReport,
   ReportItem,
 } from '../adminApi/api';
+import { PostDetailDrawer } from '../community/PostDetailDrawer';
 
 const TARGET_ICONS: Record<string, React.ReactNode> = {
   user: <User size={15} className="text-blue-500" />,
@@ -75,6 +76,7 @@ export const ReportManagement: React.FC = () => {
 
   // Selected report for action modal
   const [activeReport, setActiveReport] = useState<ReportItem | null>(null);
+  const [managingPostId, setManagingPostId] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'none' | 'removed_content' | 'suspended_user' | 'warned_user' | 'dismissed'>('dismissed');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -419,6 +421,14 @@ export const ReportManagement: React.FC = () => {
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-2 shrink-0">
+                      {report.targetType === 'post' && (
+                        <button
+                          onClick={() => setManagingPostId(report.targetId)}
+                          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                          <Eye size={13} /> Manage Post
+                        </button>
+                      )}
                       {report.status === 'pending' || report.status === 'reviewed' ? (
                         <button
                           onClick={() => openActionModal(report)}
@@ -552,6 +562,12 @@ export const ReportManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PostDetailDrawer
+        postId={managingPostId}
+        onClose={() => setManagingPostId(null)}
+        onChanged={fetchReports}
+      />
     </div>
   );
 };

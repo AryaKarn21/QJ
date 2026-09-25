@@ -8,12 +8,18 @@ import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 /**
  * Public renderer for admin-authored generic CMS pages (the "Pages" tab
  * in CmsHub.tsx — About Us, landing pages, etc.), mounted at /p/:slug.
- * Distinct from LegalPage.tsx, which serves the three fixed legal slugs —
- * this serves arbitrary admin-created pages and treats an unpublished/
- * nonexistent slug as a genuine 404, not a "coming soon" placeholder.
+ * Distinct from LegalPage.tsx, which serves the three original fixed legal
+ * slugs (gated by the legacy ALLOWED_PAGE_SLUGS endpoint) — this serves any
+ * published Page by slug via the generic `/pages/view/:slug` endpoint, so
+ * it also backs the fixed public routes for the 8 newer Legal & Policies
+ * types (job-seeker-rules, cookie-policy, etc. — see App.tsx), passed in
+ * via `slugProp` instead of the URL param those use.
+ * Treats an unpublished/nonexistent slug as a genuine 404, not a "coming
+ * soon" placeholder.
  */
-export function CmsPageView() {
-  const { slug } = useParams<{ slug: string }>();
+export function CmsPageView({ slugProp }: { slugProp?: string } = {}) {
+  const { slug: slugParam } = useParams<{ slug: string }>();
+  const slug = slugProp ?? slugParam;
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState(false);

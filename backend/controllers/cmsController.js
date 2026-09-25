@@ -2,9 +2,27 @@ const Blog = require("../models/Blog");
 const Faq = require("../models/Faq");
 const CareerTip = require("../models/CareerTip");
 const Page = require("../models/Page");
+const { POLICY_TYPE_VALUES } = require("../models/Page");
 const HomepageContent = require("../models/HomepageContent");
 const { sanitizeRichText } = require("../utils/sanitizeHtml");
 const { persistUpload } = require("../services/media.service");
+
+// Human-readable label + canonical default slug for every supported policy
+// type (Part 2 of the CMS spec). Adding a new policy later means adding one
+// entry here and to POLICY_TYPE_VALUES in models/Page.js — nothing else.
+const POLICY_TYPE_META = {
+  "privacy-policy": { label: "Privacy Policy", defaultSlug: "privacy-policy" },
+  "terms-conditions": { label: "Terms & Conditions", defaultSlug: "terms-of-service" },
+  "community-guidelines": { label: "Community Guidelines", defaultSlug: "community-guidelines" },
+  "job-seeker-rules": { label: "Job Seeker Rules", defaultSlug: "job-seeker-rules" },
+  "job-provider-rules": { label: "Job Provider / Employer Rules", defaultSlug: "job-provider-rules" },
+  "job-posting-guidelines": { label: "Job Posting Guidelines", defaultSlug: "job-posting-guidelines" },
+  "prohibited-content": { label: "Prohibited Content Policy", defaultSlug: "prohibited-content" },
+  "refund-cancellation": { label: "Refund & Cancellation Policy", defaultSlug: "refund-cancellation" },
+  "cookie-policy": { label: "Cookie Policy", defaultSlug: "cookie-policy" },
+  "disclaimer": { label: "Disclaimer", defaultSlug: "disclaimer" },
+  "code-of-conduct": { label: "Code of Conduct", defaultSlug: "code-of-conduct" },
+};
 
 // Same "escape regex special chars before using in a RegExp" helper other
 // search-by-title endpoints in this codebase use (e.g.
@@ -50,9 +68,13 @@ exports.adminTogglePublishBlog = async (req, res) => {
     if (!blog) return res.status(404).json({ message: "Blog not found" });
 
     blog.isPublished = !blog.isPublished;
+    // Toggling an existing blog always means published<->unpublished, not
+    // "back to draft" — a never-published draft doesn't have this button
+    // shown to it in the CMS moderation table.
+    blog.status = blog.isPublished ? "published" : "unpublished";
     await blog.save();
 
-    res.json({ message: "Blog visibility updated", isPublished: blog.isPublished });
+    res.json({ message: "Blog visibility updated", isPublished: blog.isPublished, status: blog.status });
   } catch (error) {
     console.error("Error toggling blog publish state:", error);
     res.status(500).json({ message: "Server error" });
@@ -349,19 +371,57 @@ exports.adminCreatePage = async (req, res) => {
   }
 };
 
-/** PUT /api/cms/pages/id/:id — admin only. */
+/**
+ * Pushes the page's CURRENT saved state onto its revision history and bumps
+ * `version`, in place, without saving. Call this before applying new field
+ * values so the entry captures what was live just before this edit — used
+ * by both a normal save (adminUpdatePage) and a restore
+ * (restorePageRevision), which is how a restore creates a new revision
+ * instead of destroying history.
+ */
+const snapshotPageRevision = (page, byUserId) => {
+  const nextRevNumber = (page.revisions?.length || 0) + 1;
+  page.revisions.push({
+    revNumber: nextRevNumber,
+    title: page.title,
+    content: page.content,
+    status: page.status,
+    version: page.version || 1,
+    updatedBy: page.updatedBy || byUserId,
+    updatedAt: page.updatedAt || new Date(),
+  });
+  page.version = nextRevNumber + 1;
+};
+
+/** PUT /api/cms/pages/id/:id — admin only. Also used for policy-type pages (Legal & Policies). */
 exports.adminUpdatePage = async (req, res) => {
   try {
-    const { title, content, featuredImage, status } = req.body;
+    const { title, content, featuredImage, status, shortDescription } = req.body;
     const page = await Page.findById(req.params.id);
     if (!page) return res.status(404).json({ message: "Page not found" });
 
-    if (title && title.trim() && title !== page.title) {
+    const titleChanged = title && title.trim() && title !== page.title;
+    const contentChanged = content !== undefined && sanitizeRichText(content) !== page.content;
+    const statusChanged = status !== undefined && (status === "draft" ? "draft" : "published") !== page.status;
+
+    // Only snapshot when something meaningful actually changed — saving the
+    // form with no edits shouldn't pad the history with identical entries.
+    if (titleChanged || contentChanged || statusChanged) {
+      snapshotPageRevision(page, req.user.id);
+    }
+
+    if (titleChanged) {
       page.title = title.trim();
-      page.slug = await generateUniquePageSlug(title, page._id);
+      // Policy pages keep their canonical slug (the public URL is fixed,
+      // e.g. /job-seeker-rules) even if the admin edits the title —
+      // regenerating it would break the published link and the footer.
+      if (!page.policyType) {
+        page.slug = await generateUniquePageSlug(title, page._id);
+      }
     }
     if (content !== undefined) page.content = sanitizeRichText(content);
     if (featuredImage !== undefined) page.featuredImage = featuredImage;
+    if (shortDescription !== undefined) page.shortDescription = shortDescription.slice(0, 300);
     if (status !== undefined) page.status = status === "draft" ? "draft" : "published";
     page.updatedBy = req.user.id;
 
@@ -379,6 +439,7 @@ exports.adminTogglePagePublish = async (req, res) => {
     const page = await Page.findById(req.params.id);
     if (!page) return res.status(404).json({ message: "Page not found" });
 
+    snapshotPageRevision(page, req.user.id);
     page.status = page.status === "published" ? "draft" : "published";
     page.updatedBy = req.user.id;
     await page.save();
@@ -398,6 +459,112 @@ exports.adminDeletePage = async (req, res) => {
     res.json({ message: "Page deleted" });
   } catch (error) {
     console.error("Error deleting page:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Legal & Policies — Part 2 of the CMS spec. Policy documents are Page
+// records with `policyType` set (see models/Page.js's POLICY_TYPE_VALUES);
+// everything else (get-by-id, update, publish toggle, delete, revisions) is
+// shared with the generic Pages CRUD above — no duplicate schema/endpoints.
+// ---------------------------------------------------------------------------
+
+/** GET /api/cms/policies/types — admin only. The fixed list of supported policy types + labels, for the "New Policy" form's dropdown. */
+exports.getPolicyTypes = async (_req, res) => {
+  res.json(
+    POLICY_TYPE_VALUES.map((value) => ({ value, ...POLICY_TYPE_META[value] }))
+  );
+};
+
+/** GET /api/cms/policies — admin only. List + search + type/status filter + sort, for the Legal & Policies table. */
+exports.adminListPolicies = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit) || 20, 1);
+    const search = (req.query.search || "").trim();
+    const { policyType, status } = req.query;
+    const sort = req.query.sort === "oldest" ? { updatedAt: 1 } : { updatedAt: -1 };
+
+    const filter = { policyType: { $in: POLICY_TYPE_VALUES } };
+    if (search) filter.title = new RegExp(escapeRegex(search), "i");
+    if (policyType && POLICY_TYPE_VALUES.includes(policyType)) filter.policyType = policyType;
+    if (status === "draft" || status === "published") filter.status = status;
+
+    const [policies, total] = await Promise.all([
+      Page.find(filter)
+        .populate("author", "name email role")
+        .populate("updatedBy", "name email role")
+        .sort(sort)
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Page.countDocuments(filter),
+    ]);
+
+    res.json({ policies, total, page, totalPages: Math.max(Math.ceil(total / limit), 1) });
+  } catch (error) {
+    console.error("Error listing policies:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/** POST /api/cms/policies — admin only. Creates a new Legal & Policies document. */
+exports.adminCreatePolicy = async (req, res) => {
+  try {
+    const { policyType, title, content, shortDescription, status } = req.body;
+    if (!policyType || !POLICY_TYPE_VALUES.includes(policyType)) {
+      return res.status(400).json({ message: "A valid policy type is required" });
+    }
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: "Title is required" });
+    }
+
+    const meta = POLICY_TYPE_META[policyType];
+    // Reuse the canonical slug (e.g. "privacy-policy") the first time this
+    // type is created so it lines up with its fixed public route; fall back
+    // to a title-derived slug if that canonical slug is already taken
+    // (e.g. a second Privacy Policy variant).
+    const slug = (await Page.exists({ slug: meta.defaultSlug }))
+      ? await generateUniquePageSlug(title)
+      : meta.defaultSlug;
+
+    const policy = await Page.create({
+      slug,
+      title: title.trim(),
+      content: sanitizeRichText(content),
+      shortDescription: (shortDescription || "").slice(0, 300),
+      policyType,
+      status: status === "published" ? "published" : "draft",
+      version: 1,
+      author: req.user.id,
+      updatedBy: req.user.id,
+    });
+    res.status(201).json(policy);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "A page with that slug already exists" });
+    }
+    console.error("Error creating policy:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * GET /api/cms/policies/published — public, unauthenticated. Minimal shape
+ * for the footer's Legal section (dynamic list of whatever's live right
+ * now) — never leaks draft policies or full content.
+ */
+exports.getPublishedPolicies = async (_req, res) => {
+  try {
+    const policies = await Page.find({
+      policyType: { $in: POLICY_TYPE_VALUES },
+      status: "published",
+    })
+      .select("slug title policyType updatedAt")
+      .sort({ updatedAt: -1 });
+    res.json(policies);
+  } catch (error) {
+    console.error("Error fetching published policies:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -482,9 +649,10 @@ exports.upsertHomepageContent = async (req, res) => {
 // ----- Page Revisions -----
 exports.getPageRevisions = async (req, res) => {
   try {
-    const page = await Page.findById(req.params.id);
+    const page = await Page.findById(req.params.id).populate('revisions.updatedBy', 'name email role');
     if (!page) return res.status(404).json({ message: 'Page not found' });
-    const revisions = page.revisions || [];
+    // Newest first — matches how every other admin list in this file sorts.
+    const revisions = [...(page.revisions || [])].reverse();
     res.json({ revisions });
   } catch (error) {
     console.error('Error fetching page revisions:', error);
@@ -499,9 +667,15 @@ exports.restorePageRevision = async (req, res) => {
     if (!page) return res.status(404).json({ message: 'Page not found' });
     const revision = page.revisions?.[revNumber - 1];
     if (!revision) return res.status(404).json({ message: 'Revision not found' });
-    // Simple restore: replace content and title
+
+    // Restoring must never destroy history: snapshot the current (about to
+    // be overwritten) state as one more revision first, then apply the old
+    // content on top. The old revision entry itself is left untouched in
+    // `revisions`, so it can be restored again later if needed.
+    snapshotPageRevision(page, req.user.id);
     page.content = revision.content;
     page.title = revision.title;
+    page.updatedBy = req.user.id;
     await page.save();
     res.json({ message: 'Revision restored', page });
   } catch (error) {

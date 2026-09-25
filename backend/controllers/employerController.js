@@ -322,6 +322,35 @@ const createJob = async (req, res) => {
       });
     }
 
+    // Notify relevant jobseekers (in-app and via email)
+    try {
+      // Find jobseekers who have opted in for new job alerts
+      const seekers = await User.find({ role: "jobseeker", "notificationPreferences.newJobs": true }).lean();
+      const relevantSeekers = seekers.filter(s => {
+        const prefs = s.notificationPreferences || {};
+        if (prefs.allNotifications === false) return false;
+        const locMatch = s.location && (s.location === job.location || (Array.isArray(s.preferredLocations) && s.preferredLocations.includes(job.location)));
+        return locMatch || !s.location;
+      });
+      await Promise.all(
+        relevantSeekers.map(async seeker => {
+          await sendNotification({
+            recipient: seeker._id,
+            type: "new_job",
+            message: `New job "${title}" posted at ${job.location}`,
+            relatedJob: job._id,
+            link: `/jobs/${job._id}`,
+          });
+          if (seeker.notificationPreferences?.emailAlerts) {
+            const emailText = `Hi ${seeker.name || "Jobseeker"},\n\nA new job that matches your preferences has been posted:\n\nTitle: ${title}\nLocation: ${job.location}\nCompany: ${employer.name}\n\nView the job here: ${process.env.FRONTEND_URL || "https://quickjobs.app"}/jobs/${job._id}\n\nBest regards,\nQuickJobs Team`;
+            await sendMail(seeker.email, `New job posted: ${title}`, emailText);
+          }
+        })
+      );
+    } catch (notifErr) {
+      console.error("Error notifying jobseekers:", notifErr);
+    }
+
     res.status(201).json(job);
   } catch (error) {
     console.error("Error creating job:", error);

@@ -13,6 +13,7 @@ const Report = require("../models/Report");
 const Resume = require("../models/Resume");
 const Bookmark = require("../models/Bookmark");
 const Comment = require("../models/Comment");
+const Like = require("../models/Like");
 const sendNotification = require("../utils/sendNotifications");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
 const bcrypt = require("bcryptjs");
@@ -1145,12 +1146,22 @@ const updateJobStatus = async (req, res) => {
   }
 };
 
+// Post-list sort options the Manage Posts table supports. "Most reacted"/
+// "most commented" sort off the denormalized counters Post already
+// maintains (likeCount/commentCount) — no extra aggregation needed.
+const COMMUNITY_POST_SORTS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  "most-reacted": { likeCount: -1, createdAt: -1 },
+  "most-commented": { commentCount: -1, createdAt: -1 },
+};
+
 // Get all community posts for admin
 const getAllCommunityPostsAdmin = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 15;
-    const { status, search } = req.query;
+    const { status, search, author, sort } = req.query;
 
     const query = {};
     if (status === "deleted") {
@@ -1171,10 +1182,27 @@ const getAllCommunityPostsAdmin = async (req, res) => {
       query.content = { $regex: search, $options: "i" };
     }
 
+    // Filter by author name/email — Post.author is a ref, so resolve
+    // matching User ids first rather than a $lookup aggregation (this admin
+    // list is small-scale/paginated, so the extra round trip is cheap).
+    if (author) {
+      const matchingUsers = await User.find({
+        $or: [
+          { name: { $regex: author, $options: "i" } },
+          { email: { $regex: author, $options: "i" } },
+        ],
+      })
+        .select("_id")
+        .lean();
+      query.author = { $in: matchingUsers.map((u) => u._id) };
+    }
+
+    const sortSpec = COMMUNITY_POST_SORTS[sort] || COMMUNITY_POST_SORTS.newest;
+
     const [posts, total] = await Promise.all([
       Post.find(query)
         .populate("author", "name email profilePic role")
-        .sort({ createdAt: -1 })
+        .sort(sortSpec)
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
@@ -1184,6 +1212,57 @@ const getAllCommunityPostsAdmin = async (req, res) => {
     res.json({ posts, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error("Error fetching community posts for admin:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * GET /api/admin/community/posts/:id — full detail for the "Manage" post
+ * viewer: the post itself, its reaction breakdown (Like model, grouped by
+ * reaction type), its comments (capped — see COMMUNITY_POST_DETAIL_COMMENT_LIMIT,
+ * same "don't load thousands at once" rule the blog comments feature
+ * follows), and every Report filed against it.
+ */
+const COMMUNITY_POST_DETAIL_COMMENT_LIMIT = 50;
+
+const getCommunityPostDetailAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id)
+      .populate("author", "name email profilePic role")
+      .populate("moderation.reviewedBy", "name email")
+      .populate("editedBy.userId", "name")
+      .lean();
+    if (!post) return res.status(404).json({ message: "Post not found." });
+
+    const [reactionBreakdown, commentTotal, comments, reports] = await Promise.all([
+      Like.aggregate([
+        { $match: { targetType: "Post", targetId: post._id } },
+        { $group: { _id: "$reaction", count: { $sum: 1 } } },
+      ]),
+      Comment.countDocuments({ post: post._id, isDeleted: { $ne: true } }),
+      Comment.find({ post: post._id, isDeleted: { $ne: true } })
+        .populate("author", "name email profilePic role")
+        .sort({ createdAt: -1 })
+        .limit(COMMUNITY_POST_DETAIL_COMMENT_LIMIT)
+        .lean(),
+      Report.find({ targetType: "post", targetId: post._id })
+        .populate("reporter", "name email role")
+        .populate("resolvedBy", "name email")
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    res.json({
+      post,
+      reactions: reactionBreakdown.reduce((acc, r) => ({ ...acc, [r._id]: r.count }), {}),
+      comments,
+      commentTotal,
+      commentLimit: COMMUNITY_POST_DETAIL_COMMENT_LIMIT,
+      reports,
+    });
+  } catch (error) {
+    console.error("Error fetching community post detail for admin:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -1345,6 +1424,7 @@ const updateBlogStatusAdmin = async (req, res) => {
     if (!blog) return res.status(404).json({ message: "Blog not found." });
 
     blog.isPublished = !!isPublished;
+    blog.status = blog.isPublished ? "published" : blog.status === "draft" ? "draft" : "unpublished";
     if (blog.isPublished && !blog.publishedAt) {
       blog.publishedAt = new Date();
     }
@@ -1394,6 +1474,7 @@ module.exports = {
   updateCompanyAdmin,
   toggleCompanySuspendAdmin,
   getAllCommunityPostsAdmin,
+  getCommunityPostDetailAdmin,
   updateCommunityPostStatusAdmin,
   getAllCommunityCommentsAdmin,
   deleteCommunityCommentAdmin,

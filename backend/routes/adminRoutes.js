@@ -31,6 +31,7 @@ const {
   updateCompanyAdmin,
   toggleCompanySuspendAdmin,
   getAllCommunityPostsAdmin,
+  getCommunityPostDetailAdmin,
   updateCommunityPostStatusAdmin,
   getAllCommunityCommentsAdmin,
   deleteCommunityCommentAdmin,
@@ -119,6 +120,7 @@ router.patch("/companies/:id/suspend", authenticate, authorizeAdmin, toggleCompa
 router.get("/community/flagged-posts", authenticate, authorizeAdmin, getFlaggedPosts);
 router.patch("/community/posts/:postId/moderate", authenticate, authorizeAdmin, moderatePostDecision);
 router.get("/community/posts", authenticate, authorizeAdmin, getAllCommunityPostsAdmin);
+router.get("/community/posts/:id", authenticate, authorizeAdmin, getCommunityPostDetailAdmin);
 router.patch("/community/posts/:id/status", authenticate, authorizeAdmin, updateCommunityPostStatusAdmin);
 router.get("/community/comments", authenticate, authorizeAdmin, getAllCommunityCommentsAdmin);
 router.delete("/community/comments/:id", authenticate, authorizeAdmin, deleteCommunityCommentAdmin);

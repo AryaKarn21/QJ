@@ -21,18 +21,30 @@ export function NotificationBell() {
   const { socket } = useSocket();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loaded, setLoaded] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+// State for pagination
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const loadNotifications = () => {
-    fetchMyNotifications(1).then((res) => {
-      setNotifications(res.notifications);
-      setUnreadCount(res.unreadCount);
-      setLoaded(true);
-    });
+  const loadNotifications = (nextPage = 1, replace = false) => {
+    if (loading) return;
+    setLoading(true);
+    fetchMyNotifications(nextPage)
+      .then((res) => {
+        if (replace) {
+          setNotifications(res.notifications);
+        } else {
+          setNotifications((prev) => [...prev, ...res.notifications]);
+        }
+        setUnreadCount(res.unreadCount);
+        setHasMore(res.hasMore);
+        setPage(nextPage);
+        setLoaded(true);
+      })
+      .finally(() => setLoading(false));
   };
+  // Duplicate simple loader removed – pagination handled by the overloaded loadNotifications function above.
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -46,6 +58,24 @@ export function NotificationBell() {
     return () => {
       socket.off('notification:new', handler);
     };
+  };
+
+  // Infinite scroll: load more when sentinel becomes visible
+  useEffect(() => {
+    if (!hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading) {
+          loadNotifications(page + 1);
+        }
+      },
+      { root: null, rootMargin: '0px', threshold: 1.0 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => {
+      if (sentinelRef.current) observer.unobserve(sentinelRef.current);
+    };
+  }, [hasMore, loading, page]);
   }, [socket]);
 
   useEffect(() => {
@@ -60,7 +90,7 @@ export function NotificationBell() {
 
   const handleToggle = () => {
     setOpen((v) => !v);
-    if (!loaded) loadNotifications();
+    if (!loaded) loadNotifications(1, true);
   };
 
   const handleClickNotification = async (n: CommunityNotification) => {
@@ -115,6 +145,7 @@ export function NotificationBell() {
                 </button>
               ))
             )}
+          <div ref={sentinelRef} />
           </div>
         </div>
       )}

@@ -7,14 +7,15 @@ import {
   BookText,
   Eye,
   Files,
-  FileText,
   GraduationCap,
   HelpCircle,
+  History,
   LayoutTemplate,
   Mail,
   Pencil,
   Plus,
   Save,
+  Scale,
   Search,
   Send,
   Sparkles,
@@ -31,22 +32,25 @@ import {
   CareerTip,
   CmsGenericPage,
   Faq,
+  PolicyPage,
+  PolicyType,
   adminDeleteBlog,
   createCareerTip,
   createCmsGenericPage,
   createFaq,
+  createPolicy,
   deleteCareerTip,
   deleteCmsGenericPage,
   deleteFaq,
   getAdminBlogs,
   getCareerTips,
-  getCmsPage,
   getCmsPageById,
   getCmsPages,
   getFaqs,
   getHomepageContentAdmin,
   getNewsletterStats,
-  saveCmsPage,
+  getPolicies,
+  getPolicyTypes,
   saveHomepageContent,
   sendNewsletterBroadcast,
   toggleBlogPublish,
@@ -59,14 +63,14 @@ import {
   restoreCmsPageRevision,
 } from '../adminApi/api';
 
-type TabId = 'blogs' | 'pages' | 'faqs' | 'career-tips' | 'legal' | 'homepage' | 'newsletter';
+type TabId = 'blogs' | 'pages' | 'faqs' | 'career-tips' | 'policies' | 'homepage' | 'newsletter';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'blogs', label: 'Blogs', icon: <BookText size={14} /> },
   { id: 'pages', label: 'Pages', icon: <Files size={14} /> },
   { id: 'faqs', label: 'FAQs', icon: <HelpCircle size={14} /> },
   { id: 'career-tips', label: 'Career Tips', icon: <GraduationCap size={14} /> },
-  { id: 'legal', label: 'Legal', icon: <FileText size={14} /> },
+  { id: 'policies', label: 'Legal & Policies', icon: <Scale size={14} /> },
   { id: 'homepage', label: 'Homepage', icon: <LayoutTemplate size={14} /> },
   { id: 'newsletter', label: 'Newsletter', icon: <Mail size={14} /> },
 ];
@@ -242,7 +246,7 @@ export const CmsHub: React.FC = () => {
       {activeTab === 'pages' && <PagesTab />}
       {activeTab === 'faqs' && <FaqsTab />}
       {activeTab === 'career-tips' && <CareerTipsTab />}
-      {activeTab === 'legal' && <LegalTab />}
+      {activeTab === 'policies' && <PoliciesTab />}
       {activeTab === 'homepage' && <HomepageTab />}
       {activeTab === 'newsletter' && <NewsletterTab />}
     </div>
@@ -792,23 +796,33 @@ function FaqDrawer({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Career Tips
-// ---------------------------------------------------------------------------
-function RevisionList({ slug, onClose }: { slug: LegalPageSlug; onClose: () => void }) {
-  const queryClient = useQueryClient();
+/**
+ * Version history for any Page document (generic CMS Pages, and Legal &
+ * Policies documents), keyed by the page's Mongo `_id` — NOT its slug (see
+ * getCmsPageRevisions's doc comment for why that distinction matters here).
+ */
+function RevisionList({ pageId, onRestored, onClose }: { pageId: string; onRestored: () => void; onClose: () => void }) {
   const { data: revisions, isLoading, isError } = useQuery({
-    queryKey: ['cmsPageRevisions', slug],
-    queryFn: () => getCmsPageRevisions(slug),
+    queryKey: ['cmsPageRevisions', pageId],
+    queryFn: () => getCmsPageRevisions(pageId),
     retry: false,
   });
+  const [restoringRev, setRestoringRev] = useState<number | null>(null);
 
   const handleRestore = async (revNumber: number) => {
-    if (!window.confirm('Restore to this revision? This will create a new revision of the current content.')) return;
-    await restoreCmsPageRevision(slug, revNumber);
-    toast.success('Revision restored.');
-    queryClient.invalidateQueries({ queryKey: ['cmsPage', slug] });
-    onClose();
+    if (!window.confirm('Restore to this revision? This will create a new revision of the current content — nothing is deleted.')) return;
+    setRestoringRev(revNumber);
+    try {
+      await restoreCmsPageRevision(pageId, revNumber);
+      toast.success('Revision restored.');
+      onRestored();
+      onClose();
+    } catch (err) {
+      console.error('Error restoring revision:', err);
+      toast.error('Failed to restore this revision. Please try again.');
+    } finally {
+      setRestoringRev(null);
+    }
   };
 
   return (
@@ -818,21 +832,28 @@ function RevisionList({ slug, onClose }: { slug: LegalPageSlug; onClose: () => v
       )}
       {isLoading ? (
         <div className="h-48 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+      ) : !revisions || revisions.length === 0 ? (
+        <EmptyState title="No revisions yet" description="Every saved edit will show up here once you make one." />
       ) : (
         <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-          {revisions?.map((rev) => (
-            <li key={rev.revNumber} className="flex items-center justify-between py-2">
-              <div>
-                <div className="text-sm font-medium">Revision {rev.revNumber}</div>
+          {revisions.map((rev) => (
+            <li key={rev.revNumber} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
+                  Version {rev.version}
+                  <StatusBadge label={rev.status === 'published' ? 'Published' : 'Draft'} tone={rev.status === 'published' ? 'success' : 'neutral'} />
+                </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
                   {new Date(rev.updatedAt).toLocaleString()} by {rev.updatedBy?.name || 'unknown'}
                 </div>
+                <p className="mt-1 truncate text-xs text-slate-400">{rev.title}</p>
               </div>
               <button
                 onClick={() => handleRestore(rev.revNumber)}
-                className="rounded-lg bg-violet-600 px-3 py-1 text-xs text-white hover:bg-violet-700"
+                disabled={restoringRev !== null}
+                className="shrink-0 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700 disabled:opacity-50"
               >
-                Restore
+                {restoringRev === rev.revNumber ? 'Restoring…' : 'Restore'}
               </button>
             </li>
           ))}
@@ -841,6 +862,10 @@ function RevisionList({ slug, onClose }: { slug: LegalPageSlug; onClose: () => v
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Career Tips
+// ---------------------------------------------------------------------------
 
 function CareerTipsTab() {
   const queryClient = useQueryClient();
@@ -1016,138 +1041,331 @@ function CareerTipDrawer({
 }
 
 // ---------------------------------------------------------------------------
-// Legal pages — Privacy Policy / Terms of Service
+// Legal & Policies — Privacy Policy, Terms & Conditions, Community
+// Guidelines, and every other policy type in POLICY_TYPE_VALUES
+// (backend/models/Page.js). A policy is a Page document with `policyType`
+// set; get-by-id/update/publish-toggle/delete/revisions reuse the same
+// generic-Pages functions PagesTab above uses — only listing and creation
+// have policy-specific endpoints.
 // ---------------------------------------------------------------------------
-const LEGAL_PAGE_SLUGS = ['privacy-policy', 'terms-of-service', 'community-guidelines'] as const;
-type LegalPageSlug = (typeof LEGAL_PAGE_SLUGS)[number];
-const LEGAL_PAGE_LABELS: Record<LegalPageSlug, string> = {
-  'privacy-policy': 'Privacy Policy',
-  'terms-of-service': 'Terms of Service',
-  'community-guidelines': 'Community Guidelines',
-};
+const EMPTY_POLICY_FORM = { title: '', shortDescription: '', content: '', status: 'draft' as 'draft' | 'published' };
 
-function LegalTab() {
-  const [slug, setSlug] = useState<LegalPageSlug>('privacy-policy');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
+function PoliciesTab() {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
+  const [page, setPage] = useState(1);
+  const [editingId, setEditingId] = useState<string | 'new' | null>(null);
+  const [newPolicyType, setNewPolicyType] = useState<PolicyType | ''>('');
+  const [form, setForm] = useState(EMPTY_POLICY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['cmsPage', slug],
-    queryFn: () => getCmsPage(slug),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['cmsPolicies', search, typeFilter, statusFilter, sort, page],
+    queryFn: () => getPolicies({ page, limit: 20, search, policyType: typeFilter || undefined, status: statusFilter || undefined, sort }),
     retry: false,
   });
 
+  const { data: policyTypes } = useQuery({
+    queryKey: ['cmsPolicyTypes'],
+    queryFn: getPolicyTypes,
+    retry: false,
+  });
+  const typeLabel = (t: string) => policyTypes?.find((pt) => pt.value === t)?.label || t;
+
+  const { data: editingPage, isLoading: loadingEditingPage } = useQuery({
+    queryKey: ['cmsPolicy-edit', editingId],
+    queryFn: () => getCmsPageById(editingId as string) as Promise<PolicyPage>,
+    enabled: typeof editingId === 'string' && editingId !== 'new',
+  });
+
   useEffect(() => {
-    if (data) {
-      setTitle(data.title || LEGAL_PAGE_LABELS[slug]);
-      setContent(data.content || '');
-      setSavedAt(null);
+    if (editingId === 'new') {
+      setForm(EMPTY_POLICY_FORM);
+      setNewPolicyType('');
+      setPreviewing(false);
+    } else if (editingPage) {
+      setForm({
+        title: editingPage.title,
+        shortDescription: editingPage.shortDescription || '',
+        content: editingPage.content,
+        status: editingPage.status,
+      });
+      setPreviewing(false);
     }
-  }, [data, slug]);
+  }, [editingId, editingPage]);
+
+  const closeDrawer = () => setEditingId(null);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['cmsPolicies'] });
 
   const handleSave = async () => {
+    if (!form.title.trim()) return;
+    if (editingId === 'new' && !newPolicyType) {
+      toast.error('Choose a policy type first.');
+      return;
+    }
     setSaving(true);
     try {
-      await saveCmsPage(slug, { title, content });
-      setSavedAt(new Date());
-      toast.success(`${LEGAL_PAGE_LABELS[slug]} saved.`);
-      // Without this, `data` (and its `isDraftPlaceholder: true`) stayed
-      // exactly what it was on first load — the "This page hasn't been
-      // created yet" banner never went away after a successful save, and
-      // a follow-up edit could look like the first one never took, even
-      // though the backend had already written it correctly.
-      queryClient.invalidateQueries({ queryKey: ['cmsPage', slug] });
+      if (editingId === 'new') {
+        await createPolicy({ policyType: newPolicyType as PolicyType, ...form });
+      } else if (editingId) {
+        await updateCmsGenericPage(editingId, form);
+      }
+      refresh();
+      toast.success('Policy saved.');
+      closeDrawer();
     } catch (err) {
-      // Previously there was no catch at all — a failed save just quietly
-      // re-enabled the button with zero indication anything went wrong,
-      // which is exactly what "I saved it and it's gone" looks like from
-      // the admin's side.
-      console.error('Error saving legal page:', err);
+      console.error('Error saving policy:', err);
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(message || 'Failed to save. Please try again.');
+      toast.error(message || 'Failed to save policy. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleTogglePublish = async (p: PolicyPage) => {
+    await toggleCmsPagePublish(p._id);
+    refresh();
+  };
+
+  const handleDelete = async (p: PolicyPage) => {
+    if (!window.confirm(`Delete "${p.title}"? This can't be undone.`)) return;
+    await deleteCmsGenericPage(p._id);
+    refresh();
+  };
+
+  const columns: DataTableColumn<PolicyPage>[] = [
+    {
+      key: 'title',
+      header: 'Policy Name',
+      render: (p) => (
+        <div className="min-w-0 max-w-xs">
+          <p className="truncate font-medium text-slate-800 dark:text-slate-100">{p.title}</p>
+          <p className="truncate text-xs text-slate-400">/{p.slug}</p>
+        </div>
+      ),
+    },
+    { key: 'policyType', header: 'Type', render: (p) => <span className="whitespace-nowrap text-slate-600 dark:text-slate-300">{typeLabel(p.policyType)}</span> },
+    { key: 'status', header: 'Status', render: (p) => <StatusBadge label={p.status === 'published' ? 'Published' : 'Draft'} tone={p.status === 'published' ? 'success' : 'neutral'} /> },
+    { key: 'version', header: 'Version', render: (p) => <span className="text-slate-500 dark:text-slate-400">v{p.version}</span> },
+    { key: 'updatedAt', header: 'Last Updated', render: (p) => <span className="whitespace-nowrap text-slate-500 dark:text-slate-400">{new Date(p.updatedAt).toLocaleDateString()}</span> },
+    { key: 'updatedBy', header: 'Updated By', render: (p) => <span className="whitespace-nowrap text-slate-500 dark:text-slate-400">{p.updatedBy?.name || '—'}</span> },
+    {
+      key: 'actions',
+      header: '',
+      render: (p) => (
+        <div className="flex justify-end gap-1.5">
+          <button onClick={() => setEditingId(p._id)} title="Edit" className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+            <Pencil size={13} />
+          </button>
+          <button onClick={() => { setEditingId(p._id); setHistoryOpen(true); }} title="Version History" className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+            <History size={13} />
+          </button>
+          <button onClick={() => handleTogglePublish(p)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+            {p.status === 'published' ? 'Unpublish' : 'Publish'}
+          </button>
+          <button onClick={() => handleDelete(p)} title="Delete" className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10">
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div>
-      <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60">
-        {LEGAL_PAGE_SLUGS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setSlug(s)}
-            className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              slug === s
-                ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-400'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            {LEGAL_PAGE_LABELS[s]}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-      ) : (
-        <div className="space-y-4">
-          {data?.isDraftPlaceholder && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
-              This page hasn't been created yet — write it below and save to publish it for the first time.
-            </div>
-          )}
-
-          <Field label="Page title">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
-            />
-          </Field>
-
-          <Field label="Content">
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 [&_.ql-toolbar]:rounded-t-lg [&_.ql-container]:rounded-b-lg">
-              <RichTextEditor value={content} onChange={setContent} style={{ height: 320, marginBottom: 42 }} />
-            </div>
-          </Field>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-            >
-              <Save size={15} /> {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              onClick={() => setHistoryOpen(true)}
-              className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-700"
-            >
-              Version History
-            </button>
-            {savedAt && (
-              <span className="text-xs text-slate-400">Saved at {savedAt.toLocaleTimeString()}</span>
-            )}
-          </div>
+      {isError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+          Couldn't load policies. Make sure the backend is running and you're signed in as an admin or superadmin.
         </div>
       )}
-    {historyOpen && (
-  <Drawer
-    open={historyOpen}
-    onClose={() => setHistoryOpen(false)}
-    title="Version History"
-    widthClassName="max-w-md"
-    className="animate-fadeIn"
-  >
-    <RevisionList slug={slug} onClose={() => setHistoryOpen(false)} />
-  </Drawer>
-)}
-</div>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative max-w-xs">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search policies…"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            />
+          </div>
+          <select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-orange-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <option value="">All types</option>
+            {policyTypes?.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-orange-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <option value="">All statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-orange-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <option value="newest">Last updated: newest</option>
+            <option value="oldest">Last updated: oldest</option>
+          </select>
+        </div>
+        <button
+          onClick={() => setEditingId('new')}
+          className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700"
+        >
+          <Plus size={15} /> New Policy
+        </button>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={data?.policies ?? []}
+        getRowKey={(p) => p._id}
+        loading={isLoading}
+        emptyTitle="No policies yet"
+        emptyDescription="Create your first Legal & Policies document — Privacy Policy, Terms & Conditions, and more."
+        page={data?.page}
+        totalPages={data?.totalPages}
+        onPageChange={setPage}
+      />
+
+      <Drawer
+        open={editingId !== null}
+        onClose={closeDrawer}
+        title={editingId === 'new' ? 'New Policy' : 'Edit Policy'}
+        widthClassName="max-w-2xl"
+        footer={
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPreviewing((v) => !v)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Eye size={14} /> {previewing ? 'Back to editing' : 'Preview'}
+              </button>
+              {editingId !== 'new' && (
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <History size={14} /> Version History
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setForm((f) => ({ ...f, status: 'draft' }))}
+                disabled={saving || !form.title.trim()}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                title="Set status to draft, then click Save"
+              >
+                Save as Draft
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !form.title.trim()}
+                className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+              >
+                <Save size={15} /> {saving ? 'Saving…' : form.status === 'published' ? 'Save & Publish' : 'Save'}
+              </button>
+            </div>
+          </div>
+        }
+      >
+        {editingId !== 'new' && loadingEditingPage ? (
+          <div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+        ) : previewing ? (
+          <div className="space-y-3">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">{form.title || 'Untitled policy'}</h2>
+            {form.shortDescription && <p className="text-sm text-slate-500 dark:text-slate-400">{form.shortDescription}</p>}
+            <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: form.content }} />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {editingId === 'new' ? (
+              <Field label="Policy type">
+                <select
+                  value={newPolicyType}
+                  onChange={(e) => setNewPolicyType(e.target.value as PolicyType)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <option value="">Select a type…</option>
+                  {policyTypes?.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </Field>
+            ) : (
+              <Field label="Policy type">
+                <div className="text-sm text-slate-600 dark:text-slate-300">{typeLabel(editingPage?.policyType || '')}</div>
+              </Field>
+            )}
+
+            <Field label="Title">
+              <input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+            </Field>
+
+            {editingId !== 'new' && (
+              <Field label="Slug (public URL)">
+                <div className="text-sm text-slate-500 dark:text-slate-400">/{editingPage?.slug}</div>
+              </Field>
+            )}
+
+            <Field label="Short description (optional)">
+              <input
+                value={form.shortDescription}
+                onChange={(e) => setForm({ ...form, shortDescription: e.target.value })}
+                maxLength={300}
+                placeholder="One line shown above the policy on the public page"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+            </Field>
+
+            <Field label="Content">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 [&_.ql-toolbar]:rounded-t-lg [&_.ql-container]:rounded-b-lg">
+                <RichTextEditor value={form.content} onChange={(v) => setForm({ ...form, content: v })} style={{ height: 320, marginBottom: 42 }} />
+              </div>
+            </Field>
+
+            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.status === 'published'}
+                onChange={(e) => setForm({ ...form, status: e.target.checked ? 'published' : 'draft' })}
+              />
+              Published{editingPage?.slug ? ` (visible at /${editingPage.slug})` : ''}
+            </label>
+          </div>
+        )}
+      </Drawer>
+
+      {historyOpen && editingId && editingId !== 'new' && (
+        <Drawer open={historyOpen} onClose={() => setHistoryOpen(false)} title="Version History" widthClassName="max-w-md">
+          <RevisionList
+            pageId={editingId}
+            onRestored={() => {
+              refresh();
+              queryClient.invalidateQueries({ queryKey: ['cmsPolicy-edit', editingId] });
+            }}
+            onClose={() => setHistoryOpen(false)}
+          />
+        </Drawer>
+      )}
+    </div>
   );
 }
 

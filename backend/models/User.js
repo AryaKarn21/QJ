@@ -48,6 +48,10 @@ const userSchema = new mongoose.Schema({
   // (not employer-only) so any role can read/update its own copy.
   notificationPreferences: {
     allNotifications: { type: Boolean, default: true },
+    applicationStatus: { type: Boolean, default: true },
+    newJobs: { type: Boolean, default: true },
+    community: { type: Boolean, default: true },
+    emailAlerts: { type: Boolean, default: true },
     newApplications: { type: Boolean, default: true },
   },
   // Soft account deactivation ("Danger Zone" on Settings). We never

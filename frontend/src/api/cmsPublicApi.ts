@@ -97,3 +97,19 @@ export const getPublicCmsPage = async (slug: string): Promise<CmsGenericPage> =>
   const res = await axios.get(`${API_BASE_URL}/api/cms/pages/view/${slug}`);
   return res.data;
 };
+
+// Legal & Policies — the minimal shape the footer's Legal section needs to
+// render whichever policies are currently published (backend/controllers/
+// cmsController.js's getPublishedPolicies). Never includes drafts.
+export interface PublishedPolicy {
+  _id: string;
+  slug: string;
+  title: string;
+  policyType: string;
+  updatedAt: string;
+}
+
+export const getPublishedPolicies = async (): Promise<PublishedPolicy[]> => {
+  const res = await axios.get(`${API_BASE_URL}/api/cms/policies/published`);
+  return res.data;
+};

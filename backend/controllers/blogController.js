@@ -335,6 +335,9 @@ const createBlog = async (req, res) => {
       excerpt,
       featuredImage,
       isPublished,
+      status,
+      seoTitle,
+      seoDescription,
     } = req.body;
 
     // Manual blog creation must work even if AI was never used — validate
@@ -440,16 +443,20 @@ const createBlog = async (req, res) => {
       isAIGenerated:
         isAIGenerated || false,
 
-      // Keep existing behavior.
-      //
-      // If isPublished is explicitly provided,
-      // convert it to boolean.
-      //
-      // Otherwise schema default is used.
-      ...(isPublished !== undefined
-        ? {
-            isPublished: !!isPublished,
-          }
+      seoTitle: (seoTitle || "").toString().trim().slice(0, 70),
+      seoDescription: (seoDescription || "").toString().trim().slice(0, 160),
+
+      // `status` (draft/published/unpublished) is the richer signal when
+      // the caller sends it (the admin editor always does); `isPublished`
+      // is derived from it so every existing isPublished-based visibility
+      // check keeps working unchanged. Falls back to the legacy
+      // isPublished-only behavior for callers that don't send `status`
+      // (e.g. the AI-generation flow), and to the schema default
+      // otherwise.
+      ...(["draft", "published", "unpublished"].includes(status)
+        ? { status, isPublished: status === "published" }
+        : isPublished !== undefined
+        ? { isPublished: !!isPublished, status: isPublished ? "published" : "draft" }
         : {}),
     });
 
@@ -627,13 +634,14 @@ const getBlogById = async (req, res) => {
     // Fetch blog
     // --------------------------------------------------------
 
+    // comments.author is deliberately NOT populated/returned here — the
+    // full comments array could grow large, and this endpoint responds
+    // with the whole blog document. The dedicated, paginated
+    // GET /:id/comments (getBlogComments) is what the comments UI actually
+    // reads from; this response only carries a cheap `commentCount`.
     const blog = await Blog.findOne(lookup)
       .populate(
         "author",
-        "name email role"
-      )
-      .populate(
-        "comments.author",
         "name email role"
       );
 
@@ -716,6 +724,13 @@ const getBlogById = async (req, res) => {
         "";
     }
 
+    // Replace the raw embedded array with just a count — see the comment
+    // on the query above for why the array itself isn't sent here.
+    responseBlog.commentCount = (responseBlog.comments || []).filter(
+      (c) => !c.isDeleted
+    ).length;
+    delete responseBlog.comments;
+
     // --------------------------------------------------------
     // Response
     // --------------------------------------------------------
@@ -754,6 +769,9 @@ const updateBlog = async (req, res) => {
       excerpt,
       featuredImage,
       isPublished,
+      status,
+      seoTitle,
+      seoDescription,
     } = req.body;
 
     const userId =
@@ -846,11 +864,21 @@ const updateBlog = async (req, res) => {
         featuredImage;
     }
 
-    if (
-      isPublished !== undefined
-    ) {
-      blog.isPublished =
-        !!isPublished;
+    if (seoTitle !== undefined) {
+      blog.seoTitle = seoTitle.toString().trim().slice(0, 70);
+    }
+    if (seoDescription !== undefined) {
+      blog.seoDescription = seoDescription.toString().trim().slice(0, 160);
+    }
+
+    // Same status/isPublished sync as createBlog — `status` (when sent)
+    // is the richer source of truth, `isPublished` is derived from it.
+    if (["draft", "published", "unpublished"].includes(status)) {
+      blog.status = status;
+      blog.isPublished = status === "published";
+    } else if (isPublished !== undefined) {
+      blog.isPublished = !!isPublished;
+      blog.status = isPublished ? "published" : blog.status === "draft" ? "draft" : "unpublished";
     }
 
     // --------------------------------------------------------
@@ -1052,7 +1080,7 @@ const addComment = async (
     const { id } =
       req.params;
 
-    const { content } =
+    const { content, parentId } =
       req.body;
 
     const userId =
@@ -1086,6 +1114,23 @@ const addComment = async (
     }
 
     // --------------------------------------------------------
+    // Resolve reply target (one level deep only — a reply can't itself
+    // be replied to, keeping the thread UI simple).
+    // --------------------------------------------------------
+
+    let parent = null;
+    if (parentId) {
+      const parentComment = blog.comments.id(parentId);
+      if (!parentComment || parentComment.isDeleted) {
+        return res.status(404).json({ message: "The comment you're replying to no longer exists." });
+      }
+      if (parentComment.parent) {
+        return res.status(400).json({ message: "Replies can only be added to a top-level comment." });
+      }
+      parent = parentComment._id;
+    }
+
+    // --------------------------------------------------------
     // Add comment
     // --------------------------------------------------------
 
@@ -1093,6 +1138,7 @@ const addComment = async (
       author: userId,
       content:
         content.trim(),
+      parent,
     });
 
     // --------------------------------------------------------
@@ -1103,7 +1149,7 @@ const addComment = async (
 
     await blog.populate(
       "comments.author",
-      "name email role"
+      "name email role profilePic"
     );
 
     const newComment =
@@ -1131,6 +1177,175 @@ const addComment = async (
       success: false,
       message: "Failed to add comment",
     });
+  }
+};
+
+// ============================================================
+// GET PAGINATED BLOG COMMENTS
+// ============================================================
+// Paginates top-level comments (newest first) and inlines every reply for
+// just that page's comments — a blog's reply count per top-level comment
+// is small in practice, so this avoids a second, fully general pagination
+// system for replies. See models/Blog.js's commentSchema for the
+// parent/isDeleted fields this relies on.
+
+const BLOG_COMMENTS_PAGE_LIMIT = 10;
+
+const getBlogComments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || BLOG_COMMENTS_PAGE_LIMIT, 50);
+
+    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id })
+      .select("comments")
+      .populate("comments.author", "name email role profilePic");
+    if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
+
+    const viewerId = req.user?.id ? String(req.user.id) : null;
+    const shapeComment = (c) => ({
+      _id: c._id,
+      author: c.isDeleted ? null : c.author,
+      content: c.isDeleted ? "" : c.content,
+      isDeleted: c.isDeleted,
+      editedAt: c.editedAt || null,
+      createdAt: c.createdAt,
+      likeCount: c.likes?.length || 0,
+      isLiked: viewerId ? c.likes?.some((u) => String(u) === viewerId) : false,
+    });
+
+    const all = blog.comments || [];
+    // A deleted top-level comment with replies still shows as a tombstone
+    // (isDeleted:true, content stripped) so its replies stay attached to
+    // something; one with no replies is dropped entirely.
+    const hasReplies = (commentId) =>
+      all.some((c) => !c.isDeleted && c.parent && String(c.parent) === String(commentId));
+
+    const topLevel = all
+      .filter((c) => !c.parent && (!c.isDeleted || hasReplies(c._id)))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const total = topLevel.length;
+    const pageItems = topLevel.slice((page - 1) * limit, page * limit);
+    const pageIds = new Set(pageItems.map((c) => String(c._id)));
+
+    const repliesByParent = {};
+    all
+      .filter((c) => !c.isDeleted && c.parent && pageIds.has(String(c.parent)))
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .forEach((c) => {
+        const key = String(c.parent);
+        (repliesByParent[key] ||= []).push(shapeComment(c));
+      });
+
+    const comments = pageItems.map((c) => ({
+      ...shapeComment(c),
+      replies: repliesByParent[String(c._id)] || [],
+    }));
+
+    res.json({
+      success: true,
+      comments,
+      total,
+      page,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+      hasNext: page * limit < total,
+    });
+  } catch (error) {
+    console.error("Error fetching blog comments:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch comments" });
+  }
+};
+
+// ============================================================
+// EDIT / DELETE / LIKE A COMMENT
+// ============================================================
+
+const updateComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, message: "Comment content is required" });
+    }
+
+    const blog = await Blog.findById(id);
+    if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
+
+    const comment = blog.comments.id(commentId);
+    if (!comment || comment.isDeleted) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+    if (String(comment.author) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: "You can only edit your own comment" });
+    }
+
+    comment.content = content.trim();
+    comment.editedAt = new Date();
+    await blog.save();
+    await blog.populate("comments.author", "name email role profilePic");
+
+    res.json({ success: true, comment: blog.comments.id(commentId) });
+  } catch (error) {
+    console.error("Error updating comment:", error);
+    res.status(500).json({ success: false, message: "Failed to update comment" });
+  }
+};
+
+const deleteComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const blog = await Blog.findById(id);
+    if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
+
+    const comment = blog.comments.id(commentId);
+    if (!comment || comment.isDeleted) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    const isOwner = String(comment.author) === String(req.user.id);
+    const isPrivileged = ["admin", "superadmin"].includes(req.user.role);
+    if (!isOwner && !isPrivileged) {
+      return res.status(403).json({ success: false, message: "You can only delete your own comment" });
+    }
+
+    comment.isDeleted = true;
+    comment.content = "";
+    await blog.save();
+
+    res.json({ success: true, message: "Comment deleted" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ success: false, message: "Failed to delete comment" });
+  }
+};
+
+const toggleCommentLike = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const userId = req.user.id;
+
+    const blog = await Blog.findById(id);
+    if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
+
+    const comment = blog.comments.id(commentId);
+    if (!comment || comment.isDeleted) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    const likeIndex = comment.likes.findIndex((u) => String(u) === String(userId));
+    if (likeIndex > -1) {
+      comment.likes.splice(likeIndex, 1);
+    } else {
+      comment.likes.push(userId);
+    }
+    await blog.save();
+
+    res.json({ success: true, likeCount: comment.likes.length, isLiked: likeIndex === -1 });
+  } catch (error) {
+    console.error("Error toggling comment like:", error);
+    res.status(500).json({ success: false, message: "Failed to toggle comment like" });
   }
 };
 
@@ -1314,6 +1529,10 @@ module.exports = {
   deleteBlog,
   toggleLikeBlog,
   addComment,
+  getBlogComments,
+  updateComment,
+  deleteComment,
+  toggleCommentLike,
   getUserBlogs,
   getBlogCategories,
   uploadBlogImage,

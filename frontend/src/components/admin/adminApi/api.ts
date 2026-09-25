@@ -352,7 +352,7 @@ export const createCmsGenericPage = async (data: { title: string; content: strin
   return res.data as CmsGenericPage;
 };
 
-export const updateCmsGenericPage = async (id: string, data: Partial<{ title: string; content: string; featuredImage: string; status: 'draft' | 'published' }>) => {
+export const updateCmsGenericPage = async (id: string, data: Partial<{ title: string; content: string; featuredImage: string; status: 'draft' | 'published'; shortDescription: string }>) => {
   const res = await axios.put(`${API_BASE_URL}/api/cms/pages/id/${id}`, data, getAuthConfig());
   return res.data as CmsGenericPage;
 };
@@ -366,14 +366,83 @@ export const deleteCmsGenericPage = async (id: string) => {
   const res = await axios.delete(`${API_BASE_URL}/api/cms/pages/id/${id}`, getAuthConfig());
   return res.data;
 };
-export const getCmsPageRevisions = async (slug: string) => {
-  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/id/${slug}/revisions`, getAuthConfig());
-  return res.data;
+
+export interface PageRevision {
+  revNumber: number;
+  title: string;
+  content: string;
+  status: 'draft' | 'published';
+  version: number;
+  updatedBy: { _id: string; name: string; email: string; role: string } | null;
+  updatedAt: string;
+}
+
+// Takes the page's Mongo _id (NOT its slug) — the backend route is id-based
+// (`/api/cms/pages/id/:id/revisions`), so passing a slug like
+// "privacy-policy" here 404s/500s with a Mongoose CastError.
+export const getCmsPageRevisions = async (pageId: string) => {
+  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/id/${pageId}/revisions`, getAuthConfig());
+  return (res.data as { revisions: PageRevision[] }).revisions;
 };
 
-export const restoreCmsPageRevision = async (slug: string, revNumber: number) => {
-  const res = await axios.post(`${API_BASE_URL}/api/cms/pages/id/${slug}/revisions/${revNumber}/restore`, {}, getAuthConfig());
-  return res.data;
+export const restoreCmsPageRevision = async (pageId: string, revNumber: number) => {
+  const res = await axios.post(`${API_BASE_URL}/api/cms/pages/id/${pageId}/revisions/${revNumber}/restore`, {}, getAuthConfig());
+  return res.data as { message: string; page: CmsGenericPage };
+};
+
+// ---------------------------------------------------------------------------
+// Legal & Policies — a policy is a CmsGenericPage (same Page model/collection)
+// with `policyType` set. Get-by-id/update/publish-toggle/delete/revisions
+// reuse the generic Pages functions above; only listing and creation (which
+// need the policy-specific fields) get their own endpoints.
+// ---------------------------------------------------------------------------
+
+export type PolicyType =
+  | 'privacy-policy'
+  | 'terms-conditions'
+  | 'community-guidelines'
+  | 'job-seeker-rules'
+  | 'job-provider-rules'
+  | 'job-posting-guidelines'
+  | 'prohibited-content'
+  | 'refund-cancellation'
+  | 'cookie-policy'
+  | 'disclaimer'
+  | 'code-of-conduct';
+
+export interface PolicyTypeOption {
+  value: PolicyType;
+  label: string;
+  defaultSlug: string;
+}
+
+export interface PolicyPage extends CmsGenericPage {
+  policyType: PolicyType;
+  shortDescription?: string;
+  version: number;
+  updatedBy: { _id: string; name: string; email: string; role: string } | null;
+}
+
+export const getPolicyTypes = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/cms/policies/types`, getAuthConfig());
+  return res.data as PolicyTypeOption[];
+};
+
+export const getPolicies = async (params: { page?: number; limit?: number; search?: string; policyType?: string; status?: string; sort?: 'newest' | 'oldest' }) => {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+  if (params.policyType) query.set('policyType', params.policyType);
+  if (params.status) query.set('status', params.status);
+  if (params.sort) query.set('sort', params.sort);
+  const res = await axios.get(`${API_BASE_URL}/api/cms/policies?${query.toString()}`, getAuthConfig());
+  return res.data as { policies: PolicyPage[]; total: number; page: number; totalPages: number };
+};
+
+export const createPolicy = async (data: { policyType: PolicyType; title: string; content: string; shortDescription?: string; status?: 'draft' | 'published' }) => {
+  const res = await axios.post(`${API_BASE_URL}/api/cms/policies`, data, getAuthConfig());
+  return res.data as PolicyPage;
 };
 
 export interface HomepageHeroContent {
@@ -999,10 +1068,29 @@ export const getAllCommunityPostsAdmin = async (params?: {
   status?: string;
   type?: string;
   search?: string;
+  author?: string;
+  sort?: 'newest' | 'oldest' | 'most-reacted' | 'most-commented';
   page?: number;
   limit?: number;
 }) => {
   const res = await axios.get(`${API_BASE_URL}/api/admin/community/posts`, { ...getAuthConfig(), params });
+  return res.data;
+};
+
+export interface CommunityPostDetail {
+  post: any;
+  reactions: Record<string, number>;
+  comments: any[];
+  commentTotal: number;
+  commentLimit: number;
+  reports: any[];
+}
+
+// Backs the "Manage" action (view full post + reactions + comments +
+// reports) — previously this button didn't exist at all in the Community
+// Moderation Hub / Reports Hub, just an unused Eye icon import.
+export const getCommunityPostDetailAdmin = async (postId: string): Promise<CommunityPostDetail> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/community/posts/${postId}`, getAuthConfig());
   return res.data;
 };
 

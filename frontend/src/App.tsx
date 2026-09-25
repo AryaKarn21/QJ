@@ -76,6 +76,16 @@ import PrivacyPolicy from './components/jobseeker/user/privacy';
 import TermsOfService from './components/legal/TermsOfService';
 import CommunityGuidelines from './components/legal/CommunityGuidelines';
 import { CmsPageView } from './components/legal/CmsPageView';
+import {
+  JobSeekerRules,
+  JobProviderRules,
+  JobPostingGuidelines,
+  ProhibitedContentPolicy,
+  RefundCancellationPolicy,
+  CookiePolicy,
+  Disclaimer,
+  CodeOfConduct,
+} from './components/legal/PolicyPages';
 import FaqPage from './components/content/FaqPage';
 import CareerTips from './components/content/CareerTips';
 import CareerTipDetail from './components/content/CareerTipDetail';
@@ -185,8 +195,17 @@ function AppWrapper() {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/community-guidelines" element={<CommunityGuidelines />} />
+          <Route path="/job-seeker-rules" element={<JobSeekerRules />} />
+          <Route path="/job-provider-rules" element={<JobProviderRules />} />
+          <Route path="/job-posting-guidelines" element={<JobPostingGuidelines />} />
+          <Route path="/prohibited-content" element={<ProhibitedContentPolicy />} />
+          <Route path="/refund-cancellation" element={<RefundCancellationPolicy />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
+          <Route path="/code-of-conduct" element={<CodeOfConduct />} />
           <Route path="/p/:slug" element={<CmsPageView />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/career-tips" element={<CareerTips />} />

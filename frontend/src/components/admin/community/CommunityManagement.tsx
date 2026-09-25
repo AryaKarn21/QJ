@@ -26,30 +26,35 @@ import {
   deleteCommunityCommentAdmin,
 } from '../adminApi/api';
 import { updatePost as updateCommunityPost } from '../../../api/communityApi';
+import { PostDetailDrawer } from './PostDetailDrawer';
 
 export const CommunityManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'posts'; // 'posts' | 'flagged' | 'comments'
 
-  const [activeTab, setActiveTab] = useState<'posts' | 'flagged' | 'comments'>(
-    initialTab === 'flagged' || initialTab === 'comments' ? initialTab : 'posts'
+  const [activeTab, setActiveTab] = useState<'posts' | 'flagged' | 'hidden' | 'comments'>(
+    initialTab === 'flagged' || initialTab === 'hidden' || initialTab === 'comments' ? initialTab : 'posts'
   );
 
   const [posts, setPosts] = useState<any[]>([]);
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [authorSearch, setAuthorSearch] = useState('');
+  const [sort, setSort] = useState<'newest' | 'oldest' | 'most-reacted' | 'most-commented'>('newest');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [editingPost, setEditingPost] = useState<any | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [managingPostId, setManagingPostId] = useState<string | null>(null);
 
   // Sync tab with URL
-  const handleTabChange = (tab: 'posts' | 'flagged' | 'comments') => {
+  const handleTabChange = (tab: 'posts' | 'flagged' | 'hidden' | 'comments') => {
     setActiveTab(tab);
     setPage(1);
     setSearch('');
+    setAuthorSearch('');
     const newParams = new URLSearchParams(searchParams);
     newParams.set('tab', tab);
     setSearchParams(newParams);
@@ -59,8 +64,10 @@ export const CommunityManagement: React.FC = () => {
     setLoading(true);
     try {
       const res = await getAllCommunityPostsAdmin({
-        status: activeTab === 'flagged' ? 'flagged' : undefined,
+        status: activeTab === 'flagged' ? 'flagged' : activeTab === 'hidden' ? 'removed' : undefined,
         search: search || undefined,
+        author: authorSearch || undefined,
+        sort,
         page,
         limit: 15,
       });
@@ -71,7 +78,7 @@ export const CommunityManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, search, page]);
+  }, [activeTab, search, authorSearch, sort, page]);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -202,6 +209,17 @@ export const CommunityManagement: React.FC = () => {
               Flagged & Reported
             </button>
             <button
+              onClick={() => handleTabChange('hidden')}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+                activeTab === 'hidden'
+                  ? 'bg-slate-600 text-white shadow-xs shadow-slate-600/30'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              <ShieldAlert size={14} />
+              Hidden
+            </button>
+            <button
               onClick={() => handleTabChange('comments')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
                 activeTab === 'comments'
@@ -214,15 +232,41 @@ export const CommunityManagement: React.FC = () => {
             </button>
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab}...`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-56">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab === 'comments' ? 'comments' : 'post content'}...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              />
+            </div>
+            {activeTab !== 'comments' && (
+              <>
+                <div className="relative w-full sm:w-44">
+                  <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="By author..."
+                    value={authorSearch}
+                    onChange={(e) => setAuthorSearch(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as typeof sort)}
+                  className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="most-reacted">Most reacted</option>
+                  <option value="most-commented">Most commented</option>
+                </select>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -336,7 +380,7 @@ export const CommunityManagement: React.FC = () => {
                       )}
 
                       <div className="flex items-center gap-4 text-[11px] text-slate-400 pt-1">
-                        <span>❤️ {post.likes?.length || 0} Likes</span>
+                        <span>❤️ {post.likeCount || 0} Reactions</span>
                         <span>💬 {post.commentCount || 0} Comments</span>
                         <span>🔄 {post.shareCount || 0} Shares</span>
                       </div>
@@ -344,6 +388,12 @@ export const CommunityManagement: React.FC = () => {
 
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => setManagingPostId(post._id)}
+                        className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Eye size={13} /> Manage
+                      </button>
                       <button
                         onClick={() => openEditModal(post)}
                         className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -465,6 +515,12 @@ export const CommunityManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PostDetailDrawer
+        postId={managingPostId}
+        onClose={() => setManagingPostId(null)}
+        onChanged={fetchPosts}
+      />
     </div>
   );
 };

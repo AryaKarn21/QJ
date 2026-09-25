@@ -60,6 +60,7 @@ const UserSettings = () => {
     applicationStatus: true,
     newJobs: true,
     community: true,
+    emailAlerts: true,
   });
   const [notifSaving, setNotifSaving] = useState(false);
 
@@ -517,6 +518,25 @@ const UserSettings = () => {
                       />
                     </button>
                   </div>
+                </div>
+
+                {/* Email Alerts */}
+                <div className="py-4 flex items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900">Email Alerts</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Receive email notifications for selected events.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleNotification('emailAlerts')}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifications.emailAlerts ? 'bg-primary' : 'bg-gray-200'}`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-flex h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${notifications.emailAlerts ? 'translate-x-5' : 'translate-x-0'}`}
+                    />
+                  </button>
                 </div>
 
                 <div className="pt-4">

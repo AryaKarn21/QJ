@@ -11,6 +11,29 @@ const commentSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  // Points at another subdocument's `_id` within the same `comments` array
+  // — one reply level (a reply can't itself be replied to), enforced in
+  // blogController.js's addComment. null/absent for a top-level comment.
+  parent: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+  likes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+  // Soft delete so replies to a deleted top-level comment don't get
+  // orphaned — see blogController.js's getBlogComments for how a deleted
+  // comment with replies still renders as a "[deleted]" tombstone.
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  editedAt: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -100,6 +123,35 @@ const blogSchema = new mongoose.Schema(
     isPublished: {
       type: Boolean,
       default: true,
+    },
+    // Richer tri-state alongside `isPublished` (which stays the single
+    // source of truth for "is this publicly visible" everywhere else in
+    // the codebase — getAllBlogs/getBlogById's visibility checks are
+    // unchanged). `status` only exists so the admin UI can tell "never
+    // published" apart from "was published, then taken down" instead of
+    // both collapsing into the same isPublished:false. Kept in sync with
+    // isPublished in blogController.js's createBlog/updateBlog and
+    // adminController.js's updateBlogStatusAdmin — never edit one without
+    // the other.
+    status: {
+      type: String,
+      enum: ["draft", "published", "unpublished"],
+      default: "published",
+    },
+    // SEO meta fields for the public blog page's <title>/<meta
+    // name="description">. Optional — falls back to `title`/`excerpt` at
+    // render time when blank.
+    seoTitle: {
+      type: String,
+      trim: true,
+      maxlength: 70,
+      default: "",
+    },
+    seoDescription: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: "",
     },
     publishedAt: {
       type: Date,

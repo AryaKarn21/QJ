@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StarFooter from '../../assets/quickjobs.png';
 import {
   Home,
@@ -32,6 +32,23 @@ const WhatsappIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { FooterTestimonials } from './FooterTestimonials';
+import { getPublishedPolicies, type PublishedPolicy } from '../../api/cmsPublicApi';
+
+// Fixed public route for every policy type beyond the original three
+// (Privacy/Terms/Community Guidelines, which already have their own footer
+// buttons below and are skipped here to avoid duplicate links) — must match
+// App.tsx's routes and backend/controllers/cmsController.js's
+// POLICY_TYPE_META.defaultSlug.
+const POLICY_TYPE_ROUTES: Record<string, string> = {
+  'job-seeker-rules': '/job-seeker-rules',
+  'job-provider-rules': '/job-provider-rules',
+  'job-posting-guidelines': '/job-posting-guidelines',
+  'prohibited-content': '/prohibited-content',
+  'refund-cancellation': '/refund-cancellation',
+  'cookie-policy': '/cookie-policy',
+  disclaimer: '/disclaimer',
+  'code-of-conduct': '/code-of-conduct',
+};
 
 interface DecodedToken {
   id: string;
@@ -41,6 +58,23 @@ interface DecodedToken {
 
 const Footer: React.FC = () => {
   const navigate = useNavigate();
+  const [extraPolicies, setExtraPolicies] = useState<PublishedPolicy[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPublishedPolicies()
+      .then((policies) => {
+        if (!cancelled) setExtraPolicies(policies.filter((p) => POLICY_TYPE_ROUTES[p.policyType]));
+      })
+      .catch(() => {
+        // Footer must never break the rest of the page over this — the
+        // original three legal links below are static and always render
+        // regardless of whether this fetch succeeds.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Check authentication and role
   const token = localStorage.getItem('token');
@@ -353,6 +387,21 @@ const Footer: React.FC = () => {
               <ShieldCheck size={14} className="flex-shrink-0" />
               <span>Community Guidelines</span>
             </button>
+            {/* Every other published policy (Job Seeker Rules, Cookie
+                Policy, etc.) — fetched live from Super Admin → CMS → Legal &
+                Policies, so a newly published policy shows up here with no
+                frontend deploy. Unpublished ones never appear. */}
+            {extraPolicies.map((p) => (
+              <button
+                key={p._id}
+                type="button"
+                onClick={() => navigate(POLICY_TYPE_ROUTES[p.policyType])}
+                className="flex items-center justify-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer sm:justify-start"
+              >
+                <FileText size={14} className="flex-shrink-0" />
+                <span>{p.title}</span>
+              </button>
+            ))}
             <button
               type="button"
               onClick={() => navigate('/faq')}

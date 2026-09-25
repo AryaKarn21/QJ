@@ -320,7 +320,7 @@ const updateJobseekerStatus = async (req, res) => {
 // Update notification preferences
 const updateNotificationPreferences = async (req, res) => {
   const jobseekerId = req.user._id || req.user.id;
-  const { allNotifications, applicationStatus, newJobs, community } = req.body;
+  const { allNotifications, applicationStatus, newJobs, community, emailAlerts } = req.body;
 
   try {
     const user = await User.findById(jobseekerId);
@@ -342,6 +342,9 @@ const updateNotificationPreferences = async (req, res) => {
     }
     if (community !== undefined) {
       user.notificationPreferences.community = Boolean(community);
+    }
+    if (emailAlerts !== undefined) {
+      user.notificationPreferences.emailAlerts = Boolean(emailAlerts);
     }
 
     await user.save();

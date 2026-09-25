@@ -431,6 +431,92 @@ const sendInterviewCancelledEmail = async ({
   }
 };
 
+// Assessment email helpers
+/**
+ * Send Assessment Request Email
+ */
+const sendAssessmentRequestEmail = async ({
+  recipient,
+  candidateName = "Candidate",
+  companyName = "QuickJobs Employer",
+  jobTitle = "Position",
+  assessmentLink = "",
+  assessmentDeadline,
+  applicationId = "",
+}) => {
+  const deadlineInfo = assessmentDeadline ? `\nDeadline: ${assessmentDeadline}` : "";
+  const subject = `Assessment Required — ${jobTitle} at ${companyName}`;
+  const text = `Hello ${candidateName},\n\n` +
+    `We would like you to complete an assessment for the ${jobTitle} position at ${companyName}.${deadlineInfo}\n\n` +
+    (assessmentLink ? `Assessment Link: ${assessmentLink}\n` : "") +
+    `\nPlease complete it at your earliest convenience.\n\nBest regards,\nQuickJobs Team`;
+
+  const html = buildInterviewHtml({
+    heading: "Assessment Request",
+    badgeText: "Assessment",
+    badgeColor: "badge-scheduled",
+    candidateName,
+    jobTitle,
+    companyName,
+    date: assessmentDeadline || "",
+    time: "",
+    timezone: "",
+    durationText: "",
+    interviewMode: "Online",
+    meetingLink: assessmentLink,
+    notes: "Please complete the assessment before the deadline.",
+  });
+
+  try {
+    await sendMail(recipient, subject, text, html);
+    console.log(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: sent`);
+    return { success: true, recipient };
+  } catch (error) {
+    const safeError = error?.message || "Unknown mail delivery error";
+    console.error(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: failed\nError: ${safeError}`);
+    return { success: false, recipient, error: safeError };
+  }
+};
+
+/**
+ * Send Assessment Reminder Email
+ */
+const sendAssessmentReminderEmail = async ({
+  recipient,
+  candidateName = "Candidate",
+  companyName = "QuickJobs Employer",
+  jobTitle = "Position",
+  assessmentLink = "",
+  applicationId = "",
+}) => {
+  const subject = `Reminder: Assessment – ${jobTitle} at ${companyName}`;
+  const text = `Hello ${candidateName},\n\n` +
+    `This is a friendly reminder to complete the assessment for the ${jobTitle} role at ${companyName}.\n` +
+    (assessmentLink ? `Assessment Link: ${assessmentLink}\n` : "") +
+    `\nWe look forward to reviewing your submission.\n\nBest regards,\nQuickJobs Team`;
+
+  const html = buildInterviewHtml({
+    heading: "Assessment Reminder",
+    badgeText: "Reminder",
+    badgeColor: "badge-rescheduled",
+    candidateName,
+    jobTitle,
+    companyName,
+    notes: "Please complete the assessment as soon as possible.",
+    meetingLink: assessmentLink,
+  });
+
+  try {
+    await sendMail(recipient, subject, text, html);
+    console.log(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: reminder sent`);
+    return { success: true, recipient };
+  } catch (error) {
+    const safeError = error?.message || "Unknown mail delivery error";
+    console.error(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: reminder failed\nError: ${safeError}`);
+    return { success: false, recipient, error: safeError };
+  }
+};
+
 module.exports = {
   formatInterviewDateTime,
   formatDuration,

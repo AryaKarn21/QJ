@@ -35,10 +35,19 @@ router.get("/pages/id/:id", authenticate, authorizeAdmin, cms.adminGetPageById);
 router.put("/pages/id/:id", authenticate, authorizeAdmin, cms.adminUpdatePage);
 router.patch("/pages/id/:id/publish", authenticate, authorizeAdmin, cms.adminTogglePagePublish);
 router.delete("/pages/id/:id", authenticate, authorizeAdmin, cms.adminDeletePage);
-// Revision management for CMS pages
+// Revision management for CMS pages (shared by generic Pages and Legal & Policies — both are Page documents)
 router.get("/pages/id/:id/revisions", authenticate, authorizeAdmin, cms.getPageRevisions);
 router.post("/pages/id/:id/revisions/:revNumber/restore", authenticate, authorizeAdmin, cms.restorePageRevision);
 router.get("/pages/view/:slug", cms.getPublicPage);
+
+// --- Legal & Policies (admin: list/create; public: published-only list for the footer) ---
+// Editing an individual policy (get-by-id/update/publish-toggle/delete/
+// revisions) reuses the generic Pages routes above — a policy is just a
+// Page with `policyType` set, not a separate model/endpoint family.
+router.get("/policies/types", authenticate, authorizeAdmin, cms.getPolicyTypes);
+router.get("/policies/published", cms.getPublishedPolicies);
+router.get("/policies", authenticate, authorizeAdmin, cms.adminListPolicies);
+router.post("/policies", authenticate, authorizeAdmin, cms.adminCreatePolicy);
 
 // --- Rich-text image uploads (shared by Pages / Career Tips / Legal editors) ---
 router.post("/upload-image", authenticate, authorizeAdmin, handleCmsImageUpload, cms.uploadCmsImage);

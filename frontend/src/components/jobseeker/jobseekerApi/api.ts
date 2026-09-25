@@ -356,6 +356,7 @@ export const updateJobseekerNotificationPreferences = async (preferences: {
   applicationStatus?: boolean;
   newJobs?: boolean;
   community?: boolean;
+  emailAlerts?: boolean;
 }) => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
