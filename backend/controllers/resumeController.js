@@ -62,9 +62,10 @@ const createResume = async (req, res) => {
   }
 };
 
-// Update a resume — used for every editor field change AND autosave.
-// Accepts a partial body; only known top-level fields are applied, so an
-// autosave payload can safely send just what changed.
+// The set of top-level fields the PATCH endpoint is allowed to update.
+// Only these are extracted from req.body and applied — any other key in
+// the request body is silently ignored, preventing accidental overwrites
+// of fields like `user`, `_id`, or `__v`.
 const UPDATABLE_FIELDS = [
   "title",
   "targetRole",
@@ -104,19 +105,54 @@ const UPDATABLE_FIELDS = [
   "status",
 ];
 
+// Update a resume — used for every editor field change AND autosave.
+//
+// WHY findOneAndUpdate instead of findOne + save:
+// The editor autosaves after every keystroke (debounced to 1 200 ms). When
+// a user edits several fields quickly — e.g. types in the Education section
+// while the Experience autosave is still in flight — two PATCH requests
+// land on the server almost simultaneously. Both call findOne(), both get
+// the same document with __v = N. The first save() bumps __v to N+1; the
+// second save() now sees __v = N in its in-memory document but N+1 in the
+// database and Mongoose throws:
+//
+//   VersionError: No matching document found for id "..." version N
+//
+// findOneAndUpdate() is a single atomic MongoDB operation — it reads and
+// writes in one round-trip so there is never a window where a second
+// request can race against the version check. The $set operator only
+// touches the fields present in the update, so an autosave payload that
+// only sends `education` never clobbers `experience` or any other field.
+//
+// This preserves every existing resume field: fields absent from the
+// request body are never included in the $set, so they remain exactly as
+// they were in the database.
 const updateResume = async (req, res) => {
   try {
-    const resume = await Resume.findOne({ _id: req.params.id, user: req.user.id });
-    if (!resume) return res.status(404).json({ message: "Resume not found" });
-
-    UPDATABLE_FIELDS.forEach((field) => {
+    // Build a $set payload from only the allowed fields that were actually
+    // sent in this request — empty payload is a no-op but still succeeds.
+    const setPayload = {};
+    for (const field of UPDATABLE_FIELDS) {
       if (req.body[field] !== undefined) {
-        resume[field] = req.body[field];
+        setPayload[field] = req.body[field];
       }
-    });
+    }
 
-    await resume.save();
-    res.json(resume);
+    // findOneAndUpdate is atomic — no VersionError possible because there
+    // is no read-then-write gap. returnDocument: "after" gives us the
+    // post-update document to return to the client, matching the previous
+    // behaviour of returning resume after save().
+    const updated = await Resume.findOneAndUpdate(
+      { _id: req.params.id, user: req.user.id },
+      { $set: setPayload },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Resume not found" });
+    }
+
+    res.json(updated);
   } catch (error) {
     respondResumeError(res, error, "updating");
   }
@@ -164,6 +200,9 @@ const deleteResume = async (req, res) => {
 };
 
 // Upload supporting documents (Passport, Certificate, etc.)
+// These use findOne + save intentionally: document subdocument operations
+// (push/pull on resume.documents) need the full document in memory and are
+// not concurrent-autosave paths, so VersionError is not a risk here.
 const uploadResumeDocument = async (req, res) => {
   try {
     const resume = await Resume.findOne({ _id: req.params.id, user: req.user.id });

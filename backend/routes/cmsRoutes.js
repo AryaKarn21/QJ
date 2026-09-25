@@ -35,6 +35,9 @@ router.get("/pages/id/:id", authenticate, authorizeAdmin, cms.adminGetPageById);
 router.put("/pages/id/:id", authenticate, authorizeAdmin, cms.adminUpdatePage);
 router.patch("/pages/id/:id/publish", authenticate, authorizeAdmin, cms.adminTogglePagePublish);
 router.delete("/pages/id/:id", authenticate, authorizeAdmin, cms.adminDeletePage);
+// Revision management for CMS pages
+router.get("/pages/id/:id/revisions", authenticate, authorizeAdmin, cms.getPageRevisions);
+router.post("/pages/id/:id/revisions/:revNumber/restore", authenticate, authorizeAdmin, cms.restorePageRevision);
 router.get("/pages/view/:slug", cms.getPublicPage);
 
 // --- Rich-text image uploads (shared by Pages / Career Tips / Legal editors) ---

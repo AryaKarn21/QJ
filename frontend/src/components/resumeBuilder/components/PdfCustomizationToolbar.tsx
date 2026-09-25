@@ -131,6 +131,23 @@ export const PdfCustomizationToolbar: React.FC<PdfCustomizationToolbarProps> = (
               <option value="last">Last page only</option>
             </select>
           </div>
+          {/* 6. Page Number Style */}
+          <div className="flex items-center gap-1.5">
+            <FileDigit size={14} className="text-slate-500 shrink-0" />
+            <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider shrink-0">
+              Page Number Style:
+            </label>
+            <select
+              className={`${selectStyle} min-w-[135px]`}
+              value={resume.pageNumberStyle || 'full'}
+              onChange={(e) => onUpdate({ pageNumberStyle: e.target.value as any })}
+              title="Select page number style"
+            >
+              <option value="plain">Plain</option>
+              <option value="prefixed">Prefixed</option>
+              <option value="full">Full</option>
+            </select>
+          </div>
         </div>
 
         {/* Change template gallery shortcut */}

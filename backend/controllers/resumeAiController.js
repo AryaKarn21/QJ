@@ -17,35 +17,49 @@ function logAiUsage(feature, userId) {
   );
 }
 
-// Specific, honest messages per failure *kind* — before this, an invalid/
-// expired/quota-exceeded key, a Gemini outage, and a real network blip all
-// fell through to the same generic `fallbackMessage` (e.g. "Failed to
-// generate summary."), so there was no way for the user (or whoever they
-// report the bug to) to tell "the API key needs rotating" apart from
-// "transient, just retry" apart from "this is a real bug, not AI-related."
+// Specific, honest messages per failure kind.
+// GEMINI_TEMPORARILY_UNAVAILABLE is distinct from GEMINI_UNAVAILABLE:
+//   - TEMPORARILY_UNAVAILABLE = transient 503/overloaded — "try again in a few seconds"
+//   - UNAVAILABLE              = model retired / 404    — contact admin
+// The frontend uses the `code` field to decide whether to show a "Try Again" button.
 const AI_ERROR_RESPONSES = {
   GEMINI_NOT_CONFIGURED: {
     status: 503,
+    code: "GEMINI_NOT_CONFIGURED",
     message: "AI features aren't configured yet. Add GEMINI_API_KEY to the backend .env file.",
   },
   GEMINI_INVALID_KEY: {
     status: 503,
+    code: "GEMINI_INVALID_KEY",
     message: "AI service authentication failed. Please contact the administrator.",
   },
   GEMINI_QUOTA_EXCEEDED: {
     status: 429,
+    code: "GEMINI_QUOTA_EXCEEDED",
     message: "AI usage limit reached. Please try again later.",
   },
+  // Transient: 503 / overloaded — the retry loop in geminiClient.js already
+  // attempted 2–3 times; if we're still here all retries were exhausted.
+  // The frontend should show "Try Again" for this one.
+  GEMINI_TEMPORARILY_UNAVAILABLE: {
+    status: 503,
+    code: "GEMINI_TEMPORARILY_UNAVAILABLE",
+    message: "AI service is temporarily busy. Please try again in a few seconds.",
+  },
+  // Permanent: model retired / endpoint gone — retrying won't help.
   GEMINI_UNAVAILABLE: {
     status: 503,
+    code: "GEMINI_UNAVAILABLE",
     message: "AI service is temporarily unavailable. Please try again.",
   },
   GEMINI_NETWORK_ERROR: {
     status: 502,
+    code: "GEMINI_NETWORK_ERROR",
     message: "Unable to reach the AI service. Please check your connection.",
   },
   AI_BAD_RESPONSE: {
     status: 502,
+    code: "AI_BAD_RESPONSE",
     message: "The AI returned an unexpected response. Please try again.",
   },
 };
@@ -54,14 +68,23 @@ function friendlyAiError(res, error, fallbackMessage) {
   const code = classifyGeminiError(error);
   const known = code && AI_ERROR_RESPONSES[code];
   if (known) {
-    // "Not configured" is a routine, expected state in dev — everything
-    // else classified here is worth a server-side log even though the
-    // client gets a clean, specific message instead of the raw error.
-    if (code !== "GEMINI_NOT_CONFIGURED") console.error(`${fallbackMessage} [${code}]`, error);
-    return res.status(known.status).json({ message: known.message });
+    // "Not configured" is a routine dev-environment state — no server log.
+    // Everything else is worth logging (real errors in production).
+    if (code !== "GEMINI_NOT_CONFIGURED") {
+      console.error(`${fallbackMessage} [${code}]`, error.message || error);
+    }
+    return res.status(known.status).json({
+      success: false,
+      code: known.code,
+      message: known.message,
+    });
   }
   console.error(fallbackMessage, error);
-  return res.status(500).json({ message: fallbackMessage });
+  return res.status(500).json({
+    success: false,
+    code: "SERVER_ERROR",
+    message: fallbackMessage,
+  });
 }
 
 // POST /api/resumes/ai/:resumeId/summary
@@ -71,43 +94,45 @@ const generateSummary = async (req, res) => {
     const { action = "generate", targetRole } = req.body;
 
     if (!["generate", "improve", "shorten", "expand"].includes(action)) {
-      return res.status(400).json({ message: "Invalid action. Use generate, improve, shorten, or expand." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_ACTION",
+        message: "Invalid action. Use generate, improve, shorten, or expand.",
+      });
     }
 
     const resume = await Resume.findById(resumeId).lean();
-    if (!resume) return res.status(404).json({ message: "Resume not found." });
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        code: "RESUME_NOT_FOUND",
+        message: "Resume not found.",
+      });
+    }
     if (String(resume.user) !== String(req.user._id)) {
-      return res.status(403).json({ message: "You don't have access to this resume." });
+      return res.status(403).json({
+        success: false,
+        code: "FORBIDDEN",
+        message: "You don't have access to this resume.",
+      });
     }
 
     if (["improve", "shorten", "expand"].includes(action) && !resume.summary?.trim()) {
       return res.status(400).json({
+        success: false,
+        code: "NO_EXISTING_SUMMARY",
         message: "There's no existing summary to work from yet — use 'generate' first.",
       });
     }
 
     const summary = await generateProfessionalSummary(resume, action, targetRole);
     logAiUsage("resume_summary", req.user?._id);
-    res.json({ summary });
+    res.json({ success: true, summary });
   } catch (error) {
     friendlyAiError(res, error, "Failed to generate summary.");
   }
 };
 
-// Gemini is prompted to use the exact SKILL_CATEGORIES/SKILL_LEVELS enum
-// values and to always include an array for each list field, but an LLM
-// isn't a validator — it can (and, in testing, does) drift: a skill with a
-// category like "Technical Skills" instead of one of the real enum
-// values, a skill missing `name` (required on SkillSchema), or a field
-// coming back as a string/object instead of an array. Any of those hits
-// Mongoose's schema validation on resume.save() and, unnormalized, that
-// ValidationError isn't a Gemini-shaped error classifyGeminiError()
-// recognizes — it fell through to a generic 500 with no indication the
-// AI's output was the actual cause. Normalizing here means autofill either
-// succeeds with clamped/dropped-invalid data, or a genuinely unparseable
-// shape still fails validation but is now classified explicitly (see the
-// save()-specific catch in autoFillResume) instead of masquerading as a
-// server bug.
 function toArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -141,7 +166,6 @@ function normalizeAutofillPayload(parsed) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/:resumeId/autofill
-// body: { rawInput: string, targetRole?: string }
 // ─────────────────────────────────────────────────────────────────────────────
 const autoFillResume = async (req, res) => {
   try {
@@ -149,13 +173,27 @@ const autoFillResume = async (req, res) => {
     const { rawInput, targetRole } = req.body;
 
     if (!rawInput || rawInput.trim().length < 20) {
-      return res.status(400).json({ message: "Please provide more information so AI can build your resume." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "Please provide more information so AI can build your resume.",
+      });
     }
 
     const resume = await Resume.findById(resumeId);
-    if (!resume) return res.status(404).json({ message: "Resume not found." });
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        code: "RESUME_NOT_FOUND",
+        message: "Resume not found.",
+      });
+    }
     if (String(resume.user) !== String(req.user._id)) {
-      return res.status(403).json({ message: "You don't have access to this resume." });
+      return res.status(403).json({
+        success: false,
+        code: "FORBIDDEN",
+        message: "You don't have access to this resume.",
+      });
     }
 
     const model = getGeminiModel();
@@ -242,12 +280,6 @@ Return this exact JSON shape:
 `.trim();
 
     const result = await model.generateContent(prompt);
-    // Shared with every other Gemini JSON call (occupation suggestions,
-    // improve-experience, translate) instead of this handler's own
-    // hand-rolled fence-stripping/JSON.parse — one place to get fence
-    // stripping right, and a parse failure now throws a classifiable
-    // `AI_BAD_RESPONSE` error that flows through the same friendlyAiError()
-    // path as every other AI failure, rather than a bespoke inline 500.
     const parsed = normalizeAutofillPayload(extractJson(result.response.text()));
 
     const updatableFields = [
@@ -268,45 +300,58 @@ Return this exact JSON shape:
     try {
       await resume.save();
     } catch (saveError) {
-      // Normalization above handles the known drift patterns (bad skill
-      // enum, non-array fields, ...) — if Mongoose *still* rejects the
-      // result, that's the AI producing a shape this resume genuinely
-      // can't store, not a server bug. 502, not 500, and the resume
-      // fetched at the top of this handler was never overwritten in the
-      // DB (only the in-memory document was mutated), so the resume
-      // created in step 1 is untouched and still fully usable.
       console.error("Autofill produced data that failed Mongoose validation:", saveError);
       return res.status(502).json({
+        success: false,
+        code: "AI_BAD_RESPONSE",
         message: "The AI's response couldn't be saved to your resume. Please try again, or fill in that section manually.",
       });
     }
 
     logAiUsage("resume_autofill", req.user?._id);
-    res.json({ resume });
+    res.json({ success: true, resume });
   } catch (error) {
     friendlyAiError(res, error, "Failed to auto-fill resume.");
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/:resumeId/occupation-suggestions
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const getOccupationSuggestions = async (req, res) => {
   try {
     const { resumeId } = req.params;
     const { targetRole, languageStyle = "professional" } = req.body;
 
     if (!targetRole || !targetRole.trim()) {
-      return res.status(400).json({ message: "Please provide a target job role." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "Please provide a target job role.",
+      });
     }
     if (!["professional", "simple"].includes(languageStyle)) {
-      return res.status(400).json({ message: "languageStyle must be 'professional' or 'simple'." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "languageStyle must be 'professional' or 'simple'.",
+      });
     }
 
     const resume = await Resume.findById(resumeId).lean();
-    if (!resume) return res.status(404).json({ message: "Resume not found." });
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        code: "RESUME_NOT_FOUND",
+        message: "Resume not found.",
+      });
+    }
     if (String(resume.user) !== String(req.user._id)) {
-      return res.status(403).json({ message: "You don't have access to this resume." });
+      return res.status(403).json({
+        success: false,
+        code: "FORBIDDEN",
+        message: "You don't have access to this resume.",
+      });
     }
 
     const suggestions = await generateOccupationSuggestions(
@@ -316,86 +361,120 @@ const getOccupationSuggestions = async (req, res) => {
     );
 
     logAiUsage("resume_occupation_suggestions", req.user?._id);
-    res.json({ suggestions });
+    res.json({ success: true, suggestions });
   } catch (error) {
     friendlyAiError(res, error, "Failed to generate occupation suggestions.");
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/:resumeId/improve-experience
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const improveExperienceEntry = async (req, res) => {
   try {
     const { resumeId } = req.params;
     const { experienceIndex, languageStyle = "professional" } = req.body;
 
     if (typeof experienceIndex !== "number") {
-      return res.status(400).json({ message: "experienceIndex is required." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "experienceIndex is required.",
+      });
     }
 
     const resume = await Resume.findById(resumeId).lean();
-    if (!resume) return res.status(404).json({ message: "Resume not found." });
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        code: "RESUME_NOT_FOUND",
+        message: "Resume not found.",
+      });
+    }
     if (String(resume.user) !== String(req.user._id)) {
-      return res.status(403).json({ message: "You don't have access to this resume." });
+      return res.status(403).json({
+        success: false,
+        code: "FORBIDDEN",
+        message: "You don't have access to this resume.",
+      });
     }
 
     const entry = (resume.experience || [])[experienceIndex];
     if (!entry) {
-      return res.status(404).json({ message: "That experience entry doesn't exist on this resume." });
+      return res.status(404).json({
+        success: false,
+        code: "NOT_FOUND",
+        message: "That experience entry doesn't exist on this resume.",
+      });
     }
 
     const bullets = await improveWorkExperience(entry, languageStyle);
     logAiUsage("resume_improve_experience", req.user?._id);
-    res.json({ bullets });
+    res.json({ success: true, bullets });
   } catch (error) {
     friendlyAiError(res, error, "Failed to improve experience description.");
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/:resumeId/translate
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const translateContent = async (req, res) => {
   try {
     const { resumeId } = req.params;
     const { targetLanguage, fields } = req.body;
 
     const resume = await Resume.findById(resumeId).lean();
-    if (!resume) return res.status(404).json({ message: "Resume not found." });
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        code: "RESUME_NOT_FOUND",
+        message: "Resume not found.",
+      });
+    }
     if (String(resume.user) !== String(req.user._id)) {
-      return res.status(403).json({ message: "You don't have access to this resume." });
+      return res.status(403).json({
+        success: false,
+        code: "FORBIDDEN",
+        message: "You don't have access to this resume.",
+      });
     }
 
     const translated = await translateResumeFields(fields, targetLanguage);
     logAiUsage("resume_translate", req.user?._id);
-    res.json({ translated });
+    res.json({ success: true, translated });
   } catch (error) {
     friendlyAiError(res, error, "Failed to translate resume content.");
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/resumes/ai/occupation-categories
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const getOccupationCategories = async (req, res) => {
-  res.json({ categories: listCategories() });
+  res.json({ success: true, categories: listCategories() });
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/occupation-suggestions/preview
-// body: { targetRole: string, experienceText?: string, languageStyle?: "professional"|"simple" }
-// Usable BEFORE a resume exists yet — e.g. the AiResumeBuilder intake form.
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const previewOccupationSuggestions = async (req, res) => {
   try {
     const { targetRole, experienceText = "", languageStyle = "professional" } = req.body;
 
     if (!targetRole || !targetRole.trim()) {
-      return res.status(400).json({ message: "Please provide a target job role." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "Please provide a target job role.",
+      });
     }
     if (!["professional", "simple"].includes(languageStyle)) {
-      return res.status(400).json({ message: "languageStyle must be 'professional' or 'simple'." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "languageStyle must be 'professional' or 'simple'.",
+      });
     }
 
     const context = experienceText.trim()
@@ -405,54 +484,71 @@ const previewOccupationSuggestions = async (req, res) => {
     const suggestions = await generateOccupationSuggestions(targetRole, context, languageStyle);
 
     logAiUsage("resume_occupation_suggestions_preview", req.user?._id);
-    res.json({ suggestions });
+    res.json({ success: true, suggestions });
   } catch (error) {
     friendlyAiError(res, error, "Failed to generate occupation suggestions.");
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/resumes/ai/improve-experience/preview
-// body: { targetRole?: string, description: string, languageStyle?: "professional"|"simple" }
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const previewImproveExperience = async (req, res) => {
   try {
     const { targetRole = "", description, languageStyle = "professional" } = req.body;
 
     if (!description || !description.trim()) {
-      return res.status(400).json({ message: "Please describe your work experience first." });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_REQUEST",
+        message: "Please describe your work experience first.",
+      });
     }
 
     const bullets = await improveWorkExperience({ role: targetRole, description }, languageStyle);
     logAiUsage("resume_improve_experience_preview", req.user?._id);
-    res.json({ bullets });
+    res.json({ success: true, bullets });
   } catch (error) {
     friendlyAiError(res, error, "Failed to improve experience description.");
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/resumes/ai/:resumeId/ats-analysis?jobDescription=...
-//
-// Rule-based, NOT Gemini-backed (see atsAnalysis.service.js) — unlike every
-// other handler in this file it never calls friendlyAiError/GEMINI_NOT_CONFIGURED
-// because it has no AI dependency to be unconfigured. Always available.
-// ─────────────────────────────────────────────────────────────────────────
+// Rule-based, NOT Gemini-backed — always available.
+// ─────────────────────────────────────────────────────────────────────────────
 const getAtsAnalysis = async (req, res) => {
   try {
     const { resumeId } = req.params;
     const resume = await Resume.findById(resumeId).lean();
-    if (!resume) return res.status(404).json({ message: "Resume not found." });
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        code: "RESUME_NOT_FOUND",
+        message: "Resume not found.",
+      });
+    }
     if (String(resume.user) !== String(req.user._id)) {
-      return res.status(403).json({ message: "You don't have access to this resume." });
+      return res.status(403).json({
+        success: false,
+        code: "FORBIDDEN",
+        message: "You don't have access to this resume.",
+      });
     }
 
-    const jobDescription = typeof req.query.jobDescription === "string" ? req.query.jobDescription.slice(0, 5000) : "";
+    const jobDescription =
+      typeof req.query.jobDescription === "string"
+        ? req.query.jobDescription.slice(0, 5000)
+        : "";
     const analysis = analyzeResumeAts(resume, jobDescription);
-    res.json({ analysis });
+    res.json({ success: true, analysis });
   } catch (error) {
     console.error("Failed to run ATS analysis:", error);
-    res.status(500).json({ message: "Failed to run ATS analysis." });
+    res.status(500).json({
+      success: false,
+      code: "SERVER_ERROR",
+      message: "Failed to run ATS analysis.",
+    });
   }
 };
 

@@ -1,85 +1,208 @@
 const { GoogleGenAI } = require("@google/genai");
 
-// Single shared factory for the Gemini client, following the same
-// model/version already used in controllers/blogController.js. Centralized
-// here so every AI feature (caption generation, grammar correction,
-// summarization, moderation, hiring detection, job recommendations) reads
-// GEMINI_API_KEY from the same place and fails the same, readable way if
-// it's missing — instead of five copies of `new GoogleGenAI(...)`.
+// ─────────────────────────────────────────────────────────────────────────────
+// Single shared factory for the Gemini client.
+// Reads GEMINI_API_KEY, PRIMARY_GEMINI_MODEL, and FALLBACK_GEMINI_MODEL
+// from the environment so nothing is hardcoded.
+// ─────────────────────────────────────────────────────────────────────────────
+
 let cachedClient = null;
 
-// SDK: this used to run on @google/generative-ai, which Google fully
-// retired — that package's repo is archived and its support window (ended
-// Nov 30, 2025) is long closed. Every AI feature in this app (autofill,
-// captions, moderation, etc.) was failing with 500/503s in production
-// because of it, not because of the model name. Migrated to the current
-// official package, @google/genai. Its generateContent call shape is
-// different (ai.models.generateContent({ model, contents }) instead of a
-// stateful model.generateContent(prompt), and response.text is a plain
-// property instead of a response.text() method) — that difference is
-// contained entirely inside this shim, so every one of the ~8 controllers
-// that already call `getGeminiModel().generateContent(prompt)` and read
-// `result.response.text()` keeps working unchanged.
-// "-latest" alias instead of a pinned version (e.g. "gemini-2.0-flash") —
-// Google periodically retires pinned model versions outright (they stop
-// resolving with a 404 "no longer available" instead of degrading), which
-// silently broke every AI feature in this app until diagnosed. The
-// "-latest" alias always resolves to whatever current model Google points
-// it at, so this file never needs a manual bump when a version is retired.
-function getGeminiModel(modelName = "gemini-flash-latest") {
+// Errors that are genuinely temporary — Google's own guidance for these is
+// "try again later". We retry with exponential backoff.
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRYABLE_CODES_RE = /UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|rate.limit|internal.error/i;
+
+// Errors that are permanent — retrying wastes time and quota.
+// These surface immediately with a clear message.
+const PERMANENT_STATUSES = new Set([400, 401, 403, 404]);
+const PERMANENT_CODES_RE = /API.key.not.valid|API_KEY_INVALID|invalid.argument|model.not.found|NOT_FOUND|is.no.longer.available/i;
+
+/**
+ * Returns true when a thrown Gemini/network error is safe to retry.
+ * Returns false for permanent failures (bad key, bad request, retired model).
+ */
+function isRetryable(error) {
+  const status = error.status || error.response?.status;
+  const message = String(error.message || "");
+
+  // Permanent errors — never retry.
+  if (PERMANENT_STATUSES.has(status) || PERMANENT_CODES_RE.test(message)) {
+    return false;
+  }
+
+  // Known transient HTTP statuses.
+  if (RETRYABLE_STATUSES.has(status)) return true;
+
+  // Known transient error code substrings.
+  if (RETRYABLE_CODES_RE.test(message)) return true;
+
+  // Network-level failures (DNS, connection refused, timeout) —
+  // these never have an HTTP status.
+  if (
+    !status &&
+    /ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed|network/i.test(message)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Sleep for `ms` milliseconds.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Calls cachedClient.models.generateContent with exponential backoff.
+ *
+ * Retry schedule (configurable via env):
+ *   Attempt 1  → immediate
+ *   Attempt 2  → delay after 1st failure (default 1 500 ms)
+ *   Attempt 3  → delay after 2nd failure (default 3 500 ms)
+ *   (stop — no infinite loop)
+ *
+ * Only retries transient errors (503, 429, network). Permanent errors
+ * (invalid key, bad request, retired model) are re-thrown immediately.
+ */
+async function generateWithRetry(modelName, prompt) {
+  const MAX_ATTEMPTS = parseInt(process.env.GEMINI_MAX_RETRIES || "3", 10);
+  // Base delay in ms — doubles each attempt (1 500 → 3 000 → …)
+  const BASE_DELAY_MS = parseInt(process.env.GEMINI_BASE_RETRY_DELAY_MS || "1500", 10);
+
+  let lastError;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      if (attempt > 1) {
+        console.log(`[GEMINI] attempt ${attempt} with model "${modelName}"…`);
+      }
+
+      const response = await cachedClient.models.generateContent({
+        model: modelName,
+        contents: prompt,
+      });
+
+      if (attempt > 1) {
+        console.log(`[GEMINI] attempt ${attempt} succeeded.`);
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error;
+      const status = error.status || error.response?.status;
+
+      if (!isRetryable(error)) {
+        // Permanent failure — surface immediately, no retry.
+        console.error(
+          `[GEMINI] attempt ${attempt} failed with permanent error (${status || "no-status"}): ${error.message}`
+        );
+        throw error;
+      }
+
+      console.warn(
+        `[GEMINI] attempt ${attempt} failed with transient error (${status || "no-status"}): ${error.message}`
+      );
+
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[GEMINI] retrying in ${delay}ms…`);
+        await sleep(delay);
+      } else {
+        console.error(
+          `[GEMINI] all ${MAX_ATTEMPTS} attempts exhausted for model "${modelName}".`
+        );
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * Returns a Gemini model shim.
+ *
+ * Model resolution order:
+ *   1. modelName parameter (if explicitly passed by a caller)
+ *   2. PRIMARY_GEMINI_MODEL env var
+ *   3. "gemini-flash-latest" hardcoded fallback
+ *
+ * A FALLBACK_GEMINI_MODEL env var is tried automatically if the primary
+ * model exhausts all retries with a permanent 404 / "no longer available"
+ * error, so a retired pinned model never silently breaks everything.
+ *
+ * Every caller that already does `getGeminiModel().generateContent(prompt)`
+ * and reads `result.response.text()` keeps working unchanged.
+ */
+function getGeminiModel(modelName) {
   if (!process.env.GEMINI_API_KEY) {
     const err = new Error(
-      "GEMINI_API_KEY is not set. AI features (caption generation, grammar " +
-      "correction, summarization, moderation, hiring detection, job " +
-      "recommendations) are disabled until it's added to backend/.env."
+      "GEMINI_API_KEY is not set. AI features are disabled until it's added to backend/.env."
     );
     err.code = "GEMINI_NOT_CONFIGURED";
     throw err;
   }
+
   if (!cachedClient) {
     cachedClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
 
+  // Resolve which model to use.
+  const primaryModel =
+    modelName ||
+    process.env.PRIMARY_GEMINI_MODEL ||
+    "gemini-flash-latest";
+
+  const fallbackModel = process.env.FALLBACK_GEMINI_MODEL || null;
+
   return {
     generateContent: async (prompt) => {
+      // --- Try primary model with retry/backoff ---
       try {
-        const response = await cachedClient.models.generateContent({
-          model: modelName,
-          contents: prompt,
-        });
+        const response = await generateWithRetry(primaryModel, prompt);
         return { response: { text: () => response.text } };
-      } catch (error) {
-        // Gemini's "model is currently experiencing high demand" 503s are
-        // genuinely transient — Google's own guidance for this exact error
-        // is "usually temporary, try again later". One short, silent retry
-        // here resolves a real fraction of these without the user having to
-        // notice a failure and manually click "try again" themselves. Only
-        // retries the transient case (UNAVAILABLE/503/overloaded) — an
-        // invalid key, exhausted quota, or malformed request will fail the
-        // same way twice, so those still surface immediately.
-        const status = error.status || error.response?.status;
-        const message = String(error.message || '');
-        const isTransient = status === 503 || /UNAVAILABLE|overloaded/i.test(message);
-        if (!isTransient) throw error;
+      } catch (primaryError) {
+        // If the primary model is permanently gone (404 / retired) AND a
+        // fallback is configured, try the fallback before giving up.
+        const isPermanentlyGone =
+          primaryError.status === 404 ||
+          /is no longer available|model not found|NOT_FOUND/i.test(
+            String(primaryError.message || "")
+          );
 
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        const response = await cachedClient.models.generateContent({
-          model: modelName,
-          contents: prompt,
-        });
-        return { response: { text: () => response.text } };
+        if (isPermanentlyGone && fallbackModel && fallbackModel !== primaryModel) {
+          console.warn(
+            `[GEMINI] primary model "${primaryModel}" is unavailable. ` +
+            `Falling back to "${fallbackModel}".`
+          );
+          try {
+            const response = await generateWithRetry(fallbackModel, prompt);
+            console.log(`[GEMINI] fallback model "${fallbackModel}" succeeded.`);
+            return { response: { text: () => response.text } };
+          } catch (fallbackError) {
+            console.error(
+              `[GEMINI] fallback model "${fallbackModel}" also failed:`,
+              fallbackError.message
+            );
+            // Throw the fallback error so classifyGeminiError() sees it.
+            throw fallbackError;
+          }
+        }
+
+        // No fallback configured, or not a model-retirement error — propagate.
+        throw primaryError;
       }
     },
   };
 }
 
-// Gemini sometimes wraps JSON replies in ```json ... ``` fences even when
-// asked not to — strip them before JSON.parse instead of letting every
-// caller reimplement this. Previously a parse failure here threw a bare
-// `SyntaxError` that every caller's catch block treated identically to any
-// other unrelated failure (auth, quota, network) — tagging it lets
-// classifyGeminiError()/friendlyAiError() give a specific, honest message
-// ("the AI response was in an unexpected format") instead of a generic one.
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility: strip ```json fences before JSON.parse
+// ─────────────────────────────────────────────────────────────────────────────
+
 function extractJson(rawText) {
   const cleaned = rawText.replace(/```json\s*|```/g, "").trim();
   try {
@@ -92,25 +215,16 @@ function extractJson(rawText) {
   }
 }
 
-// Classifies whatever the @google/generative-ai SDK (or a plain network
-// failure) throws into one of a small set of known `.code`s, so the
-// controller layer (friendlyAiError) can give the user a specific, honest
-// reason instead of one generic "AI request failed" message no matter what
-// actually went wrong. Before this, an expired/invalid/quota-exceeded key
-// and a genuine network blip all looked identical to the caller — there
-// was no way to tell "the key needs rotating" from "try again in a bit"
-// from "we have a real bug".
-//
-// The SDK (v0.24.1) throws errors from the underlying REST call with a
-// numeric `.status` (mirroring the Gemini API's HTTP status) and a
-// `.message` that usually echoes the API's error body — matched here by
-// status first (most reliable), falling back to message substrings for
-// cases where a status isn't present (e.g. the request never reached
-// Google's servers at all).
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility: classify a raw Gemini/network error into a known code string so
+// the controller layer (friendlyAiError) can return a specific, honest
+// message instead of a generic fallback.
+// ─────────────────────────────────────────────────────────────────────────────
+
 function classifyGeminiError(error) {
   if (!error) return null;
   if (error.code === "GEMINI_NOT_CONFIGURED" || error.code === "AI_BAD_RESPONSE") {
-    return error.code; // already classified — nothing to do
+    return error.code; // already classified
   }
 
   const status = error.status || error.response?.status;
@@ -119,22 +233,18 @@ function classifyGeminiError(error) {
   if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(message)) return "GEMINI_INVALID_KEY";
   if (status === 401 || status === 403) return "GEMINI_INVALID_KEY";
   if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(message)) return "GEMINI_QUOTA_EXCEEDED";
-  // Google retires pinned model versions outright — the API then 404s with
-  // "model ... is no longer available" instead of degrading gracefully.
-  // Surfaced as "unavailable" rather than a generic 500 so it's honest
-  // about the cause (and distinct from "the AI response was malformed").
-  if (status === 404 || /is no longer available|model not found|NOT_FOUND/i.test(message)) return "GEMINI_UNAVAILABLE";
-  if (status === 503 || /UNAVAILABLE|overloaded/i.test(message)) return "GEMINI_UNAVAILABLE";
-  if (typeof status === "number" && status >= 500) return "GEMINI_UNAVAILABLE";
 
-  // No HTTP status at all usually means the request never reached Google —
-  // a DNS failure, connection refused/reset, or timeout from the fetch
-  // layer itself, all reported by Node with these codes/message shapes.
+  // Google retires pinned model versions — the API 404s with "no longer available".
+  if (status === 404 || /is no longer available|model not found|NOT_FOUND/i.test(message)) return "GEMINI_UNAVAILABLE";
+  if (status === 503 || /UNAVAILABLE|overloaded/i.test(message)) return "GEMINI_TEMPORARILY_UNAVAILABLE";
+  if (typeof status === "number" && status >= 500) return "GEMINI_TEMPORARILY_UNAVAILABLE";
+
+  // Network-level failure (DNS, connection refused, timeout).
   if (!status && /ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed|network/i.test(message)) {
     return "GEMINI_NETWORK_ERROR";
   }
 
-  return null; // unrecognized — caller falls back to its generic message
+  return null; // unrecognized — caller falls back to generic message
 }
 
 module.exports = { getGeminiModel, extractJson, classifyGeminiError };

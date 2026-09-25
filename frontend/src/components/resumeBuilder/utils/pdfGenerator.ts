@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logResumeBuild } from './aiUsageApi';
 import type { Resume } from '../resumeApi';
+import '../../resumeBuilder.css';   // page‑break avoidance styles
 import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCustomSectionId } from '../templates/shared/sections';
 import { getFontFamilyPreset } from '../themePresets';
 import { sanitizeResumeLink } from '../templates/shared/ResumeLink';
@@ -45,6 +46,20 @@ export const generatePDF = async (
         pdf.addPage('a4', 'p');
       }
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+      // ---- Page numbering -------------------------------------------------
+      if (resume?.pageNumbering && resume.pageNumbering !== 'no') {
+        const total = pageElements.length;
+        const current = i + 1;
+        const style = resume.pageNumberStyle || 'full';
+        let text = '';
+        if (style === 'plain') text = `${current}`;
+        else if (style === 'prefixed') text = `Page ${current}`;
+        else text = `Page ${current} of ${total}`;
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(text, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      }
+      // ------------------------------------------------------------------
     }
   } else {
     // Continuous fallback if .resume-page is not present
@@ -472,7 +487,19 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
         w.pdf.setDrawColor(226, 232, 240);
         w.pdf.setLineWidth(0.3);
         w.pdf.line(MARGIN, 287, PAGE_WIDTH - MARGIN, 287);
-        const text = `Page ${i} of ${totalPages}`;
+        // Determine page number text based on selected style
+        let text: string;
+        switch (resume.pageNumberStyle) {
+          case 'plain':
+            text = `${i}`;
+            break;
+          case 'prefixed':
+            text = `Page ${i}`;
+            break;
+          case 'full':
+          default:
+            text = `Page ${i} of ${totalPages}`;
+        }
         const textWidth = w.pdf.getTextWidth(text);
         w.pdf.text(text, PAGE_WIDTH - MARGIN - textWidth, 292);
       }

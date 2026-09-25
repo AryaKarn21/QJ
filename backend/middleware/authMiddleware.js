@@ -76,8 +76,13 @@ const authorizeEmployer = (req, res, next) => {
 };
 
 // Authorize admin or superadmin
+const isSuperAdmin = (user) => {
+  return user && typeof user.role === 'string' && user.role.toLowerCase() === 'superadmin';
+};
+
 const authorizeAdmin = (req, res, next) => {
-  if (req.user.role !== "admin" && req.user.role !== "superadmin") {
+  const role = req.user.role ? req.user.role.toLowerCase() : '';
+  if (role !== 'admin' && role !== 'superadmin') {
     return res.status(403).json({ message: "Access denied. Admins only." });
   }
   next();
@@ -85,7 +90,7 @@ const authorizeAdmin = (req, res, next) => {
 
 // Authorize superadmin only — for sensitive actions
 const authorizeSuperAdmin = (req, res, next) => {
-  if (req.user.role !== "superadmin") {
+  if (!isSuperAdmin(req.user)) {
     return res.status(403).json({ message: "Access denied. Superadmin only." });
   }
   next();
@@ -93,7 +98,12 @@ const authorizeSuperAdmin = (req, res, next) => {
 
 // Generic role gate — usage: authorizeRoles("employer", "recruiter")
 const authorizeRoles = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+  if (!req.user) {
+    return res.status(403).json({ message: "Access denied for this role." });
+  }
+  const userRole = typeof req.user.role === 'string' ? req.user.role.toLowerCase() : '';
+  const normalizedRoles = roles.map(r => typeof r === 'string' ? r.toLowerCase() : r);
+  if (!normalizedRoles.includes(userRole)) {
     return res.status(403).json({ message: "Access denied for this role." });
   }
   next();

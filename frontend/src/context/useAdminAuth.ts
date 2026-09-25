@@ -39,12 +39,13 @@ export function useAdminAuth(): AdminAuthState {
         return { isSuperAdmin: false, isAdmin: false, role: null, userId: null, admin: null };
       }
 
-      const isAdmin = decoded.role === 'admin' || decoded.role === 'superadmin';
+      const role = decoded.role?.toLowerCase();
+      const isAdmin = role === 'admin' || role === 'superadmin';
 
       return {
-        isSuperAdmin: decoded.role === 'superadmin',
+        isSuperAdmin: role === 'superadmin',
         isAdmin,
-        role: decoded.role,
+        role: role as AdminRole,
         userId: decoded.id,
         admin: isAdmin
           ? { email: localStorage.getItem('adminEmail'), name: localStorage.getItem('adminName') }

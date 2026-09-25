@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
+import { Helmet } from "react-helmet";
 import {
   Users,
   Briefcase,
@@ -166,7 +167,11 @@ const AdminDashboard = () => {
     : [];
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-6 md:p-12 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:bg-gray-900 min-h-screen">
+      <Helmet>
+        <title>Admin Dashboard</title>
+        <meta name="description" content="Admin dashboard with insights and analytics." />
+      </Helmet>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
         <div className="flex items-center space-x-4">
@@ -197,7 +202,7 @@ const AdminDashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map(stat => (
-          <div key={stat.id} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-100">
+          <div key={stat.id} className="bg-white/80 backdrop-blur-md p-6 rounded-xl shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold">{stat.value}</div>
@@ -210,7 +215,7 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+      <div className="bg-white/70 backdrop-blur-md rounded-xl shadow-md border border-gray-100 p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Views and Applications</h2>
           <div className="flex space-x-2">
@@ -258,7 +263,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+      <div className="bg-white/70 backdrop-blur-md rounded-xl shadow-md border border-gray-100 p-6">
         <h2 className="text-lg font-semibold mb-4">Today's Logged-In Users ({dailyLogins?.count || 0})</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left">

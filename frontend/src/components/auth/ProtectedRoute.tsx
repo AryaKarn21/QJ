@@ -40,8 +40,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && (!role || !allowedRoles.includes(role))) {
-    return <Navigate to="/unauthorized" replace />;
+  if (allowedRoles && allowedRoles.length > 0) {
+    const normalizedRole = role ? role.toLowerCase() : null;
+    const allowed = allowedRoles.map(r => r.toLowerCase());
+    if (!normalizedRole || !allowed.includes(normalizedRole)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return <>{children}</>;

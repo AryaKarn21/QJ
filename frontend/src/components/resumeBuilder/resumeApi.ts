@@ -229,6 +229,8 @@ export interface Resume {
   fontScale: number;
   spacing: 'compact' | 'standard' | 'relaxed';
   pageNumbering?: 'no' | 'all' | 'first' | 'last' | 'none';
+  /** New: style of page numbering displayed in PDF */
+  pageNumberStyle?: 'plain' | 'prefixed' | 'full'; // plain: "1", prefixed: "Page 1", full: "Page 1 of 3"
   showLogo?: 'no' | 'all' | 'first' | 'none';
   personalInfo: PersonalInfo;
   summary: string;

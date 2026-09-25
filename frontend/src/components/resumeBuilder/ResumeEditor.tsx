@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -394,6 +394,9 @@ const ResumeEditor: React.FC = () => {
   const [aiAction, setAiAction] = useState<SummaryAction | null>(null);
   const [aiTargetRole, setAiTargetRole] = useState('');
   const [aiError, setAiError] = useState('');
+  // Tracks the last action that failed with a temporary AI error so the
+  // "Try Again" button can replay it without duplicating the API call.
+  const [aiRetryAction, setAiRetryAction] = useState<SummaryAction | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // `previewRef` is what generatePDF's html2canvas call captures. At the
   // default font size/spacing (scale 1) it wraps TemplateRenderer
@@ -624,12 +627,25 @@ const ResumeEditor: React.FC = () => {
   const handleAiSummaryAction = async (action: SummaryAction) => {
     if (!resume) return;
     setAiError('');
+    setAiRetryAction(null);
     setAiAction(action);
     try {
       const summary = await generateResumeSummary(resume._id, action, aiTargetRole.trim() || undefined);
       update({ summary });
     } catch (err: any) {
-      setAiError(err?.response?.data?.message || 'AI request failed. Please try again.');
+      // The backend returns a `code` field to distinguish temporary outages
+      // (GEMINI_TEMPORARILY_UNAVAILABLE) from permanent misconfigurations.
+      // For temporary errors we show a friendlier message with a Try Again
+      // button; for all others we show the server's own message.
+      const errorCode: string = (err?.response?.data?.code as string) || '';
+      const isTemporary = errorCode === 'GEMINI_TEMPORARILY_UNAVAILABLE' || errorCode === 'GEMINI_QUOTA_EXCEEDED';
+      if (isTemporary) {
+        setAiError('AI service is temporarily busy. Please try again in a few seconds.');
+        setAiRetryAction(action); // remember which action to replay
+      } else {
+        setAiError(err?.response?.data?.message || 'AI request failed. Please try again.');
+        setAiRetryAction(null);
+      }
     } finally {
       setAiAction(null);
     }
@@ -655,6 +671,20 @@ const ResumeEditor: React.FC = () => {
   // (Computed above, before the loading guard, as `previewScaleValue` —
   // reused here under its original name for the render below.)
   const previewScale = previewScaleValue;
+
+  // Every keystroke in any form field updates `resume`, which the preview
+  // below reads directly — TemplateRenderer + A4PageContainer's pagination
+  // do real DOM layout measurement (getBoundingClientRect on every
+  // section) on each change, which made typing feel laggy on longer
+  // resumes since that expensive work ran synchronously on every
+  // character. useDeferredValue lets React keep the text input itself
+  // (which reads the immediate `resume` state, unaffected) responsive
+  // while the preview re-render is computed at lower priority and catches
+  // up as soon as the browser is idle — by the time a user actually clicks
+  // Download (a separate, deliberate action), it has long since caught up,
+  // so PDF export (which reads the live `previewRef` DOM, not this value
+  // directly) is never stale.
+  const deferredResume = useDeferredValue(resume);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 lg:flex-row print:block">
@@ -965,7 +995,21 @@ const ResumeEditor: React.FC = () => {
               </>
             )}
           </div>
-          {aiError && <p className="mb-2 text-xs text-rose-600">{aiError}</p>}
+          {aiError && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <p className="text-xs text-rose-600">{aiError}</p>
+              {aiRetryAction && (
+                <button
+                  type="button"
+                  disabled={!!aiAction}
+                  onClick={() => handleAiSummaryAction(aiRetryAction)}
+                  className="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                >
+                  Try Again
+                </button>
+              )}
+            </div>
+          )}
           <textarea className={fieldClass} rows={4} placeholder="2-3 sentences summarizing your experience and strengths…"
             value={resume.summary} onChange={(e) => update({ summary: e.target.value })} />
         </Section>
@@ -1280,8 +1324,8 @@ const ResumeEditor: React.FC = () => {
             className="w-full flex flex-col items-center"
             style={previewScale !== 1 ? { transform: `scale(${previewScale})`, transformOrigin: 'top center' } : undefined}
           >
-            <A4PageContainer resume={resume}>
-              <TemplateRenderer resume={resume} />
+            <A4PageContainer resume={deferredResume}>
+              <TemplateRenderer resume={deferredResume} />
             </A4PageContainer>
           </div>
         </div>
