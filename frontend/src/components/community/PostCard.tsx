@@ -305,7 +305,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
                 )}
                 {isSuperAdmin && (
                   <Link
-                    to="/admin/community/flagged-posts"
+                    to="/admin/community/reported"
                     onClick={() => setMenuOpen(false)}
                     className="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
