@@ -335,6 +335,23 @@ const ResumeSchema = new mongoose.Schema(
     spacing: { type: String, enum: ["compact", "standard", "relaxed"], default: "standard" },
     // Page number control: 'all' | 'first' | 'last' | 'none'
     pageNumbering: { type: String, default: "all" },
+    // Text format: 'plain' (just the number) | 'prefixed' ("Page N") |
+    // 'full' ("Page N of Total") — mirrors Word's Insert > Page Number >
+    // Format dialog. Was read/written by the editor UI and PDF exporters
+    // for a while without ever being declared here, which under Mongoose's
+    // default strict mode meant PATCH /resumes/:id silently dropped it on
+    // every save (see resumeController.js's UPDATABLE_FIELDS).
+    pageNumberStyle: { type: String, enum: ["plain", "prefixed", "full"], default: "full" },
+    // 'header' (top of page) | 'footer' (bottom of page, default) —
+    // Word's page numbers can live in either.
+    pageNumberPosition: { type: String, enum: ["header", "footer"], default: "footer" },
+    // Horizontal alignment of the page number within the header/footer band.
+    pageNumberAlign: { type: String, enum: ["left", "center", "right"], default: "right" },
+    // "Start at" — the number shown on the first rendered page (Word's
+    // Format Page Numbers > Start at). Later pages count up from this.
+    // Does not change how many physical pages exist or the "of Total"
+    // count in 'full' style, matching Word's own behavior.
+    pageNumberStart: { type: Number, default: 1, min: 1 },
     // Logo display control: 'all' | 'first' | 'none'
     showLogo: { type: String, default: "all" },
 

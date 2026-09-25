@@ -6,6 +6,7 @@ import '../resumeBuilder.css';   // page‑break avoidance styles
 import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCustomSectionId } from '../templates/shared/sections';
 import { getFontFamilyPreset } from '../themePresets';
 import { sanitizeResumeLink } from '../templates/shared/ResumeLink';
+import { shouldShowPageNumber, formatPageNumberText } from './pageNumberFormat';
 
 // Same combined fontScale × spacing multiplier ResumeEditor.tsx's live
 // preview applies via CSS `zoom` — kept here too so the exported PDF's
@@ -14,12 +15,10 @@ const SPACING_SCALE: Record<string, number> = { compact: 0.97, standard: 1, rela
 const combinedScale = (resume: Resume) => (resume.fontScale ?? 1) * (SPACING_SCALE[resume.spacing || 'standard'] ?? 1);
 
 export const generatePDF = async (
-
   elementRef: React.RefObject<HTMLDivElement>,
   fileName: string,
   templateId?: string,
-  templateName?: string,
-  resume?: Resume
+  templateName?: string
 ) => {
   if (!elementRef.current) return;
 
@@ -46,20 +45,13 @@ export const generatePDF = async (
         pdf.addPage('a4', 'p');
       }
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-      // ---- Page numbering -------------------------------------------------
-      if (resume?.pageNumbering && resume.pageNumbering !== 'no') {
-        const total = pageElements.length;
-        const current = i + 1;
-        const style = resume.pageNumberStyle || 'full';
-        let text = '';
-        if (style === 'plain') text = `${current}`;
-        else if (style === 'prefixed') text = `Page ${current}`;
-        else text = `Page ${current} of ${total}`;
-        pdf.setFontSize(9);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text(text, pageWidth / 2, pageHeight - 10, { align: 'center' });
-      }
-      // ------------------------------------------------------------------
+      // No separate page-number draw here on purpose: `pageEl` is a
+      // `.resume-page` node rendered by A4PageContainer, which already
+      // includes its own header/footer page-number band (position/align/
+      // style/start all come from the same resume fields) — html2canvas
+      // just captured it as part of the screenshot above. Drawing a second
+      // number here used to duplicate it (a different position and
+      // ignoring the style setting) on every exported page.
     }
   } else {
     // Continuous fallback if .resume-page is not present
@@ -469,41 +461,38 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
     SECTION_RENDERERS['declaration']?.(w, resume);
   }
 
-  // Draw professional footer page numbering on ATS Safe PDF
+  // Draw page numbering on the ATS-safe PDF. This writer has no DOM to
+  // screenshot (unlike generatePDF's html2canvas path), so it draws its
+  // own text directly — using the same shouldShowPageNumber/
+  // formatPageNumberText helpers A4PageContainer's live preview uses, so
+  // the two exports never disagree on what a page number should say.
   const pageOption = resume.pageNumbering || 'all';
-  if (pageOption !== 'no' && pageOption !== 'none') {
-    const totalPages = w.pdf.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      const showOnThisPage =
-        pageOption === 'all' ||
-        (pageOption === 'first' && i === 1) ||
-        (pageOption === 'last' && i === totalPages);
+  const totalPages = w.pdf.internal.getNumberOfPages();
+  const align = resume.pageNumberAlign || 'right';
+  const isHeaderPosition = resume.pageNumberPosition === 'header';
+  // Footer sits just above the bottom margin; header sits inside the top
+  // margin strip (content itself starts at y=MARGIN=16, so 8mm leaves it
+  // clear without needing to reserve extra space and shift every section
+  // down for every ATS template).
+  const lineY = isHeaderPosition ? 12 : 287;
+  const textY = isHeaderPosition ? 8 : 292;
 
-      if (showOnThisPage) {
-        w.pdf.setPage(i);
-        w.pdf.setFont('helvetica', 'normal');
-        w.pdf.setFontSize(8.5);
-        w.pdf.setTextColor(100, 116, 139);
-        w.pdf.setDrawColor(226, 232, 240);
-        w.pdf.setLineWidth(0.3);
-        w.pdf.line(MARGIN, 287, PAGE_WIDTH - MARGIN, 287);
-        // Determine page number text based on selected style
-        let text: string;
-        switch (resume.pageNumberStyle) {
-          case 'plain':
-            text = `${i}`;
-            break;
-          case 'prefixed':
-            text = `Page ${i}`;
-            break;
-          case 'full':
-          default:
-            text = `Page ${i} of ${totalPages}`;
-        }
-        const textWidth = w.pdf.getTextWidth(text);
-        w.pdf.text(text, PAGE_WIDTH - MARGIN - textWidth, 292);
-      }
-    }
+  for (let i = 1; i <= totalPages; i++) {
+    if (!shouldShowPageNumber(pageOption, i === 1, i === totalPages)) continue;
+
+    w.pdf.setPage(i);
+    w.pdf.setFont('helvetica', 'normal');
+    w.pdf.setFontSize(8.5);
+    w.pdf.setTextColor(100, 116, 139);
+    w.pdf.setDrawColor(226, 232, 240);
+    w.pdf.setLineWidth(0.3);
+    w.pdf.line(MARGIN, lineY, PAGE_WIDTH - MARGIN, lineY);
+
+    const text = formatPageNumberText(i - 1, totalPages, resume.pageNumberStyle, resume.pageNumberStart);
+    const textWidth = w.pdf.getTextWidth(text);
+    const x =
+      align === 'left' ? MARGIN : align === 'center' ? PAGE_WIDTH / 2 - textWidth / 2 : PAGE_WIDTH - MARGIN - textWidth;
+    w.pdf.text(text, x, textY);
   }
 
   w.pdf.save(fileName);

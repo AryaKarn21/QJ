@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import type { Resume } from '../resumeApi';
+import { shouldShowPageNumber, formatPageNumberText, pageNumberAlignClass } from '../utils/pageNumberFormat';
 
 interface A4PageContainerProps {
   resume: Resume;
@@ -104,12 +105,12 @@ export const A4PageContainer: React.FC<A4PageContainerProps> = ({
           className="resume-page w-full max-w-[800px] min-h-[1050px] bg-white text-slate-800 font-sans shadow-md border border-slate-200/80 rounded-xs flex flex-col justify-between mb-8 overflow-hidden print:shadow-none print:border-none print:mb-0"
           data-page-index="0"
         >
+          {resume.pageNumberPosition === 'header' && shouldShowPageNumber(pageOption, true, true) && (
+            <PageNumberBand resume={resume} pageIndex={0} totalPages={totalPages} position="header" />
+          )}
           <div className="w-full flex-1">{children}</div>
-          {/* Footer with page number */}
-          {pageOption !== 'no' && pageOption !== 'none' && (
-            <div className="w-full px-6 py-3 mt-auto border-t border-slate-200 flex justify-end items-center text-[10px] text-slate-500 font-sans">
-              Page 1 of {totalPages}
-            </div>
+          {resume.pageNumberPosition !== 'header' && shouldShowPageNumber(pageOption, true, true) && (
+            <PageNumberBand resume={resume} pageIndex={0} totalPages={totalPages} position="footer" />
           )}
         </div>
       ) : (
@@ -117,10 +118,8 @@ export const A4PageContainer: React.FC<A4PageContainerProps> = ({
         pageSplits.map((blockIndices, pageIdx) => {
           const isFirstPage = pageIdx === 0;
           const isLastPage = pageIdx === totalPages - 1;
-          const showNumberOnThisPage =
-            pageOption === 'all' ||
-            (pageOption === 'first' && isFirstPage) ||
-            (pageOption === 'last' && isLastPage);
+          const showNumberOnThisPage = shouldShowPageNumber(pageOption, isFirstPage, isLastPage);
+          const isHeaderPosition = resume.pageNumberPosition === 'header';
 
           return (
             <div
@@ -128,6 +127,14 @@ export const A4PageContainer: React.FC<A4PageContainerProps> = ({
               className="resume-page w-full max-w-[800px] min-h-[1050px] bg-white text-slate-800 font-sans shadow-md border border-slate-200/80 rounded-xs flex flex-col justify-between mb-8 overflow-hidden print:shadow-none print:border-none print:mb-0"
               data-page-index={pageIdx}
             >
+              {isHeaderPosition && (
+                showNumberOnThisPage ? (
+                  <PageNumberBand resume={resume} pageIndex={pageIdx} totalPages={totalPages} position="header" />
+                ) : (
+                  <div className="w-full h-4" />
+                )
+              )}
+
               <div className="w-full flex-1">
                 {/* On Page 1, render full template with unallocated blocks hidden via CSS,
                     or clone nodes into page container */}
@@ -139,18 +146,40 @@ export const A4PageContainer: React.FC<A4PageContainerProps> = ({
                 />
               </div>
 
-              {/* Footer with page number */}
-              {showNumberOnThisPage ? (
-                <div className="w-full px-6 py-3 mt-auto border-t border-slate-200 flex justify-end items-center text-[10px] text-slate-500 font-sans">
-                  Page {pageIdx + 1} of {totalPages}
-                </div>
-              ) : (
-                <div className="w-full h-4 mt-auto" />
+              {!isHeaderPosition && (
+                showNumberOnThisPage ? (
+                  <PageNumberBand resume={resume} pageIndex={pageIdx} totalPages={totalPages} position="footer" />
+                ) : (
+                  <div className="w-full h-4 mt-auto" />
+                )
               )}
             </div>
           );
         })
       )}
+    </div>
+  );
+};
+
+// The page-number band itself — used for both 'header' (rendered above the
+// content, with a border-b) and 'footer' (below the content, border-t)
+// placement. Text/visibility come from the shared pageNumberFormat helpers
+// so the live preview and the ATS-safe PDF exporter never disagree with
+// each other (see that file's header comment) — and the raster PDF export
+// deliberately draws nothing extra of its own, since it screenshots this
+// exact DOM node via html2canvas.
+const PageNumberBand: React.FC<{
+  resume: Resume;
+  pageIndex: number;
+  totalPages: number;
+  position: 'header' | 'footer';
+}> = ({ resume, pageIndex, totalPages, position }) => {
+  const text = formatPageNumberText(pageIndex, totalPages, resume.pageNumberStyle, resume.pageNumberStart);
+  const alignClass = pageNumberAlignClass(resume.pageNumberAlign);
+  const edgeClass = position === 'header' ? 'border-b' : 'border-t mt-auto';
+  return (
+    <div className={`w-full px-6 py-3 ${edgeClass} border-slate-200 flex items-center text-[10px] text-slate-500 font-sans ${alignClass}`}>
+      {text}
     </div>
   );
 };

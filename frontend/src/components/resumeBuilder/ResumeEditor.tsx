@@ -549,7 +549,7 @@ const ResumeEditor: React.FC = () => {
     try {
       const fileName = `${resume.personalInfo?.fullName || resume.title || 'resume'}.pdf`.replace(/\s+/g, '_');
       const templateName = getTemplateById(resume.layout)?.name || resume.layout;
-      await generatePDF(previewRef, fileName, resume.layout, templateName, resume);
+      await generatePDF(previewRef, fileName, resume.layout, templateName);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
       setAiError('Could not generate the PDF. Please try again.');
@@ -651,6 +651,28 @@ const ResumeEditor: React.FC = () => {
     }
   };
 
+  // Every keystroke in any form field updates `resume`, which the preview
+  // below reads directly — TemplateRenderer + A4PageContainer's pagination
+  // do real DOM layout measurement (getBoundingClientRect on every
+  // section) on each change, which made typing feel laggy on longer
+  // resumes since that expensive work ran synchronously on every
+  // character. useDeferredValue lets React keep the text input itself
+  // (which reads the immediate `resume` state, unaffected) responsive
+  // while the preview re-render is computed at lower priority and catches
+  // up as soon as the browser is idle — by the time a user actually clicks
+  // Download (a separate, deliberate action), it has long since caught up,
+  // so PDF export (which reads the live `previewRef` DOM, not this value
+  // directly) is never stale.
+  //
+  // Called unconditionally, before the loading/null guard below — hooks
+  // can't be called after an early return without changing the hook count
+  // between the "still loading" render and the "resume loaded" render,
+  // which is exactly what was tripping React error #310 ("rendered more
+  // hooks than during the previous render") every time this page was
+  // opened fresh. `resume` is nullable here; callers below only read
+  // `deferredResume` once the loading guard has already passed.
+  const deferredResume = useDeferredValue(resume);
+
   if (loading || !resume) {
     return (
       <div className="flex min-h-screen gap-6 p-6" aria-busy="true" aria-label="Loading resume">
@@ -668,23 +690,7 @@ const ResumeEditor: React.FC = () => {
   // Combined uniform scale applied to the live preview + PDF exports —
   // font-size preset and spacing preset compose multiplicatively so
   // "Large + Relaxed" reads as noticeably roomier than either alone.
-  // (Computed above, before the loading guard, as `previewScaleValue` —
-  // reused here under its original name for the render below.)
   const previewScale = previewScaleValue;
-
-  // Every keystroke in any form field updates `resume`, which the preview
-  // below reads directly — TemplateRenderer + A4PageContainer's pagination
-  // do real DOM layout measurement (getBoundingClientRect on every
-  // section) on each change, which made typing feel laggy on longer
-  // resumes since that expensive work ran synchronously on every
-  // character. useDeferredValue lets React keep the text input itself
-  // (which reads the immediate `resume` state, unaffected) responsive
-  // while the preview re-render is computed at lower priority and catches
-  // up as soon as the browser is idle — by the time a user actually clicks
-  // Download (a separate, deliberate action), it has long since caught up,
-  // so PDF export (which reads the live `previewRef` DOM, not this value
-  // directly) is never stale.
-  const deferredResume = useDeferredValue(resume);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 lg:flex-row print:block">

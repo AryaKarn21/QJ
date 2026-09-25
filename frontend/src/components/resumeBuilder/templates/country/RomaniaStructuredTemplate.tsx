@@ -245,7 +245,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
 
         return (
           <section className="mt-4 border-b border-slate-200 pb-4 break-inside-avoid">
-            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5" style={{ breakAfter: 'avoid' }}>
+            <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1.5 mb-1.5" style={{ breakAfter: 'avoid' }}>
               <span className="text-slate-500 text-[10px]">●</span>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">SKILLS</h2>
             </div>
@@ -266,7 +266,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       {/* Certifications & Additional Info */}
       {(resume.certifications?.length || 0) > 0 && (
         <div className="mt-4 border-b border-slate-200 pb-4 break-inside-avoid">
-          <div className="flex items-center gap-1.5 border-b border-slate-300 pb-0.5 mb-1.5">
+          <div className="flex items-center gap-1.5 border-b border-slate-300 pb-1.5 mb-1.5">
             <span className="text-slate-500 text-[10px]">●</span>
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
               Certifications & Training
@@ -286,7 +286,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
 
       {/* Declaration */}
       <section className="mt-4 break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-        <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-0.5 mb-1.5">
+        <div className="flex items-center gap-1.5 border-b-[1.5px] border-[#334155] pb-1.5 mb-1.5">
           <span className="text-[#334155] text-[10px]">●</span>
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
             DECLARATION

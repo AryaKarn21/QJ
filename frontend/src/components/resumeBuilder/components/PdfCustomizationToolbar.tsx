@@ -1,5 +1,5 @@
 import React from 'react';
-import { Palette, Type, FileDigit, Image as ImageIcon, LayoutTemplate } from 'lucide-react';
+import { Palette, Type, FileDigit, Image as ImageIcon, LayoutTemplate, AlignLeft, AlignCenter, AlignRight, Hash } from 'lucide-react';
 import type { Resume } from '../resumeApi';
 import { THEME_PRESETS } from '../themePresets';
 import { TEMPLATE_REGISTRY, getTemplateById } from '../templates/registry';
@@ -25,6 +25,10 @@ export const PdfCustomizationToolbar: React.FC<PdfCustomizationToolbarProps> = (
   const currentScale = resume.fontScale ?? 1;
   const currentPageNumbering = resume.pageNumbering || 'all';
   const currentShowLogo = resume.showLogo || 'all';
+  const pageNumbersEnabled = currentPageNumbering !== 'no' && currentPageNumbering !== 'none';
+  const currentPageNumberPosition = resume.pageNumberPosition || 'footer';
+  const currentPageNumberAlign = resume.pageNumberAlign || 'right';
+  const currentPageNumberStart = resume.pageNumberStart ?? 1;
 
   // Common input styling guaranteeing identical height, border, radius, typography, and spacing
   const selectStyle =
@@ -148,6 +152,78 @@ export const PdfCustomizationToolbar: React.FC<PdfCustomizationToolbarProps> = (
               <option value="full">Full</option>
             </select>
           </div>
+
+          {/* The rest only matter once page numbers are actually on — same
+              progressive disclosure Word's own Insert > Page Number dialog
+              uses (Format Page Numbers is greyed out with numbering off). */}
+          {pageNumbersEnabled && (
+            <>
+              {/* 7. Page Number Position */}
+              <div className="flex items-center gap-1.5">
+                <FileDigit size={14} className="text-slate-500 shrink-0" />
+                <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider shrink-0">
+                  Position:
+                </label>
+                <select
+                  className={`${selectStyle} min-w-[100px]`}
+                  value={currentPageNumberPosition}
+                  onChange={(e) => onUpdate({ pageNumberPosition: e.target.value as any })}
+                  title="Show the page number in the header or footer"
+                >
+                  <option value="footer">Footer</option>
+                  <option value="header">Header</option>
+                </select>
+              </div>
+
+              {/* 8. Page Number Alignment */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider shrink-0">
+                  Alignment:
+                </label>
+                <div className="flex h-9 items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-1 shadow-2xs">
+                  {([
+                    { value: 'left', icon: AlignLeft, label: 'Align left' },
+                    { value: 'center', icon: AlignCenter, label: 'Align center' },
+                    { value: 'right', icon: AlignRight, label: 'Align right' },
+                  ] as const).map(({ value, icon: Icon, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => onUpdate({ pageNumberAlign: value })}
+                      title={label}
+                      aria-pressed={currentPageNumberAlign === value}
+                      className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+                        currentPageNumberAlign === value
+                          ? 'bg-orange-500 text-white'
+                          : 'text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon size={14} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 9. Start At */}
+              <div className="flex items-center gap-1.5">
+                <Hash size={14} className="text-slate-500 shrink-0" />
+                <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider shrink-0">
+                  Start At:
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  className={`${selectStyle} w-16`}
+                  value={currentPageNumberStart}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10);
+                    onUpdate({ pageNumberStart: Number.isFinite(parsed) && parsed > 0 ? parsed : 1 });
+                  }}
+                  title="The number shown on the first page"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Change template gallery shortcut */}

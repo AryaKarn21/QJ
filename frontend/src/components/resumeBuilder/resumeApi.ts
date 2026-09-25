@@ -229,8 +229,14 @@ export interface Resume {
   fontScale: number;
   spacing: 'compact' | 'standard' | 'relaxed';
   pageNumbering?: 'no' | 'all' | 'first' | 'last' | 'none';
-  /** New: style of page numbering displayed in PDF */
+  /** Style of page numbering displayed in the preview + PDF. */
   pageNumberStyle?: 'plain' | 'prefixed' | 'full'; // plain: "1", prefixed: "Page 1", full: "Page 1 of 3"
+  /** Word-style page number placement: top of page vs. bottom (default). */
+  pageNumberPosition?: 'header' | 'footer';
+  /** Horizontal alignment of the page number within its header/footer band. */
+  pageNumberAlign?: 'left' | 'center' | 'right';
+  /** "Start at" — the number shown on the first rendered page. */
+  pageNumberStart?: number;
   showLogo?: 'no' | 'all' | 'first' | 'none';
   personalInfo: PersonalInfo;
   summary: string;

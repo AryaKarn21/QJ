@@ -48,7 +48,7 @@ export const EuropassStyleTemplate: React.FC<TemplateProps> = ({ resume }) => {
 
   const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <h2
-      className="border-b-2 pb-1 text-[11px] font-bold uppercase tracking-wider"
+      className="border-b-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider"
       style={{ borderColor: theme.accent, color: theme.accent }}
     >
       {children}
