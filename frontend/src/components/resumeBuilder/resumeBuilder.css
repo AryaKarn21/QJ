@@ -1,0 +1,15 @@
+/* resumeBuilder.css */
+/* Prevent page breaks inside sections to mimic Word-like layout */
+.break-inside-avoid {
+  break-inside: avoid;
+}
+
+@media print {
+  .resume-page {
+    page-break-after: always;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logResumeBuild } from './aiUsageApi';
 import type { Resume } from '../resumeApi';
-import '../../resumeBuilder.css';   // page‑break avoidance styles
+import '../resumeBuilder.css';   // page‑break avoidance styles
 import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCustomSectionId } from '../templates/shared/sections';
 import { getFontFamilyPreset } from '../themePresets';
 import { sanitizeResumeLink } from '../templates/shared/ResumeLink';

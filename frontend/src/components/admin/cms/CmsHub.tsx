@@ -1150,56 +1150,7 @@ function LegalTab() {
 </div>
   );
 }
-function RevisionList({ slug, onClose }: { slug: LegalPageSlug; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const { data: revisions, isLoading, isError } = useQuery({
-    queryKey: ['cmsPageRevisions', slug],
-    queryFn: () => getCmsPageRevisions(slug),
-    retry: false,
-  });
 
-  const handleRestore = async (revNumber: number) => {
-    if (!window.confirm('Restore to this revision? This will create a new revision of the current content.')) return;
-    await restoreCmsPageRevision(slug, revNumber);
-    toast.success('Revision restored.');
-    queryClient.invalidateQueries({ queryKey: ['cmsPage', slug] });
-    onClose();
-  };
-
-  return (
-    <div className="space-y-4">
-      {isError && <div className="text-red-600">Failed to load revisions.</div>}
-      {isLoading ? (
-        <div className="h-48 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-      ) : (
-        <> 
-          {revisions && revisions.length > 0 ? (
-            <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-              {revisions.map((rev) => (
-                <li key={rev.revNumber} className="flex items-center justify-between py-2">
-                  <div>
-                    <div className="text-sm font-medium">Revision {rev.revNumber}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(rev.updatedAt).toLocaleString()} by {rev.updatedBy?.name || 'unknown'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRestore(rev.revNumber)}
-                    className="rounded-lg bg-violet-600 px-3 py-1 text-xs text-white hover:bg-violet-700 transition-colors duration-150"
-                  >
-                    Restore
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-center text-slate-500 py-8">No revisions found.</div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Homepage — Hero + closing-CTA copy only (see backend/models/HomepageContent.js

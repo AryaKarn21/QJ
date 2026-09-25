@@ -366,6 +366,15 @@ export const deleteCmsGenericPage = async (id: string) => {
   const res = await axios.delete(`${API_BASE_URL}/api/cms/pages/id/${id}`, getAuthConfig());
   return res.data;
 };
+export const getCmsPageRevisions = async (slug: string) => {
+  const res = await axios.get(`${API_BASE_URL}/api/cms/pages/id/${slug}/revisions`, getAuthConfig());
+  return res.data;
+};
+
+export const restoreCmsPageRevision = async (slug: string, revNumber: number) => {
+  const res = await axios.post(`${API_BASE_URL}/api/cms/pages/id/${slug}/revisions/${revNumber}/restore`, {}, getAuthConfig());
+  return res.data;
+};
 
 export interface HomepageHeroContent {
   badgeText: string;
