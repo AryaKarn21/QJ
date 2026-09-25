@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@google/genai": "^2.23.0",
-    "mongodb": "^7.5.0"
+    "mongodb": "^7.5.0",
+    "react-helmet": "^6.1.0"
   }
 }
