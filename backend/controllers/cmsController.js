@@ -478,3 +478,34 @@ exports.upsertHomepageContent = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// ----- Page Revisions -----
+exports.getPageRevisions = async (req, res) => {
+  try {
+    const page = await Page.findById(req.params.id);
+    if (!page) return res.status(404).json({ message: 'Page not found' });
+    const revisions = page.revisions || [];
+    res.json({ revisions });
+  } catch (error) {
+    console.error('Error fetching page revisions:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.restorePageRevision = async (req, res) => {
+  try {
+    const { id, revNumber } = req.params;
+    const page = await Page.findById(id);
+    if (!page) return res.status(404).json({ message: 'Page not found' });
+    const revision = page.revisions?.[revNumber - 1];
+    if (!revision) return res.status(404).json({ message: 'Revision not found' });
+    // Simple restore: replace content and title
+    page.content = revision.content;
+    page.title = revision.title;
+    await page.save();
+    res.json({ message: 'Revision restored', page });
+  } catch (error) {
+    console.error('Error restoring page revision:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
