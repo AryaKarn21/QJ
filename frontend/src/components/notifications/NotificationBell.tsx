@@ -21,6 +21,10 @@ export function NotificationBell() {
   const { socket } = useSocket();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 // State for pagination
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -58,7 +62,7 @@ export function NotificationBell() {
     return () => {
       socket.off('notification:new', handler);
     };
-  };
+  }, [socket]);
 
   // Infinite scroll: load more when sentinel becomes visible
   useEffect(() => {
@@ -76,7 +80,6 @@ export function NotificationBell() {
       if (sentinelRef.current) observer.unobserve(sentinelRef.current);
     };
   }, [hasMore, loading, page]);
-  }, [socket]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

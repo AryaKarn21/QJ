@@ -48,6 +48,9 @@ export const BlogManagement: React.FC = () => {
   const [content, setContent] = useState('');
   const [featuredImage, setFeaturedImage] = useState('');
   const [isPublished, setIsPublished] = useState(true);
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [previewing, setPreviewing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [savingBlog, setSavingBlog] = useState(false);
 
@@ -113,6 +116,9 @@ export const BlogManagement: React.FC = () => {
     setContent('');
     setFeaturedImage('');
     setIsPublished(true);
+    setSeoTitle('');
+    setSeoDescription('');
+    setPreviewing(false);
     setIsEditorOpen(true);
   };
 
@@ -124,6 +130,9 @@ export const BlogManagement: React.FC = () => {
     setContent(blog.content || '');
     setFeaturedImage(blog.featuredImage || blog.images?.[0]?.url || '');
     setIsPublished(blog.isPublished ?? true);
+    setSeoTitle(blog.seoTitle || '');
+    setSeoDescription(blog.seoDescription || '');
+    setPreviewing(false);
     setIsEditorOpen(true);
   };
 
@@ -160,6 +169,9 @@ export const BlogManagement: React.FC = () => {
         content,
         featuredImage,
         isPublished,
+        status: isPublished ? 'published' : 'draft',
+        seoTitle,
+        seoDescription,
       };
 
       if (editingBlogId) {
@@ -289,10 +301,12 @@ export const BlogManagement: React.FC = () => {
                       className={`absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-xs ${
                         blog.isPublished
                           ? 'bg-emerald-500/90 text-white'
+                          : blog.status === 'unpublished'
+                          ? 'bg-slate-600/90 text-white'
                           : 'bg-amber-500/90 text-white'
                       }`}
                     >
-                      {blog.isPublished ? 'Published' : 'Draft'}
+                      {blog.isPublished ? 'Published' : blog.status === 'unpublished' ? 'Unpublished' : 'Draft'}
                     </span>
                     <span className="absolute left-3 top-3 rounded-md bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-slate-200 backdrop-blur-md">
                       {blog.category || 'General'}
@@ -385,14 +399,50 @@ export const BlogManagement: React.FC = () => {
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 {editingBlogId ? 'Edit Blog Article' : 'Create New Article'}
               </h3>
-              <button
-                onClick={() => setIsEditorOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPreviewing((v) => !v)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <Eye size={13} /> {previewing ? 'Back to editing' : 'Preview'}
+                </button>
+                <button
+                  onClick={() => setIsEditorOpen(false)}
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
+            {previewing ? (
+              <div className="mt-4 space-y-3 text-xs">
+                {featuredImage && (
+                  <img src={featuredImage} alt="" className="h-48 w-full rounded-xl object-cover" />
+                )}
+                <span className="inline-block rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+                  {category || 'General'}
+                </span>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title || 'Untitled article'}</h2>
+                {excerpt && <p className="text-slate-500 dark:text-slate-400">{excerpt}</p>}
+                <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{content}</div>
+                <div className="rounded-xl border border-dashed border-slate-200 p-3 dark:border-slate-700">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Search result preview</p>
+                  <p className="truncate text-sm text-blue-700">{seoTitle || title || 'Untitled article'}</p>
+                  <p className="line-clamp-2 text-[11px] text-slate-500">{seoDescription || excerpt || 'No description set.'}</p>
+                </div>
+                <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewing(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    Back to editing
+                  </button>
+                </div>
+              </div>
+            ) : (
             <form onSubmit={handleSaveBlog} className="mt-4 space-y-4 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
@@ -504,6 +554,38 @@ export const BlogManagement: React.FC = () => {
                 />
               </div>
 
+              <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">SEO (optional)</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                      SEO Title
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={70}
+                      value={seoTitle}
+                      onChange={(e) => setSeoTitle(e.target.value)}
+                      placeholder="Falls back to the article title"
+                      className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                      SEO Description
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={160}
+                      value={seoDescription}
+                      onChange={(e) => setSeoDescription(e.target.value)}
+                      placeholder="Falls back to the excerpt"
+                      className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -522,6 +604,7 @@ export const BlogManagement: React.FC = () => {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}
