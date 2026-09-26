@@ -10,6 +10,12 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB Connected sucessfully");
+    try {
+      const { initializeRbac } = require("../utils/permissionsConfig");
+      await initializeRbac();
+    } catch (rbacErr) {
+      console.warn("RBAC initialization warning:", rbacErr.message);
+    }
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);

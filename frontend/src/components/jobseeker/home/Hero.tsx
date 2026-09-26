@@ -206,7 +206,7 @@ const Hero: React.FC = () => {
               <Search size={19} className={`shrink-0 transition-colors duration-200 ${isFocused ? 'text-orange-500' : 'text-slate-400'}`} />
               <input
                 type="text"
-                placeholder={searchPlaceholder}
+                placeholder={content.searchPlaceholder || searchPlaceholder}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyDown}

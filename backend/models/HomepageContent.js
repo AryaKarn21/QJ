@@ -61,6 +61,7 @@ const homepageContentSchema = new mongoose.Schema(
       primaryCtaLink: { type: String, trim: true, default: "" },
       secondaryCtaText: { type: String, trim: true, default: "" },
       secondaryCtaLink: { type: String, trim: true, default: "" },
+      searchPlaceholder: { type: String, trim: true, default: "" },
       // Order is the display order — reordering is just editing this array.
       popularSearches: [{ type: String, trim: true }],
     },
@@ -84,15 +85,7 @@ const homepageContentSchema = new mongoose.Schema(
         key: {
           type: String,
           required: true,
-          enum: [
-            "featuredJobs",
-            "recommendedJobs",
-            "popularCategories",
-            "exploreByField",
-            "trendingJobs",
-            "whyChooseUs",
-            "blogCategories",
-          ],
+          trim: true,
         },
         badgeText: { type: String, trim: true, default: "" },
         heading: { type: String, trim: true, default: "" },

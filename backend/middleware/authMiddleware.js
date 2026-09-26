@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Role = require("../models/Role");
+const { ALL_PERMISSION_KEYS, DEFAULT_SYSTEM_ROLES } = require("../utils/permissionsConfig");
 
 // Authenticate — verify JWT and attach req.user
 const authenticate = async (req, res, next) => {
@@ -45,9 +47,7 @@ const authenticate = async (req, res, next) => {
 
 // Authenticate, but never block the request — attaches req.user when a
 // valid token is present, otherwise leaves it undefined and calls next()
-// regardless. For routes that are genuinely public (a blog/CMS page) but
-// need to know "is this the author/an admin?" to also allow viewing an
-// unpublished draft, without splitting the route into two.
+// regardless.
 const authenticateOptional = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -77,18 +77,81 @@ const authorizeEmployer = (req, res, next) => {
 
 // Authorize admin or superadmin
 const isSuperAdmin = (user) => {
-  return user && typeof user.role === 'string' && user.role.toLowerCase() === 'superadmin';
+  return user && typeof user.role === "string" && user.role.toLowerCase() === "superadmin";
+};
+
+// Fetch effective permissions array for any user
+const getUserPermissions = async (user) => {
+  if (!user) return [];
+  const roleName = typeof user.role === "string" ? user.role.toLowerCase() : "";
+
+  // Super Admin always has full access to all permissions
+  if (roleName === "superadmin") {
+    return ALL_PERMISSION_KEYS;
+  }
+
+  // Look up role in database
+  let roleDoc = null;
+  if (user.customRole) {
+    roleDoc = await Role.findById(user.customRole);
+  }
+  if (!roleDoc && roleName) {
+    roleDoc = await Role.findOne({ name: roleName, status: "active" });
+  }
+
+  if (roleDoc) {
+    return roleDoc.permissions || [];
+  }
+
+  // Fallback to system role defaults
+  const defaultRole = DEFAULT_SYSTEM_ROLES.find((r) => r.name === roleName);
+  if (defaultRole) {
+    return defaultRole.permissions || [];
+  }
+
+  return [];
+};
+
+// Require at least one of the specified permissions (Super Admin override applies)
+const requirePermission = (...requiredPermissions) => async (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Not authorized, no user found" });
+  }
+
+  // Super Admin override (always authorized)
+  if (isSuperAdmin(req.user)) {
+    return next();
+  }
+
+  try {
+    const userPerms = await getUserPermissions(req.user);
+    const hasPerm = requiredPermissions.some(
+      (p) => userPerms.includes(p) || userPerms.includes("*")
+    );
+
+    if (!hasPerm) {
+      return res.status(403).json({
+        message: `Access denied. Requires permission: ${requiredPermissions.join(" or ")}`,
+        requiredPermissions,
+      });
+    }
+
+    next();
+  } catch (err) {
+    console.error("Error in requirePermission middleware:", err);
+    res.status(500).json({ message: "Authorization check error" });
+  }
 };
 
 const authorizeAdmin = (req, res, next) => {
-  const role = req.user.role ? req.user.role.toLowerCase() : '';
-  if (role !== 'admin' && role !== 'superadmin') {
+  const role = req.user.role ? req.user.role.toLowerCase() : "";
+  if (role !== "admin" && role !== "superadmin") {
     return res.status(403).json({ message: "Access denied. Admins only." });
   }
   next();
 };
 
-// Authorize superadmin only — for sensitive actions
+// Authorize superadmin only — for sensitive security/roles actions
 const authorizeSuperAdmin = (req, res, next) => {
   if (!isSuperAdmin(req.user)) {
     return res.status(403).json({ message: "Access denied. Superadmin only." });
@@ -101,17 +164,15 @@ const authorizeRoles = (...roles) => (req, res, next) => {
   if (!req.user) {
     return res.status(403).json({ message: "Access denied for this role." });
   }
-  const userRole = typeof req.user.role === 'string' ? req.user.role.toLowerCase() : '';
-  const normalizedRoles = roles.map(r => typeof r === 'string' ? r.toLowerCase() : r);
+  const userRole = typeof req.user.role === "string" ? req.user.role.toLowerCase() : "";
+  const normalizedRoles = roles.map((r) => (typeof r === "string" ? r.toLowerCase() : r));
   if (!normalizedRoles.includes(userRole)) {
     return res.status(403).json({ message: "Access denied for this role." });
   }
   next();
 };
 
-// Ownership check — allows access if the requesting user owns the resource
-// (req.params.id === req.user._id) OR is an admin/superadmin.
-// Usage: router.get("/:id", authenticate, requireOwnerOrAdmin, handler)
+// Ownership check
 const requireOwnerOrAdmin = (req, res, next) => {
   const isAdmin = req.user.role === "admin" || req.user.role === "superadmin";
   const isOwner = String(req.params.id) === String(req.user._id);
@@ -129,4 +190,7 @@ module.exports = {
   authorizeSuperAdmin,
   authorizeRoles,
   requireOwnerOrAdmin,
+  isSuperAdmin,
+  getUserPermissions,
+  requirePermission,
 };

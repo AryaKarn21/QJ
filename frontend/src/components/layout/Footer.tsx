@@ -144,8 +144,8 @@ const Footer: React.FC = () => {
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-12 border-b border-slate-800/80">
           
-          {/* Brand & Mission (4 Columns) */}
-          <div className="lg:col-span-4 flex flex-col justify-between">
+          {/* Brand & Mission (3 Columns) */}
+          <div className="lg:col-span-3 flex flex-col justify-between">
             <div>
               <div className="mb-6 flex items-center">
                 <img 
@@ -313,8 +313,80 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Newsletter Subscription (2 Columns / Full Width on Small Screens) */}
+          {/* Legal (2 Columns) */}
           <div className="lg:col-span-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-4">
+              Legal
+            </h3>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/terms')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Terms &amp; Conditions
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/privacy')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/community-guidelines')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Community Guidelines
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/job-seeker-rules')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Job Seeker Rules
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/job-provider-rules')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Job Provider Rules
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/cookie-policy')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Cookie Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/disclaimer')}
+                  className="text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer text-left"
+                >
+                  Disclaimer
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Newsletter Subscription (3 Columns) */}
+          <div className="lg:col-span-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-4">
               {newsletterHeading}
             </h3>

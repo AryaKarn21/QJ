@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { authenticate, authorizeAdmin, authorizeSuperAdmin } = require("../middleware/authMiddleware");
+const {
+  authenticate,
+  authorizeAdmin,
+  authorizeSuperAdmin,
+  requirePermission,
+} = require("../middleware/authMiddleware");
 const { getAnalyticsOverview } = require("../controllers/analyticsController");
 const {
   createAdmin,
@@ -38,6 +43,16 @@ const {
   getAllBlogsAdmin,
   updateBlogStatusAdmin,
 } = require("../controllers/adminController");
+const {
+  getRoles,
+  getRoleById,
+  createRole,
+  updateRole,
+  deleteRole,
+  getPermissions,
+  getMyPermissions,
+  assignUserRole,
+} = require("../controllers/roleController");
 const { getFlaggedPosts, moderatePostDecision } = require("../controllers/postController");
 const { getAuditLogs, getAuditLogStats } = require("../controllers/auditLogController");
 const {
@@ -49,112 +64,93 @@ const {
 const { getEmailLogs, getEmailLogById, retryEmailLog, sendTestEmail } = require("../controllers/emailLogController");
 const { getNotificationSettings, updateNotificationSettings } = require("../controllers/notificationSettingsController");
 
+// --- RBAC & Permissions Management ---
+router.get("/permissions", authenticate, requirePermission("roles.view", "permissions.manage"), getPermissions);
+router.get("/my-permissions", authenticate, getMyPermissions);
+router.get("/roles", authenticate, requirePermission("roles.view"), getRoles);
+router.get("/roles/:id", authenticate, requirePermission("roles.view"), getRoleById);
+router.post("/roles", authenticate, requirePermission("roles.create"), createRole);
+router.put("/roles/:id", authenticate, requirePermission("roles.edit"), updateRole);
+router.delete("/roles/:id", authenticate, requirePermission("roles.delete"), deleteRole);
+router.post("/users/:id/assign-role", authenticate, requirePermission("roles.edit", "permissions.manage"), assignUserRole);
+
 // Create a new admin account (superadmin only)
 router.post("/create-admin", authenticate, authorizeSuperAdmin, createAdmin);
 
-// Get employer profile
+// Get admin/employer profile & stats
 router.get("/profile", authenticate, authorizeAdmin, getAdminProfile);
+router.get("/admin-stats", authenticate, requirePermission("dashboard.view"), getAdminStats);
 
-// Get admin stats
-router.get("/admin-stats", authenticate, authorizeAdmin, getAdminStats);
-
-// Verify employer (legacy toggle — kept for backward compatibility)
-router.patch("/verify-employer/:id", authenticate, authorizeAdmin, verifyEmployer);
+// Verify employer (legacy toggle)
+router.patch("/verify-employer/:id", authenticate, requirePermission("users.edit"), verifyEmployer);
 
 // Get all applicants for employer jobs
-router.get("/employer/:employerId/applicants", authenticate, authorizeAdmin, getAllApplicantsForEmployerJobs);
+router.get("/employer/:employerId/applicants", authenticate, requirePermission("applications.view"), getAllApplicantsForEmployerJobs);
 
-// Update application
-router.patch("/applications/:applicationId/status", authenticate, authorizeAdmin, updateApplication);
+// Application Management
+router.get("/applications", authenticate, requirePermission("applications.view"), getAllApplications);
+router.patch("/applications/:applicationId/status", authenticate, requirePermission("applications.manage", "applications.update_status"), updateApplication);
 
-// Platform-wide Application Management (all employers, all jobs)
-router.get("/applications", authenticate, authorizeAdmin, getAllApplications);
+// User Management
+router.get("/users", authenticate, requirePermission("users.view"), getAllUsers);
+router.patch("/users/:id/status", authenticate, requirePermission("users.edit"), updateUserStatus);
+router.get("/users/:id/details", authenticate, requirePermission("users.view"), getUserDetailsAdmin);
+router.delete("/user/:id", authenticate, requirePermission("users.delete"), deleteUser);
+router.patch("/users/:id/role", authenticate, requirePermission("roles.edit", "permissions.manage"), updateUserRole);
 
-// Get all users
-router.get("/users", authenticate, authorizeAdmin, getAllUsers);
-router.patch("/users/:id/status", authenticate, authorizeAdmin, updateUserStatus);
-router.get("/users/:id/details", authenticate, authorizeAdmin, getUserDetailsAdmin);
+// Job Management
+router.get("/jobs", authenticate, requirePermission("jobs.view"), getAllJobs);
+router.post("/jobs", authenticate, requirePermission("jobs.create"), createAdminJob);
+router.post("/jobs/bulk-action", authenticate, requirePermission("jobs.edit", "jobs.moderate"), bulkJobAction);
+router.put("/job/:id", authenticate, requirePermission("jobs.edit"), editJob);
+router.delete("/job/:id", authenticate, requirePermission("jobs.delete"), deleteJob);
+router.patch("/jobs/:id/approve", authenticate, requirePermission("jobs.moderate", "jobs.publish"), approveJob);
+router.patch("/jobs/:id/reject", authenticate, requirePermission("jobs.moderate"), rejectJob);
+router.patch("/jobs/:id/status", authenticate, requirePermission("jobs.edit", "jobs.publish"), updateJobStatus);
+router.patch("/jobs/:id/trending", authenticate, requirePermission("jobs.edit"), toggleTrendingStatus);
+router.get("/daily-logins", authenticate, requirePermission("analytics.view", "dashboard.view"), getDailyLoggedInUsersCount);
 
-// Delete user
-router.delete("/user/:id", authenticate, authorizeAdmin, deleteUser);
+// Analytics Hub
+router.get("/analytics", authenticate, requirePermission("analytics.view"), getAnalyticsOverview);
 
-// Promote a user to admin / demote an admin back down — superadmin only,
-// since granting admin access is more sensitive than routine admin tasks.
-router.patch("/users/:id/role", authenticate, authorizeSuperAdmin, updateUserRole);
-
-// Get all jobs
-router.get("/jobs", authenticate, authorizeAdmin, getAllJobs);
-
-// Create job as admin
-router.post("/jobs", authenticate, authorizeAdmin, createAdminJob);
-
-// Bulk actions on jobs
-router.post("/jobs/bulk-action", authenticate, authorizeAdmin, bulkJobAction);
-
-// Edit job
-router.put("/job/:id", authenticate, authorizeAdmin, editJob);
-
-// Delete job
-router.delete("/job/:id", authenticate, authorizeAdmin, deleteJob);
-
-// Approve / reject a pending job posting
-router.patch("/jobs/:id/approve", authenticate, authorizeAdmin, approveJob);
-router.patch("/jobs/:id/reject", authenticate, authorizeAdmin, rejectJob);
-router.patch("/jobs/:id/status", authenticate, authorizeAdmin, updateJobStatus);
-
-// Update job trending status
-router.patch("/jobs/:id/trending", authenticate, authorizeAdmin, toggleTrendingStatus);
-
-// Get daily logged in users
-router.get("/daily-logins", authenticate, authorizeAdmin, getDailyLoggedInUsersCount);
-
-// Analytics Hub — combined User/Job/Revenue/Device analytics
-router.get("/analytics", authenticate, authorizeAdmin, getAnalyticsOverview);
-
-// Company Management (paginated list + KYC verify/reject + edit + suspend)
-router.get("/companies", authenticate, authorizeAdmin, getAllCompanies);
-router.put("/companies/:id", authenticate, authorizeAdmin, updateCompanyAdmin);
-router.patch("/companies/:id/verify", authenticate, authorizeAdmin, verifyCompany);
-router.patch("/companies/:id/reject", authenticate, authorizeAdmin, rejectCompany);
-router.patch("/companies/:id/suspend", authenticate, authorizeAdmin, toggleCompanySuspendAdmin);
+// Company Management
+router.get("/companies", authenticate, requirePermission("users.view"), getAllCompanies);
+router.put("/companies/:id", authenticate, requirePermission("users.edit"), updateCompanyAdmin);
+router.patch("/companies/:id/verify", authenticate, requirePermission("users.edit"), verifyCompany);
+router.patch("/companies/:id/reject", authenticate, requirePermission("users.edit"), rejectCompany);
+router.patch("/companies/:id/suspend", authenticate, requirePermission("users.edit"), toggleCompanySuspendAdmin);
 
 // Community Feed moderation queue & management
-router.get("/community/flagged-posts", authenticate, authorizeAdmin, getFlaggedPosts);
-router.patch("/community/posts/:postId/moderate", authenticate, authorizeAdmin, moderatePostDecision);
-router.get("/community/posts", authenticate, authorizeAdmin, getAllCommunityPostsAdmin);
-router.get("/community/posts/:id", authenticate, authorizeAdmin, getCommunityPostDetailAdmin);
-router.patch("/community/posts/:id/status", authenticate, authorizeAdmin, updateCommunityPostStatusAdmin);
-router.get("/community/comments", authenticate, authorizeAdmin, getAllCommunityCommentsAdmin);
-router.delete("/community/comments/:id", authenticate, authorizeAdmin, deleteCommunityCommentAdmin);
+router.get("/community/flagged-posts", authenticate, requirePermission("community.manage_reports", "community.moderate"), getFlaggedPosts);
+router.patch("/community/posts/:postId/moderate", authenticate, requirePermission("community.moderate"), moderatePostDecision);
+router.get("/community/posts", authenticate, requirePermission("community.view"), getAllCommunityPostsAdmin);
+router.get("/community/posts/:id", authenticate, requirePermission("community.view"), getCommunityPostDetailAdmin);
+router.patch("/community/posts/:id/status", authenticate, requirePermission("community.moderate", "community.edit"), updateCommunityPostStatusAdmin);
+router.get("/community/comments", authenticate, requirePermission("community.view"), getAllCommunityCommentsAdmin);
+router.delete("/community/comments/:id", authenticate, requirePermission("community.moderate", "community.delete"), deleteCommunityCommentAdmin);
 
 // Blog Management
-router.get("/blogs", authenticate, authorizeAdmin, getAllBlogsAdmin);
-router.patch("/blogs/:id/publish", authenticate, authorizeAdmin, updateBlogStatusAdmin);
+router.get("/blogs", authenticate, requirePermission("blogs.view"), getAllBlogsAdmin);
+router.patch("/blogs/:id/publish", authenticate, requirePermission("blogs.publish", "blogs.moderate"), updateBlogStatusAdmin);
 
-// Audit Logs — a record of every mutating action taken across the whole
-// platform (see utils/auditLogger.js). Superadmin only, same as
-// Roles & Permissions and System Settings.
-router.get("/audit-logs", authenticate, authorizeSuperAdmin, getAuditLogs);
-router.get("/audit-logs/stats", authenticate, authorizeSuperAdmin, getAuditLogStats);
+// Audit Logs
+router.get("/audit-logs", authenticate, requirePermission("audit_logs.view"), getAuditLogs);
+router.get("/audit-logs/stats", authenticate, requirePermission("audit_logs.view"), getAuditLogStats);
 
-// Security — locked accounts, recent failed logins, and manual unlock.
-// Superadmin only, same rationale as Audit Logs and Roles & Permissions.
-router.get("/security/overview", authenticate, authorizeSuperAdmin, getSecurityOverview);
-router.get("/security/locked-accounts", authenticate, authorizeSuperAdmin, getLockedAccounts);
-router.patch("/security/users/:id/unlock", authenticate, authorizeSuperAdmin, unlockAccount);
-router.get("/security/failed-logins", authenticate, authorizeSuperAdmin, getRecentFailedLogins);
+// Security
+router.get("/security/overview", authenticate, requirePermission("security.view"), getSecurityOverview);
+router.get("/security/locked-accounts", authenticate, requirePermission("security.view", "security.manage"), getLockedAccounts);
+router.patch("/security/users/:id/unlock", authenticate, requirePermission("security.manage"), unlockAccount);
+router.get("/security/failed-logins", authenticate, requirePermission("security.view"), getRecentFailedLogins);
 
-// Email delivery log — view + retry a failed transactional send. Retry is
-// superadmin-only (mirrors the /announcement broadcast precedent), same
-// rationale as Audit Logs/Security above: a higher-blast-radius action.
-router.get("/email-logs", authenticate, authorizeAdmin, getEmailLogs);
-router.get("/email-logs/:id", authenticate, authorizeAdmin, getEmailLogById);
-router.post("/email-logs/:id/retry", authenticate, authorizeSuperAdmin, retryEmailLog);
-router.post("/email-logs/test-email", authenticate, authorizeSuperAdmin, sendTestEmail);
+// Email delivery logs & retry
+router.get("/email-logs", authenticate, requirePermission("email.view"), getEmailLogs);
+router.get("/email-logs/:id", authenticate, requirePermission("email.view"), getEmailLogById);
+router.post("/email-logs/:id/retry", authenticate, requirePermission("email.retry", "email.manage"), retryEmailLog);
+router.post("/email-logs/test-email", authenticate, requirePermission("email.manage"), sendTestEmail);
 
-// Notification targeting config (spec section 2) — read by any admin,
-// changed only by a superadmin since it affects every future job posting.
-router.get("/notification-settings", authenticate, authorizeAdmin, getNotificationSettings);
-router.patch("/notification-settings", authenticate, authorizeSuperAdmin, updateNotificationSettings);
+// Notification Settings
+router.get("/notification-settings", authenticate, requirePermission("notifications.view", "settings.view"), getNotificationSettings);
+router.patch("/notification-settings", authenticate, requirePermission("notifications.manage", "settings.manage"), updateNotificationSettings);
 
 module.exports = router;

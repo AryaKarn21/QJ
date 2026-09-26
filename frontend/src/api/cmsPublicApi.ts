@@ -56,6 +56,7 @@ export interface HomepageHeroContent {
   primaryCtaLink: string;
   secondaryCtaText: string;
   secondaryCtaLink: string;
+  searchPlaceholder?: string;
   popularSearches: string[];
 }
 

@@ -355,7 +355,8 @@ export interface CmsGenericPage {
   title: string;
   content: string;
   featuredImage?: string;
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'unpublished';
+  effectiveDate?: string | null;
   author: { _id: string; name: string; email: string; role: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -375,19 +376,35 @@ export const getCmsPageById = async (id: string) => {
   return res.data as CmsGenericPage;
 };
 
-export const createCmsGenericPage = async (data: { title: string; content: string; featuredImage?: string; status?: 'draft' | 'published' }) => {
+export const createCmsGenericPage = async (data: {
+  title: string;
+  content: string;
+  featuredImage?: string;
+  status?: 'draft' | 'published' | 'unpublished';
+  effectiveDate?: string | null;
+}) => {
   const res = await axios.post(`${API_BASE_URL}/api/cms/pages`, data, getAuthConfig());
   return res.data as CmsGenericPage;
 };
 
-export const updateCmsGenericPage = async (id: string, data: Partial<{ title: string; content: string; featuredImage: string; status: 'draft' | 'published'; shortDescription: string }>) => {
+export const updateCmsGenericPage = async (
+  id: string,
+  data: Partial<{
+    title: string;
+    content: string;
+    featuredImage: string;
+    status: 'draft' | 'published' | 'unpublished';
+    shortDescription: string;
+    effectiveDate: string | null;
+  }>
+) => {
   const res = await axios.put(`${API_BASE_URL}/api/cms/pages/id/${id}`, data, getAuthConfig());
   return res.data as CmsGenericPage;
 };
 
 export const toggleCmsPagePublish = async (id: string) => {
   const res = await axios.patch(`${API_BASE_URL}/api/cms/pages/id/${id}/publish`, {}, getAuthConfig());
-  return res.data as { message: string; status: 'draft' | 'published' };
+  return res.data as { message: string; status: 'draft' | 'published' | 'unpublished' };
 };
 
 export const deleteCmsGenericPage = async (id: string) => {
@@ -399,7 +416,8 @@ export interface PageRevision {
   revNumber: number;
   title: string;
   content: string;
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'unpublished';
+  effectiveDate?: string | null;
   version: number;
   updatedBy: { _id: string; name: string; email: string; role: string } | null;
   updatedAt: string;
@@ -436,7 +454,10 @@ export type PolicyType =
   | 'refund-cancellation'
   | 'cookie-policy'
   | 'disclaimer'
-  | 'code-of-conduct';
+  | 'code-of-conduct'
+  | 'resume-builder-terms'
+  | 'assessment-policy'
+  | 'interview-policy';
 
 export interface PolicyTypeOption {
   value: PolicyType;
@@ -448,6 +469,7 @@ export interface PolicyPage extends CmsGenericPage {
   policyType: PolicyType;
   shortDescription?: string;
   version: number;
+  effectiveDate?: string | null;
   updatedBy: { _id: string; name: string; email: string; role: string } | null;
 }
 
@@ -468,7 +490,14 @@ export const getPolicies = async (params: { page?: number; limit?: number; searc
   return res.data as { policies: PolicyPage[]; total: number; page: number; totalPages: number };
 };
 
-export const createPolicy = async (data: { policyType: PolicyType; title: string; content: string; shortDescription?: string; status?: 'draft' | 'published' }) => {
+export const createPolicy = async (data: {
+  policyType: PolicyType;
+  title: string;
+  content: string;
+  shortDescription?: string;
+  status?: 'draft' | 'published' | 'unpublished';
+  effectiveDate?: string | null;
+}) => {
   const res = await axios.post(`${API_BASE_URL}/api/cms/policies`, data, getAuthConfig());
   return res.data as PolicyPage;
 };
@@ -482,6 +511,7 @@ export interface HomepageHeroContent {
   primaryCtaLink: string;
   secondaryCtaText: string;
   secondaryCtaLink: string;
+  searchPlaceholder?: string;
   popularSearches: string[];
 }
 
@@ -1364,5 +1394,103 @@ export const getNotificationSettings = async (): Promise<NotificationSettings> =
 
 export const updateNotificationSettings = async (jobAlertMode: NotificationSettings['jobAlertMode']) => {
   const res = await axios.patch(`${API_BASE_URL}/api/admin/notification-settings`, { jobAlertMode }, getAuthConfig());
+  return res.data;
+};
+
+// ---------------------------------------------------------------------------
+// Roles & Permissions Management (RBAC)
+// ---------------------------------------------------------------------------
+
+export interface RolePermissionItem {
+  key: string;
+  module: string;
+  action: string;
+  description: string;
+}
+
+export interface PermissionModuleGroup {
+  name: string;
+  label: string;
+  description: string;
+  permissions: {
+    key: string;
+    action: string;
+    description: string;
+  }[];
+}
+
+export interface RoleModel {
+  _id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  isSystem: boolean;
+  status: 'active' | 'inactive';
+  permissions: string[];
+  userCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const getRoles = async (): Promise<RoleModel[]> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/roles`, getAuthConfig());
+  return res.data;
+};
+
+export const getRoleById = async (id: string): Promise<RoleModel> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/roles/${id}`, getAuthConfig());
+  return res.data;
+};
+
+export const createRole = async (data: {
+  name: string;
+  displayName?: string;
+  description?: string;
+  permissions: string[];
+}): Promise<RoleModel> => {
+  const res = await axios.post(`${API_BASE_URL}/api/admin/roles`, data, getAuthConfig());
+  return res.data;
+};
+
+export const updateRole = async (
+  id: string,
+  data: {
+    displayName?: string;
+    description?: string;
+    status?: 'active' | 'inactive';
+    permissions?: string[];
+  }
+): Promise<RoleModel> => {
+  const res = await axios.put(`${API_BASE_URL}/api/admin/roles/${id}`, data, getAuthConfig());
+  return res.data;
+};
+
+export const deleteRole = async (id: string): Promise<{ message: string }> => {
+  const res = await axios.delete(`${API_BASE_URL}/api/admin/roles/${id}`, getAuthConfig());
+  return res.data;
+};
+
+export const getPermissionsCatalog = async (): Promise<{
+  modules: PermissionModuleGroup[];
+  allKeys: string[];
+}> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/permissions`, getAuthConfig());
+  return res.data;
+};
+
+export const getMyPermissions = async (): Promise<{
+  role: string;
+  isSuperAdmin: boolean;
+  permissions: string[];
+}> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/my-permissions`, getAuthConfig());
+  return res.data;
+};
+
+export const assignUserRole = async (
+  userId: string,
+  data: { role: string; customRoleId?: string | null }
+): Promise<{ message: string; user: any }> => {
+  const res = await axios.post(`${API_BASE_URL}/api/admin/users/${userId}/assign-role`, data, getAuthConfig());
   return res.data;
 };

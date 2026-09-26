@@ -217,17 +217,29 @@ exports.deleteCareerTip = async (req, res) => {
 // Legal / static Pages (Privacy Policy, Terms of Service)
 // ---------------------------------------------------------------------------
 
-const ALLOWED_PAGE_SLUGS = ["privacy-policy", "terms-of-service", "community-guidelines"];
+const ALLOWED_PAGE_SLUGS = [
+  "privacy-policy",
+  "terms-of-service",
+  "terms-conditions",
+  "terms",
+  "community-guidelines",
+  ...POLICY_TYPE_VALUES,
+];
 
 /** GET /api/cms/pages/:slug — public. Returns an empty draft if not yet created. */
 exports.getPage = async (req, res) => {
   try {
     const { slug } = req.params;
-    if (!ALLOWED_PAGE_SLUGS.includes(slug)) {
-      return res.status(400).json({ message: "Unknown page slug" });
+    let query = { status: "published" };
+    if (slug === "terms" || slug === "terms-of-service" || slug === "terms-conditions") {
+      query.slug = { $in: ["terms", "terms-of-service", "terms-conditions"] };
+    } else if (slug === "privacy" || slug === "privacy-policy") {
+      query.slug = { $in: ["privacy", "privacy-policy"] };
+    } else {
+      query.slug = slug;
     }
 
-    const page = await Page.findOne({ slug, status: "published" });
+    const page = await Page.findOne(query);
     if (!page) {
       return res.json({ slug, title: "", content: "", isDraftPlaceholder: true });
     }
@@ -416,6 +428,7 @@ const snapshotPageRevision = (page, byUserId) => {
     title: page.title,
     content: page.content,
     status: page.status,
+    effectiveDate: page.effectiveDate,
     version: page.version || 1,
     updatedBy: page.updatedBy || byUserId,
     updatedAt: page.updatedAt || new Date(),
@@ -426,17 +439,19 @@ const snapshotPageRevision = (page, byUserId) => {
 /** PUT /api/cms/pages/id/:id — admin only. Also used for policy-type pages (Legal & Policies). */
 exports.adminUpdatePage = async (req, res) => {
   try {
-    const { title, content, featuredImage, status, shortDescription } = req.body;
+    const { title, content, featuredImage, status, shortDescription, effectiveDate } = req.body;
     const page = await Page.findById(req.params.id);
     if (!page) return res.status(404).json({ message: "Page not found" });
 
     const titleChanged = title && title.trim() && title !== page.title;
     const contentChanged = content !== undefined && sanitizeRichText(content) !== page.content;
-    const statusChanged = status !== undefined && (status === "draft" ? "draft" : "published") !== page.status;
+    const validStatus = ["draft", "published", "unpublished"].includes(status) ? status : undefined;
+    const statusChanged = validStatus !== undefined && validStatus !== page.status;
+    const effectiveDateChanged = effectiveDate !== undefined;
 
     // Only snapshot when something meaningful actually changed — saving the
     // form with no edits shouldn't pad the history with identical entries.
-    if (titleChanged || contentChanged || statusChanged) {
+    if (titleChanged || contentChanged || statusChanged || effectiveDateChanged) {
       snapshotPageRevision(page, req.user.id);
     }
 
@@ -452,7 +467,8 @@ exports.adminUpdatePage = async (req, res) => {
     if (content !== undefined) page.content = sanitizeRichText(content);
     if (featuredImage !== undefined) page.featuredImage = featuredImage;
     if (shortDescription !== undefined) page.shortDescription = shortDescription.slice(0, 300);
-    if (status !== undefined) page.status = status === "draft" ? "draft" : "published";
+    if (validStatus !== undefined) page.status = validStatus;
+    if (effectiveDate !== undefined) page.effectiveDate = effectiveDate ? new Date(effectiveDate) : null;
     page.updatedBy = req.user.id;
 
     await page.save();
@@ -463,14 +479,14 @@ exports.adminUpdatePage = async (req, res) => {
   }
 };
 
-/** PATCH /api/cms/pages/id/:id/publish — admin only. Toggles draft/published. */
+/** PATCH /api/cms/pages/id/:id/publish — admin only. Toggles draft/published/unpublished. */
 exports.adminTogglePagePublish = async (req, res) => {
   try {
     const page = await Page.findById(req.params.id);
     if (!page) return res.status(404).json({ message: "Page not found" });
 
     snapshotPageRevision(page, req.user.id);
-    page.status = page.status === "published" ? "draft" : "published";
+    page.status = page.status === "published" ? "unpublished" : "published";
     page.updatedBy = req.user.id;
     await page.save();
 
@@ -519,7 +535,7 @@ exports.adminListPolicies = async (req, res) => {
     const filter = { policyType: { $in: POLICY_TYPE_VALUES } };
     if (search) filter.title = new RegExp(escapeRegex(search), "i");
     if (policyType && POLICY_TYPE_VALUES.includes(policyType)) filter.policyType = policyType;
-    if (status === "draft" || status === "published") filter.status = status;
+    if (status && ["draft", "published", "unpublished"].includes(status)) filter.status = status;
 
     const [policies, total] = await Promise.all([
       Page.find(filter)
@@ -541,7 +557,7 @@ exports.adminListPolicies = async (req, res) => {
 /** POST /api/cms/policies — admin only. Creates a new Legal & Policies document. */
 exports.adminCreatePolicy = async (req, res) => {
   try {
-    const { policyType, title, content, shortDescription, status } = req.body;
+    const { policyType, title, content, shortDescription, status, effectiveDate } = req.body;
     if (!policyType || !POLICY_TYPE_VALUES.includes(policyType)) {
       return res.status(400).json({ message: "A valid policy type is required" });
     }
@@ -558,13 +574,17 @@ exports.adminCreatePolicy = async (req, res) => {
       ? await generateUniquePageSlug(title)
       : meta.defaultSlug;
 
+    let finalStatus = "draft";
+    if (status === "published" || status === "unpublished") finalStatus = status;
+
     const policy = await Page.create({
       slug,
       title: title.trim(),
       content: sanitizeRichText(content),
       shortDescription: (shortDescription || "").slice(0, 300),
       policyType,
-      status: status === "published" ? "published" : "draft",
+      status: finalStatus,
+      effectiveDate: effectiveDate ? new Date(effectiveDate) : null,
       version: 1,
       author: req.user.id,
       updatedBy: req.user.id,
@@ -606,7 +626,17 @@ exports.getPublishedPolicies = async (_req, res) => {
  */
 exports.getPublicPage = async (req, res) => {
   try {
-    const page = await Page.findOne({ slug: req.params.slug, status: "published" });
+    const slug = req.params.slug;
+    let query = { status: "published" };
+    if (slug === "terms" || slug === "terms-of-service" || slug === "terms-conditions") {
+      query.slug = { $in: ["terms", "terms-of-service", "terms-conditions"] };
+    } else if (slug === "privacy" || slug === "privacy-policy") {
+      query.slug = { $in: ["privacy", "privacy-policy"] };
+    } else {
+      query.slug = slug;
+    }
+
+    const page = await Page.findOne(query);
     if (!page) return res.status(404).json({ message: "Page not found" });
     res.json(page);
   } catch (error) {
@@ -845,6 +875,8 @@ exports.restorePageRevision = async (req, res) => {
     snapshotPageRevision(page, req.user.id);
     page.content = revision.content;
     page.title = revision.title;
+    if (revision.status) page.status = revision.status;
+    if (revision.effectiveDate !== undefined) page.effectiveDate = revision.effectiveDate;
     page.updatedBy = req.user.id;
     await page.save();
     res.json({ message: 'Revision restored', page });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import ReactQuill from 'react-quill';
@@ -232,12 +233,24 @@ function RichTextEditor({ value, onChange, style }: RichTextEditorProps) {
 
 export const CmsHub: React.FC = () => {
   const { isSuperAdmin } = useAdminAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const visibleTabs = isSuperAdmin ? TABS : TABS.filter((t) => !SUPERADMIN_ONLY_TABS.includes(t.id));
-  const [activeTab, setActiveTab] = useState<TabId>('blogs');
 
-  // A plain admin's activeTab could point at a now-hidden superadmin-only
-  // tab (e.g. stale state from before a role change) — fall back to Blogs
-  // rather than rendering a tab with no visible button to select it.
+  const urlTab = searchParams.get('tab') as TabId | null;
+  const initialTab = urlTab && visibleTabs.some((t) => t.id === urlTab) ? urlTab : 'blogs';
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+
+  useEffect(() => {
+    if (urlTab && visibleTabs.some((t) => t.id === urlTab) && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab, visibleTabs]);
+
+  const handleSelectTab = (tabId: TabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
   const effectiveTab = visibleTabs.some((t) => t.id === activeTab) ? activeTab : 'blogs';
 
   return (
@@ -245,7 +258,7 @@ export const CmsHub: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Content (CMS)</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Blogs, FAQs, Career Tips, and legal pages — all editable from here.
+          Blogs, FAQs, Career Tips, website content, and legal policies — all editable from here.
         </p>
       </div>
 
@@ -254,10 +267,10 @@ export const CmsHub: React.FC = () => {
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleSelectTab(tab.id)}
               className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
                 effectiveTab === tab.id
-                  ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-400'
+                  ? 'bg-white text-orange-600 shadow-sm dark:bg-slate-900 dark:text-orange-400 font-semibold'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
@@ -1152,7 +1165,13 @@ function CareerTipDrawer({
 // generic-Pages functions PagesTab above uses — only listing and creation
 // have policy-specific endpoints.
 // ---------------------------------------------------------------------------
-const EMPTY_POLICY_FORM = { title: '', shortDescription: '', content: '', status: 'draft' as 'draft' | 'published' };
+const EMPTY_POLICY_FORM = {
+  title: '',
+  shortDescription: '',
+  content: '',
+  status: 'draft' as 'draft' | 'published' | 'unpublished',
+  effectiveDate: '',
+};
 
 function PoliciesTab() {
   const queryClient = useQueryClient();
@@ -1198,6 +1217,7 @@ function PoliciesTab() {
         shortDescription: editingPage.shortDescription || '',
         content: editingPage.content,
         status: editingPage.status,
+        effectiveDate: editingPage.effectiveDate ? editingPage.effectiveDate.slice(0, 10) : '',
       });
       setPreviewing(false);
     }
@@ -1211,7 +1231,7 @@ function PoliciesTab() {
     queryClient.invalidateQueries({ queryKey: ['published-policies'] });
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrideStatus?: 'draft' | 'published' | 'unpublished') => {
     if (!form.title.trim()) return;
     if (editingId === 'new' && !newPolicyType) {
       toast.error('Choose a policy type first.');
@@ -1219,10 +1239,14 @@ function PoliciesTab() {
     }
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        status: overrideStatus || form.status,
+      };
       if (editingId === 'new') {
-        await createPolicy({ policyType: newPolicyType as PolicyType, ...form });
+        await createPolicy({ policyType: newPolicyType as PolicyType, ...payload });
       } else if (editingId) {
-        await updateCmsGenericPage(editingId, form);
+        await updateCmsGenericPage(editingId, payload);
       }
       refresh();
       toast.success('Policy saved.');
@@ -1259,25 +1283,56 @@ function PoliciesTab() {
       ),
     },
     { key: 'policyType', header: 'Type', render: (p) => <span className="whitespace-nowrap text-slate-600 dark:text-slate-300">{typeLabel(p.policyType)}</span> },
-    { key: 'status', header: 'Status', render: (p) => <StatusBadge label={p.status === 'published' ? 'Published' : 'Draft'} tone={p.status === 'published' ? 'success' : 'neutral'} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (p) => (
+        <StatusBadge
+          label={p.status === 'published' ? 'Published' : p.status === 'unpublished' ? 'Unpublished' : 'Draft'}
+          tone={p.status === 'published' ? 'success' : p.status === 'unpublished' ? 'warning' : 'neutral'}
+        />
+      ),
+    },
     { key: 'version', header: 'Version', render: (p) => <span className="text-slate-500 dark:text-slate-400">v{p.version}</span> },
     { key: 'updatedAt', header: 'Last Updated', render: (p) => <span className="whitespace-nowrap text-slate-500 dark:text-slate-400">{new Date(p.updatedAt).toLocaleDateString()}</span> },
     { key: 'updatedBy', header: 'Updated By', render: (p) => <span className="whitespace-nowrap text-slate-500 dark:text-slate-400">{p.updatedBy?.name || '—'}</span> },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
       render: (p) => (
         <div className="flex justify-end gap-1.5">
-          <button onClick={() => setEditingId(p._id)} title="Edit" className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <button
+            onClick={() => { setEditingId(p._id); setPreviewing(false); }}
+            title="Edit"
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
             <Pencil size={13} />
           </button>
-          <button onClick={() => { setEditingId(p._id); setHistoryOpen(true); }} title="Version History" className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <button
+            onClick={() => { setEditingId(p._id); setPreviewing(true); }}
+            title="Preview"
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <Eye size={13} />
+          </button>
+          <button
+            onClick={() => { setEditingId(p._id); setHistoryOpen(true); }}
+            title="Version History"
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
             <History size={13} />
           </button>
-          <button onClick={() => handleTogglePublish(p)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <button
+            onClick={() => handleTogglePublish(p)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
             {p.status === 'published' ? 'Unpublish' : 'Publish'}
           </button>
-          <button onClick={() => handleDelete(p)} title="Delete" className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10">
+          <button
+            onClick={() => handleDelete(p)}
+            title="Delete"
+            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+          >
             <Trash2 size={13} />
           </button>
         </div>
@@ -1320,6 +1375,7 @@ function PoliciesTab() {
             <option value="">All statuses</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
+            <option value="unpublished">Unpublished</option>
           </select>
           <select
             value={sort}
@@ -1375,19 +1431,35 @@ function PoliciesTab() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setForm((f) => ({ ...f, status: 'draft' }))}
+                onClick={() => handleSave('draft')}
                 disabled={saving || !form.title.trim()}
                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                title="Set status to draft, then click Save"
               >
-                Save as Draft
+                Save Draft
               </button>
+              {form.status === 'published' ? (
+                <button
+                  onClick={() => handleSave('unpublished')}
+                  disabled={saving || !form.title.trim()}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+                >
+                  Unpublish
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSave('published')}
+                  disabled={saving || !form.title.trim()}
+                  className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+                >
+                  <Save size={15} /> Publish
+                </button>
+              )}
               <button
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={saving || !form.title.trim()}
-                className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
               >
-                <Save size={15} /> {saving ? 'Saving…' : form.status === 'published' ? 'Save & Publish' : 'Save'}
+                <Save size={14} /> {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
@@ -1398,6 +1470,9 @@ function PoliciesTab() {
         ) : previewing ? (
           <div className="space-y-3">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">{form.title || 'Untitled policy'}</h2>
+            {form.effectiveDate && (
+              <p className="text-xs text-slate-500 font-medium">Effective Date: {new Date(form.effectiveDate).toLocaleDateString()}</p>
+            )}
             {form.shortDescription && <p className="text-sm text-slate-500 dark:text-slate-400">{form.shortDescription}</p>}
             <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: form.content }} />
           </div>
@@ -1434,6 +1509,15 @@ function PoliciesTab() {
               </Field>
             )}
 
+            <Field label="Effective Date">
+              <input
+                type="date"
+                value={form.effectiveDate || ''}
+                onChange={(e) => setForm({ ...form, effectiveDate: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+            </Field>
+
             <Field label="Short description (optional)">
               <input
                 value={form.shortDescription}
@@ -1450,14 +1534,40 @@ function PoliciesTab() {
               </div>
             </Field>
 
-            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.status === 'published'}
-                onChange={(e) => setForm({ ...form, status: e.target.checked ? 'published' : 'draft' })}
-              />
-              Published{editingPage?.slug ? ` (visible at /${editingPage.slug})` : ''}
-            </label>
+            <Field label="Status">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="policyStatus"
+                    value="draft"
+                    checked={form.status === 'draft'}
+                    onChange={() => setForm({ ...form, status: 'draft' })}
+                  />
+                  Draft
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="policyStatus"
+                    value="published"
+                    checked={form.status === 'published'}
+                    onChange={() => setForm({ ...form, status: 'published' })}
+                  />
+                  Published
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="policyStatus"
+                    value="unpublished"
+                    checked={form.status === 'unpublished'}
+                    onChange={() => setForm({ ...form, status: 'unpublished' })}
+                  />
+                  Unpublished
+                </label>
+              </div>
+            </Field>
           </div>
         )}
       </Drawer>
@@ -1493,6 +1603,7 @@ const EMPTY_HOMEPAGE_FORM = {
   hero: {
     badgeText: '', headline: '', headlineAccent: '', subheadline: '',
     primaryCtaText: '', primaryCtaLink: '', secondaryCtaText: '', secondaryCtaLink: '',
+    searchPlaceholder: '',
     popularSearches: [] as string[],
   },
   cta: {
@@ -1512,17 +1623,18 @@ interface HomepageSectionForm {
   isActive: boolean;
 }
 
-// The 7 homepage sections Super Admin can edit headings for — order here
-// is display order in the admin form, not necessarily homepage layout
-// order (that's fixed by the component tree, not CMS-controlled).
 const HOMEPAGE_SECTION_KEYS: { key: string; label: string }[] = [
   { key: 'featuredJobs', label: 'Featured Jobs' },
-  { key: 'recommendedJobs', label: 'Recommended Jobs' },
+  { key: 'latestJobs', label: 'Latest Jobs' },
   { key: 'popularCategories', label: 'Popular Categories' },
-  { key: 'exploreByField', label: 'Explore by Field' },
+  { key: 'topCompanies', label: 'Top Companies' },
   { key: 'trendingJobs', label: 'Trending Jobs' },
   { key: 'whyChooseUs', label: 'Why Choose QuickJobs' },
-  { key: 'blogCategories', label: 'Blog Categories' },
+  { key: 'buildYourCareer', label: 'Build Your Career' },
+  { key: 'careerResources', label: 'Career Resources' },
+  { key: 'community', label: 'Community' },
+  { key: 'resumeBuilder', label: 'Resume Builder' },
+  { key: 'ctaSection', label: 'Call to Action (CTA)' },
 ];
 
 const emptyHomepageSections = (): HomepageSectionForm[] =>
@@ -1672,6 +1784,11 @@ function HomepageTab() {
           <Field label="Secondary CTA link">
             <input value={form.hero.secondaryCtaLink} onChange={(e) => setHero({ secondaryCtaLink: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" placeholder="/resume" />
           </Field>
+          <div className="sm:col-span-2">
+            <Field label="Search bar placeholder">
+              <input value={form.hero.searchPlaceholder || ''} onChange={(e) => setHero({ searchPlaceholder: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" placeholder="Search for jobs or internships..." />
+            </Field>
+          </div>
         </div>
         <Field label="Popular searches (one per line, shown as quick-tap chips)">
           <textarea

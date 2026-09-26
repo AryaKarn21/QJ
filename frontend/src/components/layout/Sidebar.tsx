@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -16,22 +16,27 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
-  X,
   User,
   Sparkles,
   LifeBuoy,
   Bell,
   CreditCard,
   Mail,
+  LayoutTemplate,
+  ShieldCheck,
+  FileText,
 } from 'lucide-react';
 import { useAdminUI } from '../../context/AdminUIContext';
 import { useAdminAuth } from '../../context/useAdminAuth';
+import { useQuery } from '@tanstack/react-query';
+import { getMyPermissions } from '../admin/adminApi/api';
 import logo from '../../assets/quickjobs.png';
 
 interface SubNavItem {
   label: string;
   path: string;
   superAdminOnly?: boolean;
+  requiredPermission?: string | string[];
 }
 
 interface NavSection {
@@ -41,6 +46,7 @@ interface NavSection {
   path?: string; // Direct link if no children
   children?: SubNavItem[];
   superAdminOnly?: boolean;
+  requiredPermission?: string | string[];
 }
 
 const PRIMARY_NAV: NavSection[] = [
@@ -49,11 +55,13 @@ const PRIMARY_NAV: NavSection[] = [
     label: 'Dashboard',
     icon: <LayoutDashboard size={20} />,
     path: '/admin/dashboard',
+    requiredPermission: 'dashboard.view',
   },
   {
     id: 'users',
     label: 'Users',
     icon: <Users size={20} />,
+    requiredPermission: 'users.view',
     children: [
       { label: 'All Users', path: '/admin/users' },
       { label: 'Job Seekers', path: '/admin/users?role=jobseeker' },
@@ -65,6 +73,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'jobs',
     label: 'Jobs',
     icon: <Briefcase size={20} />,
+    requiredPermission: 'jobs.view',
     children: [
       { label: 'All Jobs', path: '/admin/jobs' },
       { label: 'Active Jobs', path: '/admin/jobs?status=active' },
@@ -77,6 +86,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'applications',
     label: 'Applications',
     icon: <ClipboardList size={20} />,
+    requiredPermission: 'applications.view',
     children: [
       { label: 'All Applications', path: '/admin/applications' },
       { label: 'Pending', path: '/admin/applications?status=Pending' },
@@ -88,6 +98,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'community',
     label: 'Community',
     icon: <Share2 size={20} />,
+    requiredPermission: 'community.view',
     children: [
       { label: 'All Posts', path: '/admin/community/posts' },
       { label: 'Flagged / Reported', path: '/admin/community/reported' },
@@ -98,6 +109,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'blogs',
     label: 'Blogs',
     icon: <Newspaper size={20} />,
+    requiredPermission: 'blogs.view',
     children: [
       { label: 'All Blogs', path: '/admin/blogs' },
       { label: 'Published', path: '/admin/blogs?status=published' },
@@ -106,9 +118,33 @@ const PRIMARY_NAV: NavSection[] = [
     ],
   },
   {
+    id: 'cms',
+    label: 'CMS',
+    icon: <LayoutTemplate size={20} />,
+    requiredPermission: ['cms.view', 'policies.view'],
+    children: [
+      { label: 'Legal & Policies', path: '/admin/cms?tab=policies', requiredPermission: 'policies.view' },
+      { label: 'Website Content', path: '/admin/cms?tab=homepage', requiredPermission: 'cms.view' },
+      { label: 'Site Content & Copy', path: '/admin/cms?tab=site-content', requiredPermission: 'cms.view' },
+      { label: 'Pages', path: '/admin/cms?tab=pages', requiredPermission: 'cms.view' },
+      { label: 'FAQs', path: '/admin/cms?tab=faqs', requiredPermission: 'cms.view' },
+      { label: 'Career Tips', path: '/admin/cms?tab=career-tips', requiredPermission: 'cms.view' },
+      { label: 'Newsletter', path: '/admin/cms?tab=newsletter', requiredPermission: 'cms.view' },
+    ],
+  },
+  {
+    id: 'roles-permissions',
+    label: 'Roles & Permissions',
+    icon: <ShieldCheck size={20} />,
+    path: '/admin/roles-permissions',
+    requiredPermission: ['roles.view', 'permissions.manage'],
+    superAdminOnly: true,
+  },
+  {
     id: 'categories',
     label: 'Categories',
     icon: <Tags size={20} />,
+    requiredPermission: ['jobs.view', 'blogs.view'],
     children: [
       { label: 'Job Categories', path: '/admin/jobcategories' },
       { label: 'Blog Categories', path: '/admin/blog-categories' },
@@ -118,6 +154,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'companies',
     label: 'Companies',
     icon: <Building2 size={20} />,
+    requiredPermission: 'users.view',
     children: [
       { label: 'All Companies', path: '/admin/employers' },
       { label: 'Verified', path: '/admin/employers?status=verified' },
@@ -128,6 +165,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'reports',
     label: 'Reports',
     icon: <ShieldAlert size={20} />,
+    requiredPermission: 'community.manage_reports',
     children: [
       { label: 'All Reports', path: '/admin/reports' },
       { label: 'User Reports', path: '/admin/reports?targetType=user' },
@@ -139,6 +177,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'analytics',
     label: 'Analytics',
     icon: <BarChart3 size={20} />,
+    requiredPermission: 'analytics.view',
     children: [
       { label: 'User Growth', path: '/admin/analytics?tab=users' },
       { label: 'Job Trends', path: '/admin/analytics?tab=jobs' },
@@ -149,6 +188,7 @@ const PRIMARY_NAV: NavSection[] = [
     id: 'settings',
     label: 'Settings',
     icon: <Settings size={20} />,
+    requiredPermission: 'settings.view',
     children: [
       { label: 'General Settings', path: '/admin/settings' },
       { label: 'Roles & Permissions', path: '/admin/roles-permissions', superAdminOnly: true },
@@ -160,6 +200,7 @@ const PRIMARY_NAV: NavSection[] = [
     label: 'Audit Logs',
     icon: <ScrollText size={20} />,
     path: '/admin/audit-logs',
+    requiredPermission: 'audit_logs.view',
     superAdminOnly: true,
   },
   {
@@ -167,6 +208,7 @@ const PRIMARY_NAV: NavSection[] = [
     label: 'Email Logs',
     icon: <Mail size={20} />,
     path: '/admin/email-logs',
+    requiredPermission: 'email.view',
   },
 ];
 
@@ -182,18 +224,21 @@ const SECONDARY_NAV: NavSection[] = [
     label: 'Support Tickets',
     icon: <LifeBuoy size={20} />,
     path: '/admin/support',
+    requiredPermission: 'support.view',
   },
   {
     id: 'plans',
     label: 'Plans & Monetization',
     icon: <CreditCard size={20} />,
     path: '/admin/plans',
+    requiredPermission: 'settings.view',
   },
   {
     id: 'notifications',
     label: 'Notifications',
     icon: <Bell size={20} />,
     path: '/admin/notifications',
+    requiredPermission: 'notifications.view',
   },
 ];
 
@@ -203,6 +248,23 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  // Fetch current user's effective permissions
+  const { data: myPermsData } = useQuery({
+    queryKey: ['myPermissions'],
+    queryFn: getMyPermissions,
+    staleTime: 60_000,
+  });
+
+  const userPermissions = useMemo(() => myPermsData?.permissions || [], [myPermsData]);
+
+  // Check if current user has permission for a nav section or sub-item
+  const hasNavPermission = (required?: string | string[]) => {
+    if (isSuperAdmin) return true;
+    if (!required) return true;
+    const list = Array.isArray(required) ? required : [required];
+    return list.some((p) => userPermissions.includes(p) || userPermissions.includes('*'));
+  };
 
   // Auto-expand sections when the current route matches any child
   useEffect(() => {
@@ -319,43 +381,33 @@ export const Sidebar: React.FC = () => {
                 <span className="truncate text-base font-bold text-white tracking-wide">
                   QuickJobs
                 </span>
-                <span className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider -mt-0.5">
-                  Super Admin
+                <span className="truncate text-[10px] uppercase font-bold text-orange-400 tracking-wider">
+                  {isSuperAdmin ? 'Super Admin' : 'Admin Portal'}
                 </span>
               </div>
             )}
           </Link>
-
-          {/* Close button — Mobile only */}
-          <button
-            onClick={closeMobileNav}
-            aria-label="Close drawer menu"
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors md:hidden focus:outline-none focus:ring-2 focus:ring-orange-500"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Profile Card Section */}
+        {/* User Identity / Role Overview */}
         {showExpandedContent ? (
-          <div className="p-3 shrink-0">
-            <div className="relative overflow-hidden rounded-2xl bg-slate-900/60 border border-slate-800/80 p-3 backdrop-blur-md shadow-lg group transition-all duration-300 hover:border-slate-700/80">
-              <div className="flex items-center gap-3">
-                <div className="relative shrink-0">
-                  <div className="absolute -inset-1 rounded-full bg-orange-500/30 blur-md group-hover:bg-orange-500/50 transition-all duration-300" />
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 border border-orange-500/60 text-orange-400 shadow-md">
-                    <User size={20} />
+          <div className="px-3 py-3 border-b border-slate-800/60 shrink-0">
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-900/40 p-2.5 border border-slate-800/50 shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative group">
+                  <div className="absolute -inset-0.5 rounded-full bg-orange-500/20 blur-xs group-hover:bg-orange-500/40 transition-all duration-300" />
+                  <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 border border-orange-500/50 text-orange-400">
+                    <User size={18} />
                   </div>
                 </div>
-
-                <div className="flex flex-col truncate">
+                <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-bold text-slate-100">
-                      {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                    <span className="truncate text-xs font-semibold text-slate-200">
+                      {admin?.name || 'Administrator'}
                     </span>
                     {isSuperAdmin && (
-                      <span className="shrink-0 text-orange-400" title="Full Platform Access">
-                        <ShieldAlert size={14} />
+                      <span className="shrink-0 rounded bg-orange-500/20 px-1.5 py-0.2 text-[9px] font-bold text-orange-400 border border-orange-500/30 uppercase">
+                        Super
                       </span>
                     )}
                   </div>
@@ -381,11 +433,12 @@ export const Sidebar: React.FC = () => {
         <nav className="custom-sidebar-scroll flex-1 space-y-1 overflow-y-auto px-2.5 py-2">
           {PRIMARY_NAV.map((sec) => {
             if (sec.superAdminOnly && !isSuperAdmin) return null;
+            if (!hasNavPermission(sec.requiredPermission)) return null;
 
             const isExpanded = !!openSections[sec.id];
             const activeSection = isSectionActive(sec);
 
-            // Item has direct path (no children, e.g. Dashboard, Audit Logs)
+            // Item has direct path (no children, e.g. Dashboard, Roles & Permissions, Audit Logs)
             if (sec.path && !sec.children) {
               return (
                 <Link
@@ -411,8 +464,10 @@ export const Sidebar: React.FC = () => {
 
             // Accordion Item with Children
             const visibleChildren = (sec.children || []).filter(
-              (c) => !c.superAdminOnly || isSuperAdmin
+              (c) => (!c.superAdminOnly || isSuperAdmin) && hasNavPermission(c.requiredPermission)
             );
+
+            if (visibleChildren.length === 0) return null;
 
             return (
               <div key={sec.id} className="space-y-0.5">
@@ -485,7 +540,7 @@ export const Sidebar: React.FC = () => {
             </div>
           )}
 
-          {SECONDARY_NAV.map((sec) => (
+          {SECONDARY_NAV.filter((sec) => hasNavPermission(sec.requiredPermission)).map((sec) => (
             <Link
               key={sec.id}
               to={sec.path!}
