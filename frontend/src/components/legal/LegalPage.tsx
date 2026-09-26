@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { FileText } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { getLegalPage } from '../../api/legalApi';
 import { SkeletonParagraph } from '../ui/Skeleton';
 
@@ -27,28 +27,11 @@ interface LegalPageProps {
  * already treats these as one interchangeable "page" concept.
  */
 export function LegalPage({ slug, defaultTitle, fallback }: LegalPageProps) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [page, setPage] = useState<{ title: string; content: string; isDraftPlaceholder?: boolean } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getLegalPage(slug)
-      .then((data) => {
-        if (!cancelled) setPage(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+  const { data: page, isLoading: loading, isError: error } = useQuery({
+    queryKey: ['legal-page', slug],
+    queryFn: () => getLegalPage(slug),
+    retry: false,
+  });
 
   const hasRealContent = !!page?.content?.trim() && !page.isDraftPlaceholder;
 

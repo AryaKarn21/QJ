@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import StarFooter from '../../assets/quickjobs.png';
 import {
   Home,
@@ -31,8 +31,10 @@ const WhatsappIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
 );
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { useQuery } from '@tanstack/react-query';
 import { FooterTestimonials } from './FooterTestimonials';
-import { getPublishedPolicies, type PublishedPolicy } from '../../api/cmsPublicApi';
+import { getPublishedPolicies } from '../../api/cmsPublicApi';
+import { useSiteContent } from '../../hooks/useSiteContent';
 
 // Fixed public route for every policy type beyond the original three
 // (Privacy/Terms/Community Guidelines, which already have their own footer
@@ -58,23 +60,24 @@ interface DecodedToken {
 
 const Footer: React.FC = () => {
   const navigate = useNavigate();
-  const [extraPolicies, setExtraPolicies] = useState<PublishedPolicy[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getPublishedPolicies()
-      .then((policies) => {
-        if (!cancelled) setExtraPolicies(policies.filter((p) => POLICY_TYPE_ROUTES[p.policyType]));
-      })
-      .catch(() => {
-        // Footer must never break the rest of the page over this — the
-        // original three legal links below are static and always render
-        // regardless of whether this fetch succeeds.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Footer must never break the rest of the page over this — an empty
+  // array (rather than surfacing the query error) just means the extra
+  // policies row silently doesn't render; the 3 static legal links below
+  // always render regardless.
+  const { data: extraPolicies = [] } = useQuery({
+    queryKey: ['published-policies'],
+    queryFn: () => getPublishedPolicies().then((policies) => policies.filter((p) => POLICY_TYPE_ROUTES[p.policyType])),
+    retry: false,
+  });
+  const aboutDescription = useSiteContent(
+    'footer.about.description',
+    'Empowering talent and connecting industry leaders through seamless job discovery, real-time insights, and modern recruitment tools.'
+  );
+  const companyHeading = useSiteContent('footer.company.heading', 'Company');
+  const jobSeekersHeading = useSiteContent('footer.jobSeekers.heading', 'Job Seekers');
+  const employersHeading = useSiteContent('footer.employers.heading', 'Employers');
+  const newsletterHeading = useSiteContent('footer.newsletter.heading', 'Newsletter');
+  const newsletterDescription = useSiteContent('footer.newsletter.description', 'Subscribe to get job alerts and hiring trends.');
 
   // Check authentication and role
   const token = localStorage.getItem('token');
@@ -150,7 +153,7 @@ const Footer: React.FC = () => {
                 />
               </div>
               <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
-                Empowering talent and connecting industry leaders through seamless job discovery, real-time insights, and modern recruitment tools.
+                {aboutDescription}
               </p>
             </div>
 
@@ -189,7 +192,7 @@ const Footer: React.FC = () => {
           {/* Quick Links & Company (2 Columns) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-4">
-              Company
+              {companyHeading}
             </h3>
             <ul className="space-y-3 text-sm">
               <li>
@@ -238,7 +241,7 @@ const Footer: React.FC = () => {
           {/* For Job Seekers (2 Columns) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-4">
-              Job Seekers
+              {jobSeekersHeading}
             </h3>
             <ul className="space-y-3 text-sm">
               <li>
@@ -274,7 +277,7 @@ const Footer: React.FC = () => {
           {/* For Job Providers (2 Columns) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-4">
-              Employers
+              {employersHeading}
             </h3>
             <ul className="space-y-3 text-sm">
               <li>
@@ -310,10 +313,10 @@ const Footer: React.FC = () => {
           {/* Newsletter Subscription (2 Columns / Full Width on Small Screens) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-4">
-              Newsletter
+              {newsletterHeading}
             </h3>
             <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-              Subscribe to get job alerts and hiring trends.
+              {newsletterDescription}
             </p>
             <form onSubmit={handleNewsletterSubmit} className="space-y-2">
               <div className="relative">

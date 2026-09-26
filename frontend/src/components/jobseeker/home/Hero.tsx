@@ -9,7 +9,9 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { getHomepageContent } from '../../../api/cmsPublicApi';
+import { useSiteContent } from '../../../hooks/useSiteContent';
 import jobPhoto from '../../../assets/authImages/loginimg.webp';
 
 // Hardcoded copy stays as the fallback — CMS content only overrides it
@@ -43,20 +45,25 @@ const itemVariants: Variants = {
 const Hero: React.FC = () => {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
+  const searchPlaceholder = useSiteContent('homepage.hero.searchPlaceholder', 'Search for jobs or internships...');
+  const popularSearchesLabel = useSiteContent('homepage.hero.popularSearchesLabel', 'Popular Searches:');
   const [searchInput, setSearchInput] = useState('');
-  const [cms, setCms] = useState<typeof DEFAULTS | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    getHomepageContent()
-      .then((res) => {
-        if (res.isPublished) {
-          setCms({ ...DEFAULTS, ...res.hero, popularSearches: res.hero.popularSearches?.length ? res.hero.popularSearches : DEFAULTS.popularSearches });
-        }
-      })
-      .catch(() => {}); // network hiccup — just keep showing the hardcoded defaults
-  }, []);
+  // Shared ['homepage-content'] query key with CallToAction.tsx and every
+  // homepage section component (see hooks/useHomepageSection.ts) — all of
+  // them mounting together dedupes into one cached request instead of each
+  // firing its own. A network hiccup/unpublished draft just falls back to
+  // DEFAULTS below, same as before.
+  const { data: res } = useQuery({
+    queryKey: ['homepage-content'],
+    queryFn: getHomepageContent,
+    retry: false,
+  });
+  const cms = res?.isPublished
+    ? { ...DEFAULTS, ...res.hero, popularSearches: res.hero.popularSearches?.length ? res.hero.popularSearches : DEFAULTS.popularSearches }
+    : null;
 
   const content = cms || DEFAULTS;
   const staticPopularJobs = content.popularSearches;
@@ -199,7 +206,7 @@ const Hero: React.FC = () => {
               <Search size={19} className={`shrink-0 transition-colors duration-200 ${isFocused ? 'text-orange-500' : 'text-slate-400'}`} />
               <input
                 type="text"
-                placeholder="Search for jobs or internships..."
+                placeholder={searchPlaceholder}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -258,7 +265,7 @@ const Hero: React.FC = () => {
 
         {/* Popular searches */}
         <motion.div variants={itemVariants} className="mb-6 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-          <span className="text-[13px] font-medium text-slate-400">Popular Searches:</span>
+          <span className="text-[13px] font-medium text-slate-400">{popularSearchesLabel}</span>
           {staticPopularJobs.map((job, i) => (
             <button
               key={i}

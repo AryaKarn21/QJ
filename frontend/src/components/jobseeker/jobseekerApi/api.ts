@@ -181,6 +181,77 @@ export const fetchJobById = async (id: string): Promise<Job> => {
 };
 
 // Apply to a job
+// ---------------------------------------------------------------------------
+// Technical Assessments (candidate side) — the secure link an employer
+// assigns is `/assessment/:applicationId/:token`; every call below is
+// scoped to that pair and re-verified server-side against the logged-in
+// user's own application (see assessmentController.js's
+// verifyCandidateAccess).
+// ---------------------------------------------------------------------------
+
+export interface CandidateAssessmentQuestion {
+  _id: string;
+  type: 'mcq' | 'multiple_select' | 'coding' | 'short_answer' | 'long_answer' | 'file_submission';
+  questionText: string;
+  options?: string[];
+  codingLanguage?: string;
+  points: number;
+}
+
+export interface CandidateAssessmentResponse {
+  assessment: {
+    _id: string;
+    title: string;
+    description?: string;
+    instructions?: string;
+    duration: number;
+    passingScore: number;
+    maxAttempts: number;
+    questions: CandidateAssessmentQuestion[];
+  };
+  assignment: {
+    status: 'assigned' | 'in_progress' | 'submitted' | 'evaluated';
+    deadline?: string;
+    attemptsUsed: number;
+    attemptsRemaining: number;
+    expired: boolean;
+    latestScore?: number;
+    latestPassed?: boolean;
+  };
+  canStart: boolean;
+}
+
+export const getAssessmentForCandidate = async (
+  applicationId: string,
+  token: string
+): Promise<CandidateAssessmentResponse> => {
+  const res = await api.get(`/api/assessments/access/${applicationId}/${token}`);
+  return res.data;
+};
+
+export const startAssessmentAttempt = async (
+  applicationId: string,
+  token: string
+): Promise<{ attemptId: string; startedAt: string; durationMinutes: number }> => {
+  const res = await api.post(`/api/assessments/access/${applicationId}/${token}/start`);
+  return res.data;
+};
+
+export interface AssessmentAnswerInput {
+  question: string;
+  selectedOptionIndexes?: number[];
+  textAnswer?: string;
+  fileUrl?: string;
+}
+
+export const submitAssessmentAttempt = async (
+  assessmentId: string,
+  payload: { applicationId: string; token: string; attemptId: string; answers: AssessmentAnswerInput[] }
+) => {
+  const res = await api.post(`/api/assessments/${assessmentId}/submit`, payload);
+  return res.data as { message: string; status: string; score: number; maxScore: number; passed?: boolean; needsManualGrading: boolean };
+};
+
 export const applyToJob = async ({
   jobId,
   howDidYouHear,

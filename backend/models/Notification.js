@@ -62,6 +62,19 @@ const notificationSchema = new mongoose.Schema(
         "interview_scheduled",
         "interview_rescheduled",
         "interview_cancelled",
+        // Fired 24h and 1h before a scheduled interview — see
+        // utils/interviewReminderCron.js for the dedup-safe scheduler.
+        "interview_reminder",
+        // Technical/skills assessment workflow — greenfield, added
+        // alongside models/Assessment.js.
+        "assessment_assigned",
+        "assessment_submitted",
+        // A Job Provider's optional free-text message to a candidate,
+        // attached to a status-change/interview/assessment action (see
+        // the "Job Provider Custom Email" feature) — distinct from
+        // "new_message" (the community/DM system) since this is tied to
+        // a specific application, not a conversation thread.
+        "job_provider_message",
       ],
     },
     message: {

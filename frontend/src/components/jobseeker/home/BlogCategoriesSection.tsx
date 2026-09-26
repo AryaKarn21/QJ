@@ -4,6 +4,7 @@ import { BookOpen, ArrowRight, FileText } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { getActiveBlogCategories, type PublicBlogCategory } from '../../../api/blogCategoryApi';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 // Same deterministic-accent trick JobCategories.tsx/BlogCategoriesExplore.tsx
 // use, so a category without a custom icon still looks intentional.
@@ -37,6 +38,10 @@ const BlogCategoriesSection = () => {
   const [categories, setCategories] = useState<PublicBlogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const section = useHomepageSection('blogCategories', {
+    heading: 'Explore Blog Categories',
+    description: 'Career insights, hiring trends, and advice — browse by topic.',
+  });
 
   useEffect(() => {
     getActiveBlogCategories()
@@ -45,6 +50,7 @@ const BlogCategoriesSection = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  if (!section.isActive) return null;
   if (!loading && (failed || categories.length === 0)) return null;
 
   return (
@@ -63,9 +69,9 @@ const BlogCategoriesSection = () => {
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
               <BookOpen size={14} /> From the Blog
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Explore Blog Categories</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{section.heading}</h2>
             <p className="mt-1 text-sm text-slate-500 sm:text-base">
-              Career insights, hiring trends, and advice — browse by topic.
+              {section.description}
             </p>
           </div>
           <button

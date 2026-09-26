@@ -5,6 +5,8 @@ const Employer = require("../models/Employer");
 const Application = require("../models/Application");
 const SavedCandidate = require("../models/SavedCandidate");
 const CompanyMember = require("../models/CompanyMember");
+const NotificationSettings = require("../models/NotificationSettings");
+const Follow = require("../models/Follow");
 const sendNotification = require("../utils/sendNotifications");
 const sendMail = require("../utils/sendMail");
 const {
@@ -12,7 +14,17 @@ const {
   sendInterviewScheduledEmail,
   sendInterviewRescheduledEmail,
   sendInterviewCancelledEmail,
+  sendStatusChangeEmail,
+  sendCustomMessageEmail,
+  buildInterviewScheduledEmailContent,
+  buildInterviewRescheduledEmailContent,
+  buildInterviewCancelledEmailContent,
+  buildStatusChangeEmailContent,
+  buildAssessmentRequestEmailContent,
 } = require("../services/interviewEmailService");
+const Assessment = require("../models/Assessment");
+
+const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 const { recordAdminAudit } = require("../utils/auditLogger");
 const { SYMBOL_BY_CODE } = require("../data/currencies");
 const { SAFE_USER_FIELDS } = require("../utils/safeUserFields");
@@ -322,28 +334,62 @@ const createJob = async (req, res) => {
       });
     }
 
-    // Notify relevant jobseekers (in-app and via email)
+    // Notify relevant jobseekers (in-app and via email). Targeting mode is
+    // a Super Admin-configurable singleton (NotificationSettings) — see
+    // spec section 2: matching (default, today's location filter),
+    // following (jobseekers who follow this employer's company), or all
+    // (every opted-in jobseeker, no filter).
     try {
-      // Find jobseekers who have opted in for new job alerts
+      const settings = await NotificationSettings.findById(NotificationSettings.SINGLETON_ID).lean();
+      const jobAlertMode = settings?.jobAlertMode || "matching";
+
       const seekers = await User.find({ role: "jobseeker", "notificationPreferences.newJobs": true }).lean();
-      const relevantSeekers = seekers.filter(s => {
-        const prefs = s.notificationPreferences || {};
-        if (prefs.allNotifications === false) return false;
-        const locMatch = s.location && (s.location === job.location || (Array.isArray(s.preferredLocations) && s.preferredLocations.includes(job.location)));
-        return locMatch || !s.location;
-      });
+      let relevantSeekers;
+
+      if (jobAlertMode === "all") {
+        relevantSeekers = seekers.filter((s) => (s.notificationPreferences || {}).allNotifications !== false);
+      } else if (jobAlertMode === "following") {
+        const followerIds = await Follow.find({ following: employerId, followingType: "company" }).distinct("follower");
+        const followerIdSet = new Set(followerIds.map(String));
+        relevantSeekers = seekers.filter((s) => {
+          const prefs = s.notificationPreferences || {};
+          if (prefs.allNotifications === false) return false;
+          return followerIdSet.has(String(s._id));
+        });
+      } else {
+        // "matching" — existing location-based filter, unchanged.
+        relevantSeekers = seekers.filter(s => {
+          const prefs = s.notificationPreferences || {};
+          if (prefs.allNotifications === false) return false;
+          const locMatch = s.location && (s.location === job.location || (Array.isArray(s.preferredLocations) && s.preferredLocations.includes(job.location)));
+          return locMatch || !s.location;
+        });
+      }
+
       await Promise.all(
         relevantSeekers.map(async seeker => {
           await sendNotification({
             recipient: seeker._id,
-            type: "new_job",
+            // Was "new_job", which is not a value in Notification's `type`
+            // enum — Mongoose rejected every one of these with a
+            // ValidationError that sendNotification() only console.error's
+            // (see utils/sendNotifications.js), so this in-app notification
+            // was silently never created. "job_recommendation" is the
+            // existing enum value that actually matches what this is: a
+            // job surfaced to this seeker because it matched their
+            // preferences, not a generic broadcast.
+            type: "job_recommendation",
             message: `New job "${title}" posted at ${job.location}`,
             relatedJob: job._id,
             link: `/jobs/${job._id}`,
           });
           if (seeker.notificationPreferences?.emailAlerts) {
             const emailText = `Hi ${seeker.name || "Jobseeker"},\n\nA new job that matches your preferences has been posted:\n\nTitle: ${title}\nLocation: ${job.location}\nCompany: ${employer.name}\n\nView the job here: ${process.env.FRONTEND_URL || "https://quickjobs.app"}/jobs/${job._id}\n\nBest regards,\nQuickJobs Team`;
-            await sendMail(seeker.email, `New job posted: ${title}`, emailText);
+            await sendMail(seeker.email, `New job posted: ${title}`, emailText, null, {
+              type: "job_alert",
+              recipientUser: seeker._id,
+              relatedJob: job._id,
+            });
           }
         })
       );
@@ -574,10 +620,13 @@ if (req.body.status !== undefined) {
 // Update Application 
 const updateApplication = async (req, res) => {
   const { applicationId } = req.params;
-  const { status, interview } = req.body;
+  const { status, interview, customMessage, cancellationReason } = req.body;
   const employerId = req.user.id;
 
-  const allowedStatuses = ["Pending", "Reviewed", "Accepted", "Rejected", "Interview Scheduled"];
+  // "Assessment Assigned" deliberately excluded — that status is only ever
+  // set by assessmentController.js's assignAssessment (it requires an
+  // actual assessment to be picked/created, not a bare status flip).
+  const allowedStatuses = ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected", "Interview Scheduled"];
   if (!allowedStatuses.includes(status)) {
     return res.status(400).json({ message: "Invalid status value" });
   }
@@ -635,6 +684,9 @@ const updateApplication = async (req, res) => {
 
     // Update status
     application.status = status;
+    if (status !== previousStatus) {
+      application.statusHistory.push({ status, changedBy: req.user.id });
+    }
 
     let emailResult = { sent: null, recipient: candidateEmail || "" };
 
@@ -643,13 +695,19 @@ const updateApplication = async (req, res) => {
         scheduledAt: new Date(interview.scheduledAt),
         duration: interview.duration ? parseInt(interview.duration, 10) || 30 : 30,
         mode: interview.mode || "Video Call",
+        type: interview.type || undefined,
+        timezone: interview.timezone || "Asia/Kathmandu",
         meetingLink: interview.meetingLink ? interview.meetingLink.trim() : "",
         location: interview.location ? interview.location.trim() : "",
         notes: interview.notes ? interview.notes.trim() : "",
         interviewer: interview.interviewer ? interview.interviewer.trim() : "",
+        status: wasAlreadyScheduled ? "RESCHEDULED" : "SCHEDULED",
         emailStatus: "pending",
         emailSentAt: undefined,
         emailError: "",
+        // Reschedule re-arms both reminders relative to the new time.
+        reminder24hSentAt: undefined,
+        reminder1hSentAt: undefined,
       };
 
       // In-App Notification
@@ -698,9 +756,12 @@ const updateApplication = async (req, res) => {
           scheduledAt: application.interview.scheduledAt,
           duration: application.interview.duration,
           mode: application.interview.mode,
+          type: application.interview.type,
+          timezone: application.interview.timezone,
           meetingLink: application.interview.meetingLink,
           location: application.interview.location,
           notes: application.interview.notes,
+          customMessage: customMessage || "",
           applicationId: application._id,
         });
 
@@ -737,15 +798,23 @@ const updateApplication = async (req, res) => {
 
       // Handle interview cancellation if status changed away from Interview Scheduled
       if (wasCancelled && candidateEmail && isCandidateActive) {
+        if (application.interview) {
+          application.interview.status = "CANCELLED";
+          application.interview.reminder24hSentAt = undefined;
+          application.interview.reminder1hSentAt = undefined;
+        }
+
         const cancelRes = await sendInterviewCancelledEmail({
           recipient: candidateEmail,
           candidateName: candidate.name || "Candidate",
           companyName,
           jobTitle: application.job.title,
           reason:
-            status === "Rejected"
+            cancellationReason ||
+            (status === "Rejected"
               ? "Application not moving forward at this time"
-              : `Application status updated to ${status}`,
+              : `Application status updated to ${status}`),
+          customMessage: customMessage || "",
           applicationId: application._id,
         });
 
@@ -755,29 +824,21 @@ const updateApplication = async (req, res) => {
           event: "cancelled",
         };
       } else if (["Accepted", "Rejected"].includes(status) && candidateEmail && isCandidateActive) {
-        let subject;
-        let text;
-        if (status === "Accepted") {
-          subject = `You're accepted: ${application.job.title} at ${companyName}`;
-          text =
-            `Hi ${candidate.name || "there"},\n\n` +
-            `Great news — your application for "${application.job.title}" at ${companyName} has been accepted. ` +
-            `The employer will be in touch with next steps.\n\n— QuickJobs Team`;
-        } else {
-          subject = `Update on your application: ${application.job.title} at ${companyName}`;
-          text =
-            `Hi ${candidate.name || "there"},\n\n` +
-            `Thank you for applying to "${application.job.title}" at ${companyName}. After careful review, ` +
-            `the employer has decided not to move forward with your application at this time. ` +
-            `We encourage you to keep applying to other roles on QuickJobs.\n\n— QuickJobs Team`;
-        }
+        const statusRes = await sendStatusChangeEmail({
+          recipient: candidateEmail,
+          candidateName: candidate.name || "Candidate",
+          companyName,
+          jobTitle: application.job.title,
+          status,
+          customMessage: customMessage || "",
+          applicationId: application._id,
+        });
 
-        try {
-          await sendMail(candidateEmail, subject, text);
+        if (statusRes.success) {
           emailResult = { sent: true, recipient: candidateEmail };
-        } catch (err) {
-          console.error("Failed to send application status email:", err.message);
-          emailResult = { sent: false, recipient: candidateEmail, message: err.message };
+        } else {
+          console.error("Failed to send application status email:", statusRes.error);
+          emailResult = { sent: false, recipient: candidateEmail, message: statusRes.error };
         }
       }
     }
@@ -883,6 +944,222 @@ const resendInterviewEmail = async (req, res) => {
     }
   } catch (error) {
     console.error("Error resending interview email:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ============================================================
+// PATCH /api/employer/applications/:applicationId/interview-outcome —
+// mark a past interview COMPLETED or NO_SHOW. Internal record only, no
+// candidate email (spec section 20).
+// ============================================================
+const updateInterviewOutcome = async (req, res) => {
+  const { applicationId } = req.params;
+  const { outcome } = req.body;
+  const employerId = req.user.id;
+
+  if (!["COMPLETED", "NO_SHOW"].includes(outcome)) {
+    return res.status(400).json({ message: "outcome must be COMPLETED or NO_SHOW" });
+  }
+
+  try {
+    const application = await Application.findById(applicationId).populate({
+      path: "job",
+      select: "employer title",
+    });
+    if (!application) return res.status(404).json({ message: "Application not found" });
+
+    const jobEmployerId = application.job?.employer?.toString();
+    if (jobEmployerId !== employerId) {
+      return res.status(403).json({ message: "Not authorized to update this application" });
+    }
+    if (!application.interview?.scheduledAt) {
+      return res.status(400).json({ message: "No interview scheduled for this application" });
+    }
+
+    application.interview.status = outcome;
+    application.statusHistory.push({
+      status: application.status,
+      changedBy: employerId,
+      note: `Interview marked as ${outcome === "NO_SHOW" ? "no-show" : "completed"}`,
+    });
+    await application.save();
+
+    res.json({ message: "Interview outcome updated", interview: application.interview });
+  } catch (error) {
+    console.error("Error updating interview outcome:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ============================================================
+// POST /api/employer/applications/:applicationId/email-preview — renders
+// the exact subject/text/html a real action would send, WITHOUT saving
+// anything or sending mail. Single choke point every EmailPreviewModal
+// call site uses, so no template ever drifts out of sync between preview
+// and the real send path (both call the same buildXContent functions).
+// ============================================================
+const previewApplicationEmail = async (req, res) => {
+  const { applicationId } = req.params;
+  const { action, customMessage, cancellationReason, status, interview, assessmentId, deadline } = req.body;
+  const employerId = req.user.id;
+
+  try {
+    const application = await Application.findById(applicationId)
+      .populate({ path: "job", populate: { path: "employer", select: "name" } })
+      .populate("applicant", "name email");
+    if (!application) return res.status(404).json({ message: "Application not found" });
+
+    const jobEmployerId = application.job?.employer?._id?.toString() || application.job?.employer?.toString();
+    if (jobEmployerId !== employerId) {
+      return res.status(403).json({ message: "Not authorized to preview email for this application" });
+    }
+
+    const companyName =
+      application.job?.companyOverride?.name?.trim() ||
+      application.job?.employer?.name?.trim() ||
+      "QuickJobs Employer";
+    const candidateName = application.applicant?.name || "Candidate";
+    const candidateEmail = application.applicant?.email || "";
+    const jobTitle = application.job?.title || "Position";
+
+    let content;
+    switch (action) {
+      case "schedule_interview":
+      case "reschedule_interview": {
+        if (!interview?.scheduledAt) {
+          return res.status(400).json({ message: "An interview date/time is required to preview this email." });
+        }
+        const builder = action === "reschedule_interview" ? buildInterviewRescheduledEmailContent : buildInterviewScheduledEmailContent;
+        content = builder({
+          candidateName,
+          companyName,
+          jobTitle,
+          scheduledAt: interview.scheduledAt,
+          duration: interview.duration || 30,
+          mode: interview.mode || "Video Call",
+          type: interview.type,
+          timezone: interview.timezone || "Asia/Kathmandu",
+          meetingLink: interview.meetingLink || "",
+          location: interview.location || "",
+          notes: interview.notes || "",
+          customMessage: customMessage || "",
+        });
+        break;
+      }
+      case "cancel_interview": {
+        content = buildInterviewCancelledEmailContent({
+          candidateName,
+          companyName,
+          jobTitle,
+          reason: cancellationReason || "",
+          customMessage: customMessage || "",
+        });
+        break;
+      }
+      case "status_change": {
+        if (!status) return res.status(400).json({ message: "A status is required to preview this email." });
+        content = buildStatusChangeEmailContent({
+          candidateName,
+          companyName,
+          jobTitle,
+          status,
+          customMessage: customMessage || "",
+        });
+        break;
+      }
+      case "assign_assessment": {
+        if (!assessmentId) return res.status(400).json({ message: "assessmentId is required to preview this email." });
+        const assessment = await Assessment.findById(assessmentId).select("employer deadline");
+        if (!assessment) return res.status(404).json({ message: "Assessment not found" });
+        if (String(assessment.employer) !== employerId) {
+          return res.status(403).json({ message: "Not authorized to preview this assessment's email" });
+        }
+        const effectiveDeadline = deadline ? new Date(deadline) : assessment.deadline;
+        content = buildAssessmentRequestEmailContent({
+          candidateName,
+          companyName,
+          jobTitle,
+          // The real secure token doesn't exist until assignAssessment
+          // actually runs — the preview shows the link's shape, not a
+          // usable one.
+          assessmentLink: `${FRONTEND_URL}/assessment/${application._id}/<generated-on-send>`,
+          assessmentDeadline: effectiveDeadline ? new Date(effectiveDeadline).toDateString() : "",
+          customMessage: customMessage || "",
+        });
+        break;
+      }
+      default:
+        return res.status(400).json({ message: "Unknown preview action" });
+    }
+
+    res.json({ to: candidateEmail, ...content });
+  } catch (error) {
+    console.error("Error building email preview:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ============================================================
+// POST /api/employer/applications/:applicationId/message — the
+// standalone "[Send Message]" action (spec section 22): a one-off
+// employer note attached to this application. Distinct from, and does
+// not replace, the full Conversation/Message system's "Message
+// Candidate" entry point already in Applicants.tsx — this is a
+// lighter, one-way note tied to a specific application, matching the
+// Notification model's own "job_provider_message" comment.
+// ============================================================
+const sendCustomMessageToCandidate = async (req, res) => {
+  const { applicationId } = req.params;
+  const { message } = req.body;
+  const employerId = req.user.id;
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ message: "Message text is required" });
+  }
+
+  try {
+    const application = await Application.findById(applicationId)
+      .populate({ path: "job", populate: { path: "employer", select: "name" } })
+      .populate("applicant", "name email isActive");
+    if (!application) return res.status(404).json({ message: "Application not found" });
+
+    const jobEmployerId = application.job?.employer?._id?.toString() || application.job?.employer?.toString();
+    if (jobEmployerId !== employerId) {
+      return res.status(403).json({ message: "Not authorized to message this candidate" });
+    }
+
+    const candidate = application.applicant;
+    const companyName =
+      application.job?.companyOverride?.name?.trim() ||
+      application.job?.employer?.name?.trim() ||
+      "QuickJobs Employer";
+
+    if (candidate?._id) {
+      await sendNotification({
+        recipient: candidate._id,
+        type: "job_provider_message",
+        message: message.trim().slice(0, 300),
+        relatedJob: application.job._id,
+        relatedApplication: application._id,
+        link: "/user/applications",
+      });
+    }
+
+    let emailResult = { success: false };
+    if (candidate?.email && candidate.isActive !== false) {
+      emailResult = await sendCustomMessageEmail({
+        recipient: candidate.email,
+        candidateName: candidate.name || "Candidate",
+        companyName,
+        message: message.trim(),
+        applicationId: application._id,
+      });
+    }
+
+    res.json({ message: "Message sent", emailSent: emailResult.success });
+  } catch (error) {
+    console.error("Error sending custom message to candidate:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -1624,4 +1901,7 @@ module.exports = {
   updateEmployerHiringStatus,
   getApplicationResume,
   resendInterviewEmail,
+  updateInterviewOutcome,
+  previewApplicationEmail,
+  sendCustomMessageToCandidate,
 };

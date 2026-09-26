@@ -23,6 +23,11 @@ import {
   Smartphone,
   Tablet,
   Users,
+  Bell,
+  Mail,
+  ClipboardCheck,
+  CalendarClock,
+  CheckCircle2,
 } from 'lucide-react';
 import { KpiCard } from '../../ui/KpiCard';
 import { EmptyState } from '../../ui/EmptyState';
@@ -31,7 +36,7 @@ import { StatusBadge, statusToTone } from '../../ui/StatusBadge';
 import { getAnalyticsOverview } from '../adminApi/api';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
-type TabId = 'overview' | 'users' | 'jobs' | 'revenue' | 'devices';
+type TabId = 'overview' | 'users' | 'jobs' | 'revenue' | 'devices' | 'notifications' | 'emails' | 'assessments' | 'interviews';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -39,6 +44,10 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'revenue', label: 'Revenue' },
   { id: 'devices', label: 'Devices' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'emails', label: 'Emails' },
+  { id: 'assessments', label: 'Assessments' },
+  { id: 'interviews', label: 'Interviews' },
 ];
 
 const CHART_COLORS = ['#7C3AED', '#2563EB', '#16A34A', '#D97706', '#DC2626', '#0EA5E9'];
@@ -131,6 +140,10 @@ export const AnalyticsHub: React.FC = () => {
       {activeTab === 'jobs' && <JobsTab data={data} isLoading={isLoading} />}
       {activeTab === 'revenue' && <RevenueTab data={data} isLoading={isLoading} />}
       {activeTab === 'devices' && <DevicesTab data={data} isLoading={isLoading} />}
+      {activeTab === 'notifications' && <NotificationsTab data={data} isLoading={isLoading} />}
+      {activeTab === 'emails' && <EmailsTab data={data} isLoading={isLoading} />}
+      {activeTab === 'assessments' && <AssessmentsTab data={data} isLoading={isLoading} />}
+      {activeTab === 'interviews' && <InterviewsTab data={data} isLoading={isLoading} />}
     </div>
   );
 };
@@ -455,6 +468,248 @@ function DevicesTab({ data, isLoading }: { data?: any; isLoading: boolean }) {
         included yet — the app doesn't currently collect reliable location data (that needs
         IP-geolocation, which isn't wired up). Rather than show a made-up breakdown, this section
         is left out until real geo data is available.
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+function NotificationsTab({ data, isLoading }: { data?: any; isLoading: boolean }) {
+  const byType = data?.notifications?.byType ?? [];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <KpiCard label="Total Notifications" value={data?.notifications?.totalNotifications?.toLocaleString() ?? '—'} icon={<Bell size={16} />} loading={isLoading} />
+        <KpiCard label="Unread" value={data?.notifications?.unreadCount?.toLocaleString() ?? '—'} icon={<Bell size={16} />} loading={isLoading} accent="amber" />
+      </div>
+
+      <ChartCard title="Notifications sent — last 90 days">
+        {isLoading ? (
+          <SkeletonCard className="h-56 border-0 p-0" />
+        ) : !data?.notifications?.growth?.some((d: any) => d.count) ? (
+          <EmptyState title="No notifications yet" className="border-0 py-10" />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={data.notifications.growth}>
+              <defs>
+                <linearGradient id="notifGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={24} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} />
+              <Tooltip />
+              <Area type="monotone" dataKey="count" name="Notifications" stroke="#7C3AED" fill="url(#notifGrad)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      <ChartCard title="By type (top 10)">
+        {isLoading ? (
+          <SkeletonCard className="h-40 border-0 p-0" />
+        ) : !byType.length ? (
+          <EmptyState title="No notifications yet" className="border-0 py-8" />
+        ) : (
+          <ul className="space-y-3">
+            {byType.map((t: any) => (
+              <li key={t.type} className="flex items-center justify-between text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">{t.type}</span>
+                <span className="text-slate-500 dark:text-slate-400">{t.count.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ChartCard>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Emails
+// ---------------------------------------------------------------------------
+function EmailsTab({ data, isLoading }: { data?: any; isLoading: boolean }) {
+  const byStatus = data?.emails?.byStatus ?? [];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiCard label="Total Emails" value={data?.emails?.totalEmails?.toLocaleString() ?? '—'} icon={<Mail size={16} />} loading={isLoading} />
+        <KpiCard label="Failure Rate" value={data?.emails?.failureRate ?? '—'} icon={<Mail size={16} />} loading={isLoading} accent="rose" />
+      </div>
+
+      <ChartCard title="Emails sent — last 90 days">
+        {isLoading ? (
+          <SkeletonCard className="h-56 border-0 p-0" />
+        ) : !data?.emails?.growth?.some((d: any) => d.count) ? (
+          <EmptyState title="No emails yet" className="border-0 py-10" />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={data.emails.growth}>
+              <defs>
+                <linearGradient id="emailGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563EB" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={24} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} />
+              <Tooltip />
+              <Area type="monotone" dataKey="count" name="Emails" stroke="#2563EB" fill="url(#emailGrad)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      <ChartCard title="By status">
+        {isLoading ? (
+          <SkeletonCard className="h-40 border-0 p-0" />
+        ) : !byStatus.length ? (
+          <EmptyState title="No emails yet" className="border-0 py-8" />
+        ) : (
+          <ul className="space-y-3">
+            {byStatus.map((s: any) => (
+              <li key={s.status} className="flex items-center justify-between">
+                <StatusBadge label={s.status} tone={statusToTone(s.status)} />
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{s.count.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ChartCard>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assessments
+// ---------------------------------------------------------------------------
+function AssessmentsTab({ data, isLoading }: { data?: any; isLoading: boolean }) {
+  const byStatus = data?.assessments?.byStatus ?? [];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Assessments Created" value={data?.assessments?.totalAssessments?.toLocaleString() ?? '—'} icon={<ClipboardCheck size={16} />} loading={isLoading} />
+        <KpiCard label="Total Attempts" value={data?.assessments?.totalAttempts?.toLocaleString() ?? '—'} icon={<ClipboardCheck size={16} />} loading={isLoading} />
+        <KpiCard label="Avg Score" value={typeof data?.assessments?.avgScorePercent === 'number' ? `${data.assessments.avgScorePercent}%` : '—'} icon={<CheckCircle2 size={16} />} loading={isLoading} accent="green" />
+        <KpiCard label="Pass Rate" value={data?.assessments?.passRate ?? '—'} icon={<CheckCircle2 size={16} />} loading={isLoading} accent="violet" />
+      </div>
+
+      <ChartCard title="Attempts submitted — last 90 days">
+        {isLoading ? (
+          <SkeletonCard className="h-56 border-0 p-0" />
+        ) : !data?.assessments?.growth?.some((d: any) => d.count) ? (
+          <EmptyState title="No attempts yet" className="border-0 py-10" />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={data.assessments.growth}>
+              <defs>
+                <linearGradient id="assessGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#D97706" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#D97706" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={24} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} />
+              <Tooltip />
+              <Area type="monotone" dataKey="count" name="Attempts" stroke="#D97706" fill="url(#assessGrad)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      <ChartCard title="Attempts by status">
+        {isLoading ? (
+          <SkeletonCard className="h-40 border-0 p-0" />
+        ) : !byStatus.length ? (
+          <EmptyState title="No attempts yet" className="border-0 py-8" />
+        ) : (
+          <ul className="space-y-3">
+            {byStatus.map((s: any) => (
+              <li key={s.status} className="flex items-center justify-between">
+                <StatusBadge label={s.status} tone={statusToTone(s.status)} />
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{s.count.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ChartCard>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Interviews
+// ---------------------------------------------------------------------------
+function InterviewsTab({ data, isLoading }: { data?: any; isLoading: boolean }) {
+  const byStatus = data?.interviews?.byStatus ?? [];
+  const byType = data?.interviews?.byType ?? [];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <KpiCard label="Total Interviews" value={data?.interviews?.totalInterviews?.toLocaleString() ?? '—'} icon={<CalendarClock size={16} />} loading={isLoading} />
+        <KpiCard label="Avg Duration (min)" value={data?.interviews?.avgDuration?.toLocaleString() ?? '—'} icon={<CalendarClock size={16} />} loading={isLoading} />
+      </div>
+
+      <ChartCard title="Interviews scheduled — last 90 days">
+        {isLoading ? (
+          <SkeletonCard className="h-56 border-0 p-0" />
+        ) : !data?.interviews?.growth?.some((d: any) => d.count) ? (
+          <EmptyState title="No interviews yet" className="border-0 py-10" />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={data.interviews.growth}>
+              <defs>
+                <linearGradient id="intGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#DC2626" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#DC2626" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={24} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} />
+              <Tooltip />
+              <Area type="monotone" dataKey="count" name="Interviews" stroke="#DC2626" fill="url(#intGrad)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ChartCard title="By status">
+          {isLoading ? (
+            <SkeletonCard className="h-40 border-0 p-0" />
+          ) : !byStatus.length ? (
+            <EmptyState title="No interviews yet" className="border-0 py-8" />
+          ) : (
+            <ul className="space-y-3">
+              {byStatus.map((s: any) => (
+                <li key={s.status} className="flex items-center justify-between">
+                  <StatusBadge label={s.status} tone={statusToTone(s.status)} />
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{s.count.toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ChartCard>
+
+        <ChartCard title="By round type">
+          {isLoading ? (
+            <SkeletonCard className="h-40 border-0 p-0" />
+          ) : !byType.length ? (
+            <EmptyState title="No interviews yet" className="border-0 py-8" />
+          ) : (
+            <ul className="space-y-3">
+              {byType.map((t: any) => (
+                <li key={t.type} className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{t.type}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t.count.toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ChartCard>
       </div>
     </div>
   );

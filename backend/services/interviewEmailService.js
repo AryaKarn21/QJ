@@ -1,43 +1,68 @@
 const sendMail = require("../utils/sendMail");
 
+// Display labels for the handful of zones QuickJobs actually operates in.
+// Any zone id not listed here falls back to showing the raw id, which is
+// still a valid, unambiguous label — just less pretty than a named zone.
+const TIMEZONE_LABELS = {
+  "Asia/Kathmandu": "Nepal Time (NPT)",
+  "Asia/Kolkata": "India Standard Time (IST)",
+  "Asia/Dhaka": "Bangladesh Standard Time (BST)",
+  UTC: "Coordinated Universal Time (UTC)",
+};
+const getTimezoneLabel = (timezone) => TIMEZONE_LABELS[timezone] || timezone || "Asia/Kathmandu";
+
+// Employer-authored free text (customMessage/cancellationReason/etc.) gets
+// rendered into an HTML email — escape it so it can't inject markup into a
+// message sent on QuickJobs' behalf.
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 /**
- * Helper to format date and time in Nepal Time (NPT, Asia/Kathmandu, UTC+5:45).
+ * Helper to format date and time in a given IANA timezone (defaults to the
+ * app's historical default, Asia/Kathmandu).
  * Formats:
  *   Date: 22 September 2026
  *   Time: 10:30 AM
  *   Timezone: Nepal Time (NPT)
  * @param {Date|string} dateInput
+ * @param {string} [timezone]
  * @returns {{ date: string, time: string, timezone: string, fullFormatted: string }}
  */
-const formatInterviewDateTime = (dateInput) => {
+const formatInterviewDateTime = (dateInput, timezone = "Asia/Kathmandu") => {
   const dateObj = new Date(dateInput);
+  const timezoneLabel = getTimezoneLabel(timezone);
+
   if (isNaN(dateObj.getTime())) {
     return {
       date: "Date TBD",
       time: "Time TBD",
-      timezone: "Nepal Time (NPT)",
+      timezone: timezoneLabel,
       fullFormatted: "Scheduled Date & Time TBD",
     };
   }
 
   const date = dateObj.toLocaleDateString("en-GB", {
-    timeZone: "Asia/Kathmandu",
+    timeZone: timezone,
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 
   const time = dateObj.toLocaleTimeString("en-US", {
-    timeZone: "Asia/Kathmandu",
+    timeZone: timezone,
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
 
-  const timezone = "Nepal Time (NPT)";
-  const fullFormatted = `${date} at ${time} (${timezone})`;
+  const fullFormatted = `${date} at ${time} (${timezoneLabel})`;
 
-  return { date, time, timezone, fullFormatted };
+  return { date, time, timezone: timezoneLabel, fullFormatted };
 };
 
 /**
@@ -57,7 +82,10 @@ const formatDuration = (duration) => {
 };
 
 /**
- * Build professional QuickJobs HTML template for interview emails.
+ * Build professional QuickJobs HTML template for interview/assessment/
+ * status emails. `customMessage`, when present, is rendered as an
+ * inserted highlighted paragraph under the greeting — it never replaces
+ * any of the boilerplate below it.
  */
 const buildInterviewHtml = ({
   heading,
@@ -71,14 +99,30 @@ const buildInterviewHtml = ({
   timezone,
   durationText,
   interviewMode,
+  interviewType,
   meetingLink,
   location,
   notes,
   isCancelled = false,
   cancellationReason,
+  customMessage = "",
+  // Generic mode: skip the interview-details/cancellation card entirely
+  // and just render `bodyText` as the main paragraph — used for
+  // status-change / freeform employer-message emails that aren't tied to
+  // an interview at all.
+  isGeneric = false,
+  bodyText = "",
 }) => {
   const isVideo = interviewMode && /video|online|zoom|meet|teams/i.test(interviewMode);
   const isInPerson = interviewMode && /person|on-site|office/i.test(interviewMode);
+
+  const customMessageBlock = customMessage
+    ? `
+        <div class="card" style="background-color: #FFFBEB; border-color: #FDE68A;">
+          <p style="margin: 0; color: #92400E; font-size: 14px; white-space: pre-wrap;"><strong>A note from the employer:</strong><br/>${escapeHtml(customMessage)}</p>
+        </div>
+        `
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -125,11 +169,16 @@ const buildInterviewHtml = ({
         <div class="badge ${badgeColor}">${badgeText}</div>
         <h1>${heading}</h1>
         <p>Hello <strong>${candidateName}</strong>,</p>
+        ${
+          isGeneric
+            ? `<p>${bodyText}</p>${customMessageBlock}`
+            : `
         <p>${
           isCancelled
             ? `Your interview for the position of <strong>${jobTitle}</strong> at <strong>${companyName}</strong> has been cancelled.`
             : `Your interview has been scheduled for the following position at <strong>${companyName}</strong>.`
         }</p>
+        ${customMessageBlock}
 
         <!-- Interview Details Card -->
         ${
@@ -144,6 +193,16 @@ const buildInterviewHtml = ({
             <td class="label">Company</td>
             <td class="value">${companyName}</td>
           </tr>
+          ${
+            interviewType
+              ? `
+          <tr class="row">
+            <td class="label">Round</td>
+            <td class="value">${interviewType}</td>
+          </tr>
+          `
+              : ""
+          }
           <tr class="row">
             <td class="label">Date</td>
             <td class="value">${date}</td>
@@ -157,7 +216,7 @@ const buildInterviewHtml = ({
             <td class="value">${durationText}</td>
           </tr>
           <tr class="row">
-            <td class="label">Interview Type</td>
+            <td class="label">Format</td>
             <td class="value">${interviewMode || "Video Call"}</td>
           </tr>
           ${
@@ -209,12 +268,14 @@ const buildInterviewHtml = ({
             : `
         <div class="card" style="background-color: #FEF2F2; border-color: #FECACA;">
           <p style="color: #991B1B; margin: 0; font-size: 14px;">
-            ${cancellationReason ? `<strong>Reason:</strong> ${cancellationReason}` : "The employer has cancelled this scheduled session."}
+            ${cancellationReason ? `<strong>Reason:</strong> ${escapeHtml(cancellationReason)}` : "The employer has cancelled this scheduled session."}
           </p>
         </div>
         <p style="margin-top: 24px; font-size: 14px; color: #475569;">
           You can track your other applications and scheduled sessions anytime on your QuickJobs dashboard.
         </p>
+        `
+        }
         `
         }
 
@@ -236,63 +297,81 @@ const buildInterviewHtml = ({
   `.trim();
 };
 
-/**
- * Send Interview Scheduled Email
- */
-const sendInterviewScheduledEmail = async ({
-  recipient,
+// ============================================================
+// Interview Scheduled
+// ============================================================
+const buildInterviewScheduledEmailContent = ({
   candidateName = "Candidate",
   companyName = "QuickJobs Employer",
   jobTitle = "Position",
   scheduledAt,
   duration = 30,
   mode = "Video Call",
+  type = "",
   meetingLink = "",
   location = "",
   notes = "",
-  applicationId = "",
-  interviewId = "",
+  timezone = "Asia/Kathmandu",
+  customMessage = "",
 }) => {
-  const { date, time, timezone, fullFormatted } = formatInterviewDateTime(scheduledAt);
+  const { date, time, timezone: timezoneLabel } = formatInterviewDateTime(scheduledAt, timezone);
   const durationText = formatDuration(duration);
+  const headingPrefix = type || "Interview";
 
-  const subject = `Interview Scheduled — ${jobTitle} at ${companyName}`;
+  const subject = `${headingPrefix} Scheduled — ${jobTitle} at ${companyName}`;
 
-  let text =
+  const text =
     `Hello ${candidateName},\n\n` +
-    `Your interview has been scheduled for the following position:\n\n` +
+    `Your ${type ? type.toLowerCase() : "interview"} has been scheduled for the following position:\n\n` +
     `Position: ${jobTitle}\n` +
     `Company: ${companyName}\n` +
+    (type ? `Round: ${type}\n` : "") +
     `Date: ${date}\n` +
     `Time: ${time}\n` +
-    `Timezone: ${timezone}\n` +
+    `Timezone: ${timezoneLabel}\n` +
     `Duration: ${durationText}\n` +
-    `Interview Type: ${mode}\n` +
+    `Format: ${mode}\n` +
     (meetingLink ? `Meeting Link: ${meetingLink}\n` : "") +
     (location ? `Interview Location: ${location}\n` : "") +
     (notes ? `Additional Notes: ${notes}\n` : "") +
+    (customMessage ? `\nA note from the employer:\n${customMessage}\n` : "") +
     `\nPlease make sure you are available at the scheduled time.\n\n` +
     `Best regards,\nQuickJobs Team`;
 
   const html = buildInterviewHtml({
-    heading: "Interview Scheduled",
-    badgeText: "Interview Scheduled",
+    heading: `${headingPrefix} Scheduled`,
+    badgeText: type || "Interview Scheduled",
     badgeColor: "badge-scheduled",
     candidateName,
     jobTitle,
     companyName,
     date,
     time,
-    timezone,
+    timezone: timezoneLabel,
     durationText,
     interviewMode: mode,
+    interviewType: type,
     meetingLink,
     location,
     notes,
+    customMessage,
   });
 
+  return { subject, text, html };
+};
+
+const sendInterviewScheduledEmail = async ({
+  recipient,
+  applicationId = "",
+  interviewId = "",
+  ...contentArgs
+}) => {
+  const { subject, text, html } = buildInterviewScheduledEmailContent(contentArgs);
   try {
-    await sendMail(recipient, subject, text, html);
+    await sendMail(recipient, subject, text, html, {
+      type: "interview_scheduled",
+      relatedApplication: applicationId || undefined,
+    });
 
     console.log(
       `[InterviewEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nInterview: ${interviewId || "N/A"}\nStatus: sent`
@@ -309,63 +388,81 @@ const sendInterviewScheduledEmail = async ({
   }
 };
 
-/**
- * Send Interview Rescheduled Email
- */
-const sendInterviewRescheduledEmail = async ({
-  recipient,
+// ============================================================
+// Interview Rescheduled
+// ============================================================
+const buildInterviewRescheduledEmailContent = ({
   candidateName = "Candidate",
   companyName = "QuickJobs Employer",
   jobTitle = "Position",
   scheduledAt,
   duration = 30,
   mode = "Video Call",
+  type = "",
   meetingLink = "",
   location = "",
   notes = "",
-  applicationId = "",
-  interviewId = "",
+  timezone = "Asia/Kathmandu",
+  customMessage = "",
 }) => {
-  const { date, time, timezone } = formatInterviewDateTime(scheduledAt);
+  const { date, time, timezone: timezoneLabel } = formatInterviewDateTime(scheduledAt, timezone);
   const durationText = formatDuration(duration);
+  const headingPrefix = type || "Interview";
 
-  const subject = `Interview Rescheduled — ${jobTitle} at ${companyName}`;
+  const subject = `${headingPrefix} Rescheduled — ${jobTitle} at ${companyName}`;
 
-  let text =
+  const text =
     `Hello ${candidateName},\n\n` +
-    `Your interview for "${jobTitle}" at ${companyName} has been rescheduled to a new time:\n\n` +
+    `Your ${type ? type.toLowerCase() : "interview"} for "${jobTitle}" at ${companyName} has been rescheduled to a new time:\n\n` +
     `Position: ${jobTitle}\n` +
     `Company: ${companyName}\n` +
+    (type ? `Round: ${type}\n` : "") +
     `New Date: ${date}\n` +
     `New Time: ${time}\n` +
-    `Timezone: ${timezone}\n` +
+    `Timezone: ${timezoneLabel}\n` +
     `Duration: ${durationText}\n` +
-    `Interview Type: ${mode}\n` +
+    `Format: ${mode}\n` +
     (meetingLink ? `Meeting Link: ${meetingLink}\n` : "") +
     (location ? `Interview Location: ${location}\n` : "") +
     (notes ? `Additional Notes: ${notes}\n` : "") +
+    (customMessage ? `\nA note from the employer:\n${customMessage}\n` : "") +
     `\nPlease make note of this updated schedule.\n\n` +
     `Best regards,\nQuickJobs Team`;
 
   const html = buildInterviewHtml({
-    heading: "Interview Rescheduled",
-    badgeText: "Interview Rescheduled",
+    heading: `${headingPrefix} Rescheduled`,
+    badgeText: `${type || "Interview"} Rescheduled`,
     badgeColor: "badge-rescheduled",
     candidateName,
     jobTitle,
     companyName,
     date,
     time,
-    timezone,
+    timezone: timezoneLabel,
     durationText,
     interviewMode: mode,
+    interviewType: type,
     meetingLink,
     location,
     notes,
+    customMessage,
   });
 
+  return { subject, text, html };
+};
+
+const sendInterviewRescheduledEmail = async ({
+  recipient,
+  applicationId = "",
+  interviewId = "",
+  ...contentArgs
+}) => {
+  const { subject, text, html } = buildInterviewRescheduledEmailContent(contentArgs);
   try {
-    await sendMail(recipient, subject, text, html);
+    await sendMail(recipient, subject, text, html, {
+      type: "interview_rescheduled",
+      relatedApplication: applicationId || undefined,
+    });
 
     console.log(
       `[InterviewEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nInterview: ${interviewId || "N/A"}\nEvent: Rescheduled\nStatus: sent`
@@ -382,23 +479,23 @@ const sendInterviewRescheduledEmail = async ({
   }
 };
 
-/**
- * Send Interview Cancelled Email
- */
-const sendInterviewCancelledEmail = async ({
-  recipient,
+// ============================================================
+// Interview Cancelled
+// ============================================================
+const buildInterviewCancelledEmailContent = ({
   candidateName = "Candidate",
   companyName = "QuickJobs Employer",
   jobTitle = "Position",
   reason = "",
-  applicationId = "",
+  customMessage = "",
 }) => {
   const subject = `Interview Cancelled — ${jobTitle} at ${companyName}`;
 
-  let text =
+  const text =
     `Hello ${candidateName},\n\n` +
     `Your interview for "${jobTitle}" at ${companyName} has been cancelled.\n\n` +
     (reason ? `Reason: ${reason}\n\n` : "") +
+    (customMessage ? `A note from the employer:\n${customMessage}\n\n` : "") +
     `Please check your QuickJobs dashboard for any other updates.\n\n` +
     `Best regards,\nQuickJobs Team`;
 
@@ -411,10 +508,19 @@ const sendInterviewCancelledEmail = async ({
     companyName,
     isCancelled: true,
     cancellationReason: reason,
+    customMessage,
   });
 
+  return { subject, text, html };
+};
+
+const sendInterviewCancelledEmail = async ({ recipient, applicationId = "", ...contentArgs }) => {
+  const { subject, text, html } = buildInterviewCancelledEmailContent(contentArgs);
   try {
-    await sendMail(recipient, subject, text, html);
+    await sendMail(recipient, subject, text, html, {
+      type: "interview_cancelled",
+      relatedApplication: applicationId || undefined,
+    });
 
     console.log(
       `[InterviewEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nEvent: Cancelled\nStatus: sent`
@@ -431,24 +537,103 @@ const sendInterviewCancelledEmail = async ({
   }
 };
 
-// Assessment email helpers
-/**
- * Send Assessment Request Email
- */
-const sendAssessmentRequestEmail = async ({
-  recipient,
+// ============================================================
+// Interview Reminder (24h / 1h before) — new, first wired by
+// utils/interviewReminderCron.js.
+// ============================================================
+const buildInterviewReminderEmailContent = ({
+  candidateName = "Candidate",
+  companyName = "QuickJobs Employer",
+  jobTitle = "Position",
+  scheduledAt,
+  duration = 30,
+  mode = "Video Call",
+  type = "",
+  meetingLink = "",
+  location = "",
+  timezone = "Asia/Kathmandu",
+  reminderWindow = "24h", // "24h" | "1h"
+}) => {
+  const { date, time, timezone: timezoneLabel } = formatInterviewDateTime(scheduledAt, timezone);
+  const durationText = formatDuration(duration);
+  const headingPrefix = type || "Interview";
+  const whenPhrase = reminderWindow === "1h" ? "starts in 1 hour" : "is tomorrow";
+
+  const subject =
+    reminderWindow === "1h"
+      ? `Reminder: ${headingPrefix} Starts in 1 Hour — ${jobTitle} at ${companyName}`
+      : `Reminder: ${headingPrefix} Tomorrow — ${jobTitle} at ${companyName}`;
+
+  const text =
+    `Hello ${candidateName},\n\n` +
+    `This is a reminder that your ${type ? type.toLowerCase() : "interview"} for "${jobTitle}" at ${companyName} ${whenPhrase}.\n\n` +
+    `Date: ${date}\n` +
+    `Time: ${time}\n` +
+    `Timezone: ${timezoneLabel}\n` +
+    `Duration: ${durationText}\n` +
+    `Format: ${mode}\n` +
+    (meetingLink ? `Meeting Link: ${meetingLink}\n` : "") +
+    (location ? `Interview Location: ${location}\n` : "") +
+    `\nBest regards,\nQuickJobs Team`;
+
+  const html = buildInterviewHtml({
+    heading: `Your ${headingPrefix} ${whenPhrase}`,
+    badgeText: "Reminder",
+    badgeColor: "badge-rescheduled",
+    candidateName,
+    jobTitle,
+    companyName,
+    date,
+    time,
+    timezone: timezoneLabel,
+    durationText,
+    interviewMode: mode,
+    interviewType: type,
+    meetingLink,
+    location,
+  });
+
+  return { subject, text, html };
+};
+
+const sendInterviewReminderEmail = async ({ recipient, applicationId = "", ...contentArgs }) => {
+  const { subject, text, html } = buildInterviewReminderEmailContent(contentArgs);
+  try {
+    await sendMail(recipient, subject, text, html, {
+      type: "interview_reminder",
+      relatedApplication: applicationId || undefined,
+    });
+    console.log(
+      `[InterviewEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nEvent: Reminder(${contentArgs.reminderWindow || "24h"})\nStatus: sent`
+    );
+    return { success: true, recipient };
+  } catch (error) {
+    const safeError = error?.message || "Unknown mail delivery error";
+    console.error(
+      `[InterviewEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nEvent: Reminder(${contentArgs.reminderWindow || "24h"})\nStatus: failed\nError: ${safeError}`
+    );
+    return { success: false, recipient, error: safeError };
+  }
+};
+
+// ============================================================
+// Assessment Request
+// ============================================================
+const buildAssessmentRequestEmailContent = ({
   candidateName = "Candidate",
   companyName = "QuickJobs Employer",
   jobTitle = "Position",
   assessmentLink = "",
   assessmentDeadline,
-  applicationId = "",
+  customMessage = "",
 }) => {
   const deadlineInfo = assessmentDeadline ? `\nDeadline: ${assessmentDeadline}` : "";
   const subject = `Assessment Required — ${jobTitle} at ${companyName}`;
-  const text = `Hello ${candidateName},\n\n` +
+  const text =
+    `Hello ${candidateName},\n\n` +
     `We would like you to complete an assessment for the ${jobTitle} position at ${companyName}.${deadlineInfo}\n\n` +
     (assessmentLink ? `Assessment Link: ${assessmentLink}\n` : "") +
+    (customMessage ? `\nA note from the employer:\n${customMessage}\n` : "") +
     `\nPlease complete it at your earliest convenience.\n\nBest regards,\nQuickJobs Team`;
 
   const html = buildInterviewHtml({
@@ -465,10 +650,19 @@ const sendAssessmentRequestEmail = async ({
     interviewMode: "Online",
     meetingLink: assessmentLink,
     notes: "Please complete the assessment before the deadline.",
+    customMessage,
   });
 
+  return { subject, text, html };
+};
+
+const sendAssessmentRequestEmail = async ({ recipient, applicationId = "", ...contentArgs }) => {
+  const { subject, text, html } = buildAssessmentRequestEmailContent(contentArgs);
   try {
-    await sendMail(recipient, subject, text, html);
+    await sendMail(recipient, subject, text, html, {
+      type: "assessment_request",
+      relatedApplication: applicationId || undefined,
+    });
     console.log(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: sent`);
     return { success: true, recipient };
   } catch (error) {
@@ -478,19 +672,19 @@ const sendAssessmentRequestEmail = async ({
   }
 };
 
-/**
- * Send Assessment Reminder Email
- */
-const sendAssessmentReminderEmail = async ({
-  recipient,
+// ============================================================
+// Assessment Reminder — already existed but had zero callers; first
+// wired by utils/interviewReminderCron.js.
+// ============================================================
+const buildAssessmentReminderEmailContent = ({
   candidateName = "Candidate",
   companyName = "QuickJobs Employer",
   jobTitle = "Position",
   assessmentLink = "",
-  applicationId = "",
 }) => {
   const subject = `Reminder: Assessment – ${jobTitle} at ${companyName}`;
-  const text = `Hello ${candidateName},\n\n` +
+  const text =
+    `Hello ${candidateName},\n\n` +
     `This is a friendly reminder to complete the assessment for the ${jobTitle} role at ${companyName}.\n` +
     (assessmentLink ? `Assessment Link: ${assessmentLink}\n` : "") +
     `\nWe look forward to reviewing your submission.\n\nBest regards,\nQuickJobs Team`;
@@ -506,13 +700,108 @@ const sendAssessmentReminderEmail = async ({
     meetingLink: assessmentLink,
   });
 
+  return { subject, text, html };
+};
+
+const sendAssessmentReminderEmail = async ({ recipient, applicationId = "", ...contentArgs }) => {
+  const { subject, text, html } = buildAssessmentReminderEmailContent(contentArgs);
   try {
-    await sendMail(recipient, subject, text, html);
+    await sendMail(recipient, subject, text, html, {
+      type: "assessment_reminder",
+      relatedApplication: applicationId || undefined,
+    });
     console.log(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: reminder sent`);
     return { success: true, recipient };
   } catch (error) {
     const safeError = error?.message || "Unknown mail delivery error";
     console.error(`[AssessmentEmail]\nRecipient: ${recipient}\nApplication: ${applicationId}\nStatus: reminder failed\nError: ${safeError}`);
+    return { success: false, recipient, error: safeError };
+  }
+};
+
+// ============================================================
+// Status change (Accepted/Rejected/etc.) and standalone employer message
+// — generic, non-interview emails that still get the same branded shell
+// and the same optional customMessage insertion, so they're previewable
+// through the same mechanism as the interview/assessment emails above.
+// ============================================================
+const buildStatusChangeEmailContent = ({
+  candidateName = "Candidate",
+  companyName = "QuickJobs Employer",
+  jobTitle = "Position",
+  status = "",
+  customMessage = "",
+}) => {
+  const isAccepted = status === "Accepted";
+  const isRejected = status === "Rejected";
+  const heading = isAccepted ? "Application Accepted" : isRejected ? "Application Update" : `Application ${status || "Updated"}`;
+  const badgeText = status || "Update";
+  const badgeColor = isAccepted ? "badge-scheduled" : isRejected ? "badge-cancelled" : "badge-rescheduled";
+
+  const bodyText = isAccepted
+    ? `Congratulations! Your application for <strong>${jobTitle}</strong> at <strong>${companyName}</strong> has been accepted.`
+    : isRejected
+      ? `Thank you for applying for <strong>${jobTitle}</strong> at <strong>${companyName}</strong>. After careful review, we will not be moving forward with your application at this time.`
+      : `Your application for <strong>${jobTitle}</strong> at <strong>${companyName}</strong> has been updated to "${status}".`;
+
+  const subject = `${heading} — ${jobTitle} at ${companyName}`;
+  const text =
+    `Hello ${candidateName},\n\n` +
+    bodyText.replace(/<[^>]+>/g, "") +
+    (customMessage ? `\n\nA note from the employer:\n${customMessage}\n` : "") +
+    `\n\nBest regards,\nQuickJobs Team`;
+
+  const html = buildInterviewHtml({
+    heading,
+    badgeText,
+    badgeColor,
+    candidateName,
+    isGeneric: true,
+    bodyText,
+    customMessage,
+  });
+
+  return { subject, text, html };
+};
+
+const sendStatusChangeEmail = async ({ recipient, applicationId = "", ...contentArgs }) => {
+  const { subject, text, html } = buildStatusChangeEmailContent(contentArgs);
+  try {
+    await sendMail(recipient, subject, text, html, {
+      type: "application_status_update",
+      relatedApplication: applicationId || undefined,
+    });
+    return { success: true, recipient };
+  } catch (error) {
+    const safeError = error?.message || "Unknown mail delivery error";
+    return { success: false, recipient, error: safeError };
+  }
+};
+
+const buildCustomMessageEmailContent = ({ candidateName = "Candidate", companyName = "QuickJobs Employer", message = "" }) => {
+  const subject = `Message from ${companyName}`;
+  const text = `Hello ${candidateName},\n\n${message}\n\nBest regards,\n${companyName} via QuickJobs`;
+  const html = buildInterviewHtml({
+    heading: `A message from ${companyName}`,
+    badgeText: "Message",
+    badgeColor: "badge-rescheduled",
+    candidateName,
+    isGeneric: true,
+    bodyText: escapeHtml(message).replace(/\n/g, "<br/>"),
+  });
+  return { subject, text, html };
+};
+
+const sendCustomMessageEmail = async ({ recipient, applicationId = "", ...contentArgs }) => {
+  const { subject, text, html } = buildCustomMessageEmailContent(contentArgs);
+  try {
+    await sendMail(recipient, subject, text, html, {
+      type: "job_provider_message",
+      relatedApplication: applicationId || undefined,
+    });
+    return { success: true, recipient };
+  } catch (error) {
+    const safeError = error?.message || "Unknown mail delivery error";
     return { success: false, recipient, error: safeError };
   }
 };
@@ -523,4 +812,20 @@ module.exports = {
   sendInterviewScheduledEmail,
   sendInterviewRescheduledEmail,
   sendInterviewCancelledEmail,
+  sendInterviewReminderEmail,
+  sendAssessmentRequestEmail,
+  sendAssessmentReminderEmail,
+  sendStatusChangeEmail,
+  sendCustomMessageEmail,
+  // Exported so the preview endpoint (employerController.previewApplicationEmail)
+  // can render exact email content without sending — no template duplication
+  // on the client.
+  buildInterviewScheduledEmailContent,
+  buildInterviewRescheduledEmailContent,
+  buildInterviewCancelledEmailContent,
+  buildInterviewReminderEmailContent,
+  buildAssessmentRequestEmailContent,
+  buildAssessmentReminderEmailContent,
+  buildStatusChangeEmailContent,
+  buildCustomMessageEmailContent,
 };

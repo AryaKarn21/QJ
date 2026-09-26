@@ -19,7 +19,19 @@ window.addEventListener('vite:preloadError', () => {
   }
 });
 
-const queryClient = new QueryClient();
+// Public CMS content (homepage copy, legal pages, sitewide microcopy) is
+// admin-edited rarely and read constantly — a 5-minute staleTime means
+// public visitors get published changes within a reasonable window
+// without every page mount refetching the same content (previously the
+// default staleTime:0 meant Hero+CallToAction mounting together fired two
+// separate uncached requests for the same homepage document).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>

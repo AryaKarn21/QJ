@@ -17,7 +17,7 @@ import { OPEN_CHATBOT_EVENT } from '../common/Chatbot';
 
 interface DecodedToken {
   id: string;
-  role: 'jobseeker' | 'employer' | 'admin';
+  role: 'jobseeker' | 'employer' | 'admin' | 'superadmin';
   exp: number;
   name?: string;
 }
@@ -172,13 +172,13 @@ const Header: React.FC = () => {
   const getDashboardPath = () => {
     if (!userInfo) return '/';
     if (userInfo.role === 'employer') return '/employer/dashboard';
-    if (userInfo.role === 'admin') return '/admin/dashboard';
+    if (userInfo.role === 'admin' || userInfo.role === 'superadmin') return '/admin/dashboard';
     return '/user/dashboard';
   };
   const getProfilePath = () => {
     if (!userInfo) return '/';
     if (userInfo.role === 'employer') return '/employer/profile';
-    if (userInfo.role === 'admin') return '/admin/dashboard';
+    if (userInfo.role === 'admin' || userInfo.role === 'superadmin') return '/admin/dashboard';
     return '/user/profile';
   };
   const getSettingsPath = () => {
@@ -191,7 +191,8 @@ const Header: React.FC = () => {
   const initial = userInfo?.name?.charAt(0)?.toUpperCase() || '?';
   const roleLabel = userInfo?.role === 'jobseeker' ? 'Job Seeker'
     : userInfo?.role === 'employer' ? 'Employer'
-      : userInfo?.role === 'admin' ? 'Admin' : '';
+      : userInfo?.role === 'admin' ? 'Admin'
+        : userInfo?.role === 'superadmin' ? 'Super Admin' : '';
 
   return (
     <>

@@ -486,14 +486,18 @@ const applyInJob = async (req, res) => {
       sendMail(
         user.email,
         `Application submitted: ${job.title}`,
-        `Hi ${user.name},\n\nYour application for "${job.title}"${companyName ? ` at ${companyName}` : ""} has been submitted successfully. The employer has been notified and will review it shortly.\n\nYou can track this application from your QuickJobs dashboard.\n\n— QuickJobs`
+        `Hi ${user.name},\n\nYour application for "${job.title}"${companyName ? ` at ${companyName}` : ""} has been submitted successfully. The employer has been notified and will review it shortly.\n\nYou can track this application from your QuickJobs dashboard.\n\n— QuickJobs`,
+        null,
+        { type: "application_confirmation", recipientUser: user._id, relatedJob: job._id, relatedApplication: application._id }
       ).catch((err) => console.error("Failed to send application confirmation email:", err.message));
     }
     if (job.employer?.email) {
       sendMail(
         job.employer.email,
         `New application: ${job.title}`,
-        `${user.name} just applied to your job posting "${job.title}".\n\nReview the application from your QuickJobs employer dashboard: applicants list for this job.\n\n— QuickJobs`
+        `${user.name} just applied to your job posting "${job.title}".\n\nReview the application from your QuickJobs employer dashboard: applicants list for this job.\n\n— QuickJobs`,
+        null,
+        { type: "new_application_notice", recipientUser: job.employer._id, relatedJob: job._id, relatedApplication: application._id }
       ).catch((err) => console.error("Failed to send employer application-notification email:", err.message));
     }
 

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
-import { getPublicCmsPage, type CmsGenericPage } from '../../api/cmsPublicApi';
+import { getPublicCmsPage } from '../../api/cmsPublicApi';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 
@@ -20,33 +20,16 @@ import { SkeletonText, SkeletonBlock, SkeletonParagraph } from '../ui/Skeleton';
 export function CmsPageView({ slugProp }: { slugProp?: string } = {}) {
   const { slug: slugParam } = useParams<{ slug: string }>();
   const slug = slugProp ?? slugParam;
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [error, setError] = useState(false);
-  const [page, setPage] = useState<CmsGenericPage | null>(null);
 
-  useEffect(() => {
-    if (!slug) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    setNotFound(false);
-    getPublicCmsPage(slug)
-      .then((data) => {
-        if (!cancelled) setPage(data);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err?.response?.status === 404) setNotFound(true);
-        else setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+  const { data: page, isLoading: loading, isError, error } = useQuery({
+    queryKey: ['cms-page', slug],
+    queryFn: () => getPublicCmsPage(slug as string),
+    enabled: !!slug,
+    retry: false,
+  });
+
+  const notFound = isError && (error as { response?: { status?: number } })?.response?.status === 404;
+  const genericError = isError && !notFound;
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-800">
@@ -57,7 +40,7 @@ export function CmsPageView({ slugProp }: { slugProp?: string } = {}) {
             <SkeletonBlock className="mb-6 h-64 w-full" />
             <SkeletonParagraph lines={6} />
           </div>
-        ) : error ? (
+        ) : genericError ? (
           <div className="rounded-lg border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-600">
             Couldn't load this page right now. Please try again later.
           </div>

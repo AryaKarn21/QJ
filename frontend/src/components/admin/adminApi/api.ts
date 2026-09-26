@@ -127,6 +127,34 @@ export interface AnalyticsOverview {
     total: number;
     breakdown: { device: string; count: number }[];
   };
+  notifications?: {
+    totalNotifications: number;
+    unreadCount: number;
+    growth: { date: string; count: number }[];
+    byType: { type: string; count: number }[];
+  };
+  emails?: {
+    totalEmails: number;
+    byStatus: { status: string; count: number }[];
+    byType: { type: string; count: number }[];
+    failureRate: string;
+    growth: { date: string; count: number }[];
+  };
+  assessments?: {
+    totalAssessments: number;
+    totalAttempts: number;
+    avgScorePercent: number;
+    passRate: string;
+    byStatus: { status: string; count: number }[];
+    growth: { date: string; count: number }[];
+  };
+  interviews?: {
+    totalInterviews: number;
+    avgDuration: number;
+    byStatus: { status: string; count: number }[];
+    byType: { type: string; count: number }[];
+    growth: { date: string; count: number }[];
+  };
 }
 
 export const getAnalyticsOverview = async (): Promise<AnalyticsOverview> => {
@@ -468,10 +496,22 @@ export interface HomepageCtaContent {
   secondaryCtaLink: string;
 }
 
+export interface HomepageSectionContent {
+  key: string;
+  badgeText: string;
+  heading: string;
+  highlightedText: string;
+  description: string;
+  buttonText: string;
+  buttonLink: string;
+  isActive: boolean;
+}
+
 export interface HomepageContentAdmin {
   isPublished: boolean;
   hero?: HomepageHeroContent;
   cta?: HomepageCtaContent;
+  sections?: HomepageSectionContent[];
 }
 
 // A dedicated admin endpoint, not the public one (cmsPublicApi.ts's
@@ -488,6 +528,58 @@ export const saveHomepageContent = async (
   data: Partial<HomepageContentAdmin>
 ): Promise<HomepageContentAdmin> => {
   const res = await axios.put(`${API_BASE_URL}/api/cms/homepage`, data, getAuthConfig());
+  return res.data;
+};
+
+// ----- Homepage revisions — mirrors getCmsPageRevisions/restoreCmsPageRevision
+// exactly, just pointed at the homepage singleton (no pageId needed). -----
+export interface HomepageRevision {
+  revNumber: number;
+  version: number;
+  isPublished: boolean;
+  updatedBy: { _id: string; name: string; email: string; role: string } | null;
+  updatedAt: string;
+}
+
+export const getHomepageRevisions = async (): Promise<HomepageRevision[]> => {
+  const res = await axios.get(`${API_BASE_URL}/api/cms/homepage/revisions`, getAuthConfig());
+  return (res.data as { revisions: HomepageRevision[] }).revisions;
+};
+
+export const restoreHomepageRevision = async (revNumber: number) => {
+  const res = await axios.post(`${API_BASE_URL}/api/cms/homepage/revisions/${revNumber}/restore`, {}, getAuthConfig());
+  return res.data;
+};
+
+// ---------------------------------------------------------------------------
+// Generic sitewide key/value content — footer copy, misc microcopy, Resume
+// Builder marketing/instructional headings. Superadmin write, public read
+// (see frontend/src/api/siteContentApi.ts for the public whole-map fetch).
+// ---------------------------------------------------------------------------
+export interface SiteContentItem {
+  _id: string;
+  key: string;
+  value: string;
+  section: string;
+  description: string;
+  updatedAt: string;
+}
+
+export const adminListSiteContent = async (): Promise<SiteContentItem[]> => {
+  const res = await axios.get(`${API_BASE_URL}/api/cms/site-content/admin`, getAuthConfig());
+  return (res.data as { items: SiteContentItem[] }).items;
+};
+
+export const adminUpsertSiteContent = async (
+  key: string,
+  data: { value: string; section?: string; description?: string }
+): Promise<SiteContentItem> => {
+  const res = await axios.put(`${API_BASE_URL}/api/cms/site-content/${encodeURIComponent(key)}`, data, getAuthConfig());
+  return res.data;
+};
+
+export const adminDeleteSiteContent = async (key: string) => {
+  const res = await axios.delete(`${API_BASE_URL}/api/cms/site-content/${encodeURIComponent(key)}`, getAuthConfig());
   return res.data;
 };
 
@@ -1182,5 +1274,86 @@ export const toggleCompanySuspendAdmin = async (companyId: string, isSuspended: 
     { isSuspended, suspensionReason },
     getAuthConfig()
   );
+  return res.data;
+};
+
+// ---------------------------------------------------------------------------
+// Email delivery log — view + retry a failed transactional send. See
+// backend/controllers/emailLogController.js.
+// ---------------------------------------------------------------------------
+
+export interface EmailLogEntry {
+  _id: string;
+  recipientEmail: string;
+  recipientUser?: string;
+  type: string;
+  subject: string;
+  relatedJob?: string;
+  relatedApplication?: string;
+  status: 'queued' | 'sent' | 'delivered' | 'failed';
+  failureReason?: string;
+  attempts: number;
+  sentAt?: string;
+  createdAt: string;
+}
+
+export interface EmailLogsResponse {
+  logs: EmailLogEntry[];
+  currentPage: number;
+  totalPages: number;
+  totalLogs: number;
+  perPage: number;
+}
+
+export const getEmailLogs = async (params: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  type?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<EmailLogsResponse> => {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.status) query.set('status', params.status);
+  if (params.type) query.set('type', params.type);
+  if (params.search) query.set('search', params.search);
+  if (params.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params.dateTo) query.set('dateTo', params.dateTo);
+
+  const res = await axios.get(`${API_BASE_URL}/api/admin/email-logs?${query.toString()}`, getAuthConfig());
+  return res.data;
+};
+
+export const getEmailLogById = async (id: string): Promise<EmailLogEntry & { textBody?: string; htmlBody?: string }> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/email-logs/${id}`, getAuthConfig());
+  return res.data;
+};
+
+export const retryEmailLog = async (id: string) => {
+  const res = await axios.post(`${API_BASE_URL}/api/admin/email-logs/${id}/retry`, {}, getAuthConfig());
+  return res.data;
+};
+
+// ---------------------------------------------------------------------------
+// Notification targeting config (spec section 2) — Super Admin toggle for
+// employerController.createJob's jobseeker-notification fan-out mode.
+// ---------------------------------------------------------------------------
+
+export interface NotificationSettings {
+  jobAlertMode: 'matching' | 'following' | 'all';
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
+export const getNotificationSettings = async (): Promise<NotificationSettings> => {
+  const res = await axios.get(`${API_BASE_URL}/api/admin/notification-settings`, getAuthConfig());
+  return res.data;
+};
+
+export const updateNotificationSettings = async (jobAlertMode: NotificationSettings['jobAlertMode']) => {
+  const res = await axios.patch(`${API_BASE_URL}/api/admin/notification-settings`, { jobAlertMode }, getAuthConfig());
   return res.data;
 };

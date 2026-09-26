@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { fetchRecentJobs } from '../jobseekerApi/api';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 // Extended Job interface maintaining exact compatibility with existing fields
 interface Job {
@@ -72,6 +73,10 @@ const RecentJobs: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookmarkedJobs, setBookmarkedJobs] = useState<Record<string, boolean>>({});
+  const section = useHomepageSection('featuredJobs', {
+    heading: 'Explore Recent Jobs',
+    description: 'Discover your next high-impact career opportunity with top hiring teams.',
+  });
 
   useEffect(() => {
     const getJobs = async () => {
@@ -118,6 +123,8 @@ const RecentJobs: React.FC = () => {
     }
     return 'bg-slate-100 text-slate-700 border-slate-200';
   };
+
+  if (!section.isActive) return null;
 
   // Skeleton Loader State Component
   if (loading) {
@@ -189,10 +196,10 @@ const RecentJobs: React.FC = () => {
             <span>Latest Opportunities</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Explore Recent Jobs
+            {section.heading}
           </h2>
           <p className="text-slate-500 text-sm sm:text-base mt-1.5">
-            Discover your next high-impact career opportunity with top hiring teams.
+            {section.description}
           </p>
         </div>
 

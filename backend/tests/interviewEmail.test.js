@@ -15,6 +15,7 @@ const {
   sendInterviewScheduledEmail,
   sendInterviewRescheduledEmail,
   sendInterviewCancelledEmail,
+  sendInterviewReminderEmail,
 } = require("../services/interviewEmailService");
 
 const {
@@ -78,6 +79,84 @@ describe("Interview Scheduling & Email Flow Tests", () => {
       expect(html).toContain("Join Interview");
       expect(html).toContain("Tech Innovators Nepal");
     });
+
+    it("inserts an employer customMessage into both text and html without dropping boilerplate", async () => {
+      sendMail.mockResolvedValue({ messageId: "test-124" });
+
+      await sendInterviewScheduledEmail({
+        recipient: "candidate@example.com",
+        candidateName: "Aayush Sharma",
+        companyName: "Tech Innovators Nepal",
+        jobTitle: "Senior React Developer",
+        scheduledAt: "2026-09-22T04:45:00.000Z",
+        duration: 45,
+        mode: "Video Call",
+        type: "Technical Interview",
+        meetingLink: "https://meet.google.com/abc-defg-hij",
+        customMessage: "Please review our take-home exercise beforehand.",
+        applicationId: "app123",
+      });
+
+      const [, subject, text, html] = sendMail.mock.calls[0];
+      expect(subject).toBe("Technical Interview Scheduled — Senior React Developer at Tech Innovators Nepal");
+      expect(text).toContain("Please review our take-home exercise beforehand.");
+      expect(text).toContain("Duration: 45 minutes");
+      expect(html).toContain("A note from the employer");
+      expect(html).toContain("Please review our take-home exercise beforehand.");
+      expect(html).toContain("Join Interview");
+    });
+
+    it("respects a per-interview timezone instead of the hardcoded Nepal Time default", () => {
+      const utcDate = new Date("2026-09-22T04:45:00.000Z");
+      const formatted = formatInterviewDateTime(utcDate, "UTC");
+      expect(formatted.timezone).toBe("Coordinated Universal Time (UTC)");
+      expect(formatted.time).toBe("4:45 AM");
+    });
+
+    it("sends a 24h interview reminder email with the correct subject/body phrasing", async () => {
+      sendMail.mockResolvedValue({ messageId: "reminder-24h" });
+
+      const result = await sendInterviewReminderEmail({
+        recipient: "candidate@example.com",
+        candidateName: "Aayush Sharma",
+        companyName: "Tech Innovators Nepal",
+        jobTitle: "Senior React Developer",
+        scheduledAt: "2026-09-22T04:45:00.000Z",
+        duration: 30,
+        mode: "Video Call",
+        applicationId: "app123",
+        reminderWindow: "24h",
+      });
+
+      expect(result.success).toBe(true);
+      const [, subject, text] = sendMail.mock.calls[0];
+      expect(subject).toContain("Tomorrow");
+      expect(text).toContain("is tomorrow");
+      expect(sendMail.mock.calls[0][4]).toEqual(
+        expect.objectContaining({ type: "interview_reminder", relatedApplication: "app123" })
+      );
+    });
+
+    it("sends a 1h interview reminder email with the correct subject/body phrasing", async () => {
+      sendMail.mockResolvedValue({ messageId: "reminder-1h" });
+
+      const result = await sendInterviewReminderEmail({
+        recipient: "candidate@example.com",
+        candidateName: "Aayush Sharma",
+        companyName: "Tech Innovators Nepal",
+        jobTitle: "Senior React Developer",
+        scheduledAt: "2026-09-22T04:45:00.000Z",
+        duration: 30,
+        mode: "Video Call",
+        applicationId: "app123",
+        reminderWindow: "1h",
+      });
+
+      expect(result.success).toBe(true);
+      const [, subject, text] = sendMail.mock.calls[0];
+      expect(subject).toContain("1 Hour");
+      expect(text).toContain("starts in 1 hour");
+    });
   });
 
   describe("3. updateApplication Controller — Schedule Interview Flow", () => {
@@ -100,6 +179,7 @@ describe("Interview Scheduling & Email Flow Tests", () => {
           isActive: true,
         },
         interview: {},
+        statusHistory: [],
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -142,7 +222,8 @@ describe("Interview Scheduling & Email Flow Tests", () => {
         "suman@example.com",
         "Interview Scheduled — Full Stack Engineer at Alpha Corp",
         expect.any(String),
-        expect.any(String)
+        expect.any(String),
+        expect.any(Object)
       );
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -202,6 +283,7 @@ describe("Interview Scheduling & Email Flow Tests", () => {
           isActive: true,
         },
         interview: {},
+        statusHistory: [],
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -264,6 +346,7 @@ describe("Interview Scheduling & Email Flow Tests", () => {
           isActive: true,
         },
         interview: {},
+        statusHistory: [],
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -348,7 +431,8 @@ describe("Interview Scheduling & Email Flow Tests", () => {
         "bikash@example.com",
         "Interview Rescheduled — DevOps Engineer at Cloud Tech",
         expect.stringContaining("rescheduled to a new time"),
-        expect.any(String)
+        expect.any(String),
+        expect.any(Object)
       );
       expect(sendNotification).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -375,6 +459,7 @@ describe("Interview Scheduling & Email Flow Tests", () => {
         interview: {
           scheduledAt: new Date("2026-09-22T04:45:00.000Z"),
         },
+        statusHistory: [],
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -400,7 +485,8 @@ describe("Interview Scheduling & Email Flow Tests", () => {
         "sita@example.com",
         "Interview Cancelled — QA Engineer at Test Corp",
         expect.stringContaining("cancelled"),
-        expect.any(String)
+        expect.any(String),
+        expect.any(Object)
       );
     });
   });
@@ -450,7 +536,8 @@ describe("Interview Scheduling & Email Flow Tests", () => {
         "prashant@example.com",
         "Interview Scheduled — Product Manager at Apex Solutions",
         expect.any(String),
-        expect.any(String)
+        expect.any(String),
+        expect.any(Object)
       );
       expect(mockApp.interview.emailStatus).toBe("sent");
       expect(mockApp.save).toHaveBeenCalled();

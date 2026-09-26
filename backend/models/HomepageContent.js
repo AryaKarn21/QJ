@@ -22,6 +22,25 @@ const mongoose = require("mongoose");
 // than one if something went wrong.
 const SINGLETON_ID = "homepage";
 
+// One entry per past saved state of the homepage doc — mirrors Page.js's
+// revisionSchema (restore-never-deletes-history), adapted to homepage's
+// shape. hero/cta/sections are stored as loose snapshots (not re-declared
+// as live-validated sub-schemas) since revisions are read-only history,
+// never re-saved as-is.
+const homepageRevisionSchema = new mongoose.Schema(
+  {
+    revNumber: { type: Number, required: true },
+    version: { type: Number, default: 1 },
+    isPublished: { type: Boolean, default: false },
+    hero: { type: Object, default: {} },
+    cta: { type: Object, default: {} },
+    sections: { type: Array, default: [] },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const homepageContentSchema = new mongoose.Schema(
   {
     _id: { type: String, default: SINGLETON_ID },
@@ -55,7 +74,41 @@ const homepageContentSchema = new mongoose.Schema(
       secondaryCtaText: { type: String, trim: true, default: "" },
       secondaryCtaLink: { type: String, trim: true, default: "" },
     },
+    // Homepage section headings (Featured Jobs, Recommended Jobs, Popular
+    // Categories, Explore by Field, Trending Jobs, Why Choose QuickJobs,
+    // Blog Categories) — each keyed by a fixed `key` the frontend section
+    // component matches against, following the same DEFAULTS-merge pattern
+    // hero/cta already use.
+    sections: [
+      {
+        key: {
+          type: String,
+          required: true,
+          enum: [
+            "featuredJobs",
+            "recommendedJobs",
+            "popularCategories",
+            "exploreByField",
+            "trendingJobs",
+            "whyChooseUs",
+            "blogCategories",
+          ],
+        },
+        badgeText: { type: String, trim: true, default: "" },
+        heading: { type: String, trim: true, default: "" },
+        highlightedText: { type: String, trim: true, default: "" },
+        description: { type: String, trim: true, default: "" },
+        buttonText: { type: String, trim: true, default: "" },
+        buttonLink: { type: String, trim: true, default: "" },
+        isActive: { type: Boolean, default: true },
+      },
+    ],
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    // Version history — same "restore snapshots current state first, never
+    // deletes history" contract as Page.js. See cmsController.js's
+    // snapshotHomepageRevision/getHomepageRevisions/restoreHomepageRevision.
+    version: { type: Number, default: 1 },
+    revisions: { type: [homepageRevisionSchema], default: [] },
   },
   { timestamps: true }
 );

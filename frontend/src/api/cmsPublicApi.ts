@@ -70,9 +70,24 @@ export interface HomepageCtaContent {
   secondaryCtaLink: string;
 }
 
+// Homepage section headings (Featured Jobs, Recommended Jobs, Popular
+// Categories, Explore by Field, Trending Jobs, Why Choose QuickJobs, Blog
+// Categories) — each keyed by `key`, matching the admin form's fixed
+// 7-key list (see CmsHub.tsx's HOMEPAGE_SECTION_KEYS).
+export interface HomepageSectionContent {
+  key: string;
+  badgeText: string;
+  heading: string;
+  highlightedText: string;
+  description: string;
+  buttonText: string;
+  buttonLink: string;
+  isActive: boolean;
+}
+
 export type HomepageContent =
   | { isPublished: false }
-  | { isPublished: true; hero: HomepageHeroContent; cta: HomepageCtaContent };
+  | { isPublished: true; hero: HomepageHeroContent; cta: HomepageCtaContent; sections?: HomepageSectionContent[] };
 
 export const getHomepageContent = async (): Promise<HomepageContent> => {
   const res = await axios.get(`${API_BASE_URL}/api/cms/homepage`);

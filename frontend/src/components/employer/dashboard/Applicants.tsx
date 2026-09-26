@@ -5,7 +5,11 @@ import {
   getEmployerJobs,
   updateApplicationStatus,
   resendInterviewEmail,
+  updateInterviewOutcome,
+  previewApplicationEmail,
+  sendCustomMessageToCandidate,
   type EmployerApplication,
+  type InterviewType,
 } from "../employerApi/api";
 import {
   Search,
@@ -36,8 +40,16 @@ import {
   AlertCircle,
   Globe,
   ChevronDown,
+  ClipboardCheck,
+  Send,
+  UserX,
+  Award,
+  Ban,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { AssignAssessmentModal } from "./AssignAssessmentModal";
+import EmailPreviewModal from "../../shared/EmailPreviewModal";
+import AssessmentResultsModal from "./AssessmentResultsModal";
 import {
   resolveMediaUrl,
   resolveResumeUrl,
@@ -62,6 +74,18 @@ const statusConfig: Record<string, { bg: string; text: string; dot: string; bord
     dot: "bg-blue-400",
     border: "border-blue-200",
   },
+  Shortlisted: {
+    bg: "bg-cyan-50",
+    text: "text-cyan-700",
+    dot: "bg-cyan-400",
+    border: "border-cyan-200",
+  },
+  "Assessment Assigned": {
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+    dot: "bg-indigo-400",
+    border: "border-indigo-200",
+  },
   "Interview Scheduled": {
     bg: "bg-purple-50",
     text: "text-purple-700",
@@ -82,9 +106,14 @@ const statusConfig: Record<string, { bg: string; text: string; dot: string; bord
   },
 };
 
+// "Assessment Assigned" deliberately excluded — only reachable via the
+// "Assign Assessment" action (it needs an actual assessment picked/
+// created), never a bare status pick. Backend enforces the same rule (see
+// employerController.js's updateApplication).
 const STATUS_OPTIONS = [
   "Pending",
   "Reviewed",
+  "Shortlisted",
   "Interview Scheduled",
   "Accepted",
   "Rejected",
@@ -244,13 +273,29 @@ const Applicants = () => {
   const [downloadingResume, setDownloadingResume] = useState(false);
 
   const [interviewModalFor, setInterviewModalFor] = useState<string | null>(null);
+  const [assessmentModalFor, setAssessmentModalFor] = useState<string | null>(null);
+  const [resultsModalFor, setResultsModalFor] = useState<string | null>(null);
   const [interviewDate, setInterviewDate] = useState("");
   const [interviewMode, setInterviewMode] = useState("Video Call");
+  const [interviewType, setInterviewType] = useState("");
   const [interviewLink, setInterviewLink] = useState("");
   const [interviewLocation, setInterviewLocation] = useState("");
   const [interviewNotes, setInterviewNotes] = useState("");
+  const [interviewCustomMessage, setInterviewCustomMessage] = useState("");
   const [schedulingLoading, setSchedulingLoading] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [showInterviewPreview, setShowInterviewPreview] = useState(false);
+  const [outcomeLoading, setOutcomeLoading] = useState(false);
+
+  const [cancelModalFor, setCancelModalFor] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelTargetStatus, setCancelTargetStatus] = useState("Shortlisted");
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelPreview, setShowCancelPreview] = useState(false);
+
+  const [messageModalFor, setMessageModalFor] = useState<string | null>(null);
+  const [messageText, setMessageText] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const navigate = useNavigate();
 
@@ -402,6 +447,7 @@ const Applicants = () => {
           )}:${pad(d.getMinutes())}`
         );
         setInterviewMode(app.interview.mode || "Video Call");
+        setInterviewType(app.interview.type || "");
         setInterviewLink(app.interview.meetingLink || "");
         setInterviewLocation(app.interview.location || "");
         setInterviewNotes(app.interview.notes || "");
@@ -443,10 +489,12 @@ const Applicants = () => {
         {
           scheduledAt: new Date(interviewDate).toISOString(),
           mode: interviewMode,
+          type: (interviewType || undefined) as InterviewType | undefined,
           meetingLink: interviewLink,
           location: interviewLocation,
           notes: interviewNotes,
-        }
+        },
+        { customMessage: interviewCustomMessage.trim() || undefined }
       );
 
       applyStatusLocally(
@@ -474,14 +522,73 @@ const Applicants = () => {
       setInterviewModalFor(null);
       setInterviewDate("");
       setInterviewMode("Video Call");
+      setInterviewType("");
       setInterviewLink("");
       setInterviewLocation("");
       setInterviewNotes("");
+      setInterviewCustomMessage("");
     } catch (err) {
       console.error("Failed to schedule interview:", err);
       toast.error("Failed to schedule interview.");
     } finally {
       setSchedulingLoading(false);
+    }
+  };
+
+  const handleCancelInterview = async () => {
+    if (!cancelModalFor) return;
+    setCancelling(true);
+    try {
+      const res = await updateApplicationStatus(cancelModalFor, cancelTargetStatus, undefined, {
+        cancellationReason: cancelReason.trim() || undefined,
+      });
+      applyStatusLocally(cancelModalFor, cancelTargetStatus);
+      if (res?.email?.sent === true) {
+        toast.success("Interview cancelled. Candidate notified by email.");
+      } else {
+        toast.success("Interview cancelled.");
+      }
+      setCancelModalFor(null);
+      setCancelReason("");
+      setCancelTargetStatus("Shortlisted");
+    } catch (err) {
+      console.error("Failed to cancel interview:", err);
+      toast.error("Failed to cancel interview.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleMarkOutcome = async (applicationId: string, outcome: "COMPLETED" | "NO_SHOW") => {
+    setOutcomeLoading(true);
+    try {
+      const res = await updateInterviewOutcome(applicationId, outcome);
+      setApplications((prev) =>
+        prev.map((a) => (a.applicationId === applicationId ? { ...a, interview: res.interview } : a))
+      );
+      setSelected((prev) => (prev && prev.applicationId === applicationId ? { ...prev, interview: res.interview } : prev));
+      toast.success(`Interview marked as ${outcome === "NO_SHOW" ? "no-show" : "completed"}.`);
+    } catch (err) {
+      console.error("Failed to update interview outcome:", err);
+      toast.error("Failed to update interview outcome.");
+    } finally {
+      setOutcomeLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageModalFor || !messageText.trim()) return;
+    setSendingMessage(true);
+    try {
+      const res = await sendCustomMessageToCandidate(messageModalFor, messageText.trim());
+      toast.success(res.emailSent ? "Message sent — candidate notified by email." : "Message sent as an in-app notification (email delivery failed).");
+      setMessageModalFor(null);
+      setMessageText("");
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      toast.error("Failed to send message.");
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -711,6 +818,16 @@ const Applicants = () => {
                     </span>
                   </button>
 
+                  {selected.status === "Interview Scheduled" && (
+                    <button
+                      onClick={() => setCancelModalFor(selected.applicationId)}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Ban size={15} />
+                      <span>Cancel Interview</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() =>
                       handleMessageCandidate(selected.applicant?._id)
@@ -720,6 +837,35 @@ const Applicants = () => {
                     <MessageSquare size={15} className="text-orange-600" />
                     <span>Message Candidate</span>
                   </button>
+
+                  <button
+                    onClick={() => setMessageModalFor(selected.applicationId)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Send size={15} className="text-orange-600" />
+                    <span>Send Message</span>
+                  </button>
+
+                  <button
+                    onClick={() => setAssessmentModalFor(selected.applicationId)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <ClipboardCheck size={15} className="text-orange-600" />
+                    <span>
+                      {selected.assessment?.assessment ? "Reassign Assessment" : "Assign Assessment"}
+                    </span>
+                  </button>
+
+                  {selected.assessment?.status &&
+                    ["submitted", "evaluated"].includes(selected.assessment.status) && (
+                      <button
+                        onClick={() => setResultsModalFor(selected.applicationId)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Award size={15} className="text-orange-600" />
+                        <span>View Assessment Results</span>
+                      </button>
+                    )}
 
                   {selected.resume &&
                     !isUnrecoverableResumePath(selected.resume) && (
@@ -1360,13 +1506,36 @@ const Applicants = () => {
                               );
                             })()}
 
-                          {/* Interview Mode / Type */}
-                          {selected.interview?.mode && (
-                            <p className="text-xs text-purple-900">
-                              <strong className="font-semibold">Type:</strong>{" "}
-                              {selected.interview.mode}
-                            </p>
-                          )}
+                          {/* Interview Round / Format / Status */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            {selected.interview?.type && (
+                              <p className="text-xs text-purple-900">
+                                <strong className="font-semibold">Round:</strong>{" "}
+                                {selected.interview.type}
+                              </p>
+                            )}
+                            {selected.interview?.mode && (
+                              <p className="text-xs text-purple-900">
+                                <strong className="font-semibold">Format:</strong>{" "}
+                                {selected.interview.mode}
+                              </p>
+                            )}
+                            {selected.interview?.status && (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                  selected.interview.status === "COMPLETED"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : selected.interview.status === "NO_SHOW"
+                                    ? "bg-rose-100 text-rose-800"
+                                    : selected.interview.status === "CANCELLED"
+                                    ? "bg-gray-200 text-gray-700"
+                                    : "bg-purple-100 text-purple-700"
+                                }`}
+                              >
+                                {selected.interview.status}
+                              </span>
+                            )}
+                          </div>
 
                           {/* Join Interview Meeting Button */}
                           {selected.interview?.meetingLink && (
@@ -1444,6 +1613,28 @@ const Applicants = () => {
                               </span>
                             </button>
                           </div>
+
+                          {/* Outcome: mark completed / no-show (spec section 20) */}
+                          {!["COMPLETED", "NO_SHOW", "CANCELLED"].includes(selected.interview?.status || "") && (
+                            <div className="flex items-center gap-2 pt-2">
+                              <button
+                                type="button"
+                                disabled={outcomeLoading}
+                                onClick={() => handleMarkOutcome(selected.applicationId, "COMPLETED")}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-200 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                              >
+                                <CheckCircle2 size={13} /> Mark Completed
+                              </button>
+                              <button
+                                type="button"
+                                disabled={outcomeLoading}
+                                onClick={() => handleMarkOutcome(selected.applicationId, "NO_SHOW")}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-800 bg-white hover:bg-rose-50 border border-rose-200 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                              >
+                                <UserX size={13} /> Mark No-Show
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-8 sm:p-10 text-center space-y-3">
@@ -1531,6 +1722,16 @@ const Applicants = () => {
                     </span>
                   </button>
 
+                  {selected.status === "Interview Scheduled" && (
+                    <button
+                      onClick={() => setCancelModalFor(selected.applicationId)}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Ban size={15} />
+                      <span>Cancel Interview</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() =>
                       handleMessageCandidate(selected.applicant?._id)
@@ -1540,6 +1741,35 @@ const Applicants = () => {
                     <MessageSquare size={15} className="text-orange-600" />
                     <span>Message Candidate</span>
                   </button>
+
+                  <button
+                    onClick={() => setMessageModalFor(selected.applicationId)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Send size={15} className="text-orange-600" />
+                    <span>Send Message</span>
+                  </button>
+
+                  <button
+                    onClick={() => setAssessmentModalFor(selected.applicationId)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <ClipboardCheck size={15} className="text-orange-600" />
+                    <span>
+                      {selected.assessment?.assessment ? "Reassign Assessment" : "Assign Assessment"}
+                    </span>
+                  </button>
+
+                  {selected.assessment?.status &&
+                    ["submitted", "evaluated"].includes(selected.assessment.status) && (
+                      <button
+                        onClick={() => setResultsModalFor(selected.applicationId)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Award size={15} className="text-orange-600" />
+                        <span>View Assessment Results</span>
+                      </button>
+                    )}
 
                   {selected.resume &&
                     !isUnrecoverableResumePath(selected.resume) && (
@@ -2047,10 +2277,30 @@ const Applicants = () => {
 
                 {/* Scrollable Form Body */}
                 <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                  {/* Interview Round (spec: Technical/HR/Final/Phone/Video/In-person) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                      Interview Round (optional)
+                    </label>
+                    <select
+                      value={interviewType}
+                      onChange={(e) => setInterviewType(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors"
+                    >
+                      <option value="">Not specified</option>
+                      <option value="Technical Interview">Technical Interview</option>
+                      <option value="HR Interview">HR Interview</option>
+                      <option value="Final Interview">Final Interview</option>
+                      <option value="Phone Interview">Phone Interview</option>
+                      <option value="Video Interview">Video Interview</option>
+                      <option value="In-person Interview">In-person Interview</option>
+                    </select>
+                  </div>
+
                   {/* Interview Mode Selector */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                      Interview Type
+                      Format
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                       {[
@@ -2227,6 +2477,22 @@ const Applicants = () => {
                     />
                   </div>
 
+                  {/* Custom message to candidate (spec: employer can add a
+                      personal note, inserted into the email alongside the
+                      standard template). */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                      Custom message to candidate (optional)
+                    </label>
+                    <textarea
+                      value={interviewCustomMessage}
+                      onChange={(e) => setInterviewCustomMessage(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Looking forward to speaking with you!"
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-colors resize-none"
+                    />
+                  </div>
+
                   {/* Candidate Notification Reassurance */}
                   <div className="flex items-start gap-2.5 rounded-xl bg-orange-50 border border-orange-200/70 p-3 text-xs text-orange-900">
                     <Mail
@@ -2249,9 +2515,17 @@ const Applicants = () => {
                   <button
                     type="button"
                     onClick={() => setInterviewModalFor(null)}
-                    className="flex-1 border border-gray-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shadow-2xs"
+                    className="border border-gray-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shadow-2xs"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!interviewDate}
+                    onClick={() => setShowInterviewPreview(true)}
+                    className="flex items-center gap-1.5 border border-orange-200 bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-50 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                  >
+                    <Eye size={14} /> Preview
                   </button>
                   <button
                     type="button"
@@ -2273,7 +2547,210 @@ const Applicants = () => {
                   </button>
                 </div>
               </div>
+
+              {showInterviewPreview && interviewDate && (
+                <EmailPreviewModal
+                  onClose={() => setShowInterviewPreview(false)}
+                  sendLabel="Schedule & Send"
+                  fetchPreview={() =>
+                    previewApplicationEmail(interviewModalFor, {
+                      action:
+                        modalApp?.status === "Interview Scheduled" ? "reschedule_interview" : "schedule_interview",
+                      customMessage: interviewCustomMessage.trim() || undefined,
+                      interview: {
+                        scheduledAt: new Date(interviewDate).toISOString(),
+                        mode: interviewMode,
+                        type: (interviewType || undefined) as InterviewType | undefined,
+                        meetingLink: interviewLink,
+                        location: interviewLocation,
+                        notes: interviewNotes,
+                      },
+                    })
+                  }
+                  onConfirmSend={handleScheduleInterview}
+                />
+              )}
             </div>
+          );
+        })()}
+
+      {/* ─────────────────────────────────────────────────────────────
+          CANCEL INTERVIEW MODAL (spec section 19)
+      ───────────────────────────────────────────────────────────── */}
+      {cancelModalFor &&
+        (() => {
+          const modalApp =
+            applications.find((a) => a.applicationId === cancelModalFor) ||
+            (selected?.applicationId === cancelModalFor ? selected : null);
+          return (
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 my-auto flex flex-col max-h-[92vh]">
+                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                  <h2 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                    <Ban size={18} className="text-rose-600" /> Cancel Interview
+                  </h2>
+                  <button
+                    onClick={() => setCancelModalFor(null)}
+                    className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4 overflow-y-auto flex-1 text-sm">
+                  <p className="text-xs text-gray-500">
+                    Candidate: <strong className="text-gray-800">{modalApp?.applicant?.name || "Candidate"}</strong>
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Reason (included in the cancellation email)</label>
+                    <textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      rows={3}
+                      placeholder="e.g. The role's requirements have changed."
+                      className="w-full rounded-xl border border-gray-200 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Move application to</label>
+                    <select
+                      value={cancelTargetStatus}
+                      onChange={(e) => setCancelTargetStatus(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                    >
+                      <option value="Shortlisted">Shortlisted (keep in pipeline)</option>
+                      <option value="Reviewed">Reviewed</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
+                  <button
+                    onClick={() => setCancelModalFor(null)}
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setShowCancelPreview(true)}
+                    className="flex items-center gap-1.5 rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-50"
+                  >
+                    <Eye size={14} /> Preview
+                  </button>
+                  <button
+                    onClick={handleCancelInterview}
+                    disabled={cancelling}
+                    className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-rose-700 disabled:opacity-50"
+                  >
+                    {cancelling ? "Cancelling…" : "Cancel Interview"}
+                  </button>
+                </div>
+              </div>
+
+              {showCancelPreview && (
+                <EmailPreviewModal
+                  onClose={() => setShowCancelPreview(false)}
+                  sendLabel="Cancel & Send"
+                  fetchPreview={() =>
+                    previewApplicationEmail(cancelModalFor, {
+                      action: "cancel_interview",
+                      cancellationReason: cancelReason.trim() || undefined,
+                    })
+                  }
+                  onConfirmSend={handleCancelInterview}
+                />
+              )}
+            </div>
+          );
+        })()}
+
+      {/* ─────────────────────────────────────────────────────────────
+          SEND MESSAGE MODAL (spec section 22 — standalone one-off note,
+          distinct from the full Conversation/Message system)
+      ───────────────────────────────────────────────────────────── */}
+      {messageModalFor &&
+        (() => {
+          const modalApp =
+            applications.find((a) => a.applicationId === messageModalFor) ||
+            (selected?.applicationId === messageModalFor ? selected : null);
+          return (
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 my-auto flex flex-col max-h-[92vh]">
+                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                  <h2 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                    <Send size={18} className="text-orange-600" /> Send a Message
+                  </h2>
+                  <button
+                    onClick={() => setMessageModalFor(null)}
+                    className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-3 overflow-y-auto flex-1 text-sm">
+                  <p className="text-xs text-gray-500">
+                    To: <strong className="text-gray-800">{modalApp?.applicant?.name || "Candidate"}</strong>
+                    {modalApp?.applicant?.email ? ` (${modalApp.applicant.email})` : ""}
+                  </p>
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    rows={5}
+                    placeholder="Write a message for this candidate…"
+                    className="w-full rounded-xl border border-gray-200 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  />
+                  <p className="text-[11px] text-gray-400">
+                    Sent as an in-app notification and a one-off email. For an ongoing conversation, use "Message Candidate" instead.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
+                  <button
+                    onClick={() => setMessageModalFor(null)}
+                    className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={sendingMessage || !messageText.trim()}
+                    className="flex-1 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    {sendingMessage ? "Sending…" : "Send Message"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {resultsModalFor &&
+        (() => {
+          const modalApp =
+            applications.find((a) => a.applicationId === resultsModalFor) ||
+            (selected?.applicationId === resultsModalFor ? selected : null);
+          if (!modalApp?.assessment?.assessment) return null;
+          return (
+            <AssessmentResultsModal
+              assessmentId={modalApp.assessment.assessment}
+              applicationId={resultsModalFor}
+              onClose={() => setResultsModalFor(null)}
+            />
+          );
+        })()}
+
+      {assessmentModalFor &&
+        (() => {
+          const modalApp =
+            applications.find((a) => a.applicationId === assessmentModalFor) ||
+            (selected?.applicationId === assessmentModalFor ? selected : null);
+          if (!modalApp?.job?._id) return null;
+          return (
+            <AssignAssessmentModal
+              jobId={modalApp.job._id}
+              applicationId={assessmentModalFor}
+              candidateEmail={modalApp.applicant?.email}
+              onClose={() => setAssessmentModalFor(null)}
+              onAssigned={fetchApplicants}
+            />
           );
         })()}
     </div>

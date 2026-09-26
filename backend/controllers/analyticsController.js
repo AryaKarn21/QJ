@@ -5,6 +5,10 @@ const Application = require("../models/Application");
 const Post = require("../models/Post");
 const Blog = require("../models/Blog");
 const Comment = require("../models/Comment");
+const Notification = require("../models/Notification");
+const EmailLog = require("../models/EmailLog");
+const Assessment = require("../models/Assessment");
+const AssessmentAttempt = require("../models/AssessmentAttempt");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -245,14 +249,169 @@ async function buildBlogAnalytics() {
   };
 }
 
+async function buildNotificationAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, typeAgg, totalNotifications, unreadCount] = await Promise.all([
+    Notification.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    Notification.aggregate([
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]),
+    Notification.countDocuments(),
+    Notification.countDocuments({ isRead: false }),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  return {
+    totalNotifications,
+    unreadCount,
+    growth,
+    byType: typeAgg.map((t) => ({ type: t._id, count: t.count })),
+  };
+}
+
+async function buildEmailAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, statusAgg, typeAgg, totalEmails] = await Promise.all([
+    EmailLog.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    EmailLog.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+    EmailLog.aggregate([
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]),
+    EmailLog.countDocuments(),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  const byStatus = statusAgg.map((s) => ({ status: s._id, count: s.count }));
+  const failedCount = byStatus.find((s) => s.status === "failed")?.count || 0;
+  const failureRate = totalEmails > 0 ? ((failedCount / totalEmails) * 100).toFixed(2) : "0";
+
+  return {
+    totalEmails,
+    byStatus,
+    byType: typeAgg.map((t) => ({ type: t._id, count: t.count })),
+    failureRate: `${failureRate}%`,
+    growth,
+  };
+}
+
+async function buildAssessmentAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, statusAgg, scoreAgg, totalAssessments, totalAttempts] = await Promise.all([
+    AssessmentAttempt.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    AssessmentAttempt.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+    AssessmentAttempt.aggregate([
+      { $match: { status: "evaluated" } },
+      {
+        $group: {
+          _id: null,
+          avgScorePercent: { $avg: { $cond: [{ $gt: ["$maxScore", 0] }, { $multiply: [{ $divide: ["$score", "$maxScore"] }, 100] }, 0] } },
+          passCount: { $sum: { $cond: ["$passed", 1, 0] } },
+          evaluatedCount: { $sum: 1 },
+        },
+      },
+    ]),
+    Assessment.countDocuments(),
+    AssessmentAttempt.countDocuments(),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  const scoreStats = scoreAgg[0];
+  const passRate = scoreStats?.evaluatedCount > 0 ? ((scoreStats.passCount / scoreStats.evaluatedCount) * 100).toFixed(2) : "0";
+
+  return {
+    totalAssessments,
+    totalAttempts,
+    avgScorePercent: scoreStats ? Math.round(scoreStats.avgScorePercent) : 0,
+    passRate: `${passRate}%`,
+    byStatus: statusAgg.map((s) => ({ status: s._id, count: s.count })),
+    growth,
+  };
+}
+
+async function buildInterviewAnalytics() {
+  const days = 90;
+  const startDate = new Date(Date.now() - days * DAY_MS);
+
+  const [growthAgg, statusAgg, typeAgg, totalInterviews, avgDurationAgg] = await Promise.all([
+    Application.aggregate([
+      { $match: { "interview.scheduledAt": { $exists: true, $ne: null }, createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    Application.aggregate([
+      { $match: { "interview.scheduledAt": { $exists: true, $ne: null } } },
+      { $group: { _id: "$interview.status", count: { $sum: 1 } } },
+    ]),
+    Application.aggregate([
+      { $match: { "interview.type": { $exists: true, $ne: null } } },
+      { $group: { _id: "$interview.type", count: { $sum: 1 } } },
+    ]),
+    Application.countDocuments({ "interview.scheduledAt": { $exists: true, $ne: null } }),
+    Application.aggregate([
+      { $match: { "interview.scheduledAt": { $exists: true, $ne: null } } },
+      { $group: { _id: null, avgDuration: { $avg: "$interview.duration" } } },
+    ]),
+  ]);
+
+  const byDate = {};
+  growthAgg.forEach((row) => {
+    byDate[row._id] = { count: row.count };
+  });
+  const growth = fillDateRange(startDate, days, byDate, ["count"]);
+
+  return {
+    totalInterviews,
+    avgDuration: Math.round(avgDurationAgg[0]?.avgDuration || 0),
+    byStatus: statusAgg.map((s) => ({ status: s._id || "SCHEDULED", count: s.count })),
+    byType: typeAgg.map((t) => ({ type: t._id, count: t.count })),
+    growth,
+  };
+}
+
 /**
  * GET /api/admin/analytics
  * Single combined payload for the Analytics Hub — one request, one loading
- * state, seven tabs/sections worth of real data.
+ * state, all tabs/sections worth of real data.
  */
 exports.getAnalyticsOverview = async (req, res) => {
   try {
-    const [users, jobs, revenue, devices, applications, community, blogs] = await Promise.all([
+    const [
+      users, jobs, revenue, devices, applications, community, blogs,
+      notifications, emails, assessments, interviews,
+    ] = await Promise.all([
       buildUserAnalytics(),
       buildJobAnalytics(),
       buildRevenueAnalytics(),
@@ -260,9 +419,16 @@ exports.getAnalyticsOverview = async (req, res) => {
       buildApplicationAnalytics(),
       buildCommunityAnalytics(),
       buildBlogAnalytics(),
+      buildNotificationAnalytics(),
+      buildEmailAnalytics(),
+      buildAssessmentAnalytics(),
+      buildInterviewAnalytics(),
     ]);
 
-    return res.status(200).json({ users, jobs, revenue, devices, applications, community, blogs });
+    return res.status(200).json({
+      users, jobs, revenue, devices, applications, community, blogs,
+      notifications, emails, assessments, interviews,
+    });
   } catch (error) {
     console.error("Failed to build analytics overview:", error.message);
     return res.status(500).json({ message: "Failed to load analytics" });

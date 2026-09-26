@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
-import { Eye, EyeOff, Lock, KeyRound, Megaphone, ShieldCheck, Send, Loader2 } from 'lucide-react';
-import { getAdminProfile, makeAnnouncement } from './adminApi/api';
+import { Eye, EyeOff, Lock, KeyRound, Megaphone, ShieldCheck, Send, Loader2, Bell } from 'lucide-react';
+import {
+  getAdminProfile,
+  makeAnnouncement,
+  getNotificationSettings,
+  updateNotificationSettings,
+  type NotificationSettings as NotificationSettingsType,
+} from './adminApi/api';
 import { changePassword } from '../auth/authApi/authApi';
 import { useAdminAuth } from '../../context/useAdminAuth';
 import { SkeletonCircle, SkeletonText } from '../ui/Skeleton';
@@ -25,6 +31,9 @@ const AdminSettings = () => {
   const [announcementRole, setAnnouncementRole] = useState<'all' | 'jobseeker' | 'employer'>('all');
   const [announcementLoading, setAnnouncementLoading] = useState(false);
 
+  const [notifSettings, setNotifSettings] = useState<NotificationSettingsType | null>(null);
+  const [savingNotifSettings, setSavingNotifSettings] = useState(false);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -36,7 +45,24 @@ const AdminSettings = () => {
     };
 
     fetchProfile();
+
+    getNotificationSettings()
+      .then(setNotifSettings)
+      .catch((err) => console.error('Error fetching notification settings:', err));
   }, []);
+
+  const handleUpdateJobAlertMode = async (mode: NotificationSettingsType['jobAlertMode']) => {
+    setSavingNotifSettings(true);
+    try {
+      const updated = await updateNotificationSettings(mode);
+      setNotifSettings(updated);
+    } catch (err) {
+      console.error('Error updating notification settings:', err);
+      alert('Failed to update job alert targeting mode.');
+    } finally {
+      setSavingNotifSettings(false);
+    }
+  };
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -346,6 +372,59 @@ const AdminSettings = () => {
               </div>
             </section>
           )}
+
+          {/* Job Alert Targeting (spec section 2) — governs which
+              jobseekers get notified/emailed when a new job is published.
+              Read-only for regular admins; only superadmin can change it. */}
+          <section className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 sm:px-6 py-4 border-b border-slate-100">
+              <div className="p-2 rounded-xl bg-orange-50 text-[#F97316] border border-orange-100 shrink-0">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-slate-900">Job Alert Targeting</h2>
+                <p className="text-xs text-slate-400 font-medium">
+                  Choose who gets notified when a new job is published.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-3">
+              {(['matching', 'following', 'all'] as const).map((mode) => (
+                <label
+                  key={mode}
+                  className={`flex items-start gap-3 rounded-xl border p-3.5 transition-colors ${
+                    notifSettings?.jobAlertMode === mode
+                      ? 'border-orange-300 bg-orange-50/60'
+                      : 'border-slate-200 bg-slate-50/50'
+                  } ${isSuperAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                >
+                  <input
+                    type="radio"
+                    name="jobAlertMode"
+                    checked={notifSettings?.jobAlertMode === mode}
+                    disabled={!isSuperAdmin || savingNotifSettings || !notifSettings}
+                    onChange={() => handleUpdateJobAlertMode(mode)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 capitalize">{mode}</p>
+                    <p className="text-xs text-slate-500">
+                      {mode === 'matching' &&
+                        "Jobseekers whose location matches the job's location (today's default)."}
+                      {mode === 'following' && "Jobseekers who follow the posting employer's company."}
+                      {mode === 'all' && 'Every jobseeker with new-job alerts enabled, no filter.'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+              {!isSuperAdmin && (
+                <p className="flex items-center gap-2 text-xs text-slate-400">
+                  <Lock size={13} /> Only a superadmin can change this setting.
+                </p>
+              )}
+            </div>
+          </section>
 
         </div>
       </div>

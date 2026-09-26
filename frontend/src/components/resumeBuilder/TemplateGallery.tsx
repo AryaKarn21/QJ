@@ -13,6 +13,7 @@ import { SAMPLE_RESUME } from './templates/shared/sampleResume';
 import { createResume, updateResume } from './resumeApi';
 import { CountrySelectionHub } from './components/CountrySelectionHub';
 import { CountryCVConfig } from './config/countryCVConfigs';
+import { useSiteContent } from '../../hooks/useSiteContent';
 
 // Every color/font variant of the same base layout shares a `groupId`
 // (see registry.ts) — grouping by it turns "1,500+ nearly-identical
@@ -239,17 +240,22 @@ const POPULAR_WORKER_ROLES = [
   'Electrician', 'Cleaner', 'Security Guard', 'Delivery Driver',
 ];
 
-const WorkerHeroBanner: React.FC<{ onRoleClick: () => void }> = ({ onRoleClick }) => (
+const WorkerHeroBanner: React.FC<{ onRoleClick: () => void }> = ({ onRoleClick }) => {
+  const heading = useSiteContent('resume.gallery.heading', 'Build a Resume for Your Job');
+  const description = useSiteContent(
+    'resume.gallery.description',
+    'Choose your job role and get a professionally designed resume tailored to your experience. All templates are ATS-friendly and easy to fill out.'
+  );
+  return (
   <div className="mb-6 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50/90 via-amber-50/50 to-orange-50/90 p-5 shadow-sm">
     <div className="flex items-start gap-3">
       <div className="rounded-lg bg-orange-500/10 p-2">
         <HardHat size={22} className="text-orange-500" />
       </div>
       <div className="flex-1">
-        <h3 className="text-[15px] font-bold text-slate-800">Build a Resume for Your Job</h3>
+        <h3 className="text-[15px] font-bold text-slate-800">{heading}</h3>
         <p className="mt-0.5 text-[12.5px] text-slate-500">
-          Choose your job role and get a professionally designed resume tailored to your experience.
-          All templates are ATS-friendly and easy to fill out.
+          {description}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {POPULAR_WORKER_ROLES.map((role) => (
@@ -265,11 +271,18 @@ const WorkerHeroBanner: React.FC<{ onRoleClick: () => void }> = ({ onRoleClick }
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ── AI Banner ──────────────────────────────────────────────────────────────────
 
-const AiBanner: React.FC<{ onBuild: () => void }> = ({ onBuild }) => (
+const AiBanner: React.FC<{ onBuild: () => void }> = ({ onBuild }) => {
+  const heading = useSiteContent('resume.gallery.aiBannerHeading', '✨ Let AI Build Your Resume Automatically');
+  const description = useSiteContent(
+    'resume.gallery.aiBannerDescription',
+    'Just tell us about yourself — your experience, skills, and education. AI writes your entire resume in seconds.'
+  );
+  return (
   <div className="mb-8 rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50/80 via-amber-50/50 to-orange-50/80 p-5 shadow-sm">
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div className="flex items-start gap-3">
@@ -278,11 +291,10 @@ const AiBanner: React.FC<{ onBuild: () => void }> = ({ onBuild }) => (
         </div>
         <div>
           <h3 className="text-[15px] font-bold text-slate-800">
-            ✨ Let AI Build Your Resume Automatically
+            {heading}
           </h3>
           <p className="mt-0.5 text-[12.5px] text-slate-500">
-            Just tell us about yourself — your experience, skills, and education.
-            AI writes your entire resume in seconds.
+            {description}
           </p>
         </div>
       </div>
@@ -294,7 +306,8 @@ const AiBanner: React.FC<{ onBuild: () => void }> = ({ onBuild }) => (
       </button>
     </div>
   </div>
-);
+  );
+};
 
 // ── Main gallery ───────────────────────────────────────────────────────────────
 

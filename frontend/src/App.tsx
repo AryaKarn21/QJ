@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import ResumeEditorErrorBoundary from './components/resumeBuilder/ResumeEditorErrorBoundary';
 import AdminShell from './components/layout/AdminShell';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from './components/ui/Skeleton';
 import Header from './components/layout/Header';
@@ -26,6 +27,7 @@ import UserProfile from './components/jobseeker/user/profile';
 import UserDashboard from './components/jobseeker/user/dashboard';
 import UserSavedJobs from './components/jobseeker/user/savedJobs';
 import UserMyApplications from './components/jobseeker/user/myApplications';
+import TakeAssessment from './components/assessment/TakeAssessment';
 import UserSettings from './components/jobseeker/user/settings';
 import UserSupportTickets from './components/jobseeker/user/supportTickets';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -114,6 +116,7 @@ import { MessagesPage } from './components/messaging/MessagesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Unauthorized from './components/auth/Unauthorized';
 import AuditLogs from './components/admin/audit/AuditLogs';
+import EmailLogs from './components/admin/emailLogs/EmailLogs';
 import Security from './components/admin/security/Security';
 import Chatbot from './components/common/Chatbot';
 import { ScrollToTop } from './components/common/ScrollToTop';
@@ -214,7 +217,14 @@ function AppWrapper() {
           {/* resume builder */}
           <Route path="/resume" element={<TemplateGallery />} />
           <Route path="/resume/history" element={<MyResumes />} />
-          <Route path="/resume/:id/edit" element={<ResumeEditor />} />
+          <Route
+            path="/resume/:id/edit"
+            element={
+              <ResumeEditorErrorBoundary>
+                <ResumeEditor />
+              </ResumeEditorErrorBoundary>
+            }
+          />
           <Route path="/resume/ai-builder" element={<AiResumeBuilder />} />  
           {/* blog routes */}
           <Route path="/blog" element={<BlogList />} />
@@ -320,6 +330,14 @@ function AppWrapper() {
           <Route path="/jobs" element={<AllJobListing />} />
           <Route path="/jobs/:id" element={<JobDetailPage />} />
           <Route path="/jobs/:jobId/apply" element={<ApplyPage />} />
+          <Route
+            path="/assessment/:applicationId/:token"
+            element={
+              <ProtectedRoute allowedRoles={['jobseeker']}>
+                <TakeAssessment />
+              </ProtectedRoute>
+            }
+          />
 
           {/* jobseeker dashboard */}
           <Route
@@ -418,6 +436,7 @@ function AppWrapper() {
               }
             />
             <Route path="employer/:employerId/applicants" element={<EmployerApplicants />} />
+            <Route path="email-logs" element={<EmailLogs />} />
             <Route
               path="security"
               element={

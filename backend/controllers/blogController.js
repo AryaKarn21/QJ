@@ -782,7 +782,7 @@ const updateBlog = async (req, res) => {
     // --------------------------------------------------------
 
     const blog =
-      await Blog.findById(id);
+      await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
 
     if (!blog) {
       return res.status(404).json({
@@ -927,7 +927,7 @@ const deleteBlog = async (req, res) => {
     // --------------------------------------------------------
 
     const blog =
-      await Blog.findById(id);
+      await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
 
     if (!blog) {
       return res.status(404).json({
@@ -953,7 +953,7 @@ const deleteBlog = async (req, res) => {
     // Delete
     // --------------------------------------------------------
 
-    await Blog.findByIdAndDelete(id);
+    await Blog.findByIdAndDelete(blog._id);
 
     return res.status(200).json({
       success: true,
@@ -993,7 +993,7 @@ const toggleLikeBlog = async (
     // --------------------------------------------------------
 
     const blog =
-      await Blog.findById(id);
+      await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
 
     if (!blog) {
       return res.status(404).json({
@@ -1105,7 +1105,7 @@ const addComment = async (
     // --------------------------------------------------------
 
     const blog =
-      await Blog.findById(id);
+      await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
 
     if (!blog) {
       return res.status(404).json({
@@ -1269,7 +1269,7 @@ const updateComment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Comment content is required" });
     }
 
-    const blog = await Blog.findById(id);
+    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
     if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
 
     const comment = blog.comments.id(commentId);
@@ -1296,7 +1296,7 @@ const deleteComment = async (req, res) => {
   try {
     const { id, commentId } = req.params;
 
-    const blog = await Blog.findById(id);
+    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
     if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
 
     const comment = blog.comments.id(commentId);
@@ -1326,7 +1326,7 @@ const toggleCommentLike = async (req, res) => {
     const { id, commentId } = req.params;
     const userId = req.user.id;
 
-    const blog = await Blog.findById(id);
+    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
     if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
 
     const comment = blog.comments.id(commentId);

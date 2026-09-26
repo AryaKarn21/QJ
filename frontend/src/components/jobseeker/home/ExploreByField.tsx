@@ -6,6 +6,7 @@ import { Layers2, ArrowRight, SearchX } from 'lucide-react';
 import { fetchJobCategories } from '../../../api/jobCategoryApi';
 import { fetchJobs, Job } from '../jobseekerApi/api';
 import { JobCard } from './JobCard';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 const MAX_FIELDS = 4;
 const JOBS_PER_FIELD = 3;
@@ -50,9 +51,14 @@ const ExploreByField: React.FC = () => {
     queryKey: ['exploreByField'],
     queryFn: fetchFieldGroups,
   });
+  const section = useHomepageSection('exploreByField', {
+    heading: 'Explore Jobs by Field',
+    description: 'Jump into the fields hiring right now.',
+  });
 
   // Nothing real to show (no categories with active jobs yet) — skip the
   // section entirely rather than rendering an empty shell on the homepage.
+  if (!section.isActive) return null;
   if (!isLoading && !isError && fields.length === 0) return null;
 
   return (
@@ -68,8 +74,8 @@ const ExploreByField: React.FC = () => {
           <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
             <Layers2 size={14} /> By Field
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Explore Jobs by Field</h2>
-          <p className="mt-1 text-sm text-slate-500 sm:text-base">Jump into the fields hiring right now.</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{section.heading}</h2>
+          <p className="mt-1 text-sm text-slate-500 sm:text-base">{section.description}</p>
         </div>
 
         {isLoading ? (

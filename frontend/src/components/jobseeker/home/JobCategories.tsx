@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Layers, ArrowRight, SearchX } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com';
 
@@ -54,6 +55,10 @@ const JobCategories = () => {
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const section = useHomepageSection('popularCategories', {
+    heading: 'Explore Categories',
+    description: 'Find jobs in your preferred field and build your dream career.',
+  });
 
   useEffect(() => {
     const fetchTrendingCategories = async () => {
@@ -77,6 +82,8 @@ const JobCategories = () => {
     navigate(`/jobs?q=${encodeURIComponent(categoryName)}`);
   };
 
+  if (!section.isActive) return null;
+
   return (
     <section className="bg-slate-50 py-10 sm:py-12 lg:py-14">
       <motion.div
@@ -93,9 +100,9 @@ const JobCategories = () => {
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
               <Layers size={14} /> Browse Categories
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Explore Categories</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{section.heading}</h2>
             <p className="mt-1 text-sm text-slate-500 sm:text-base">
-              Find jobs in your preferred field and build your dream career.
+              {section.description}
             </p>
           </div>
           <button

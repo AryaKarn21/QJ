@@ -72,6 +72,7 @@ const BlogDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [liking, setLiking] = useState(false);
   const [comment, setComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -175,6 +176,8 @@ const BlogDetail: React.FC = () => {
   // Blog like — optimistic: flip the UI immediately, roll back on failure.
   // ------------------------------------------------------------
   const handleLike = async () => {
+    if (liking) return;
+
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
@@ -183,6 +186,7 @@ const BlogDetail: React.FC = () => {
 
     const previousLiked = isLiked;
     const previousCount = likesCount;
+    setLiking(true);
     setIsLiked(!previousLiked);
     setLikesCount(previousLiked ? previousCount - 1 : previousCount + 1);
 
@@ -201,6 +205,8 @@ const BlogDetail: React.FC = () => {
       setIsLiked(previousLiked);
       setLikesCount(previousCount);
       toast.error('Could not update your reaction. Please try again.');
+    } finally {
+      setLiking(false);
     }
   };
 
@@ -556,7 +562,8 @@ const BlogDetail: React.FC = () => {
         <div className="flex items-center space-x-6 text-sm text-gray-500 border-b border-gray-200 pb-4">
           <button
             onClick={handleLike}
-            className={`flex items-center space-x-1 hover:text-red-500 transition-colors ${
+            disabled={liking}
+            className={`flex items-center space-x-1 hover:text-red-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
               isLiked ? 'text-red-500' : ''
             }`}
           >

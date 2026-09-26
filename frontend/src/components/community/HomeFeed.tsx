@@ -136,6 +136,11 @@ export function HomeFeed() {
 
         <aside className="hidden lg:block">
           <TrendingSidebar />
+          <p className="mt-4 px-1 text-xs text-gray-400">
+            <Link to="/community-guidelines" className="hover:text-gray-600 hover:underline">
+              Community Guidelines
+            </Link>
+          </p>
         </aside>
       </div>
     </div>

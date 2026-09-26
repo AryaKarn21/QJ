@@ -28,6 +28,12 @@ if (missingEnvVars.length > 0) {
 connectDB();
 require("./config/passport");
 
+// 24h/1h interview reminders + assessment-deadline reminders. Skipped
+// under Jest so test runs never spin up a real background interval.
+if (process.env.NODE_ENV !== "test") {
+  require("./utils/interviewReminderCron").startReminderCron();
+}
+
 const app = express();
 
 app.use(
@@ -145,6 +151,7 @@ app.use("/api/community/profile-views", require("./routes/profileViewRoutes"));
 app.use("/api/community/search", require("./routes/searchRoutes"));
 app.use("/api/community/messages", require("./routes/messageRoutes"));
 app.use("/api/notification", require("./routes/notificationRoutes"));
+app.use("/api/assessments", require("./routes/assessmentRoutes"));
 app.use("/api/support", require("./routes/supportRoutes"));
 app.use("/api/newsletter", require("./routes/newsletterRoutes"));
 app.use("/api/blogs", require("./routes/blogRoutes"));

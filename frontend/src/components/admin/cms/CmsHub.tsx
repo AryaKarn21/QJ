@@ -20,6 +20,7 @@ import {
   Send,
   Sparkles,
   Trash2,
+  Type,
   Users,
 } from 'lucide-react';
 import { DataTable, DataTableColumn } from '../../ui/DataTable';
@@ -32,9 +33,15 @@ import {
   CareerTip,
   CmsGenericPage,
   Faq,
+  HomepageRevision,
+  PageRevision,
   PolicyPage,
   PolicyType,
+  SiteContentItem,
   adminDeleteBlog,
+  adminDeleteSiteContent,
+  adminListSiteContent,
+  adminUpsertSiteContent,
   createCareerTip,
   createCmsGenericPage,
   createFaq,
@@ -48,9 +55,11 @@ import {
   getCmsPages,
   getFaqs,
   getHomepageContentAdmin,
+  getHomepageRevisions,
   getNewsletterStats,
   getPolicies,
   getPolicyTypes,
+  restoreHomepageRevision,
   saveHomepageContent,
   sendNewsletterBroadcast,
   toggleBlogPublish,
@@ -62,8 +71,16 @@ import {
   getCmsPageRevisions,
   restoreCmsPageRevision,
 } from '../adminApi/api';
+import { useAdminAuth } from '../../../context/useAdminAuth';
 
-type TabId = 'blogs' | 'pages' | 'faqs' | 'career-tips' | 'policies' | 'homepage' | 'newsletter';
+type TabId = 'blogs' | 'pages' | 'faqs' | 'career-tips' | 'policies' | 'homepage' | 'site-content' | 'newsletter';
+
+// Tabs that control sitewide/legal content — superadmin-only per spec Part
+// 7 ("website headings, homepage content, policies, community guidelines,
+// resume builder marketing content, global CMS content"). FAQs/Career
+// Tips/Blog moderation stay admin-accessible, matching the backend routes
+// (see cmsRoutes.js — those three still use authorizeAdmin).
+const SUPERADMIN_ONLY_TABS: TabId[] = ['pages', 'policies', 'homepage', 'site-content'];
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'blogs', label: 'Blogs', icon: <BookText size={14} /> },
@@ -72,6 +89,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'career-tips', label: 'Career Tips', icon: <GraduationCap size={14} /> },
   { id: 'policies', label: 'Legal & Policies', icon: <Scale size={14} /> },
   { id: 'homepage', label: 'Homepage', icon: <LayoutTemplate size={14} /> },
+  { id: 'site-content', label: 'Site Content', icon: <Type size={14} /> },
   { id: 'newsletter', label: 'Newsletter', icon: <Mail size={14} /> },
 ];
 
@@ -213,7 +231,14 @@ function RichTextEditor({ value, onChange, style }: RichTextEditorProps) {
 }
 
 export const CmsHub: React.FC = () => {
+  const { isSuperAdmin } = useAdminAuth();
+  const visibleTabs = isSuperAdmin ? TABS : TABS.filter((t) => !SUPERADMIN_ONLY_TABS.includes(t.id));
   const [activeTab, setActiveTab] = useState<TabId>('blogs');
+
+  // A plain admin's activeTab could point at a now-hidden superadmin-only
+  // tab (e.g. stale state from before a role change) — fall back to Blogs
+  // rather than rendering a tab with no visible button to select it.
+  const effectiveTab = visibleTabs.some((t) => t.id === activeTab) ? activeTab : 'blogs';
 
   return (
     <div>
@@ -226,12 +251,12 @@ export const CmsHub: React.FC = () => {
 
       <div className="mb-6 -mx-1 overflow-x-auto px-1">
         <div className="inline-flex min-w-full gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60 sm:min-w-0">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === tab.id
+                effectiveTab === tab.id
                   ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-400'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
@@ -242,13 +267,14 @@ export const CmsHub: React.FC = () => {
         </div>
       </div>
 
-      {activeTab === 'blogs' && <BlogsTab />}
-      {activeTab === 'pages' && <PagesTab />}
-      {activeTab === 'faqs' && <FaqsTab />}
-      {activeTab === 'career-tips' && <CareerTipsTab />}
-      {activeTab === 'policies' && <PoliciesTab />}
-      {activeTab === 'homepage' && <HomepageTab />}
-      {activeTab === 'newsletter' && <NewsletterTab />}
+      {effectiveTab === 'blogs' && <BlogsTab />}
+      {effectiveTab === 'pages' && <PagesTab />}
+      {effectiveTab === 'faqs' && <FaqsTab />}
+      {effectiveTab === 'career-tips' && <CareerTipsTab />}
+      {effectiveTab === 'policies' && <PoliciesTab />}
+      {effectiveTab === 'homepage' && <HomepageTab />}
+      {effectiveTab === 'site-content' && <SiteContentTab />}
+      {effectiveTab === 'newsletter' && <NewsletterTab />}
     </div>
   );
 };
@@ -378,6 +404,7 @@ function PagesTab() {
   const [form, setForm] = useState(EMPTY_PAGE_FORM);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cmsPages', search, page],
@@ -468,9 +495,17 @@ function PagesTab() {
         <div className="flex justify-end gap-1.5">
           <button
             onClick={() => setEditingId(p._id)}
+            title="Edit"
             className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             <Pencil size={13} />
+          </button>
+          <button
+            onClick={() => { setEditingId(p._id); setHistoryOpen(true); }}
+            title="Version History"
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <History size={13} />
           </button>
           <button
             onClick={() => handleTogglePublish(p)}
@@ -596,6 +631,21 @@ function PagesTab() {
           </div>
         )}
       </Drawer>
+
+      {historyOpen && editingId && editingId !== 'new' && (
+        <Drawer open={historyOpen} onClose={() => setHistoryOpen(false)} title="Version History" widthClassName="max-w-md">
+          <RevisionList
+            queryKey={['cmsPageRevisions', editingId]}
+            fetchRevisions={() => getCmsPageRevisions(editingId).then(mapPageRevisions)}
+            restoreRevision={(revNumber) => restoreCmsPageRevision(editingId, revNumber)}
+            onRestored={() => {
+              queryClient.invalidateQueries({ queryKey: ['cmsPages'] });
+              queryClient.invalidateQueries({ queryKey: ['cmsPage-edit', editingId] });
+            }}
+            onClose={() => setHistoryOpen(false)}
+          />
+        </Drawer>
+      )}
     </div>
   );
 }
@@ -796,15 +846,43 @@ function FaqDrawer({
   );
 }
 
+/** Normalized shape RevisionList renders — each caller (Pages, Policies,
+ * Homepage) maps its own API response into this before handing it to
+ * RevisionList, so the list itself doesn't need to know whether it's
+ * showing a Page revision or a Homepage revision. */
+export interface NormalizedRevision {
+  revNumber: number;
+  version: number;
+  statusLabel: string;
+  statusTone: 'success' | 'neutral';
+  updatedAt: string;
+  updatedByName: string;
+  detail: string;
+}
+
 /**
- * Version history for any Page document (generic CMS Pages, and Legal &
- * Policies documents), keyed by the page's Mongo `_id` — NOT its slug (see
- * getCmsPageRevisions's doc comment for why that distinction matters here).
+ * Generic version history list — reused by Pages, Legal & Policies, and
+ * Homepage content. Each caller supplies its own fetch/restore functions
+ * (rather than this component hardcoding a Page-`_id`-based API call), so
+ * the same restore-creates-new-revision UX works for any CMS document
+ * type without a special case per type.
  */
-function RevisionList({ pageId, onRestored, onClose }: { pageId: string; onRestored: () => void; onClose: () => void }) {
+function RevisionList({
+  queryKey,
+  fetchRevisions,
+  restoreRevision,
+  onRestored,
+  onClose,
+}: {
+  queryKey: unknown[];
+  fetchRevisions: () => Promise<NormalizedRevision[]>;
+  restoreRevision: (revNumber: number) => Promise<unknown>;
+  onRestored: () => void;
+  onClose: () => void;
+}) {
   const { data: revisions, isLoading, isError } = useQuery({
-    queryKey: ['cmsPageRevisions', pageId],
-    queryFn: () => getCmsPageRevisions(pageId),
+    queryKey,
+    queryFn: fetchRevisions,
     retry: false,
   });
   const [restoringRev, setRestoringRev] = useState<number | null>(null);
@@ -813,7 +891,7 @@ function RevisionList({ pageId, onRestored, onClose }: { pageId: string; onResto
     if (!window.confirm('Restore to this revision? This will create a new revision of the current content — nothing is deleted.')) return;
     setRestoringRev(revNumber);
     try {
-      await restoreCmsPageRevision(pageId, revNumber);
+      await restoreRevision(revNumber);
       toast.success('Revision restored.');
       onRestored();
       onClose();
@@ -841,12 +919,12 @@ function RevisionList({ pageId, onRestored, onClose }: { pageId: string; onResto
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
                   Version {rev.version}
-                  <StatusBadge label={rev.status === 'published' ? 'Published' : 'Draft'} tone={rev.status === 'published' ? 'success' : 'neutral'} />
+                  <StatusBadge label={rev.statusLabel} tone={rev.statusTone} />
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {new Date(rev.updatedAt).toLocaleString()} by {rev.updatedBy?.name || 'unknown'}
+                  {new Date(rev.updatedAt).toLocaleString()} by {rev.updatedByName}
                 </div>
-                <p className="mt-1 truncate text-xs text-slate-400">{rev.title}</p>
+                <p className="mt-1 truncate text-xs text-slate-400">{rev.detail}</p>
               </div>
               <button
                 onClick={() => handleRestore(rev.revNumber)}
@@ -861,6 +939,32 @@ function RevisionList({ pageId, onRestored, onClose }: { pageId: string; onResto
       )}
     </div>
   );
+}
+
+/** Adapts getCmsPageRevisions' PageRevision[] (Pages + Legal & Policies) into RevisionList's generic shape. */
+function mapPageRevisions(revisions: PageRevision[]): NormalizedRevision[] {
+  return revisions.map((rev) => ({
+    revNumber: rev.revNumber,
+    version: rev.version,
+    statusLabel: rev.status === 'published' ? 'Published' : 'Draft',
+    statusTone: rev.status === 'published' ? 'success' : 'neutral',
+    updatedAt: rev.updatedAt,
+    updatedByName: rev.updatedBy?.name || 'unknown',
+    detail: rev.title,
+  }));
+}
+
+/** Adapts getHomepageRevisions' raw entries into RevisionList's generic shape. */
+function mapHomepageRevisions(revisions: HomepageRevision[]): NormalizedRevision[] {
+  return revisions.map((rev) => ({
+    revNumber: rev.revNumber,
+    version: rev.version,
+    statusLabel: rev.isPublished ? 'Published' : 'Draft',
+    statusTone: rev.isPublished ? 'success' : 'neutral',
+    updatedAt: rev.updatedAt,
+    updatedByName: rev.updatedBy?.name || 'unknown',
+    detail: 'Homepage content',
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1100,7 +1204,12 @@ function PoliciesTab() {
   }, [editingId, editingPage]);
 
   const closeDrawer = () => setEditingId(null);
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['cmsPolicies'] });
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['cmsPolicies'] });
+    // Public-side caches these changes could affect — best-effort, admin's
+    // own session only (see homepage-content invalidation comment above).
+    queryClient.invalidateQueries({ queryKey: ['published-policies'] });
+  };
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -1356,7 +1465,9 @@ function PoliciesTab() {
       {historyOpen && editingId && editingId !== 'new' && (
         <Drawer open={historyOpen} onClose={() => setHistoryOpen(false)} title="Version History" widthClassName="max-w-md">
           <RevisionList
-            pageId={editingId}
+            queryKey={['cmsPageRevisions', editingId]}
+            fetchRevisions={() => getCmsPageRevisions(editingId).then(mapPageRevisions)}
+            restoreRevision={(revNumber) => restoreCmsPageRevision(editingId, revNumber)}
             onRestored={() => {
               refresh();
               queryClient.invalidateQueries({ queryKey: ['cmsPolicy-edit', editingId] });
@@ -1390,12 +1501,50 @@ const EMPTY_HOMEPAGE_FORM = {
   },
 };
 
+interface HomepageSectionForm {
+  key: string;
+  badgeText: string;
+  heading: string;
+  highlightedText: string;
+  description: string;
+  buttonText: string;
+  buttonLink: string;
+  isActive: boolean;
+}
+
+// The 7 homepage sections Super Admin can edit headings for — order here
+// is display order in the admin form, not necessarily homepage layout
+// order (that's fixed by the component tree, not CMS-controlled).
+const HOMEPAGE_SECTION_KEYS: { key: string; label: string }[] = [
+  { key: 'featuredJobs', label: 'Featured Jobs' },
+  { key: 'recommendedJobs', label: 'Recommended Jobs' },
+  { key: 'popularCategories', label: 'Popular Categories' },
+  { key: 'exploreByField', label: 'Explore by Field' },
+  { key: 'trendingJobs', label: 'Trending Jobs' },
+  { key: 'whyChooseUs', label: 'Why Choose QuickJobs' },
+  { key: 'blogCategories', label: 'Blog Categories' },
+];
+
+const emptyHomepageSections = (): HomepageSectionForm[] =>
+  HOMEPAGE_SECTION_KEYS.map(({ key }) => ({
+    key,
+    badgeText: '',
+    heading: '',
+    highlightedText: '',
+    description: '',
+    buttonText: '',
+    buttonLink: '',
+    isActive: true,
+  }));
+
 function HomepageTab() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(EMPTY_HOMEPAGE_FORM);
+  const [sections, setSections] = useState<HomepageSectionForm[]>(emptyHomepageSections());
   const [popularSearchesText, setPopularSearchesText] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['homepageContentAdmin'],
@@ -1421,6 +1570,11 @@ function HomepageTab() {
     };
     setForm(next);
     setPopularSearchesText((next.hero?.popularSearches || []).join('\n'));
+    // Merge fetched sections onto the fixed 7-key defaults by key, so a
+    // brand-new install (no sections saved yet) still shows all 7 forms,
+    // and any key the backend hasn't seen yet doesn't silently disappear.
+    const fetchedByKey = new Map((data.sections || []).map((s) => [s.key, s]));
+    setSections(HOMEPAGE_SECTION_KEYS.map(({ key }) => ({ ...emptyHomepageSections().find((s) => s.key === key)!, ...fetchedByKey.get(key) })));
     setSavedAt(null);
   }, [data]);
 
@@ -1431,10 +1585,14 @@ function HomepageTab() {
         ...form.hero,
         popularSearches: popularSearchesText.split('\n').map((s) => s.trim()).filter(Boolean),
       };
-      await saveHomepageContent({ isPublished: form.isPublished, hero, cta: form.cta });
+      await saveHomepageContent({ isPublished: form.isPublished, hero, cta: form.cta, sections });
       setSavedAt(new Date());
       toast.success('Homepage content saved.');
       queryClient.invalidateQueries({ queryKey: ['homepageContentAdmin'] });
+      // Public-side cache — lets an admin previewing the live site in the
+      // same browser session see a just-published change immediately,
+      // rather than waiting out the 5-minute staleTime (see main.tsx).
+      queryClient.invalidateQueries({ queryKey: ['homepage-content'] });
     } catch (err) {
       console.error('Error saving homepage content:', err);
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -1448,6 +1606,8 @@ function HomepageTab() {
     setForm((f) => ({ ...f, hero: { ...f.hero, ...patch } }));
   const setCta = (patch: Partial<typeof form.cta>) =>
     setForm((f) => ({ ...f, cta: { ...f.cta, ...patch } }));
+  const setSection = (key: string, patch: Partial<HomepageSectionForm>) =>
+    setSections((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
 
   if (isLoading) {
     return (
@@ -1558,6 +1718,58 @@ function HomepageTab() {
         </div>
       </section>
 
+      <section className="space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <LayoutTemplate size={16} /> Section headings
+        </h3>
+        <p className="text-xs text-slate-400">
+          Headings/description/button text for each homepage section below the hero. Turn a section off to hide it
+          entirely (its underlying data — jobs, categories, etc. — is unaffected, only the section itself stops rendering).
+        </p>
+        <div className="space-y-3">
+          {sections.map((section) => {
+            const label = HOMEPAGE_SECTION_KEYS.find((s) => s.key === section.key)?.label || section.key;
+            return (
+              <div key={section.key} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</h4>
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={section.isActive}
+                      onChange={(e) => setSection(section.key, { isActive: e.target.checked })}
+                    />
+                    Active
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Badge text (optional)">
+                    <input value={section.badgeText} onChange={(e) => setSection(section.key, { badgeText: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+                  </Field>
+                  <Field label="Heading">
+                    <input value={section.heading} onChange={(e) => setSection(section.key, { heading: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+                  </Field>
+                  <Field label="Highlighted text (optional)">
+                    <input value={section.highlightedText} onChange={(e) => setSection(section.key, { highlightedText: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+                  </Field>
+                  <Field label="Button text (optional)">
+                    <input value={section.buttonText} onChange={(e) => setSection(section.key, { buttonText: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+                  </Field>
+                  <Field label="Button link (optional)">
+                    <input value={section.buttonLink} onChange={(e) => setSection(section.key, { buttonLink: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" placeholder="/jobs" />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Description (optional)">
+                      <textarea value={section.description} onChange={(e) => setSection(section.key, { description: e.target.value })} rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <div className="flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
         <button
           onClick={handleSave}
@@ -1566,8 +1778,179 @@ function HomepageTab() {
         >
           <Save size={15} /> {saving ? 'Saving…' : 'Save'}
         </button>
+        <button
+          onClick={() => setHistoryOpen(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <History size={14} /> Version History
+        </button>
         {savedAt && <span className="text-xs text-slate-400">Saved at {savedAt.toLocaleTimeString()}</span>}
       </div>
+
+      {historyOpen && (
+        <Drawer open={historyOpen} onClose={() => setHistoryOpen(false)} title="Version History" widthClassName="max-w-md">
+          <RevisionList
+            queryKey={['homepageRevisions']}
+            fetchRevisions={() => getHomepageRevisions().then(mapHomepageRevisions)}
+            restoreRevision={(revNumber) => restoreHomepageRevision(revNumber)}
+            onRestored={() => {
+              queryClient.invalidateQueries({ queryKey: ['homepageContentAdmin'] });
+              queryClient.invalidateQueries({ queryKey: ['homepage-content'] });
+            }}
+            onClose={() => setHistoryOpen(false)}
+          />
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Site Content — generic sitewide key/value microcopy (footer, resume
+// builder headings, misc labels). Flat strings, no rich text, no revision
+// history (see backend/models/SiteContent.js's doc comment for why: short
+// microcopy is its own adequate "undo" by re-typing, unlike Pages'/
+// Homepage's long-form content).
+// ---------------------------------------------------------------------------
+function SiteContentTab() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const { data: items, isLoading, isError } = useQuery({
+    queryKey: ['siteContentAdmin'],
+    queryFn: adminListSiteContent,
+    retry: false,
+  });
+
+  const filtered = (items || []).filter(
+    (i) => !search.trim() || i.key.toLowerCase().includes(search.toLowerCase()) || i.section.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const grouped = filtered.reduce<Record<string, SiteContentItem[]>>((acc, item) => {
+    const section = item.section || 'General';
+    acc[section] = acc[section] || [];
+    acc[section].push(item);
+    return acc;
+  }, {});
+
+  const startEdit = (item: SiteContentItem) => {
+    setEditingKey(item.key);
+    setEditValue(item.value);
+  };
+
+  const handleSave = async (item: SiteContentItem) => {
+    setSaving(true);
+    try {
+      await adminUpsertSiteContent(item.key, { value: editValue, section: item.section, description: item.description });
+      queryClient.invalidateQueries({ queryKey: ['siteContentAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['site-content'] });
+      toast.success('Saved.');
+      setEditingKey(null);
+    } catch (err) {
+      console.error('Error saving site content:', err);
+      toast.error('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (item: SiteContentItem) => {
+    if (!window.confirm(`Delete "${item.key}"? The page using it will fall back to its built-in default text.`)) return;
+    await adminDeleteSiteContent(item.key);
+    queryClient.invalidateQueries({ queryKey: ['siteContentAdmin'] });
+    queryClient.invalidateQueries({ queryKey: ['site-content'] });
+  };
+
+  return (
+    <div className="space-y-6">
+      {isError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+          Couldn't load site content. Make sure you're signed in as a superadmin.
+        </div>
+      )}
+
+      <div className="relative max-w-xs">
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by key or section…"
+          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No site content keys yet"
+          description="Keys are created automatically the first time a page reads one (with a built-in fallback) — or add one here directly."
+        />
+      ) : (
+        Object.entries(grouped).map(([section, sectionItems]) => (
+          <div key={section} className="space-y-2">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{section}</h3>
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+              {sectionItems.map((item) => (
+                <div key={item.key} className="flex items-start justify-between gap-3 border-b border-slate-100 p-3 last:border-0 dark:border-slate-800">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{item.key}</p>
+                    {item.description && <p className="mb-1 text-xs text-slate-400">{item.description}</p>}
+                    {editingKey === item.key ? (
+                      <textarea
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        rows={2}
+                        autoFocus
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    ) : (
+                      <p className="mt-1 text-sm text-slate-800 dark:text-slate-100">{item.value || <span className="italic text-slate-400">empty</span>}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    {editingKey === item.key ? (
+                      <>
+                        <button
+                          onClick={() => handleSave(item)}
+                          disabled={saving}
+                          className="rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                        >
+                          <Save size={13} />
+                        </button>
+                        <button
+                          onClick={() => setEditingKey(null)}
+                          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEdit(item)}
+                          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }

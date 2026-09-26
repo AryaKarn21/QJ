@@ -4,6 +4,7 @@ const CareerTip = require("../models/CareerTip");
 const Page = require("../models/Page");
 const { POLICY_TYPE_VALUES } = require("../models/Page");
 const HomepageContent = require("../models/HomepageContent");
+const SiteContent = require("../models/SiteContent");
 const { sanitizeRichText } = require("../utils/sanitizeHtml");
 const { persistUpload } = require("../services/media.service");
 
@@ -234,7 +235,15 @@ exports.getPage = async (req, res) => {
   }
 };
 
-/** PUT /api/cms/pages/:slug — admin only, upserts (creates on first save). */
+/**
+ * PUT /api/cms/pages/:slug — admin only, upserts (creates on first save).
+ * Uses an explicit find-then-save (not findOneAndUpdate) so a mutable,
+ * pre-update document is available to snapshot into `revisions` before
+ * the new content overwrites it — findOneAndUpdate never loads a document
+ * a snapshot helper could push onto, which is why these 3 legacy slugs
+ * previously got no version history while every other Page/Policy edit
+ * already does.
+ */
 exports.upsertPage = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -243,11 +252,29 @@ exports.upsertPage = async (req, res) => {
     }
 
     const { title, content } = req.body;
-    const page = await Page.findOneAndUpdate(
-      { slug },
-      { slug, title, content: sanitizeRichText(content), updatedBy: req.user?.id },
-      { new: true, upsert: true }
-    );
+    const sanitizedContent = sanitizeRichText(content);
+
+    let page = await Page.findOne({ slug });
+    if (page) {
+      const titleChanged = title !== undefined && title !== page.title;
+      const contentChanged = sanitizedContent !== page.content;
+      if (titleChanged || contentChanged) {
+        snapshotPageRevision(page, req.user?.id);
+      }
+      if (title !== undefined) page.title = title;
+      page.content = sanitizedContent;
+      page.updatedBy = req.user?.id;
+      await page.save();
+    } else {
+      page = await Page.create({
+        slug,
+        title,
+        content: sanitizedContent,
+        author: req.user?.id,
+        updatedBy: req.user?.id,
+      });
+    }
+
     res.json(page);
   } catch (error) {
     console.error("Error saving page:", error);
@@ -618,7 +645,7 @@ exports.getHomepageContent = async (req, res) => {
 exports.getHomepageContentAdmin = async (req, res) => {
   try {
     const doc = await HomepageContent.findById(HomepageContent.SINGLETON_ID).lean();
-    res.json(doc || { isPublished: false, hero: {}, cta: {} });
+    res.json(doc || { isPublished: false, hero: {}, cta: {}, sections: [] });
   } catch (error) {
     console.error("Error fetching homepage content (admin):", error);
     res.status(500).json({ message: "Server error" });
@@ -626,22 +653,162 @@ exports.getHomepageContentAdmin = async (req, res) => {
 };
 
 /**
+ * Snapshots the homepage singleton's current pre-edit state into its own
+ * `revisions` array — mirrors snapshotPageRevision's contract exactly
+ * (restore/edit never destroys history, only ever appends).
+ */
+const snapshotHomepageRevision = (doc, byUserId) => {
+  const nextRevNumber = (doc.revisions?.length || 0) + 1;
+  doc.revisions.push({
+    revNumber: nextRevNumber,
+    version: doc.version || 1,
+    isPublished: doc.isPublished,
+    hero: doc.hero,
+    cta: doc.cta,
+    sections: doc.sections,
+    updatedBy: doc.updatedBy || byUserId,
+    updatedAt: doc.updatedAt || new Date(),
+  });
+  doc.version = nextRevNumber + 1;
+};
+
+/**
  * PUT /api/cms/homepage — admin only, upserts the one singleton document.
- * Accepts { isPublished, hero, cta } — an admin can save a draft with
- * isPublished:false to preview internally (via the admin form) before it
- * ever reaches the public endpoint's response.
+ * Accepts { isPublished, hero, cta, sections } — an admin can save a draft
+ * with isPublished:false to preview internally (via the admin form) before
+ * it ever reaches the public endpoint's response.
  */
 exports.upsertHomepageContent = async (req, res) => {
   try {
-    const { isPublished, hero, cta } = req.body;
-    const doc = await HomepageContent.findByIdAndUpdate(
-      HomepageContent.SINGLETON_ID,
-      { isPublished: !!isPublished, hero, cta, updatedBy: req.user?.id },
+    const { isPublished, hero, cta, sections } = req.body;
+
+    let doc = await HomepageContent.findById(HomepageContent.SINGLETON_ID);
+    if (doc) {
+      const heroChanged = hero !== undefined && JSON.stringify(hero) !== JSON.stringify(doc.hero);
+      const ctaChanged = cta !== undefined && JSON.stringify(cta) !== JSON.stringify(doc.cta);
+      const sectionsChanged = sections !== undefined && JSON.stringify(sections) !== JSON.stringify(doc.sections);
+      const publishChanged = isPublished !== undefined && !!isPublished !== doc.isPublished;
+      if (heroChanged || ctaChanged || sectionsChanged || publishChanged) {
+        snapshotHomepageRevision(doc, req.user?.id);
+      }
+      doc.isPublished = !!isPublished;
+      if (hero !== undefined) doc.hero = hero;
+      if (cta !== undefined) doc.cta = cta;
+      if (sections !== undefined) doc.sections = sections;
+      doc.updatedBy = req.user?.id;
+      await doc.save();
+    } else {
+      doc = await HomepageContent.create({
+        _id: HomepageContent.SINGLETON_ID,
+        isPublished: !!isPublished,
+        hero,
+        cta,
+        sections,
+        updatedBy: req.user?.id,
+      });
+    }
+
+    res.json(doc);
+  } catch (error) {
+    console.error("Error saving homepage content:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ----- Homepage Revisions (mirrors Page revisions exactly) -----
+exports.getHomepageRevisions = async (req, res) => {
+  try {
+    const doc = await HomepageContent.findById(HomepageContent.SINGLETON_ID).populate(
+      "revisions.updatedBy",
+      "name email role"
+    );
+    if (!doc) return res.json({ revisions: [] });
+    const revisions = [...(doc.revisions || [])].reverse();
+    res.json({ revisions });
+  } catch (error) {
+    console.error("Error fetching homepage revisions:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.restoreHomepageRevision = async (req, res) => {
+  try {
+    const { revNumber } = req.params;
+    const doc = await HomepageContent.findById(HomepageContent.SINGLETON_ID);
+    if (!doc) return res.status(404).json({ message: "Homepage content not found" });
+    const revision = doc.revisions?.[revNumber - 1];
+    if (!revision) return res.status(404).json({ message: "Revision not found" });
+
+    snapshotHomepageRevision(doc, req.user.id);
+    doc.isPublished = revision.isPublished;
+    doc.hero = revision.hero;
+    doc.cta = revision.cta;
+    doc.sections = revision.sections;
+    doc.updatedBy = req.user.id;
+    await doc.save();
+    res.json({ message: "Revision restored", homepage: doc });
+  } catch (error) {
+    console.error("Error restoring homepage revision:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Generic sitewide key/value content — footer copy, misc microcopy, Resume
+// Builder marketing/instructional headings. See models/SiteContent.js.
+// ---------------------------------------------------------------------------
+
+/** GET /api/cms/site-content — public. Whole map in one request. */
+exports.getSiteContentMap = async (_req, res) => {
+  try {
+    const docs = await SiteContent.find({}).select("key value").lean();
+    const map = {};
+    docs.forEach((d) => {
+      map[d.key] = d.value;
+    });
+    res.json(map);
+  } catch (error) {
+    console.error("Error fetching site content map:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/** GET /api/cms/site-content/admin — superadmin only. Full docs for the admin table. */
+exports.adminListSiteContent = async (_req, res) => {
+  try {
+    const docs = await SiteContent.find({}).sort({ section: 1, key: 1 }).lean();
+    res.json({ items: docs });
+  } catch (error) {
+    console.error("Error listing site content:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/** PUT /api/cms/site-content/:key — superadmin only. Upserts one key. */
+exports.adminUpsertSiteContent = async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { value, section, description } = req.body;
+    const doc = await SiteContent.findOneAndUpdate(
+      { key },
+      { key, value, section, description, updatedBy: req.user?.id },
       { new: true, upsert: true, runValidators: true }
     );
     res.json(doc);
   } catch (error) {
-    console.error("Error saving homepage content:", error);
+    console.error("Error saving site content:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/** DELETE /api/cms/site-content/:key — superadmin only. */
+exports.adminDeleteSiteContent = async (req, res) => {
+  try {
+    const doc = await SiteContent.findOneAndDelete({ key: req.params.key });
+    if (!doc) return res.status(404).json({ message: "Site content key not found" });
+    res.json({ message: "Site content deleted" });
+  } catch (error) {
+    console.error("Error deleting site content:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

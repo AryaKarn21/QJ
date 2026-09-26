@@ -49,6 +49,7 @@ import { TargetRoleSelect } from './components/TargetRoleSelect';
 import { UniversalSkillsEditor } from './components/UniversalSkillsEditor';
 import { PdfCustomizationToolbar } from './components/PdfCustomizationToolbar';
 import { A4PageContainer } from './components/A4PageContainer';
+import { useSiteContent } from '../../hooks/useSiteContent';
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -462,7 +463,7 @@ const ResumeEditor: React.FC = () => {
       const c = data.countryCVInfo;
       if (c) {
         (c.structuredDigitalSkills || []).forEach((s) => {
-          const name = (typeof s === 'object' ? s.name || s.skill : s || '').trim();
+          const name = (typeof s === 'object' ? s.name || s.skill || '' : s || '').trim();
           if (name && !existingNames.has(name.toLowerCase())) {
             skills.push({ name, category: 'Other', level: 'Intermediate' });
             existingNames.add(name.toLowerCase());
@@ -476,7 +477,7 @@ const ResumeEditor: React.FC = () => {
           }
         });
         (c.structuredSoftwareSkills || []).forEach((s) => {
-          const name = (typeof s === 'object' ? s.name || s.skill : s || '').trim();
+          const name = (typeof s === 'object' ? s.name || s.skill || '' : s || '').trim();
           if (name && !existingNames.has(name.toLowerCase())) {
             skills.push({ name, category: 'Other', level: 'Intermediate' });
             existingNames.add(name.toLowerCase());
@@ -673,6 +674,28 @@ const ResumeEditor: React.FC = () => {
   // `deferredResume` once the loading guard has already passed.
   const deferredResume = useDeferredValue(resume);
 
+  // Section heading labels — CMS-managed marketing/instructional text
+  // (spec: headings, not the resume data itself). Called unconditionally
+  // here, same reasoning as deferredResume above — always before the
+  // loading guard so hook order never changes between renders.
+  const sectionLabels = {
+    personalInformation: useSiteContent('resume.sections.personalInformation.label', 'Personal Information'),
+    professionalSummary: useSiteContent('resume.sections.professionalSummary.label', 'Professional Summary'),
+    experience: useSiteContent('resume.sections.experience.label', 'Experience'),
+    internships: useSiteContent('resume.sections.internships.label', 'Internships'),
+    volunteering: useSiteContent('resume.sections.volunteering.label', 'Volunteer Experience'),
+    education: useSiteContent('resume.sections.education.label', 'Education'),
+    projects: useSiteContent('resume.sections.projects.label', 'Projects'),
+    certifications: useSiteContent('resume.sections.certifications.label', 'Certifications'),
+    achievements: useSiteContent('resume.sections.achievements.label', 'Achievements'),
+    publications: useSiteContent('resume.sections.publications.label', 'Publications'),
+    trainings: useSiteContent('resume.sections.trainings.label', 'Trainings'),
+    scholarships: useSiteContent('resume.sections.scholarships.label', 'Scholarships'),
+    positionsOfResponsibility: useSiteContent('resume.sections.positionsOfResponsibility.label', 'Positions of Responsibility'),
+    skills: useSiteContent('resume.sections.skills.label', 'Skills'),
+    references: useSiteContent('resume.sections.references.label', 'References'),
+  };
+
   if (loading || !resume) {
     return (
       <div className="flex min-h-screen gap-6 p-6" aria-busy="true" aria-label="Loading resume">
@@ -685,6 +708,15 @@ const ResumeEditor: React.FC = () => {
       </div>
     );
   }
+
+  // useDeferredValue can transiently hold its PREVIOUS value (null, from
+  // before `resume` first loaded) on the very render where `resume` just
+  // flipped from null to loaded — the guard above already passed by then,
+  // so without this fallback the preview below would receive `resume:
+  // null` and crash on `resume.layout`/`resume.pageNumbering`. `resume` is
+  // guaranteed non-null here (past the guard), so this fallback is always
+  // safe and never masks a real missing-resume state.
+  const safeResume = deferredResume ?? resume;
 
   const currentTemplateDef = getTemplateById(resume.layout);
   // Combined uniform scale applied to the live preview + PDF exports —
@@ -940,7 +972,7 @@ const ResumeEditor: React.FC = () => {
         )}
 
         {/* Personal Information */}
-        <Section title="Personal Information">
+        <Section title={sectionLabels.personalInformation}>
 
           {/* Profile photo */}
           <div className="mb-3">
@@ -983,7 +1015,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Summary */}
-        <Section title="Professional Summary">
+        <Section title={sectionLabels.professionalSummary}>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <input type="text" value={aiTargetRole} onChange={(e) => setAiTargetRole(e.target.value)}
               placeholder="Target role (optional)"
@@ -1021,7 +1053,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Experience */}
-        <Section title="Experience" addLabel="Add Experience" onAdd={() => update({ experience: [...resume.experience, { ...emptyExperience }] })}>
+        <Section title={sectionLabels.experience} addLabel="Add Experience" onAdd={() => update({ experience: [...resume.experience, { ...emptyExperience }] })}>
           {resume.experience.map((exp, i) => (
             <EntryCard key={exp._id || i} removeLabel="Remove experience" onRemove={() => update({ experience: resume.experience.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1050,7 +1082,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Internships */}
-        <Section title="Internships" addLabel="Add Internship" onAdd={() => update({ internships: [...resume.internships, { ...emptyInternship }] })}>
+        <Section title={sectionLabels.internships} addLabel="Add Internship" onAdd={() => update({ internships: [...resume.internships, { ...emptyInternship }] })}>
           {resume.internships.map((it, i) => (
             <EntryCard key={it._id || i} removeLabel="Remove internship" onRemove={() => update({ internships: resume.internships.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1079,7 +1111,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Volunteer Experience */}
-        <Section title="Volunteer Experience" addLabel="Add Volunteer Experience" onAdd={() => update({ volunteering: [...resume.volunteering, { ...emptyVolunteer }] })}>
+        <Section title={sectionLabels.volunteering} addLabel="Add Volunteer Experience" onAdd={() => update({ volunteering: [...resume.volunteering, { ...emptyVolunteer }] })}>
           {resume.volunteering.map((v, i) => (
             <EntryCard key={v._id || i} removeLabel="Remove volunteer experience" onRemove={() => update({ volunteering: resume.volunteering.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1108,7 +1140,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Education */}
-        <Section title="Education" addLabel="Add Education" onAdd={() => update({ education: [...resume.education, { ...emptyEducation }] })}>
+        <Section title={sectionLabels.education} addLabel="Add Education" onAdd={() => update({ education: [...resume.education, { ...emptyEducation }] })}>
           {resume.education.map((edu, i) => (
             <EntryCard key={edu._id || i} removeLabel="Remove education" onRemove={() => update({ education: resume.education.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1128,7 +1160,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Projects */}
-        <Section title="Projects" addLabel="Add Project" onAdd={() => update({ projects: [...resume.projects, { ...emptyProject }] })}>
+        <Section title={sectionLabels.projects} addLabel="Add Project" onAdd={() => update({ projects: [...resume.projects, { ...emptyProject }] })}>
           {resume.projects.map((p, i) => (
             <EntryCard key={p._id || i} removeLabel="Remove project" onRemove={() => update({ projects: resume.projects.filter((_, idx) => idx !== i) })}>
               <input className={fieldClass} placeholder="Project title" value={p.title}
@@ -1142,7 +1174,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Certifications */}
-        <Section title="Certifications" addLabel="Add Certification" onAdd={() => update({ certifications: [...resume.certifications, { ...emptyCertification }] })}>
+        <Section title={sectionLabels.certifications} addLabel="Add Certification" onAdd={() => update({ certifications: [...resume.certifications, { ...emptyCertification }] })}>
           {resume.certifications.map((c, i) => (
             <EntryCard key={c._id || i} removeLabel="Remove certification" onRemove={() => update({ certifications: resume.certifications.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -1160,7 +1192,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Achievements */}
-        <Section title="Achievements" addLabel="Add Achievement" onAdd={() => update({ achievements: [...resume.achievements, { ...emptyAchievement }] })}>
+        <Section title={sectionLabels.achievements} addLabel="Add Achievement" onAdd={() => update({ achievements: [...resume.achievements, { ...emptyAchievement }] })}>
           {resume.achievements.map((a, i) => (
             <EntryCard key={a._id || i} removeLabel="Remove achievement" onRemove={() => update({ achievements: resume.achievements.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1178,7 +1210,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Publications */}
-        <Section title="Publications" addLabel="Add Publication" onAdd={() => update({ publications: [...resume.publications, { ...emptyPublication }] })}>
+        <Section title={sectionLabels.publications} addLabel="Add Publication" onAdd={() => update({ publications: [...resume.publications, { ...emptyPublication }] })}>
           {resume.publications.map((p, i) => (
             <EntryCard key={p._id || i} removeLabel="Remove publication" onRemove={() => update({ publications: resume.publications.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1198,7 +1230,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Trainings */}
-        <Section title="Trainings" addLabel="Add Training" onAdd={() => update({ trainings: [...resume.trainings, { ...emptyTraining }] })}>
+        <Section title={sectionLabels.trainings} addLabel="Add Training" onAdd={() => update({ trainings: [...resume.trainings, { ...emptyTraining }] })}>
           {resume.trainings.map((t, i) => (
             <EntryCard key={t._id || i} removeLabel="Remove training" onRemove={() => update({ trainings: resume.trainings.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1220,7 +1252,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Scholarships */}
-        <Section title="Scholarships" addLabel="Add Scholarship" onAdd={() => update({ scholarships: [...resume.scholarships, { ...emptyScholarship }] })}>
+        <Section title={sectionLabels.scholarships} addLabel="Add Scholarship" onAdd={() => update({ scholarships: [...resume.scholarships, { ...emptyScholarship }] })}>
           {resume.scholarships.map((s, i) => (
             <EntryCard key={s._id || i} removeLabel="Remove scholarship" onRemove={() => update({ scholarships: resume.scholarships.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1242,7 +1274,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Positions of Responsibility */}
-        <Section title="Positions of Responsibility" addLabel="Add Position" onAdd={() => update({ positionsOfResponsibility: [...resume.positionsOfResponsibility, { ...emptyPosition }] })}>
+        <Section title={sectionLabels.positionsOfResponsibility} addLabel="Add Position" onAdd={() => update({ positionsOfResponsibility: [...resume.positionsOfResponsibility, { ...emptyPosition }] })}>
           {resume.positionsOfResponsibility.map((p, i) => (
             <EntryCard key={p._id || i} removeLabel="Remove position" onRemove={() => update({ positionsOfResponsibility: resume.positionsOfResponsibility.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1264,7 +1296,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Skills */}
-        <Section title="Skills">
+        <Section title={sectionLabels.skills}>
           <UniversalSkillsEditor
             skills={resume.skills || []}
             onChange={(skills) => update({ skills })}
@@ -1274,7 +1306,7 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* References */}
-        <Section title="References" addLabel="Add Reference" onAdd={() => update({ references: [...resume.references, { ...emptyReference }] })}>
+        <Section title={sectionLabels.references} addLabel="Add Reference" onAdd={() => update({ references: [...resume.references, { ...emptyReference }] })}>
           {resume.references.map((r, i) => (
             <EntryCard key={r._id || i} removeLabel="Remove reference" onRemove={() => update({ references: resume.references.filter((_, idx) => idx !== i) })}>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1330,8 +1362,8 @@ const ResumeEditor: React.FC = () => {
             className="w-full flex flex-col items-center"
             style={previewScale !== 1 ? { transform: `scale(${previewScale})`, transformOrigin: 'top center' } : undefined}
           >
-            <A4PageContainer resume={deferredResume}>
-              <TemplateRenderer resume={deferredResume} />
+            <A4PageContainer resume={safeResume}>
+              <TemplateRenderer resume={safeResume} />
             </A4PageContainer>
           </div>
         </div>

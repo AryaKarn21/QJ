@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 interface Feature {
   id: string;
@@ -77,6 +78,13 @@ const features: Feature[] = [
 const Stats: React.FC = () => {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
+  const section = useHomepageSection('whyChooseUs', {
+    heading: 'Everything you need to land',
+    highlightedText: 'your next role',
+    badgeText: 'Built For Next-Gen Careers',
+  });
+
+  if (!section.isActive) return null;
 
   return (
     <section
@@ -124,7 +132,7 @@ const Stats: React.FC = () => {
             }}
           >
             <Sparkles size={13} color="#F97316" />
-            Built For Next-Gen Careers
+            {section.badgeText}
           </motion.div>
 
           <motion.h2
@@ -138,13 +146,13 @@ const Stats: React.FC = () => {
               lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0,
             }}
           >
-            Everything you need to land{' '}
+            {section.heading}{' '}
             <span style={{
               background: 'linear-gradient(135deg, #F97316, #EA580C)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
-              your next role
+              {section.highlightedText}
             </span>
           </motion.h2>
         </div>

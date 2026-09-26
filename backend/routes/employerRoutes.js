@@ -10,6 +10,7 @@ const {
   deactivateAccount, getCandidates, toggleSavedCandidate,
   getSavedCandidates, getScheduledInterviews, updateEmployerHiringStatus,
   getApplicationResume, resendInterviewEmail,
+  updateInterviewOutcome, previewApplicationEmail, sendCustomMessageToCandidate,
 } = require("../controllers/employerController");
 
 // Search companies — searchEmployers was missing from controller so we
@@ -55,6 +56,9 @@ router.put("/jobs/:jobId", authenticate, authorizeEmployer, editJob);
 router.patch("/jobs/:jobId", authenticate, authorizeEmployer, editJob);
 router.patch("/applications/:applicationId/status", authenticate, authorizeEmployer, updateApplication);
 router.post("/applications/:applicationId/resend-interview-email", authenticate, authorizeEmployer, resendInterviewEmail);
+router.patch("/applications/:applicationId/interview-outcome", authenticate, authorizeEmployer, updateInterviewOutcome);
+router.post("/applications/:applicationId/email-preview", authenticate, authorizeEmployer, previewApplicationEmail);
+router.post("/applications/:applicationId/message", authenticate, authorizeEmployer, sendCustomMessageToCandidate);
 router.delete("/jobs/:jobId", authenticate, authorizeEmployer, deleteJob);
 
 // Read-only views of an employer's OWN data — previously gated by the same

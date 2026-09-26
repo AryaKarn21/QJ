@@ -5,6 +5,7 @@ import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { TrendingUp, SearchX, ArrowRight } from 'lucide-react';
 import { fetchTrendingJobs, Job } from '../jobseekerApi/api';
 import { JobCard } from './JobCard';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 // Staggered card entrance — same pattern Hero.tsx uses, gated off entirely
 // when the user prefers reduced motion (see `prefersReducedMotion` below).
@@ -30,6 +31,12 @@ const TrendingJobs: React.FC = () => {
     queryKey: ['trendingJobs'],
     queryFn: fetchTrendingJobs,
   });
+  const section = useHomepageSection('trendingJobs', {
+    heading: 'Trending Jobs',
+    description: 'Explore the most popular job opportunities right now.',
+  });
+
+  if (!section.isActive) return null;
 
   return (
     <section className="bg-white py-10 sm:py-12 lg:py-14">
@@ -47,9 +54,9 @@ const TrendingJobs: React.FC = () => {
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
               <TrendingUp size={14} /> Most In-Demand
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Trending Jobs</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{section.heading}</h2>
             <p className="mt-1 text-sm text-slate-500 sm:text-base">
-              Explore the most popular job opportunities right now.
+              {section.description}
             </p>
           </div>
           <button

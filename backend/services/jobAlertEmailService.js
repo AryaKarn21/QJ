@@ -38,7 +38,7 @@ async function notifyNewsletterOfNewJob(job) {
 
       // Best-effort per recipient — one bounced/invalid address must not
       // stop the rest of the alert from going out.
-      sendMail(sub.email, subject, text, html).catch((err) =>
+      sendMail(sub.email, subject, text, html, { type: "job_alert", relatedJob: job._id }).catch((err) =>
         console.error(`Job alert email failed for ${sub.email}:`, err.message)
       );
     }

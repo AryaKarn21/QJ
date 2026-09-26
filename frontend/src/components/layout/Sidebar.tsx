@@ -22,6 +22,7 @@ import {
   LifeBuoy,
   Bell,
   CreditCard,
+  Mail,
 } from 'lucide-react';
 import { useAdminUI } from '../../context/AdminUIContext';
 import { useAdminAuth } from '../../context/useAdminAuth';
@@ -160,6 +161,12 @@ const PRIMARY_NAV: NavSection[] = [
     icon: <ScrollText size={20} />,
     path: '/admin/audit-logs',
     superAdminOnly: true,
+  },
+  {
+    id: 'email-logs',
+    label: 'Email Logs',
+    icon: <Mail size={20} />,
+    path: '/admin/email-logs',
   },
 ];
 

@@ -52,8 +52,9 @@ describe("getHomepageContent", () => {
 });
 
 describe("upsertHomepageContent", () => {
-  it("upserts the singleton document by its fixed id, coercing isPublished to a boolean", async () => {
-    HomepageContent.findByIdAndUpdate.mockResolvedValue({ isPublished: true });
+  it("creates the singleton document on first save, coercing isPublished to a boolean", async () => {
+    HomepageContent.findById.mockResolvedValue(null);
+    HomepageContent.create.mockResolvedValue({ isPublished: true });
     const req = {
       body: { isPublished: "yes", hero: { headline: "New headline" }, cta: {} },
       user: { id: "admin-1" },
@@ -62,10 +63,63 @@ describe("upsertHomepageContent", () => {
 
     await upsertHomepageContent(req, res);
 
-    expect(HomepageContent.findByIdAndUpdate).toHaveBeenCalledWith(
-      "homepage",
-      expect.objectContaining({ isPublished: true, hero: { headline: "New headline" } }),
-      expect.objectContaining({ upsert: true })
+    expect(HomepageContent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: "homepage",
+        isPublished: true,
+        hero: { headline: "New headline" },
+      })
     );
+  });
+
+  it("snapshots a revision before overwriting an existing document when content actually changed", async () => {
+    const existing = {
+      isPublished: false,
+      hero: { headline: "Old headline" },
+      cta: {},
+      sections: [],
+      revisions: [],
+      version: 1,
+      save: jest.fn().mockResolvedValue(true),
+    };
+    HomepageContent.findById.mockResolvedValue(existing);
+
+    const req = {
+      body: { isPublished: true, hero: { headline: "New headline" }, cta: {} },
+      user: { id: "admin-1" },
+    };
+    const res = mockRes();
+
+    await upsertHomepageContent(req, res);
+
+    expect(existing.revisions).toHaveLength(1);
+    expect(existing.revisions[0]).toEqual(
+      expect.objectContaining({ revNumber: 1, hero: { headline: "Old headline" } })
+    );
+    expect(existing.hero).toEqual({ headline: "New headline" });
+    expect(existing.save).toHaveBeenCalled();
+  });
+
+  it("does not pad history when saving with no actual changes", async () => {
+    const existing = {
+      isPublished: true,
+      hero: { headline: "Same" },
+      cta: {},
+      sections: [],
+      revisions: [],
+      version: 1,
+      save: jest.fn().mockResolvedValue(true),
+    };
+    HomepageContent.findById.mockResolvedValue(existing);
+
+    const req = {
+      body: { isPublished: true, hero: { headline: "Same" }, cta: {} },
+      user: { id: "admin-1" },
+    };
+    const res = mockRes();
+
+    await upsertHomepageContent(req, res);
+
+    expect(existing.revisions).toHaveLength(0);
   });
 });

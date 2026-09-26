@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Sparkles, ArrowRight, FileText, Briefcase } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Keyboard from '../../../assets/jobseekerassests/Rectangle 89.png';
@@ -22,15 +23,16 @@ const DEFAULTS = {
 const CallToAction: React.FC = () => {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
-  const [cms, setCms] = useState<typeof DEFAULTS | null>(null);
 
-  useEffect(() => {
-    getHomepageContent()
-      .then((res) => {
-        if (res.isPublished) setCms({ ...DEFAULTS, ...res.cta });
-      })
-      .catch(() => {});
-  }, []);
+  // Same shared ['homepage-content'] query key as Hero.tsx — see that
+  // file's comment for why (request de-duplication across every homepage
+  // consumer).
+  const { data: res } = useQuery({
+    queryKey: ['homepage-content'],
+    queryFn: getHomepageContent,
+    retry: false,
+  });
+  const cms = res?.isPublished ? { ...DEFAULTS, ...res.cta } : null;
 
   const content = cms || DEFAULTS;
 

@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { MapPin, Briefcase, DollarSign, ArrowRight, Sparkles } from 'lucide-react';
 import { fetchJobRecommendations } from '../../../api/communityAiApi';
 import { useCurrentUser } from '../../../utils/currentUser';
+import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
 
 // Same fallback-accent trick TrendingJobs.tsx uses for cards without a logo.
@@ -29,6 +30,10 @@ const RecommendedJobs: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
   const { isAuthenticated, role } = useCurrentUser();
   const enabled = isAuthenticated && role === 'jobseeker';
+  const section = useHomepageSection('recommendedJobs', {
+    heading: 'Recommended Jobs',
+    description: 'Matched to the skills on your profile.',
+  });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['jobRecommendations'],
@@ -36,7 +41,7 @@ const RecommendedJobs: React.FC = () => {
     enabled,
   });
 
-  if (!enabled) return null;
+  if (!enabled || !section.isActive) return null;
   if (!isLoading && (isError || !data || data.length === 0)) return null;
 
   return (
@@ -54,9 +59,9 @@ const RecommendedJobs: React.FC = () => {
             <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-500">
               <Sparkles size={14} /> Just For You
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Recommended Jobs</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{section.heading}</h2>
             <p className="mt-1 text-sm text-slate-500 sm:text-base">
-              Matched to the skills on your profile.
+              {section.description}
             </p>
           </div>
           <button

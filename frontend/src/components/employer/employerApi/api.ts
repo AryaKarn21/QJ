@@ -264,6 +264,16 @@ export interface ApplicationListParams {
   dateTo?: string;
 }
 
+export type InterviewType =
+  | "Technical Interview"
+  | "HR Interview"
+  | "Final Interview"
+  | "Phone Interview"
+  | "Video Interview"
+  | "In-person Interview";
+
+export type InterviewStatus = "SCHEDULED" | "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+
 export interface EmployerApplication {
   applicationId: string;
   applicant: {
@@ -289,11 +299,14 @@ export interface EmployerApplication {
   coverLetter: string;
   resume: string;
   howDidYouHear?: string;
-  status: "Pending" | "Reviewed" | "Interview Scheduled" | "Accepted" | "Rejected";
+  status: "Pending" | "Reviewed" | "Shortlisted" | "Assessment Assigned" | "Interview Scheduled" | "Accepted" | "Rejected";
   interview?: {
     scheduledAt?: string;
     duration?: number;
     mode?: string;
+    type?: InterviewType;
+    status?: InterviewStatus;
+    timezone?: string;
     meetingLink?: string;
     location?: string;
     notes?: string;
@@ -302,6 +315,20 @@ export interface EmployerApplication {
     emailSentAt?: string;
     emailError?: string;
   };
+  assessment?: {
+    assessment: string;
+    assignedAt?: string;
+    deadline?: string;
+    status: "assigned" | "in_progress" | "submitted" | "evaluated";
+    attemptsUsed: number;
+    latestScore?: number;
+    latestMaxScore?: number;
+    latestPassed?: boolean;
+    emailStatus?: "pending" | "sent" | "failed";
+    emailSentAt?: string;
+    emailError?: string;
+  };
+  statusHistory?: { status: string; changedAt: string; changedBy?: string; note?: string }[];
   appliedAt: string;
 }
 
@@ -332,6 +359,9 @@ export interface UpdateApplicationResponse {
       scheduledAt?: string;
       duration?: number;
       mode?: string;
+      type?: InterviewType;
+      status?: InterviewStatus;
+      timezone?: string;
       meetingLink?: string;
       location?: string;
       notes?: string;
@@ -377,18 +407,21 @@ export const updateApplicationStatus = async (
     scheduledAt: string;
     duration?: number;
     mode?: string;
+    type?: InterviewType;
+    timezone?: string;
     meetingLink?: string;
     location?: string;
     notes?: string;
     interviewer?: string;
-  }
+  },
+  options?: { customMessage?: string; cancellationReason?: string }
 ): Promise<UpdateApplicationResponse> => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
 
   const res = await axios.patch(
     `${API_BASE_URL}/api/employer/applications/${applicationId}/status`,
-    { status: newStatus, interview },
+    { status: newStatus, interview, ...options },
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -396,6 +429,73 @@ export const updateApplicationStatus = async (
     }
   );
 
+  return res.data;
+};
+
+// ---------------------------------------------------------------------------
+// Email preview + standalone custom-message action + interview outcome —
+// see backend/controllers/employerController.js.
+// ---------------------------------------------------------------------------
+
+export interface EmailPreviewPayload {
+  action: "schedule_interview" | "reschedule_interview" | "cancel_interview" | "status_change" | "assign_assessment";
+  customMessage?: string;
+  cancellationReason?: string;
+  status?: string;
+  interview?: {
+    scheduledAt: string;
+    duration?: number;
+    mode?: string;
+    type?: InterviewType;
+    timezone?: string;
+    meetingLink?: string;
+    location?: string;
+    notes?: string;
+  };
+  assessmentId?: string;
+  deadline?: string;
+}
+
+export interface EmailPreviewResponse {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}
+
+export const previewApplicationEmail = async (
+  applicationId: string,
+  payload: EmailPreviewPayload
+): Promise<EmailPreviewResponse> => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.post(
+    `${API_BASE_URL}/api/employer/applications/${applicationId}/email-preview`,
+    payload,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
+export const sendCustomMessageToCandidate = async (applicationId: string, message: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.post(
+    `${API_BASE_URL}/api/employer/applications/${applicationId}/message`,
+    { message },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
+export const updateInterviewOutcome = async (applicationId: string, outcome: "COMPLETED" | "NO_SHOW") => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/employer/applications/${applicationId}/interview-outcome`,
+    { outcome },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   return res.data;
 };
 
@@ -419,6 +519,101 @@ export const resendInterviewEmail = async (
     }
   );
 
+  return res.data;
+};
+
+// ---------------------------------------------------------------------------
+// Technical Assessments — reusable assessment definitions an employer
+// creates per job, then assigns to individual candidates. See
+// backend/controllers/assessmentController.js.
+// ---------------------------------------------------------------------------
+
+export interface AssessmentQuestionInput {
+  type: 'mcq' | 'multiple_select' | 'coding' | 'short_answer' | 'long_answer' | 'file_submission';
+  questionText: string;
+  options?: string[];
+  correctOptionIndexes?: number[];
+  codingLanguage?: string;
+  points?: number;
+}
+
+export interface AssessmentSummary {
+  _id: string;
+  job: string;
+  title: string;
+  description?: string;
+  duration: number;
+  deadline: string;
+  passingScore: number;
+  maxAttempts: number;
+  createdAt: string;
+}
+
+export const createAssessment = async (data: {
+  jobId: string;
+  title: string;
+  description?: string;
+  instructions?: string;
+  questions: AssessmentQuestionInput[];
+  duration: number;
+  startDate?: string;
+  deadline: string;
+  passingScore?: number;
+  maxAttempts?: number;
+}) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.post(`${API_BASE_URL}/api/assessments`, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
+export const getEmployerAssessments = async (jobId?: string): Promise<AssessmentSummary[]> => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.get(`${API_BASE_URL}/api/assessments`, {
+    headers: { Authorization: `Bearer ${token}` },
+    params: jobId ? { jobId } : undefined,
+  });
+  return res.data;
+};
+
+export const assignAssessment = async (
+  assessmentId: string,
+  applicationId: string,
+  options?: { deadline?: string; customMessage?: string }
+) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.post(
+    `${API_BASE_URL}/api/assessments/${assessmentId}/assign`,
+    { applicationId, ...options },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
+export const getAssessmentResults = async (assessmentId: string, applicationId: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.get(`${API_BASE_URL}/api/assessments/${assessmentId}/results/${applicationId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
+export const gradeAssessmentAttempt = async (
+  attemptId: string,
+  grades: { question: string; pointsAwarded: number }[]
+) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+  const res = await axios.patch(
+    `${API_BASE_URL}/api/assessments/attempts/${attemptId}/grade`,
+    { grades },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   return res.data;
 };
 
