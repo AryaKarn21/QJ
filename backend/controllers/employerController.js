@@ -730,7 +730,8 @@ const updateApplication = async (req, res) => {
           emailResult = {
             sent: false,
             recipient: candidateEmail,
-            message: "Interview scheduled, but confirmation email could not be delivered.",
+            message: mailRes.error || "Interview scheduled, but confirmation email could not be delivered.",
+            error: mailRes.error || "Email delivery failed",
           };
         }
       }

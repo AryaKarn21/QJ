@@ -510,10 +510,11 @@ const Applicants = () => {
           }.`
         );
       } else if (res?.email?.sent === false) {
+        const errorDetail = res.email.error || res.email.message;
         toast.warn(
           `Interview scheduled, but confirmation email could not be sent to ${
             res.email.recipient || "candidate"
-          }. You can retry from the Interview & Stages tab.`
+          }${errorDetail ? `: ${errorDetail}` : ". Check server email configuration."}`
         );
       } else {
         toast.success("Interview scheduled successfully.");

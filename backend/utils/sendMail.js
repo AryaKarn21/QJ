@@ -10,8 +10,8 @@ function getProviderName() {
 }
 
 function getTransporter() {
-  if (!cachedTransporter) {
-    if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+    if (!cachedTransporter || cachedTransporter._provider !== "resend") {
       cachedTransporter = nodemailer.createTransport({
         host: "smtp.resend.com",
         port: 465,
@@ -24,7 +24,13 @@ function getTransporter() {
         greetingTimeout: 10000,
         socketTimeout: 10000,
       });
-    } else if (process.env.SMTP_HOST && process.env.SMTP_HOST.trim()) {
+      cachedTransporter._provider = "resend";
+    }
+    return cachedTransporter;
+  }
+
+  if (process.env.SMTP_HOST && process.env.SMTP_HOST.trim()) {
+    if (!cachedTransporter || cachedTransporter._provider !== "smtp") {
       cachedTransporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST.trim(),
         port: Number(process.env.SMTP_PORT) || 587,
@@ -37,18 +43,38 @@ function getTransporter() {
         greetingTimeout: 10000,
         socketTimeout: 10000,
       });
-    } else {
-      const user = process.env.EMAIL_USER;
-      const pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, "") : "";
-      cachedTransporter = nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || "gmail",
-        auth: { user, pass },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-      });
+      cachedTransporter._provider = "smtp";
     }
+    return cachedTransporter;
   }
+
+  const user = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : "";
+  const pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, "") : "";
+
+  if (!user || !pass) {
+    const missing = [];
+    if (!user) missing.push("EMAIL_USER");
+    if (!pass) missing.push("EMAIL_PASS");
+    const err = new Error(
+      `Email provider not configured on server. Missing: ${missing.join(
+        ", "
+      )} (or set RESEND_API_KEY in Render environment variables).`
+    );
+    err.code = "EMAIL_CREDENTIALS_MISSING";
+    throw err;
+  }
+
+  if (!cachedTransporter || cachedTransporter._provider !== "default") {
+    cachedTransporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || "gmail",
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+    });
+    cachedTransporter._provider = "default";
+  }
+
   return cachedTransporter;
 }
 
