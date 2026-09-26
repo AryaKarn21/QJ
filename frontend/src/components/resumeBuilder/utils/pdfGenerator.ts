@@ -406,7 +406,40 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
   },
   languages: (w, r) => {
     w.heading('Languages');
-    w.commaList((r.languages || []).map((l) => `${l.name} (${l.level})`).filter(Boolean));
+    const c = r.countryCVInfo;
+    const cefrList = c?.cefrLanguages?.length
+      ? c.cefrLanguages
+      : (c?.simpleLanguages || []).map((l) => ({
+          language: l.language,
+          listening: l.cefrLevel,
+          reading: l.cefrLevel,
+          spokenInteraction: l.cefrLevel,
+          spokenProduction: l.cefrLevel,
+          writing: l.cefrLevel,
+        }));
+    if (c?.motherTongue || cefrList.length) {
+      if (c?.motherTongue) w.subLine(`Mother tongue(s): ${c.motherTongue}`);
+      cefrList.forEach((l) => {
+        w.subLine(
+          `${l.language}: Listening ${l.listening}, Reading ${l.reading}, Spoken interaction ${l.spokenInteraction}, Spoken production ${l.spokenProduction}, Writing ${l.writing}`
+        );
+      });
+    } else {
+      w.commaList((r.languages || []).map((l) => `${l.name} (${l.level})`).filter(Boolean));
+    }
+  },
+  drivingLicence: (w, r) => {
+    const d = r.countryCVInfo?.drivingLicenseDetails;
+    const flat = r.countryCVInfo?.drivingLicense;
+    if (!d?.licenseType && !flat) return;
+    w.heading('Driving Licence');
+    const parts = [
+      d?.licenseType || flat,
+      d?.country && `(${d.country})`,
+      d?.issueDate && `Issued: ${d.issueDate}`,
+      d?.expiryDate && `Expires: ${d.expiryDate}`,
+    ].filter(Boolean);
+    w.paragraph(parts.join(' • '));
   },
   documents: (w, r) => {
     const docs = (r.documents || []).filter((d) => d.includeInDownload);
@@ -456,7 +489,12 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
   }
 
 
-  // If this is a country CV with declaration and not in section order, render it
+  // If this is a country CV with driving licence / declaration data and
+  // neither is in the section order, render them anyway — mirrors the fact
+  // that both live on countryCVInfo, not in sectionOrder's reorderable list.
+  if (resume.countryCVInfo && !renderedSections.has('drivingLicence')) {
+    SECTION_RENDERERS['drivingLicence']?.(w, resume);
+  }
   if (resume.countryCVInfo && !renderedSections.has('declaration')) {
     SECTION_RENDERERS['declaration']?.(w, resume);
   }

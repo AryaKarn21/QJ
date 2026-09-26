@@ -20,6 +20,7 @@ import { BusinessModernTemplate } from './professional/BusinessModernTemplate';
 import { PremiumProfessionalTemplate } from './professional/PremiumProfessionalTemplate';
 import { IrisSidebarTemplate } from './professional/IrisSidebarTemplate';
 import { EuropassStyleTemplate } from './professional/EuropassStyleTemplate';
+import { EuropassLegacyTemplate } from './professional/EuropassLegacyTemplate';
 
 // Technology
 import { SoftwareEngineerTemplate } from './technology/SoftwareEngineerTemplate';
@@ -256,6 +257,16 @@ const HAND_WRITTEN_TEMPLATES: TemplateDefinition[] = [
     component: EuropassStyleTemplate,
     photoSupported: true,
     photoLayout: 'left-sidebar',
+  },
+  {
+    id: 'pro-europass-legacy',
+    name: 'Europass Legacy',
+    category: 'Professional',
+    atsFriendly: true,
+    description: 'A structured, document-style CV built to match the classic Europass Legacy CV editor — label/value personal-info grid, chronological experience & education, a genuine 5-skill CEFR language matrix, driving licence line, and a declaration that always stays together on one page.',
+    component: EuropassLegacyTemplate,
+    photoSupported: true,
+    photoLayout: 'left-square',
   },
 
   // ── Technology ───────────────────────────────────────────────────────────

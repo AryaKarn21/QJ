@@ -34,6 +34,14 @@ export interface EuropassLanguageSkillsTableProps {
   spokenInteractionLabel?: string;
   writingLabel?: string;
   levelsLegend?: string;
+  // Optional color overrides — default to the exact original hex values so
+  // every pre-existing caller (Romania/Bosnia templates) renders unchanged.
+  // Lets a caller like EuropassLegacyTemplate pass its own navy palette.
+  inkColor?: string;
+  slateColor?: string;
+  accentColor?: string;
+  hairlineColor?: string;
+  panelColor?: string;
 }
 
 export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTableProps> = ({
@@ -49,6 +57,11 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
   spokenInteractionLabel = 'Spoken interaction',
   writingLabel = 'WRITING',
   levelsLegend = 'Levels: A1 and A2: Basic user - B1 and B2: Independent user - C1 and C2: Proficient user',
+  inkColor = INK,
+  slateColor = SLATE,
+  accentColor = GOLD,
+  hairlineColor = HAIRLINE,
+  panelColor = PANEL,
 }) => {
   if (!motherTongue && (!languages || languages.length === 0)) return null;
 
@@ -56,18 +69,18 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
     <section className="break-inside-avoid">
       {/* 1. Header with bullet dot and full-width divider — same design
           system as every other SectionHeading in the consuming templates. */}
-      <div className="flex items-center gap-2 border-b pb-2 mb-3" style={{ borderColor: HAIRLINE, breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
-        <span className="h-[5px] w-[5px] rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
-        <h2 className="text-[11.5px] font-bold uppercase tracking-[0.12em]" style={{ color: INK }}>
+      <div className="flex items-center gap-2 border-b pb-2 mb-3" style={{ borderColor: hairlineColor, breakAfter: 'avoid', pageBreakAfter: 'avoid' }}>
+        <span className="h-[5px] w-[5px] rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+        <h2 className="text-[11.5px] font-bold uppercase tracking-[0.12em]" style={{ color: inkColor }}>
           {title}
         </h2>
       </div>
 
       {/* 2. Mother Tongue Row with subtle divider */}
       {motherTongue && (
-        <div className="text-[10.5px] pb-1.5 mb-1.5 border-b" style={{ color: SLATE, borderColor: HAIRLINE }}>
+        <div className="text-[10.5px] pb-1.5 mb-1.5 border-b" style={{ color: slateColor, borderColor: hairlineColor }}>
           <span>{motherTongueLabel}:</span>{' '}
-          <span className="font-bold uppercase" style={{ color: INK }}>{motherTongue}</span>
+          <span className="font-bold uppercase" style={{ color: inkColor }}>{motherTongue}</span>
         </div>
       )}
 
@@ -77,32 +90,32 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
           <table className="w-full text-left text-[10.5px] border-collapse">
             <thead>
               {/* Top Header Row: UNDERSTANDING | SPEAKING | WRITING */}
-              <tr className="border-y" style={{ borderColor: HAIRLINE }}>
+              <tr className="border-y" style={{ borderColor: hairlineColor }}>
                 <th className="w-[20%] py-1.5"></th>
                 <th
                   colSpan={2}
                   className="w-[32%] py-1.5 text-center font-bold text-[10px] tracking-wide uppercase"
-                  style={{ color: INK }}
+                  style={{ color: inkColor }}
                 >
                   {understandingLabel}
                 </th>
                 <th
                   colSpan={2}
                   className="w-[32%] py-1.5 text-center font-bold text-[10px] tracking-wide uppercase"
-                  style={{ color: INK }}
+                  style={{ color: inkColor }}
                 >
                   {speakingLabel}
                 </th>
                 <th
                   className="w-[16%] py-1.5 text-center font-bold text-[10px] tracking-wide uppercase"
-                  style={{ color: INK }}
+                  style={{ color: inkColor }}
                 >
                   {writingLabel}
                 </th>
               </tr>
 
               {/* Sub-Header Row: Listening | Reading | Spoken prod | Spoken int */}
-              <tr className="border-b text-[9px]" style={{ borderColor: HAIRLINE, color: SLATE }}>
+              <tr className="border-b text-[9px]" style={{ borderColor: hairlineColor, color: slateColor }}>
                 <th className="py-1"></th>
                 <th className="py-1 text-center font-normal">{listeningLabel}</th>
                 <th className="py-1 text-center font-normal">{readingLabel}</th>
@@ -126,28 +139,28 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
                     key={idx}
                     className="border-b break-inside-avoid"
                     style={{
-                      borderColor: HAIRLINE,
-                      backgroundColor: idx % 2 === 0 ? PANEL : '#ffffff',
+                      borderColor: hairlineColor,
+                      backgroundColor: idx % 2 === 0 ? panelColor : '#ffffff',
                       pageBreakInside: 'avoid',
                       breakInside: 'avoid',
                     }}
                   >
-                    <td className="py-2 px-2 font-bold uppercase text-[10px]" style={{ color: INK }}>
+                    <td className="py-2 px-2 font-bold uppercase text-[10px]" style={{ color: inkColor }}>
                       {item.language}
                     </td>
-                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: SLATE }}>
+                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: slateColor }}>
                       {listening}
                     </td>
-                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: SLATE }}>
+                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: slateColor }}>
                       {reading}
                     </td>
-                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: SLATE }}>
+                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: slateColor }}>
                       {spokenProduction}
                     </td>
-                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: SLATE }}>
+                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: slateColor }}>
                       {spokenInteraction}
                     </td>
-                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: SLATE }}>
+                    <td className="py-2 text-center font-medium text-[10px]" style={{ color: slateColor }}>
                       {writing}
                     </td>
                   </tr>
@@ -157,7 +170,7 @@ export const EuropassLanguageSkillsTable: React.FC<EuropassLanguageSkillsTablePr
           </table>
 
           {/* 4. Description legend matching reference */}
-          <p className="text-[9px] italic mt-1.5" style={{ color: SLATE }}>
+          <p className="text-[9px] italic mt-1.5" style={{ color: slateColor }}>
             {levelsLegend}
           </p>
         </div>

@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Globe, Plus, Trash2, Clock, Car, FileText, Code2, Monitor, ChevronDown, Sliders, Sparkles } from 'lucide-react';
-import { getCountryConfig, CountryCVInfo, ProfessionalMembership, SimpleLanguageItem, StructuredSkillItem, CefrLanguageLevel } from '../config/countryCVConfigs';
+import { getCountryConfig, CountryCVInfo, ProfessionalMembership, StructuredSkillItem } from '../config/countryCVConfigs';
 import { NationalitySelect } from './NationalitySelect';
-import { LanguageSelect } from './LanguageSelect';
 import { PlaceOfBirthSelect } from './PlaceOfBirthSelect';
 import { CascadingLocationSelect } from './CascadingLocationSelect';
+import { CefrLanguageEditor } from './CefrLanguageEditor';
 import { GENDER_OPTIONS } from '../config/countryCVConfigs/nationalities';
 import { isValidDateOfBirth } from '../config/countryCVConfigs/fieldValidation';
 import {
-  LANGUAGES_LIST,
-  CEFR_LEVELS,
   DIGITAL_SKILLS_LIST,
   SOFTWARE_SKILLS_LIST,
   SKILL_PROFICIENCIES,
@@ -50,7 +48,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
   const isEuropean = config.features.hasCEFRGrid;
 
   const dobValidation = isValidDateOfBirth(countryCVInfo.dateOfBirth || '');
-  const [expandedLanguageIdx, setExpandedLanguageIdx] = useState<number | null>(null);
 
   // ── Driving License Details ──
   const drivingDetails = countryCVInfo.drivingLicenseDetails || {
@@ -67,69 +64,6 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
       drivingLicenseDetails: next,
       drivingLicense: next.licenseType,
     });
-  };
-
-  // ── Language Skills (Streamlined Language + CEFR Level) ──
-  const languages: SimpleLanguageItem[] = countryCVInfo.simpleLanguages || [
-    { language: 'English', cefrLevel: 'B2', level: 'B2' },
-  ];
-
-  const syncLanguages = (next: SimpleLanguageItem[], extraPatch: Record<string, any> = {}) => {
-    const nextCefr = next.map((l) => {
-      const lvl = l.cefrLevel || (l as any).level || 'B2';
-      return {
-        language: l.language,
-        listening: lvl,
-        reading: lvl,
-        spokenProduction: lvl,
-        spokenInteraction: lvl,
-        writing: lvl,
-      };
-    });
-    onChange({
-      simpleLanguages: next,
-      cefrLanguages: nextCefr,
-      ...extraPatch,
-    });
-  };
-
-  const addLanguage = () => {
-    const available = LANGUAGES_LIST.find((l) => !languages.some((item) => item.language === l)) || 'English';
-    const next = [...languages, { language: available, cefrLevel: 'A2', level: 'A2' }];
-    syncLanguages(next);
-  };
-
-  const updateLanguage = (idx: number, patch: Partial<SimpleLanguageItem>) => {
-    const next = [...languages];
-    const updatedLevel = patch.cefrLevel || patch.level || next[idx].cefrLevel || (next[idx] as any).level || 'A2';
-    next[idx] = { ...next[idx], ...patch, cefrLevel: updatedLevel, level: updatedLevel };
-    syncLanguages(next);
-  };
-
-  const removeLanguage = (idx: number) => {
-    const next = languages.filter((_, i) => i !== idx);
-    if (expandedLanguageIdx === idx) setExpandedLanguageIdx(null);
-    syncLanguages(next);
-  };
-
-  const updateCefrSkill = (
-    idx: number,
-    skill: 'listening' | 'reading' | 'spokenProduction' | 'spokenInteraction' | 'writing',
-    level: string
-  ) => {
-    const currentList = countryCVInfo.cefrLanguages || [];
-    const baseLang = languages[idx] || { language: 'English', cefrLevel: 'A2' };
-    const baseEntry: CefrLanguageLevel = currentList[idx] || {
-      language: baseLang.language,
-      listening: (baseLang.cefrLevel as any) || 'A2',
-      reading: (baseLang.cefrLevel as any) || 'A2',
-      spokenProduction: (baseLang.cefrLevel as any) || 'A2',
-      spokenInteraction: (baseLang.cefrLevel as any) || 'A2',
-      writing: (baseLang.cefrLevel as any) || 'A2',
-    };
-    const updated = [...currentList];
-    updated[idx] = { ...baseEntry, [skill]: level as any };
-    onChange({ cefrLanguages: updated });
   };
 
   // ── Digital Skills (Dropdown + Proficiency) ──
@@ -462,108 +396,23 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
         </div>
       )}
 
-      {/* 4. LANGUAGE SKILLS (STREAMLINED LANGUAGE + CEFR DROPDOWN ONLY) */}
+      {/* 4. LANGUAGE SKILLS (Mother tongue + independent 5-skill CEFR matrix) */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Globe size={16} className="text-orange-500" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              LANGUAGE SKILLS
-            </h4>
-          </div>
-          <button
-            type="button"
-            onClick={addLanguage}
-            className="flex items-center gap-1 rounded-md bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-600 hover:bg-orange-100"
-          >
-            <Plus size={12} /> Add Language
-          </button>
+        <div className="flex items-center gap-2">
+          <Globe size={16} className="text-orange-500" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+            LANGUAGE SKILLS
+          </h4>
         </div>
-
-        <div className="space-y-3 pt-1">
-          {/* Mother Tongue Dropdown */}
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">
-              Mother tongue(s) <span className="text-red-500">*</span>
-            </label>
-            <LanguageSelect
-              value={countryCVInfo.motherTongue || ''}
-              onChange={(val) => onChange({ motherTongue: val })}
-              options={LANGUAGES_LIST}
-              placeholder="Select Mother Tongue…"
-              required
-            />
-          </div>
-
-          <p className="text-[11px] text-slate-500 pt-1">
-            Other Languages & CEFR Proficiency Matrix (Listening, Reading, Spoken production, Spoken interaction, Writing):
-          </p>
-
-          {languages.map((item, idx) => {
-            const cefrEntry = countryCVInfo.cefrLanguages?.[idx] || {
-              listening: item.cefrLevel || 'A2',
-              reading: item.cefrLevel || 'A2',
-              spokenProduction: item.cefrLevel || 'A2',
-              spokenInteraction: item.cefrLevel || 'A2',
-              writing: item.cefrLevel || 'A2',
-            };
-            const isCustomizing = expandedLanguageIdx === idx;
-
-            return (
-              <div
-                key={idx}
-                className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2.5 transition"
-              >
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="flex-1 min-w-[140px]">
-                    <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-                      Language <span className="text-red-500">*</span>
-                    </label>
-                    <LanguageSelect
-                      value={item.language}
-                      onChange={(val) => updateLanguage(idx, { language: val })}
-                      options={LANGUAGES_LIST}
-                      placeholder="Select Language…"
-                      required
-                    />
-                  </div>
-
-                  <div className="w-32">
-                    <label className="text-[10.5px] font-semibold text-slate-600 block mb-0.5">
-                      Overall Level *
-                    </label>
-                    <select
-                      className={fieldClass}
-                      value={item.cefrLevel}
-                      onChange={(e) => updateLanguage(idx, { cefrLevel: e.target.value as any })}
-                      required
-                    >
-                      <option value="">Select Level…</option>
-                      {CEFR_LEVELS.map((lvl) => (
-                        <option key={lvl} value={lvl}>
-                          {lvl}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="self-end flex items-center gap-1.5">
-                    {languages.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeLanguage(idx)}
-                        className="rounded-lg p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                        title="Remove Language"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <p className="text-[11px] text-slate-500">
+          Mother tongue plus independent CEFR levels (A1–C2) for Listening, Reading, Spoken Interaction, Spoken Production, and Writing — per Europass convention.
+        </p>
+        <CefrLanguageEditor
+          motherTongue={countryCVInfo.motherTongue}
+          onMotherTongueChange={(val) => onChange({ motherTongue: val })}
+          cefrLanguages={countryCVInfo.cefrLanguages}
+          onCefrLanguagesChange={(langs) => onChange({ cefrLanguages: langs })}
+        />
       </div>
 
 
