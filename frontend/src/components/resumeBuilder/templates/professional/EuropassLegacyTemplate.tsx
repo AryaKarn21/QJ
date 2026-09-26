@@ -4,6 +4,7 @@ import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines, groupSkillsByCategory } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent, sectionLabel } from '../shared/sections';
 import { ResumeLink } from '../shared/ResumeLink';
+import { EuropassLogo } from '../country/EuropassLogo';
 import { EuropassLanguageSkillsTable, FormattedLanguageItem } from '../../components/EuropassLanguageSkillsTable';
 
 interface Props {
@@ -56,16 +57,24 @@ export const EuropassLegacyTemplate: React.FC<Props> = ({ resume }) => {
     .filter(Boolean)
     .join(', ');
 
-  const personalInfoRows: { label: string; value?: string }[] = [
-    { label: 'Full Name', value: personalInfo.fullName },
-    { label: 'Address', value: addressValue },
-    { label: 'Telephone', value: personalInfo.phone },
-    { label: 'Email', value: personalInfo.email },
-    { label: 'Date of Birth', value: countryCVInfo.dateOfBirth },
+  const phoneDisplay = personalInfo.phone
+    ? `${personalInfo.phone}${personalInfo.phone.includes('(') ? '' : ' (Work)'}`
+    : undefined;
+
+  const addressDisplay = addressValue
+    ? `${addressValue}${addressValue.includes('(') ? '' : ' (Work)'}`
+    : undefined;
+
+  const headerMetaItems: { label: string; value?: string }[] = [
+    { label: 'Passport', value: countryCVInfo.passportNumber },
+    { label: 'Date of birth', value: countryCVInfo.dateOfBirth },
+    { label: 'Place of birth', value: countryCVInfo.placeOfBirth },
     { label: 'Nationality', value: countryCVInfo.nationality },
-    { label: 'Place of Birth', value: countryCVInfo.placeOfBirth },
     { label: 'Gender', value: countryCVInfo.gender },
-  ].filter((row) => Boolean(row.value && row.value.trim()));
+    { label: 'Phone', value: phoneDisplay },
+    { label: 'Address', value: addressDisplay },
+    { label: 'Email', value: personalInfo.email },
+  ].filter((item) => Boolean(item.value && item.value.trim()));
 
   // ── Language Skills — cefrLanguages (real 5-skill matrix) preferred,
   // falling back to simpleLanguages, falling back to the flat resume.languages
@@ -424,34 +433,64 @@ export const EuropassLegacyTemplate: React.FC<Props> = ({ resume }) => {
       className="mx-auto w-full max-w-[800px] bg-white text-xs leading-relaxed print:max-w-none"
       style={{ fontFamily: bodyFont, color: SLATE }}
     >
-      {/* ── HEADER: small cropped photo, modest name, target role, compact contact line ── */}
-      <header className="border-b p-6 sm:p-8 print:p-6" style={{ borderColor: HAIRLINE }}>
-        <div className="flex items-start gap-5">
-          {personalInfo.photo && (
-            <div className="shrink-0 h-[92px] w-[76px] overflow-hidden rounded-sm border" style={{ borderColor: HAIRLINE }}>
-              <img
-                src={personalInfo.photo}
-                alt={personalInfo.fullName || 'Candidate Photo'}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <h1
-              className="text-[20px] sm:text-[22px] font-semibold leading-tight"
-              style={{ color: NAVY_DEEP, fontFamily: headingFont }}
-            >
-              {personalInfo.fullName || 'Candidate Name'}
-            </h1>
-            {resume.targetRole && (
-              <p className="mt-0.5 text-[12.5px] font-medium" style={{ color: ACCENT_BLUE }}>
-                {resume.targetRole}
-              </p>
+      {/* ── HEADER: European / Europass standard format ── */}
+      <header className="border-b p-5 sm:p-7 print:p-5" style={{ backgroundColor: '#f8f9fa', borderColor: HAIRLINE }}>
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+          {/* Candidate Photo (Circular with solid dark border) */}
+          <div className="shrink-0">
+            {personalInfo.photo ? (
+              <div
+                className="h-28 w-28 sm:h-[112px] sm:w-[112px] rounded-full overflow-hidden bg-white border-2 border-black shadow-sm"
+              >
+                <img
+                  src={personalInfo.photo}
+                  alt={personalInfo.fullName || 'Candidate Photo'}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div
+                className="h-28 w-28 sm:h-[112px] sm:w-[112px] rounded-full flex items-center justify-center font-bold text-2xl bg-white border-2 border-black shadow-sm text-slate-700"
+              >
+                {(personalInfo.fullName || 'CV').slice(0, 2).toUpperCase()}
+              </div>
             )}
-            {(personalInfo.email || personalInfo.phone) && (
-              <p className="mt-2 text-[10.5px]" style={{ color: MUTED }}>
-                {[personalInfo.email, personalInfo.phone].filter(Boolean).join('   ·   ')}
-              </p>
+          </div>
+
+          {/* Right/Center Content: Name, Europass Logo, Divider, and Metadata */}
+          <div className="flex-1 min-w-0 w-full text-center sm:text-left">
+            {/* Top row: Name on left, Europass logo on top right */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+              <h1
+                className="text-2xl sm:text-[28px] font-bold text-[#374151] tracking-tight leading-tight"
+                style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+              >
+                {personalInfo.fullName || 'Candidate Name'}
+              </h1>
+
+              {resume.showLogo !== 'none' && resume.showLogo !== 'no' && (
+                <div className="shrink-0 self-center sm:self-auto">
+                  <EuropassLogo width={138} height={34} />
+                </div>
+              )}
+            </div>
+
+            {/* Subtle horizontal divider extending across candidate info area */}
+            <div className="border-b border-[#718096] my-2 sm:my-2.5 w-full" />
+
+            {/* Personal Information (Inline European format with vertical pipe separators) */}
+            {headerMetaItems.length > 0 && (
+              <div className="text-[10px] sm:text-[11px] text-[#2d3748] leading-relaxed">
+                {headerMetaItems.map((item, idx) => (
+                  <span key={item.label} className="inline-block mr-1">
+                    <span className="font-bold text-[#111827]">{item.label}:</span>{' '}
+                    <span className="font-normal text-[#374151]">{item.value}</span>
+                    {idx < headerMetaItems.length - 1 && (
+                      <span className="mx-1.5 text-slate-400 font-normal">|</span>
+                    )}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
