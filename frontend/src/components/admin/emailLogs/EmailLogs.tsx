@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Mail, MailWarning, MailCheck, RotateCcw } from 'lucide-react';
+import { Mail, MailWarning, MailCheck, RotateCcw, Send, CheckCircle2 } from 'lucide-react';
 import { DataTable, DataTableColumn } from '../../ui/DataTable';
 import { StatusBadge, StatusTone } from '../../ui/StatusBadge';
 import { Drawer } from '../../ui/Drawer';
+import { Modal } from '../../ui/Modal';
 import { FilterBar, FilterConfig } from '../../ui/FilterBar';
 import { KpiCard } from '../../ui/KpiCard';
-import { getEmailLogs, getEmailLogById, retryEmailLog, EmailLogEntry } from '../adminApi/api';
+import { getEmailLogs, getEmailLogById, retryEmailLog, sendTestEmail, EmailLogEntry } from '../adminApi/api';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { toast } from 'react-toastify';
 import { useCurrentUser } from '../../../utils/currentUser';
@@ -39,6 +40,35 @@ const EmailLogs: React.FC = () => {
   const [filters, setFilters] = useState<Record<string, string>>({ status: 'all' });
   const [selected, setSelected] = useState<(EmailLogEntry & { textBody?: string; htmlBody?: string }) | null>(null);
   const [retrying, setRetrying] = useState(false);
+
+  // Test email state (Super Admin)
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [testTemplate, setTestTemplate] = useState('general');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testRecipient.trim()) {
+      toast.error('Please enter a recipient email address.');
+      return;
+    }
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const res = await sendTestEmail(testRecipient.trim(), testTemplate);
+      setTestResult(res);
+      toast.success(res.message || 'Test email dispatched successfully.');
+      load(1, { silent: true });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to dispatch test email.';
+      toast.error(msg);
+      setTestResult({ success: false, error: msg });
+    } finally {
+      setTestSending(false);
+    }
+  };
 
   const load = useCallback(
     async (p = page, opts: { silent?: boolean } = {}) => {
@@ -143,13 +173,26 @@ const EmailLogs: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
-          <Mail size={20} /> Email Delivery Log
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Every transactional email sent by QuickJobs, its delivery status, and a retry action for failed sends.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
+            <Mail size={20} /> Email Delivery Log
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Every transactional email sent by QuickJobs, its delivery status, and a retry action for failed sends.
+          </p>
+        </div>
+        {isSuperAdmin && (
+          <button
+            onClick={() => {
+              setTestModalOpen(true);
+              setTestResult(null);
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-adminAccent px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-all self-start sm:self-auto"
+          >
+            <Send size={15} /> Send Test Email
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -236,6 +279,86 @@ const EmailLogs: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        open={testModalOpen}
+        onClose={() => setTestModalOpen(false)}
+        title="Verify Email Pipeline (Super Admin)"
+        maxWidthClassName="max-w-md"
+        closeDisabled={testSending}
+      >
+        <form onSubmit={handleSendTestEmail} className="space-y-4">
+          <p className="text-xs text-slate-500">
+            Send an end-to-end test email to verify that QuickJobs connects to the configured provider (Resend or SMTP) and delivers to the recipient inbox.
+          </p>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-1.5">
+              Recipient Email
+            </label>
+            <input
+              type="email"
+              required
+              value={testRecipient}
+              onChange={(e) => setTestRecipient(e.target.value)}
+              placeholder="candidate@example.com"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-adminAccent focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-1.5">
+              Email Template
+            </label>
+            <select
+              value={testTemplate}
+              onChange={(e) => setTestTemplate(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-adminAccent focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="general">Standard Pipeline Verification</option>
+              <option value="job_posted">New Job Notification Sample</option>
+              <option value="interview_scheduled">Interview Scheduled Sample</option>
+              <option value="shortlisted">Shortlisted Notification Sample</option>
+              <option value="assessment_assigned">Technical Assessment Sample</option>
+            </select>
+          </div>
+
+          {testResult && (
+            <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+              testResult.success
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                : 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
+            }`}>
+              <div className="font-semibold flex items-center gap-1.5">
+                {testResult.success ? <CheckCircle2 size={14} /> : <MailWarning size={14} />}
+                <span>{testResult.success ? 'Delivery Confirmed by Provider' : 'Delivery Failed'}</span>
+              </div>
+              {testResult.provider && <p>Provider: <strong>{testResult.provider}</strong></p>}
+              {testResult.messageId && <p className="truncate">Message ID: <code>{testResult.messageId}</code></p>}
+              {testResult.error && <p>Error: {testResult.error}</p>}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              disabled={testSending}
+              onClick={() => setTestModalOpen(false)}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              disabled={testSending}
+              className="inline-flex items-center gap-2 rounded-xl bg-adminAccent px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+            >
+              <Send size={14} className={testSending ? 'animate-spin' : ''} />
+              {testSending ? 'Sending…' : 'Send Test'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

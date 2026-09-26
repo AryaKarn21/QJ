@@ -20,19 +20,21 @@ import { EmptyState } from '../../ui/EmptyState';
 import { AdminApplication, getAllApplications, updateApplicationStatus } from '../adminApi/api';
 import { resolveResumeUrl as resumeUrl, getResumeDownloadUrl, isUnrecoverableResumePath } from '../../../utils/mediaUrl';
 
-const STATUS_OPTIONS = ['All', 'Pending', 'Reviewed', 'Accepted', 'Rejected'] as const;
+const STATUS_OPTIONS = ['All', 'Pending', 'Reviewed', 'Shortlisted', 'Accepted', 'Rejected'] as const;
 type StatusFilter = typeof STATUS_OPTIONS[number];
 
 const STATUS_TONE: Record<string, StatusTone> = {
   Pending: 'warning',
   Reviewed: 'info',
+  Shortlisted: 'accent',
   Accepted: 'success',
   Rejected: 'danger',
 };
 
 const STATUS_FLOW: Record<string, string[]> = {
-  Pending: ['Reviewed', 'Rejected'],
-  Reviewed: ['Accepted', 'Rejected'],
+  Pending: ['Reviewed', 'Shortlisted', 'Rejected'],
+  Reviewed: ['Shortlisted', 'Accepted', 'Rejected'],
+  Shortlisted: ['Accepted', 'Rejected'],
   Accepted: ['Rejected'],
   Rejected: ['Reviewed'],
 };

@@ -1337,6 +1337,15 @@ export const retryEmailLog = async (id: string) => {
   return res.data;
 };
 
+export const sendTestEmail = async (recipient: string, templateType?: string) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/admin/email-logs/test-email`,
+    { recipient, templateType },
+    getAuthConfig()
+  );
+  return res.data;
+};
+
 // ---------------------------------------------------------------------------
 // Notification targeting config (spec section 2) — Super Admin toggle for
 // employerController.createJob's jobseeker-notification fan-out mode.

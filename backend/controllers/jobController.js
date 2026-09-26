@@ -15,6 +15,11 @@ const {
 const { recordAdminAudit } = require("../utils/auditLogger");
 const sendMail = require("../utils/sendMail");
 const { notifyNewsletterOfNewJob } = require("../services/jobAlertEmailService");
+const { notifyJobSeekersOfNewJob } = require("../utils/jobNotificationHelper");
+const {
+  sendApplicationSubmittedEmail,
+  sendNewApplicationReceivedEmail,
+} = require("../services/emailService");
 
 // GET /api/jobs/meta/countries — public. The single list the job-posting
 // form's Country <select> reads (see postjobs.tsx) — the same array
@@ -481,24 +486,27 @@ const applyInJob = async (req, res) => {
     // own error handling: a mail failure must never fail an application
     // that already saved successfully, so both are fire-and-forget with
     // their own try/catch rather than awaited inline in the main flow.
+    // Email confirmations — best-effort, fire-and-forget
     if (user.email) {
       const companyName = job.companyOverride?.name || job.employer?.name || "";
-      sendMail(
-        user.email,
-        `Application submitted: ${job.title}`,
-        `Hi ${user.name},\n\nYour application for "${job.title}"${companyName ? ` at ${companyName}` : ""} has been submitted successfully. The employer has been notified and will review it shortly.\n\nYou can track this application from your QuickJobs dashboard.\n\n— QuickJobs`,
-        null,
-        { type: "application_confirmation", recipientUser: user._id, relatedJob: job._id, relatedApplication: application._id }
-      ).catch((err) => console.error("Failed to send application confirmation email:", err.message));
+      sendApplicationSubmittedEmail({
+        recipient: user.email,
+        candidateName: user.name || "Candidate",
+        jobTitle: job.title,
+        companyName,
+        applicationId: application._id,
+        jobId: job._id,
+      }).catch((err) => console.error("Failed to send application confirmation email:", err.message));
     }
     if (job.employer?.email) {
-      sendMail(
-        job.employer.email,
-        `New application: ${job.title}`,
-        `${user.name} just applied to your job posting "${job.title}".\n\nReview the application from your QuickJobs employer dashboard: applicants list for this job.\n\n— QuickJobs`,
-        null,
-        { type: "new_application_notice", recipientUser: job.employer._id, relatedJob: job._id, relatedApplication: application._id }
-      ).catch((err) => console.error("Failed to send employer application-notification email:", err.message));
+      sendNewApplicationReceivedEmail({
+        recipient: job.employer.email,
+        employerName: job.employer.name || "Employer",
+        candidateName: user.name || "Candidate",
+        jobTitle: job.title,
+        applicationId: application._id,
+        jobId: job._id,
+      }).catch((err) => console.error("Failed to send employer application-notification email:", err.message));
     }
 
     res.status(201).json({ message: "Application submitted successfully" });
@@ -860,10 +868,15 @@ const updateJobStatus = async (req, res) => {
     // which would otherwise re-alert subscribers about a job they were
     // already told about.
     if (wasPending && status === "Active") {
-      const populatedJob = await Job.findById(job._id).populate("employer", "name");
-      notifyNewsletterOfNewJob(populatedJob).catch((err) =>
-        console.error("Failed to dispatch new-job alert emails:", err.message)
-      );
+      const populatedJob = await Job.findById(job._id).populate("employer", "name email");
+      if (populatedJob) {
+        notifyJobSeekersOfNewJob({ job: populatedJob, employer: populatedJob.employer }).catch((err) =>
+          console.error("Failed to notify job seekers on job activation:", err.message)
+        );
+        notifyNewsletterOfNewJob(populatedJob).catch((err) =>
+          console.error("Failed to dispatch new-job alert emails:", err.message)
+        );
+      }
     }
 
     res.json({ message: `Job status updated to ${status}`, job });

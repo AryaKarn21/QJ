@@ -17,16 +17,22 @@ const mongoose = require("mongoose");
 const emailLogSchema = new mongoose.Schema(
   {
     recipientEmail: { type: String, required: true, trim: true, lowercase: true },
+    senderEmail: { type: String, trim: true, lowercase: true },
     recipientUser: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     type: { type: String, required: true, default: "general", index: true },
+    provider: { type: String, default: "nodemailer" },
+    providerMessageId: { type: String },
     subject: { type: String, required: true },
     textBody: { type: String },
     htmlBody: { type: String },
     relatedJob: { type: mongoose.Schema.Types.ObjectId, ref: "Job" },
     relatedApplication: { type: mongoose.Schema.Types.ObjectId, ref: "Application" },
+    relatedInterview: { type: mongoose.Schema.Types.ObjectId },
+    relatedAssessment: { type: mongoose.Schema.Types.ObjectId, ref: "Assessment" },
+    idempotencyKey: { type: String },
     status: {
       type: String,
-      enum: ["queued", "sent", "delivered", "failed"],
+      enum: ["queued", "sent", "delivered", "failed", "QUEUED", "SENT", "DELIVERED", "FAILED"],
       default: "queued",
       index: true,
     },
@@ -41,5 +47,6 @@ emailLogSchema.index({ recipientEmail: 1, createdAt: -1 });
 emailLogSchema.index({ relatedApplication: 1 });
 emailLogSchema.index({ relatedJob: 1 });
 emailLogSchema.index({ status: 1, createdAt: -1 });
+emailLogSchema.index({ idempotencyKey: 1 }, { sparse: true });
 
 module.exports = mongoose.model("EmailLog", emailLogSchema);

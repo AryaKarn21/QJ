@@ -3,29 +3,70 @@ const EmailLog = require("../models/EmailLog");
 
 let cachedTransporter = null;
 
+function getProviderName() {
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) return "Resend";
+  if (process.env.SMTP_HOST && process.env.SMTP_HOST.trim()) return "SMTP";
+  return process.env.EMAIL_SERVICE ? process.env.EMAIL_SERVICE.toUpperCase() : "Gmail";
+}
+
 function getTransporter() {
   if (!cachedTransporter) {
-    const user = process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, "") : "";
-
-    cachedTransporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || "gmail",
-      auth: { user, pass },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-    });
+    if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+      cachedTransporter = nodemailer.createTransport({
+        host: "smtp.resend.com",
+        port: 465,
+        secure: true,
+        auth: {
+          user: "resend",
+          pass: process.env.RESEND_API_KEY.trim(),
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+      });
+    } else if (process.env.SMTP_HOST && process.env.SMTP_HOST.trim()) {
+      cachedTransporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST.trim(),
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === "true" || Number(process.env.SMTP_PORT) === 465,
+        auth: {
+          user: process.env.SMTP_USER || process.env.EMAIL_USER,
+          pass: process.env.SMTP_PASS || (process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, "") : ""),
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+      });
+    } else {
+      const user = process.env.EMAIL_USER;
+      const pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, "") : "";
+      cachedTransporter = nodemailer.createTransport({
+        service: process.env.EMAIL_SERVICE || "gmail",
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+      });
+    }
   }
   return cachedTransporter;
 }
 
+function getSenderConfig() {
+  const fromName = process.env.EMAIL_FROM_NAME || "QuickJobs";
+  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || "no-reply@quickjobs.local";
+  return {
+    fromName,
+    fromEmail,
+    formatted: `"${fromName}" <${fromEmail}>`,
+  };
+}
+
 // Every automated email is a no-reply — the "from" mailbox is whatever
-// account SMTP credentials are configured (EMAIL_FROM, or EMAIL_USER as a
+// account credentials are configured (EMAIL_FROM, or EMAIL_USER as a
 // fallback so existing deployments keep working unchanged), but the
-// display name always reads "QuickJobs" and every message carries this
-// footer so recipients don't mistake it for a two-way conversation. Two-way
-// communication goes through the existing QuickJobs messaging system
-// instead (see employer Applicants.tsx's "Message Candidate").
+// display name reads "QuickJobs" (or EMAIL_FROM_NAME) and every message
+// carries this footer so recipients don't mistake it for a two-way conversation.
 const NO_REPLY_TEXT_FOOTER =
   "\n\n---\nThis is an automated message from QuickJobs. Please do not reply to this email.";
 const NO_REPLY_HTML_FOOTER =
@@ -33,27 +74,62 @@ const NO_REPLY_HTML_FOOTER =
   "This is an automated message from QuickJobs. Please do not reply to this email.</p>";
 
 /**
- * Send an email using the configured nodemailer transporter. Every call
- * writes an EmailLog row first (status "queued"), then updates it to
- * "sent" or "failed" once the send resolves/rejects — the single place
- * every outbound email in the app goes through, so this is also the single
- * place delivery is tracked from (see models/EmailLog.js).
+ * Send an email using the configured email transporter.
+ * Every call writes an EmailLog row first (status "queued"), then updates it to
+ * "sent" or "failed" once the send resolves/rejects.
  *
  * @param {string} to - Recipient email address
  * @param {string} subject - Email subject
  * @param {string} text - Plain text email content
  * @param {string} [html] - Optional HTML email content
- * @param {object} [meta] - Optional metadata for the EmailLog row: { type, recipientUser, relatedJob, relatedApplication }
+ * @param {object} [meta] - Optional metadata: { type, recipientUser, relatedJob, relatedApplication, relatedInterview, relatedAssessment, idempotencyKey, force }
  * @returns {Promise<any>}
  */
 const sendMail = async (to, subject, text, html = null, meta = {}) => {
-  const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
-  const textWithFooter = `${text}${NO_REPLY_TEXT_FOOTER}`;
-  const htmlWithFooter = html ? `${html}${NO_REPLY_HTML_FOOTER}` : null;
+  if (!to || typeof to !== "string" || !to.trim() || !to.includes("@")) {
+    const error = new Error(`Invalid recipient email address: "${to}"`);
+    console.error(`[sendMail] Validation error: ${error.message}`);
+    throw error;
+  }
+  const cleanTo = to.trim().toLowerCase();
+
+  const { fromName, fromEmail, formatted: fromFormatted } = getSenderConfig();
+  if (!fromEmail || fromEmail === "undefined" || fromEmail === "null" || !fromEmail.includes("@")) {
+    const error = new Error("Invalid sender email configuration. Please set EMAIL_FROM or EMAIL_USER.");
+    console.error(`[sendMail] Sender error: ${error.message}`);
+    throw error;
+  }
+
+  const provider = getProviderName();
+
+  // Idempotency check: prevent sending duplicate emails for the same event unless force=true
+  if (meta.idempotencyKey && !meta.force) {
+    try {
+      const existing = await EmailLog.findOne({
+        idempotencyKey: meta.idempotencyKey,
+        status: { $in: ["sent", "delivered", "SENT", "DELIVERED"] },
+      });
+      if (existing) {
+        console.log(`[sendMail] Skipping duplicate email for idempotencyKey: ${meta.idempotencyKey}`);
+        return { messageId: existing.providerMessageId || "idempotent-duplicate", skipped: true };
+      }
+    } catch (e) {
+      // Non-blocking error for idempotency query
+    }
+  }
+
+  const textWithFooter = text.includes("This is an automated message from QuickJobs")
+    ? text
+    : `${text}${NO_REPLY_TEXT_FOOTER}`;
+  const htmlWithFooter = html
+    ? html.includes("This is an automated message from QuickJobs")
+      ? html
+      : `${html}${NO_REPLY_HTML_FOOTER}`
+    : null;
 
   const mailOptions = {
-    from: `"QuickJobs" <${fromAddress}>`,
-    to,
+    from: fromFormatted,
+    to: cleanTo,
     subject,
     text: textWithFooter,
   };
@@ -61,43 +137,57 @@ const sendMail = async (to, subject, text, html = null, meta = {}) => {
     mailOptions.html = htmlWithFooter;
   }
 
-  const log = await EmailLog.create({
-    recipientEmail: to,
-    recipientUser: meta.recipientUser || undefined,
-    type: meta.type || "general",
-    subject,
-    textBody: textWithFooter,
-    htmlBody: htmlWithFooter || undefined,
-    relatedJob: meta.relatedJob || undefined,
-    relatedApplication: meta.relatedApplication || undefined,
-    status: "queued",
-  });
+  let log = null;
+  try {
+    log = await EmailLog.create({
+      recipientEmail: cleanTo,
+      senderEmail: fromEmail,
+      recipientUser: meta.recipientUser || undefined,
+      type: meta.type || "general",
+      provider,
+      subject,
+      textBody: textWithFooter,
+      htmlBody: htmlWithFooter || undefined,
+      relatedJob: meta.relatedJob || undefined,
+      relatedApplication: meta.relatedApplication || undefined,
+      relatedInterview: meta.relatedInterview || undefined,
+      relatedAssessment: meta.relatedAssessment || undefined,
+      idempotencyKey: meta.idempotencyKey || undefined,
+      status: "queued",
+    });
+  } catch (err) {
+    console.error("[sendMail] Failed to create initial EmailLog row:", err.message);
+  }
 
   try {
     const info = await getTransporter().sendMail(mailOptions);
-    log.status = "sent";
-    log.sentAt = new Date();
-    log.attempts += 1;
-    await log.save();
+    if (log) {
+      log.status = "sent";
+      log.sentAt = new Date();
+      log.attempts += 1;
+      log.providerMessageId = info?.messageId || "";
+      await log.save();
+    }
     return info;
   } catch (error) {
-    log.status = "failed";
-    log.failureReason = error?.message || "Unknown error";
-    log.attempts += 1;
-    await log.save();
-    // Preserve existing behavior — every current caller already handles a
-    // rejected sendMail() promise itself (e.g. employerController.js sets
-    // application.interview.emailStatus = "failed" in its catch block).
+    const safeError = error?.message || "Unknown error";
+    if (log) {
+      log.status = "failed";
+      log.failureReason = safeError;
+      log.attempts += 1;
+      await log.save();
+    }
+
+    console.error(
+      `Email failed:\nrecipient = ${cleanTo}\ntype = ${meta.type || "general"}\nprovider = ${provider}\nerror = ${safeError}`
+    );
+
     throw error;
   }
 };
 
 /**
- * Re-attempts a previously failed EmailLog row using its stored content —
- * used by the Super Admin "retry failed email" action. Idempotency guard:
- * refuses to retry a row that isn't currently "failed" (e.g. already
- * retried successfully by a concurrent request), so a double-click can't
- * send the same email twice.
+ * Re-attempts a previously failed EmailLog row using its stored content.
  */
 const retryFailedEmail = async (emailLogId) => {
   const log = await EmailLog.findById(emailLogId);
@@ -106,15 +196,15 @@ const retryFailedEmail = async (emailLogId) => {
     err.code = "EMAIL_LOG_NOT_FOUND";
     throw err;
   }
-  if (log.status !== "failed") {
+  if (log.status !== "failed" && log.status !== "FAILED") {
     const err = new Error(`Email is not in a failed state (current status: ${log.status})`);
     err.code = "EMAIL_NOT_FAILED";
     throw err;
   }
 
-  const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const { fromEmail, formatted: fromFormatted } = getSenderConfig();
   const mailOptions = {
-    from: `"QuickJobs" <${fromAddress}>`,
+    from: fromFormatted,
     to: log.recipientEmail,
     subject: log.subject,
     text: log.textBody,
@@ -127,16 +217,27 @@ const retryFailedEmail = async (emailLogId) => {
     log.sentAt = new Date();
     log.attempts += 1;
     log.failureReason = undefined;
+    log.provider = getProviderName();
+    log.providerMessageId = info?.messageId || "";
+    log.senderEmail = fromEmail;
     await log.save();
     return info;
   } catch (error) {
+    const safeError = error?.message || "Unknown error";
     log.status = "failed";
-    log.failureReason = error?.message || "Unknown error";
+    log.failureReason = safeError;
     log.attempts += 1;
     await log.save();
+
+    console.error(
+      `Email failed:\nrecipient = ${log.recipientEmail}\ntype = ${log.type || "general"}\nprovider = ${getProviderName()}\nerror = ${safeError}`
+    );
+
     throw error;
   }
 };
 
 module.exports = sendMail;
 module.exports.retryFailedEmail = retryFailedEmail;
+module.exports.getProviderName = getProviderName;
+module.exports.getSenderConfig = getSenderConfig;

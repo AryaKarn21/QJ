@@ -46,7 +46,7 @@ const {
   unlockAccount,
   getRecentFailedLogins,
 } = require("../controllers/securityController");
-const { getEmailLogs, getEmailLogById, retryEmailLog } = require("../controllers/emailLogController");
+const { getEmailLogs, getEmailLogById, retryEmailLog, sendTestEmail } = require("../controllers/emailLogController");
 const { getNotificationSettings, updateNotificationSettings } = require("../controllers/notificationSettingsController");
 
 // Create a new admin account (superadmin only)
@@ -150,6 +150,7 @@ router.get("/security/failed-logins", authenticate, authorizeSuperAdmin, getRece
 router.get("/email-logs", authenticate, authorizeAdmin, getEmailLogs);
 router.get("/email-logs/:id", authenticate, authorizeAdmin, getEmailLogById);
 router.post("/email-logs/:id/retry", authenticate, authorizeSuperAdmin, retryEmailLog);
+router.post("/email-logs/test-email", authenticate, authorizeSuperAdmin, sendTestEmail);
 
 // Notification targeting config (spec section 2) — read by any admin,
 // changed only by a superadmin since it affects every future job posting.

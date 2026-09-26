@@ -128,9 +128,11 @@ const EmployerApplicants = () => {
                                                                 ? "bg-blue-200 text-black"
                                                                 : applicant.status === "Accepted"
                                                                     ? "bg-green-200 text-black"
-                                                                    : applicant.status === "Rejected"
-                                                                        ? "bg-red-200 text-black"
-                                                                        : "bg-gray-300 text-black"
+                                                                    : applicant.status === "Shortlisted"
+                                                                        ? "bg-purple-200 text-black"
+                                                                        : applicant.status === "Rejected"
+                                                                            ? "bg-red-200 text-black"
+                                                                            : "bg-gray-300 text-black"
                                                         }`}
                                                 >
                                                     {applicant.status}
@@ -177,6 +179,7 @@ const EmployerApplicants = () => {
                                                 >
                                                     <option value="Pending">Pending</option>
                                                     <option value="Reviewed">Reviewed</option>
+                                                    <option value="Shortlisted">Shortlisted</option>
                                                     <option value="Accepted">Accepted</option>
                                                     <option value="Rejected">Rejected</option>
                                                 </select>

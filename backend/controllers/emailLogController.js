@@ -69,6 +69,8 @@ const getEmailLogById = async (req, res) => {
   }
 };
 
+const { sendTestEmail } = require("../services/emailService");
+
 // ============================================================
 // POST /api/admin/email-logs/:id/retry — superadmin-only (mirrors the
 // existing /announcement precedent for high-blast-radius actions). Calls
@@ -84,4 +86,34 @@ const retryEmailLog = async (req, res) => {
   }
 };
 
-module.exports = { getEmailLogs, getEmailLogById, retryEmailLog };
+// ============================================================
+// POST /api/admin/email-logs/test-email — superadmin-only test utility
+// ============================================================
+const sendTestEmailEndpoint = async (req, res) => {
+  const { to, subject, message } = req.body;
+  if (!to || typeof to !== "string" || !to.trim() || !to.includes("@")) {
+    return res.status(400).json({ message: "A valid recipient email address 'to' is required." });
+  }
+
+  try {
+    const info = await sendTestEmail({
+      to: to.trim(),
+      subject: subject ? subject.trim() : undefined,
+      message: message ? message.trim() : undefined,
+    });
+    res.json({
+      success: true,
+      message: "Test email successfully sent and accepted by provider.",
+      recipient: to.trim(),
+      messageId: info?.messageId || "sent",
+    });
+  } catch (error) {
+    console.error("Test email delivery error:", error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to deliver test email: ${error.message}`,
+    });
+  }
+};
+
+module.exports = { getEmailLogs, getEmailLogById, retryEmailLog, sendTestEmail: sendTestEmailEndpoint };

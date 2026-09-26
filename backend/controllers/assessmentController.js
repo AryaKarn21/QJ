@@ -3,8 +3,9 @@ const Assessment = require("../models/Assessment");
 const AssessmentAttempt = require("../models/AssessmentAttempt");
 const Application = require("../models/Application");
 const Job = require("../models/Job");
+const User = require("../models/User");
 const sendNotification = require("../utils/sendNotifications");
-const { sendAssessmentRequestEmail } = require("../services/interviewEmailService");
+const { sendAssessmentRequestEmail, sendAssessmentSubmittedEmail, formatDuration } = require("../services/interviewEmailService");
 
 const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 
@@ -257,6 +258,8 @@ const assignAssessment = async (req, res) => {
         candidateName: application.applicant.name || "Candidate",
         companyName,
         jobTitle: application.job.title,
+        assessmentTitle: assessment.title,
+        duration: formatDuration(assessment.duration),
         assessmentLink,
         assessmentDeadline: effectiveDeadline ? effectiveDeadline.toDateString() : "",
         customMessage: customMessage || "",
@@ -478,16 +481,36 @@ const submitAssessment = async (req, res) => {
     // Notify the employer — the applicant is already populated by
     // verifyCandidateAccess's parent lookup chain only for the applicant
     // side, so re-fetch the job/employer here for the notification target.
-    const job = await Job.findById(application.job).select("employer title");
+    const job = await Job.findById(application.job).populate("employer", "name email").select("employer title");
     if (job?.employer) {
+      const employerRecipient = job.employer._id || job.employer;
       await sendNotification({
-        recipient: job.employer,
+        recipient: employerRecipient,
         type: "assessment_submitted",
         message: `A technical assessment was submitted for "${job.title}"`,
         relatedJob: job._id,
         relatedApplication: application._id,
         link: `/employer/jobs/${job._id}/applicants`,
       });
+
+      const employerEmail = job.employer.email;
+      if (employerEmail) {
+        const candidateUser = await User.findById(req.user.id).select("name email").lean();
+        sendAssessmentSubmittedEmail({
+          recipient: employerEmail,
+          employerName: job.employer.name || "Employer",
+          candidateName: candidateUser?.name || "Candidate",
+          jobTitle: job.title,
+          assessmentTitle: assessment.title,
+          score: attempt.score,
+          maxScore: attempt.maxScore,
+          passed: attempt.passed,
+          applicationId: application._id,
+          jobId: job._id,
+        }).catch((err) =>
+          console.error("Failed to send assessment submitted email to employer:", err.message)
+        );
+      }
     }
 
     res.json({

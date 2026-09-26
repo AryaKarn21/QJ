@@ -25,6 +25,9 @@ const {
   deriveExperienceString,
 } = require("../utils/jobHelpers");
 const { recordAdminAudit } = require("../utils/auditLogger");
+const { notifyJobSeekersOfNewJob } = require("../utils/jobNotificationHelper");
+const { notifyNewsletterOfNewJob } = require("../services/jobAlertEmailService");
+const { sendApplicationStatusEmail } = require("../services/emailService");
 
 // Create a new admin account (superadmin only). This is the ONLY way an
 // admin account should be created after initial setup — the public
@@ -243,13 +246,15 @@ const updateApplication = async (req, res) => {
   const { applicationId } = req.params;
   const { status } = req.body;
 
-  const validStatuses = ["Pending", "Reviewed", "Accepted", "Rejected"];
+  const validStatuses = ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ message: "Invalid status value" });
   }
 
   try {
-    const application = await Application.findById(applicationId);
+    const application = await Application.findById(applicationId)
+      .populate({ path: "job", populate: { path: "employer", select: "name" } })
+      .populate("applicant", "name email isActive");
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
     }
@@ -257,17 +262,33 @@ const updateApplication = async (req, res) => {
     application.status = status;
     await application.save();
 
+    const notifMsg =
+      status === "Shortlisted"
+        ? `Your application for "${application.job?.title || "the position"}" has been shortlisted.`
+        : `Your application status has been updated to: ${status}`;
+
     await sendNotification({
-      recipient: application.applicant,
-      // Was "application_status", which isn't in Notification.js's `type`
-      // enum (only "application_update"/"job_status_update" exist) — every
-      // notification this call tried to create failed Mongoose validation
-      // and was silently dropped (sendNotification catches and logs).
+      recipient: application.applicant?._id || application.applicant,
       type: "application_update",
-      message: `Your application status has been updated to: ${status}`,
+      message: notifMsg,
       relatedApplication: application._id,
+      relatedJob: application.job?._id,
       link: "/user/applications",
     });
+
+    if (application.applicant?.email && application.applicant.isActive !== false) {
+      sendApplicationStatusEmail({
+        recipient: application.applicant.email,
+        candidateName: application.applicant.name || "Candidate",
+        companyName:
+          application.job?.companyOverride?.name ||
+          application.job?.employer?.name ||
+          "QuickJobs Employer",
+        jobTitle: application.job?.title || "Position",
+        status,
+        applicationId: application._id,
+      }).catch((err) => console.error("Admin: failed to send application status email:", err.message));
+    }
 
     res.json({ message: "Application status updated", application });
   } catch (error) {
@@ -820,6 +841,16 @@ const approveJob = async (req, res) => {
       relatedJob: job._id,
       link: "/employer/dashboard",
     });
+
+    const populatedJob = await Job.findById(job._id).populate("employer", "name email");
+    if (populatedJob) {
+      notifyJobSeekersOfNewJob({ job: populatedJob, employer: populatedJob.employer }).catch((err) =>
+        console.error("Admin: failed to notify job seekers on job approval:", err.message)
+      );
+      notifyNewsletterOfNewJob(populatedJob).catch((err) =>
+        console.error("Admin: failed to dispatch new-job alert emails to newsletter:", err.message)
+      );
+    }
 
     res.json({ message: "Job approved", job });
   } catch (error) {

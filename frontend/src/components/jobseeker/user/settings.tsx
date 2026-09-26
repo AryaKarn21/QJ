@@ -525,7 +525,10 @@ const UserSettings = () => {
                   <div>
                     <h4 className="text-sm font-bold text-gray-900">Email Alerts</h4>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Receive email notifications for selected events.
+                      Receive promotional, newsletter, and general email alerts.
+                    </p>
+                    <p className="text-[11px] text-primary/80 mt-1">
+                      ℹ️ Critical transactional emails (such as interview schedules, assessment links, and status decisions) are always delivered to your inbox.
                     </p>
                   </div>
                   <button
