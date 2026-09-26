@@ -254,19 +254,25 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <label className={labelClass}>
               Gender <span className="text-red-500">*</span>
             </label>
-            <select
-              className={fieldClass}
-              value={countryCVInfo.gender || ''}
-              onChange={(e) => onChange({ gender: e.target.value })}
-              required
-            >
-              <option value="">Select Gender…</option>
-              {GENDER_OPTIONS.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+                value={countryCVInfo.gender || ''}
+                onChange={(e) => onChange({ gender: e.target.value })}
+                required
+              >
+                <option value="">Select Gender…</option>
+                {GENDER_OPTIONS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
           </div>
 
           {/* Street / Work Address */}
@@ -306,35 +312,47 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
           {/* License Type */}
           <div>
             <label className={labelClass}>License Category / Type</label>
-            <select
-              className={fieldClass}
-              value={drivingDetails.licenseType || ''}
-              onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
-            >
-              <option value="">Select License Type…</option>
-              {DRIVING_LICENSE_TYPES.map((lt) => (
-                <option key={lt} value={lt}>
-                  {lt}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+                value={drivingDetails.licenseType || ''}
+                onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
+              >
+                <option value="">Select License Type…</option>
+                {DRIVING_LICENSE_TYPES.map((lt) => (
+                  <option key={lt} value={lt}>
+                    {lt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
           </div>
 
           {/* Country */}
           <div>
             <label className={labelClass}>Issuing Country</label>
-            <select
-              className={fieldClass}
-              value={drivingDetails.country || ''}
-              onChange={(e) => updateDrivingDetails({ country: e.target.value })}
-            >
-              <option value="">Select Country…</option>
-              {SUPPORTED_COUNTRIES_LIST.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+                value={drivingDetails.country || ''}
+                onChange={(e) => updateDrivingDetails({ country: e.target.value })}
+              >
+                <option value="">Select Country…</option>
+                {SUPPORTED_COUNTRIES_LIST.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
           </div>
 
           {/* License Number */}

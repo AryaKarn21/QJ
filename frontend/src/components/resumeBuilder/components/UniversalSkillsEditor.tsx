@@ -194,24 +194,30 @@ export const UniversalSkillsEditor: React.FC<UniversalSkillsEditorProps> = ({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <select
-            value={matchedPreset || 'Custom'}
-            onChange={(e) => {
-              if (e.target.value !== 'Custom') {
-                handleRoleChange(e.target.value);
-              }
-            }}
-            className="w-full sm:w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 shadow-2xs"
-          >
-            {PRESET_TARGET_JOBS.map((job) => (
-              <option key={job} value={job}>
-                {job}
-              </option>
-            ))}
-            {!matchedPreset && (
-              <option value="Custom">Custom: {selectedRole}</option>
-            )}
-          </select>
+          <div className="relative w-full sm:w-64">
+            <select
+              value={matchedPreset || 'Custom'}
+              onChange={(e) => {
+                if (e.target.value !== 'Custom') {
+                  handleRoleChange(e.target.value);
+                }
+              }}
+              className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-8 py-2 text-xs font-semibold text-slate-800 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 shadow-2xs cursor-pointer"
+            >
+              {PRESET_TARGET_JOBS.map((job) => (
+                <option key={job} value={job}>
+                  {job}
+                </option>
+              ))}
+              {!matchedPreset && (
+                <option value="Custom">Custom: {selectedRole}</option>
+              )}
+            </select>
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+          </div>
 
           <input
             type="text"

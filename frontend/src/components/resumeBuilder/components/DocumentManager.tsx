@@ -11,6 +11,7 @@ import {
   Plus,
   FileCheck,
   ExternalLink,
+  ChevronDown,
 } from 'lucide-react';
 import type { ResumeDocument } from '../resumeApi';
 import { uploadResumeDocument, deleteResumeDocument, toggleResumeDocument } from '../resumeApi';
@@ -122,17 +123,23 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label className="mb-1 block text-[11px] font-semibold text-slate-700">Document Type</label>
-            <select
-              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-orange-500 focus:outline-none"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value as any)}
-            >
-              {DOCUMENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-2.5 pr-8 py-1.5 text-xs text-slate-800 focus:border-orange-500 focus:outline-none cursor-pointer"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value as any)}
+              >
+                {DOCUMENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
           </div>
 
           <div>

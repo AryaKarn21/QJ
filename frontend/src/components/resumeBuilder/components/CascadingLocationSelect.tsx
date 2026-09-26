@@ -212,25 +212,31 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
           City <span className="text-red-500">*</span>
         </label>
         {cities.length > 0 ? (
-          <select
-            className={fieldClass}
-            value={city}
-            onChange={(e) => handleCityChange(e.target.value)}
-            disabled={!country}
-          >
-            <option value="">
-              {!country ? 'Select Country first…' : 'Select City…'}
-            </option>
-            {cities.map((cty) => (
-              <option key={cty.name} value={cty.name}>
-                {cty.name}
+          <div className="relative">
+            <select
+              className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+              value={city}
+              onChange={(e) => handleCityChange(e.target.value)}
+              disabled={!country}
+            >
+              <option value="">
+                {!country ? 'Select Country first…' : 'Select City…'}
               </option>
-            ))}
-            {/* Custom option if user's city is unlisted */}
-            {city && !cities.some((c) => c.name === city) && (
-              <option value={city}>{city}</option>
-            )}
-          </select>
+              {cities.map((cty) => (
+                <option key={cty.name} value={cty.name}>
+                  {cty.name}
+                </option>
+              ))}
+              {/* Custom option if user's city is unlisted */}
+              {city && !cities.some((c) => c.name === city) && (
+                <option value={city}>{city}</option>
+              )}
+            </select>
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+          </div>
         ) : (
           <input
             type="text"
@@ -249,25 +255,31 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
           Postal Code <span className="text-red-500">*</span>
         </label>
         {postalCodes.length > 0 ? (
-          <select
-            className={fieldClass}
-            value={postalCode}
-            onChange={(e) => handlePostalCodeChange(e.target.value)}
-            disabled={!city}
-          >
-            <option value="">
-              {!city ? 'Select City first…' : 'Select Postal Code…'}
-            </option>
-            {postalCodes.map((pc) => (
-              <option key={pc} value={pc}>
-                {pc}
+          <div className="relative">
+            <select
+              className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+              value={postalCode}
+              onChange={(e) => handlePostalCodeChange(e.target.value)}
+              disabled={!city}
+            >
+              <option value="">
+                {!city ? 'Select City first…' : 'Select Postal Code…'}
               </option>
-            ))}
-            {/* Custom option if postal code is unlisted */}
-            {postalCode && !postalCodes.includes(postalCode) && (
-              <option value={postalCode}>{postalCode}</option>
-            )}
-          </select>
+              {postalCodes.map((pc) => (
+                <option key={pc} value={pc}>
+                  {pc}
+                </option>
+              ))}
+              {/* Custom option if postal code is unlisted */}
+              {postalCode && !postalCodes.includes(postalCode) && (
+                <option value={postalCode}>{postalCode}</option>
+              )}
+            </select>
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+          </div>
         ) : (
           <input
             type="text"
