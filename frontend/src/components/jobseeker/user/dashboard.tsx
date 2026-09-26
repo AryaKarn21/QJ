@@ -71,6 +71,7 @@ const statusConfig: Record<string, { bg: string; text: string; icon: React.React
   Accepted:             { bg: "bg-green-50 text-green-700 border border-green-200",   text: "Accepted",  icon: <CheckCircle size={11} /> },
   Rejected:             { bg: "bg-red-50 text-red-700 border border-red-200",         text: "Rejected",  icon: <XCircle size={11} /> },
   Reviewed:             { bg: "bg-yellow-50 text-yellow-700 border border-yellow-200", text: "Reviewed", icon: <Eye size={11} /> },
+  Shortlisted:          { bg: "bg-indigo-50 text-indigo-700 border border-indigo-200", text: "Shortlisted", icon: <Sparkles size={11} /> },
   Pending:              { bg: "bg-gray-50 text-gray-600 border border-gray-200",       text: "Pending",  icon: <Clock size={11} /> },
   "Interview Scheduled": { bg: "bg-purple-50 text-purple-700 border border-purple-200", text: "Interview Scheduled", icon: <CalendarClock size={11} /> },
 };

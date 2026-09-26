@@ -23,7 +23,7 @@ interface AppliedJob {
   location: string;
   jobtype: string;
   createdAt: string;
-  applicationStatus: 'Pending' | 'Reviewed' | 'Accepted' | 'Rejected' | 'Interview Scheduled';
+  applicationStatus: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Accepted' | 'Rejected' | 'Interview Scheduled';
   appliedAt: string;
 }
 
@@ -42,12 +42,11 @@ const formatAppliedDate = (dateStr?: string) => {
 
 // Maps each backend status to a badge color + friendlier label, so
 // jobseekers get a clear, at-a-glance read on where they stand —
-// this is the whole point of this page. "Interview Scheduled" was missing
-// here (Application.js's status enum has 5 values, this only covered 4),
-// so a scheduled interview silently showed as "Applied" — wrong.
+// this is the whole point of this page.
 const STATUS_STYLES: Record<AppliedJob['applicationStatus'], { label: string; className: string }> = {
   Pending: { label: 'Applied', className: 'bg-slate-100 text-slate-700' },
   Reviewed: { label: 'Under Review', className: 'bg-blue-100 text-blue-700' },
+  Shortlisted: { label: 'Shortlisted', className: 'bg-indigo-100 text-indigo-700' },
   'Interview Scheduled': { label: 'Interview Scheduled', className: 'bg-purple-100 text-purple-700' },
   Accepted: { label: 'Accepted', className: 'bg-green-100 text-green-700' },
   Rejected: { label: 'Not Selected', className: 'bg-red-100 text-red-700' },
