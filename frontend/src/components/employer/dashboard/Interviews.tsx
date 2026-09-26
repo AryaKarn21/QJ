@@ -137,8 +137,9 @@ const Interviews = () => {
             // Honest, per emailSent (see employerController.js's
             // updateApplication — it awaits the send and reports true/
             // false/null) — same pattern as Applicants.tsx's toasts.
-            if (res?.emailSent === false) {
-                toast.warn("Interview updated, but we couldn't send the candidate an email — please follow up directly.");
+            if (res?.emailSent === false || res?.email?.sent === false) {
+                const detail = res?.email?.error || res?.email?.message;
+                toast.warn(`Interview updated, but email failed: ${detail || "check server email settings"}.`);
             } else {
                 toast.success("Interview updated — the candidate has been emailed the new details.");
             }

@@ -28,6 +28,7 @@ interface JobApplicationResponse {
 const statusColors = {
     Pending: "bg-yellow-200 text-black",
     Reviewed: "bg-blue-200 text-black",
+    Shortlisted: "bg-purple-200 text-black",
     Accepted: "bg-green-200 text-black",
     Rejected: "bg-red-200 text-black",
     Default: "bg-gray-300 text-black",
@@ -61,7 +62,7 @@ const JobApplicants = () => {
 
     const handleStatusChange = async (applicationId: string, newStatus: string) => {
         try {
-            await updateApplicationStatus(applicationId, newStatus);
+            const res = await updateApplicationStatus(applicationId, newStatus);
 
             // Update local state
             setData((prev) => {
@@ -73,8 +74,18 @@ const JobApplicants = () => {
                     ),
                 };
             });
+
+            if (res?.email?.sent === false) {
+                const detail = res.email.error || res.email.message;
+                toast.warn(`Status updated to ${newStatus}, but email delivery failed${detail ? `: ${detail}` : ""}.`);
+            } else if (res?.email?.sent === true) {
+                toast.success(`Status updated to ${newStatus} and email notification sent.`);
+            } else {
+                toast.success(`Status updated to ${newStatus}.`);
+            }
         } catch (error) {
             console.error("Failed to update status:", error);
+            toast.error("Failed to update status.");
         }
     };
 
@@ -264,6 +275,7 @@ const JobApplicants = () => {
                             >
                                 <option value="Pending">Pending</option>
                                 <option value="Reviewed">Reviewed</option>
+                                <option value="Shortlisted">Shortlisted</option>
                                 <option value="Accepted">Accepted</option>
                                 <option value="Rejected">Rejected</option>
                             </select>

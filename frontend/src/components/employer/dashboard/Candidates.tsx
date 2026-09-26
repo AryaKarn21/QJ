@@ -135,7 +135,7 @@ const Candidates = () => {
         }
         setScheduling(true);
         try {
-            await updateApplicationStatus(interviewModalFor, "Interview Scheduled", {
+            const res = await updateApplicationStatus(interviewModalFor, "Interview Scheduled", {
                 scheduledAt: new Date(interviewDate).toISOString(),
                 mode: interviewMode,
                 meetingLink: interviewLink,
@@ -149,7 +149,12 @@ const Candidates = () => {
                         : c
                 )
             );
-            toast.success("Interview scheduled — the candidate has been emailed the details.");
+            if (res?.emailSent === false || res?.email?.sent === false) {
+                const detail = res?.email?.error || res?.email?.message;
+                toast.warn(`Interview scheduled, but email failed: ${detail || "check server email settings"}.`);
+            } else {
+                toast.success("Interview scheduled — confirmation email sent to candidate.");
+            }
             closeInterviewModal();
         } catch (err) {
             console.error("Failed to schedule interview:", err);
