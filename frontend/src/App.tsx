@@ -87,6 +87,9 @@ import {
   CookiePolicy,
   Disclaimer,
   CodeOfConduct,
+  ResumeBuilderTerms,
+  AssessmentPolicy,
+  InterviewPolicy,
 } from './components/legal/PolicyPages';
 import FaqPage from './components/content/FaqPage';
 import CareerTips from './components/content/CareerTips';
@@ -209,6 +212,9 @@ function AppWrapper() {
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/code-of-conduct" element={<CodeOfConduct />} />
+          <Route path="/resume-builder-terms" element={<ResumeBuilderTerms />} />
+          <Route path="/assessment-policy" element={<AssessmentPolicy />} />
+          <Route path="/interview-policy" element={<InterviewPolicy />} />
           <Route path="/p/:slug" element={<CmsPageView />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/career-tips" element={<CareerTips />} />

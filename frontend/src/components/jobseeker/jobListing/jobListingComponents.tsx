@@ -22,6 +22,7 @@ import {
   Check,
 } from 'lucide-react';
 import { resolveMediaUrl } from '../../../utils/mediaUrl';
+import { useSiteContent } from '../../../hooks/useSiteContent';
 import type { Job } from '../jobseekerApi/api';
 
 /* ══════════════════════════════════════════════════════════════════
@@ -140,6 +141,17 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
     onSearch();
   };
 
+  const titleMain = useSiteContent('jobListings.hero.titleMain', 'Find Your Next');
+  const titleAccent = useSiteContent('jobListings.hero.titleAccent', 'Opportunity');
+  const description = useSiteContent(
+    'jobListings.hero.description',
+    'Discover thousands of jobs from top companies around the world'
+  );
+  const keywordPlaceholder = useSiteContent('jobListings.hero.keywordPlaceholder', 'Job title, skills or keywords...');
+  const locationPlaceholder = useSiteContent('jobListings.hero.locationPlaceholder', 'City, state or remote...');
+  const searchButtonText = useSiteContent('jobListings.hero.searchButtonText', 'Search Jobs');
+  const popularSearchesLabel = useSiteContent('jobListings.hero.popularSearchesLabel', 'Popular Searches:');
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/40 via-white to-slate-50/50 border-b border-slate-200/70 pt-6 pb-7 sm:pt-8 sm:pb-9 px-4 sm:px-6 lg:px-8">
       {/* Background soft glow accents */}
@@ -153,11 +165,11 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
         </div>
 
         {/* Heading & Subheading */}
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          Find Your Next <span className="text-orange-600">Opportunity</span>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight break-words">
+          {titleMain} <span className="text-orange-600">{titleAccent}</span>
         </h1>
-        <p className="mt-2 text-slate-600 text-xs sm:text-sm md:text-base max-w-2xl mx-auto font-normal">
-          Discover thousands of jobs from top companies around the world
+        <p className="mt-2 text-slate-600 text-xs sm:text-sm md:text-base max-w-2xl mx-auto font-normal break-words">
+          {description}
         </p>
 
         {/* Unified Search Bar */}
@@ -172,7 +184,7 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
               type="text"
               value={keyword}
               onChange={(e) => onKeywordChange(e.target.value)}
-              placeholder="Job title, skills or keywords..."
+              placeholder={keywordPlaceholder}
               className="w-full pl-11 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 bg-transparent outline-none rounded-xl hover:bg-slate-50/50 focus:bg-white transition-colors"
             />
           </div>
@@ -186,7 +198,7 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
               type="text"
               value={location}
               onChange={(e) => onLocationChange(e.target.value)}
-              placeholder="City, state or remote..."
+              placeholder={locationPlaceholder}
               className="w-full pl-11 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 bg-transparent outline-none rounded-xl hover:bg-slate-50/50 focus:bg-white transition-colors"
             />
           </div>
@@ -197,13 +209,13 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({
             className="btn-shine w-full md:w-auto md:min-w-[150px] px-7 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
           >
             <Search size={16} strokeWidth={2.5} />
-            <span>Search Jobs</span>
+            <span>{searchButtonText}</span>
           </button>
         </form>
 
         {/* Popular Searches Chips */}
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">Popular Searches:</span>
+          <span className="text-slate-500 font-medium">{popularSearchesLabel}</span>
           {POPULAR_CHIPS.map((chip) => (
             <button
               key={chip}
@@ -1143,14 +1155,21 @@ interface JobEmptyStateProps {
 }
 
 export const JobEmptyState: React.FC<JobEmptyStateProps> = ({ onClearFilters }) => {
+  const heading = useSiteContent('jobListings.emptyState.heading', 'No jobs found');
+  const message = useSiteContent(
+    'jobListings.emptyState.message',
+    'Try changing your search keywords or removing some filters to explore more opportunities.'
+  );
+  const clearFiltersText = useSiteContent('jobListings.emptyState.clearFiltersText', 'Clear Filters');
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-8 sm:p-12 text-center shadow-xs">
       <div className="w-16 h-16 rounded-2xl bg-orange-100/60 text-primary flex items-center justify-center mx-auto mb-4">
         <Briefcase size={32} />
       </div>
-      <h3 className="text-xl font-bold text-slate-900">No jobs found</h3>
-      <p className="text-sm text-slate-500 max-w-md mx-auto mt-2">
-        Try changing your search keywords or removing some filters to explore more opportunities.
+      <h3 className="text-xl font-bold text-slate-900 break-words">{heading}</h3>
+      <p className="text-sm text-slate-500 max-w-md mx-auto mt-2 break-words">
+        {message}
       </p>
       <button
         type="button"
@@ -1158,7 +1177,7 @@ export const JobEmptyState: React.FC<JobEmptyStateProps> = ({ onClearFilters }) 
         className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-[#e66800] text-white text-sm font-semibold rounded-xl shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"
       >
         <RotateCcw size={15} />
-        <span>Clear Filters</span>
+        <span>{clearFiltersText}</span>
       </button>
     </div>
   );

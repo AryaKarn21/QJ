@@ -10,9 +10,20 @@ import { PostCard } from './PostCard';
 import { TrendingSidebar } from './TrendingSidebar';
 import { MiniProfileCard } from './MiniProfileCard';
 import type { CommunityPost, FeedFilter } from '../../types/community';
+import { useSiteContent } from '../../hooks/useSiteContent';
 
 export function HomeFeed() {
   const { isAuthenticated, userId } = useCurrentUser();
+  const pageHeading = useSiteContent('community.hero.title', 'Community');
+  const searchPlaceholder = useSiteContent('community.hero.searchPlaceholder', 'Search people, companies, skills…');
+  const emptyStateFollowing = useSiteContent(
+    'community.emptyState.following',
+    'Follow people and companies to see their posts here.'
+  );
+  const emptyStateLatest = useSiteContent(
+    'community.emptyState.latest',
+    'No posts yet — be the first to share something.'
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = (searchParams.get('filter') as FeedFilter) || 'latest';
 
@@ -78,13 +89,13 @@ export function HomeFeed() {
 
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-xl font-bold text-dark">Community</h1>
+            <h1 className="text-xl font-bold text-dark break-words">{pageHeading}</h1>
             <Link
               to="/community/search"
               className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-400 shadow-sm transition-colors hover:border-primary/40 hover:text-primary sm:max-w-xs"
             >
               <Search size={15} className="shrink-0" />
-              <span className="truncate">Search people, companies, skills…</span>
+              <span className="truncate">{searchPlaceholder}</span>
             </Link>
           </div>
           <FeedFilters active={filter} onChange={handleFilterChange} />
@@ -116,7 +127,7 @@ export function HomeFeed() {
           ) : posts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center">
               <p className="text-sm text-gray-500">
-                {filter === 'following' ? "Follow people and companies to see their posts here." : 'No posts yet — be the first to share something.'}
+                {filter === 'following' ? emptyStateFollowing : emptyStateLatest}
               </p>
             </div>
           ) : (

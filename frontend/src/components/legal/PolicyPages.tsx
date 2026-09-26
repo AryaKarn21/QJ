@@ -19,3 +19,6 @@ export const RefundCancellationPolicy = () => <CmsPageView slugProp="refund-canc
 export const CookiePolicy = () => <CmsPageView slugProp="cookie-policy" />;
 export const Disclaimer = () => <CmsPageView slugProp="disclaimer" />;
 export const CodeOfConduct = () => <CmsPageView slugProp="code-of-conduct" />;
+export const ResumeBuilderTerms = () => <CmsPageView slugProp="resume-builder-terms" />;
+export const AssessmentPolicy = () => <CmsPageView slugProp="assessment-policy" />;
+export const InterviewPolicy = () => <CmsPageView slugProp="interview-policy" />;

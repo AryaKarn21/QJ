@@ -1,10 +1,27 @@
 import aboutimg from '../../../assets/aboutimg.png'
+import { useSiteContent } from '../../../hooks/useSiteContent';
 
 const About = () => {
+    const heroTitle = useSiteContent('about.hero.title', 'About Quick Jobs');
+    const heroDescription = useSiteContent(
+        'about.hero.description',
+        "We are a human resource solutions company dedicated to helping businesses grow by empowering their people. Our team bridges the gap between talent and opportunity, creating meaningful professional connections."
+    );
+    const missionDescription = useSiteContent(
+        'about.mission.description',
+        "Whether you're scaling a startup or optimizing an enterprise workforce, our HR experts work as an extension of your leadership team, enabling you to focus on the core aspects of your business while we deliver customized solutions that align with your goals."
+    );
+    const visionDescription = useSiteContent(
+        'about.vision.description',
+        "That's why we prioritize not just recruitment, but the full employee lifecycle from talent acquisition and onboarding to training, retention, and performance development. Our tailored strategies ensure the right people are in the right roles, thriving within a culture that supports growth and innovation."
+    );
+    const valuesHeading = useSiteContent('about.values.heading', 'Our Core Values');
+    const contactHeading = useSiteContent('about.contact.heading', 'Get in Touch');
+
     return (
         <div className="flex flex-col min-h-screen bg-white text-gray-800">
-            
-            <div className="flex flex-col md:flex-row items-center justify-center px-6 py-12 max-w-7xl mx-auto">  
+
+            <div className="flex flex-col md:flex-row items-center justify-center px-6 py-12 max-w-7xl mx-auto">
                 <div className="w-full md:w-1/2 hidden md:block">
                     <img
                         src={aboutimg}
@@ -13,22 +30,17 @@ const About = () => {
                     />
                 </div>
                 <div className="w-full md:w-1/2 pl-6 mb-8 md:mb-0 md:pr-8">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                        About Quick Jobs
+                    <h1 className="text-4xl md:text-5xl font-bold mb-4 break-words">
+                        {heroTitle}
                     </h1>
-                    <p className="text-lg text-gray-600 mb-6">
-                        We are a human resource solutions company dedicated to helping businesses grow by empowering their people.
-                        Our team bridges the gap between talent and opportunity, creating meaningful professional connections.
+                    <p className="text-lg text-gray-600 mb-6 break-words">
+                        {heroDescription}
                     </p>
-                    <p className="text-gray-600 mb-4">
-                        Whether you're scaling a startup or optimizing an enterprise workforce, our HR experts work as an extension
-                        of your leadership team, enabling you to focus on the core aspects of your business while we deliver
-                        customized solutions that align with your goals.
+                    <p className="text-gray-600 mb-4 break-words">
+                        {missionDescription}
                     </p>
-                    <p className="text-gray-600 mb-4">
-                        That's why we prioritize not just recruitment, but the full employee lifecycle from talent acquisition and onboarding to training,
-                        retention, and performance development. Our tailored strategies ensure the right people are in the right roles,
-                        thriving within a culture that supports growth and innovation.
+                    <p className="text-gray-600 mb-4 break-words">
+                        {visionDescription}
                     </p>
                 </div>
             </div>
@@ -36,7 +48,7 @@ const About = () => {
             {/* Values */}
             <div className="bg-gray-50 py-16">
                 <div className="max-w-6xl mx-auto px-6 text-center">
-                    <h2 className="text-3xl font-bold mb-8">Our Core Values</h2>
+                    <h2 className="text-3xl font-bold mb-8 break-words">{valuesHeading}</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 text-left">
                         {[
                             {
@@ -83,7 +95,7 @@ const About = () => {
 
                     {/* Contact Form */}
                     <div className="w-full">
-                        <h2 className="text-3xl font-semibold mb-6">Get in Touch</h2>
+                        <h2 className="text-3xl font-semibold mb-6 break-words">{contactHeading}</h2>
                         <form className="space-y-4">
                             <div>
                                 <label className="block text-gray-700 mb-1">Name</label>

@@ -50,6 +50,9 @@ const POLICY_TYPE_ROUTES: Record<string, string> = {
   'cookie-policy': '/cookie-policy',
   disclaimer: '/disclaimer',
   'code-of-conduct': '/code-of-conduct',
+  'resume-builder-terms': '/resume-builder-terms',
+  'assessment-policy': '/assessment-policy',
+  'interview-policy': '/interview-policy',
 };
 
 interface DecodedToken {

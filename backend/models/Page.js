@@ -34,6 +34,9 @@ const POLICY_TYPE_VALUES = [
   "cookie-policy",
   "disclaimer",
   "code-of-conduct",
+  "resume-builder-terms",
+  "assessment-policy",
+  "interview-policy",
 ];
 
 const pageSchema = new mongoose.Schema(

@@ -14,6 +14,7 @@ import { fetchPublicProfile } from '../../api/followApi';
 import HeaderSearch from './HeaderSearch';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { OPEN_CHATBOT_EVENT } from '../common/Chatbot';
+import { useSiteContent } from '../../hooks/useSiteContent';
 
 interface DecodedToken {
   id: string;
@@ -67,6 +68,18 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Nav labels are CMS-editable; routes (item.path) stay hardcoded literals
+  // above and are never sourced from CMS, so content edits can never break
+  // navigation.
+  const navLabels: Record<string, string> = {
+    '/': useSiteContent('nav.home.label', 'Home'),
+    '/jobs': useSiteContent('nav.jobListings.label', 'Job Listings'),
+    '/community': useSiteContent('nav.community.label', 'Community'),
+    '/resume': useSiteContent('nav.resumeBuilder.label', 'Resume Builder'),
+  };
+  const moreLabel = useSiteContent('nav.more.label', 'More');
+  const categoriesLabel = useSiteContent('nav.categories.label', 'Categories');
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -240,7 +253,7 @@ const Header: React.FC = () => {
                     <span className={`transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-orange-600' : 'text-slate-400 group-hover:text-slate-700'}`}>
                       {item.icon}
                     </span>
-                    <span>{item.name}</span>
+                    <span>{navLabels[item.path] ?? item.name}</span>
                   </Link>
                 );
               })}
@@ -251,7 +264,7 @@ const Header: React.FC = () => {
                   className={`px-2 xl:px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-1.5 border whitespace-nowrap ${
                     isMoreDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
                   }`}>
-                  <span>More</span>
+                  <span>{moreLabel}</span>
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isMoreDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
                 </button>
                 {isMoreDropdownOpen && (
@@ -264,7 +277,7 @@ const Header: React.FC = () => {
                             isActive ? 'bg-primary/5 text-primary' : 'text-slate-700 hover:bg-slate-50'
                           }`}>
                           <span className={isActive ? 'text-primary' : 'text-slate-400'}>{item.icon}</span>
-                          <span>{item.name}</span>
+                          <span>{navLabels[item.path] ?? item.name}</span>
                         </Link>
                       );
                     })}
@@ -279,7 +292,7 @@ const Header: React.FC = () => {
                     isJobsDropdownOpen ? 'bg-white text-slate-900 shadow-sm border-slate-200/80' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-white/70'
                   }`}>
                   <SparkleIcon size={18} className="text-amber-500 fill-amber-400/20 animate-pulse" />
-                  <span>Categories</span>
+                  <span>{categoriesLabel}</span>
                   <ChevronDown size={15} className={`text-slate-400 transition-transform duration-300 ${isJobsDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
                 </button>
                 {isJobsDropdownOpen && (
@@ -486,7 +499,7 @@ const Header: React.FC = () => {
                     className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${isActive ? 'bg-primary/10 text-primary font-semibold shadow-sm' : 'text-slate-700 hover:bg-slate-100/80'
                       }`}>
                     <span className={isActive ? 'text-primary' : 'text-slate-400'}>{item.icon}</span>
-                    <span>{item.name}</span>
+                    <span>{navLabels[item.path] ?? item.name}</span>
                   </Link>
                 );
               })}

@@ -23,6 +23,9 @@ const POLICY_TYPE_META = {
   "cookie-policy": { label: "Cookie Policy", defaultSlug: "cookie-policy" },
   "disclaimer": { label: "Disclaimer", defaultSlug: "disclaimer" },
   "code-of-conduct": { label: "Code of Conduct", defaultSlug: "code-of-conduct" },
+  "resume-builder-terms": { label: "Resume Builder Terms", defaultSlug: "resume-builder-terms" },
+  "assessment-policy": { label: "Assessment Policy", defaultSlug: "assessment-policy" },
+  "interview-policy": { label: "Interview Policy", defaultSlug: "interview-policy" },
 };
 
 // Same "escape regex special chars before using in a RegExp" helper other
@@ -224,7 +227,7 @@ exports.getPage = async (req, res) => {
       return res.status(400).json({ message: "Unknown page slug" });
     }
 
-    const page = await Page.findOne({ slug });
+    const page = await Page.findOne({ slug, status: "published" });
     if (!page) {
       return res.json({ slug, title: "", content: "", isDraftPlaceholder: true });
     }

@@ -1818,6 +1818,12 @@ function SiteContentTab() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newKey, setNewKey] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [newSection, setNewSection] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [addingSaving, setAddingSaving] = useState(false);
 
   const { data: items, isLoading, isError } = useQuery({
     queryKey: ['siteContentAdmin'],
@@ -1864,6 +1870,39 @@ function SiteContentTab() {
     queryClient.invalidateQueries({ queryKey: ['site-content'] });
   };
 
+  const resetAddForm = () => {
+    setIsAdding(false);
+    setNewKey('');
+    setNewValue('');
+    setNewSection('');
+    setNewDescription('');
+  };
+
+  const handleAdd = async () => {
+    const key = newKey.trim();
+    if (!key) {
+      toast.error('Key is required.');
+      return;
+    }
+    if ((items || []).some((i) => i.key === key)) {
+      toast.error(`Key "${key}" already exists — edit it below instead.`);
+      return;
+    }
+    setAddingSaving(true);
+    try {
+      await adminUpsertSiteContent(key, { value: newValue, section: newSection, description: newDescription });
+      queryClient.invalidateQueries({ queryKey: ['siteContentAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['site-content'] });
+      toast.success('Key created.');
+      resetAddForm();
+    } catch (err) {
+      console.error('Error creating site content key:', err);
+      toast.error('Failed to create key. Please try again.');
+    } finally {
+      setAddingSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {isError && (
@@ -1872,15 +1911,82 @@ function SiteContentTab() {
         </div>
       )}
 
-      <div className="relative max-w-xs">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by key or section…"
-          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-xs flex-1 min-w-[200px]">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by key or section…"
+            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          />
+        </div>
+        <button
+          onClick={() => setIsAdding((v) => !v)}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-medium text-white hover:bg-violet-700"
+        >
+          <Plus size={14} /> Add Key
+        </button>
       </div>
+
+      {isAdding && (
+        <div className="space-y-3 rounded-lg border border-violet-200 bg-violet-50/50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                Key <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                placeholder="e.g. about.hero.title"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Section (for grouping)</label>
+              <input
+                value={newSection}
+                onChange={(e) => setNewSection(e.target.value)}
+                placeholder="e.g. About Page"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Value</label>
+            <textarea
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Description (admin-facing hint, optional)</label>
+            <input
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAdd}
+              disabled={addingSaving}
+              className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              Create Key
+            </button>
+            <button
+              onClick={resetAddForm}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
