@@ -200,7 +200,9 @@ function AppWrapper() {
           {/* home routes */}
           <Route path="/" element={<HomePageJobSeeker />} />
           <Route path="/about" element={<About />} />
+          <Route path="/about-us" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/contact-us" element={<Contact />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />

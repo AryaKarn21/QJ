@@ -240,6 +240,16 @@ const Footer: React.FC = () => {
                   Blog
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/contact')}
+                  className="flex items-center text-slate-400 hover:text-white transition-colors duration-200 text-left cursor-pointer"
+                >
+                  <Mail size={15} className="mr-2 text-slate-500" />
+                  Contact Us
+                </button>
+              </li>
             </ul>
           </div>
 

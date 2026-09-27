@@ -211,7 +211,7 @@ const Header: React.FC = () => {
     <>
       {/* ── TOP HEADER (visible on all screens, but minimal on mobile) ── */}
       <header className={`sticky top-0 z-50 w-full transition-all duration-300 ease-in-out ${scrolled
-          ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm shadow-slate-900/5 py-0'
+          ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/90 shadow-md shadow-slate-900/5 py-0'
           : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-1'
         }`}>
         {/* max-w-[1760px], not max-w-7xl (1280px) — max-w-7xl capped the
