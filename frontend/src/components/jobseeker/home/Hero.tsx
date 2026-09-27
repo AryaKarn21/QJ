@@ -168,7 +168,7 @@ const Hero: React.FC = () => {
   }, []);
 
   return (
-    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-12 sm:px-6 sm:py-14 lg:py-16 lg:px-8 min-h-[480px] lg:min-h-[540px]">
+    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-10 sm:px-6 sm:py-12 lg:py-14 pb-14 sm:pb-16 lg:pb-20 min-h-[460px] lg:min-h-[500px] xl:min-h-[530px]">
       {/* ── BACKGROUND ── Exact HD Hero visual with Ken Burns slow zoom ── */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         {HERO_SLIDES.length > 1 ? (
@@ -212,116 +212,7 @@ const Hero: React.FC = () => {
         />
       </div>
 
-      {/* ── DESKTOP FLOATING CAREER CARDS & CONNECTION LINES ── */}
-      <div className="pointer-events-none absolute inset-0 hidden lg:block overflow-hidden z-10">
-        <div className="relative mx-auto h-full max-w-7xl">
-          {/* Subtle Dotted Career Connection Lines */}
-          <svg
-            className="absolute right-8 top-1/2 -translate-y-1/2 h-[340px] w-[460px] opacity-60"
-            viewBox="0 0 460 340"
-            fill="none"
-            aria-hidden="true"
-          >
-            <motion.path
-              d="M 60 70 C 140 120, 220 100, 320 160 C 370 190, 390 230, 360 280"
-              stroke="rgba(249, 115, 22, 0.35)"
-              strokeWidth="1.5"
-              strokeDasharray="5 7"
-              animate={prefersReducedMotion ? undefined : { strokeDashoffset: [0, -48] }}
-              transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
-            />
-            <motion.path
-              d="M 120 270 C 180 230, 260 210, 320 160"
-              stroke="rgba(56, 189, 248, 0.3)"
-              strokeWidth="1.5"
-              strokeDasharray="4 6"
-              animate={prefersReducedMotion ? undefined : { strokeDashoffset: [0, 40] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
-            />
-          </svg>
 
-          {/* Floating Card 1: Job Opportunities (delay 0s, 3.4s duration) */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={
-              prefersReducedMotion
-                ? { opacity: 1, y: 0 }
-                : { opacity: 1, y: [0, -6, 0] }
-            }
-            transition={
-              prefersReducedMotion
-                ? { duration: 0.3 }
-                : {
-                    y: { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 0 },
-                    opacity: { duration: 0.8, delay: 0.4 },
-                  }
-            }
-            className="absolute right-12 top-14 flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/80 px-4 py-2.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-md"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
-              <Zap size={16} />
-            </div>
-            <div>
-              <p className="text-xs font-bold leading-tight">Job Opportunities</p>
-              <p className="text-[11px] font-medium text-slate-300">Verified & High-Growth</p>
-            </div>
-          </motion.div>
-
-          {/* Floating Card 2: Build Your CV (delay 0.8s, 3.8s duration) */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={
-              prefersReducedMotion
-                ? { opacity: 1, y: 0 }
-                : { opacity: 1, y: [0, -6, 0] }
-            }
-            transition={
-              prefersReducedMotion
-                ? { duration: 0.3 }
-                : {
-                    y: { duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
-                    opacity: { duration: 0.8, delay: 0.6 },
-                  }
-            }
-            className="absolute right-80 top-1/2 -translate-y-12 flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/80 px-4 py-2.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-md"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
-              <FileText size={16} />
-            </div>
-            <div>
-              <p className="text-xs font-bold leading-tight">Build Your CV</p>
-              <p className="text-[11px] font-medium text-slate-300">ATS-Ready Templates</p>
-            </div>
-          </motion.div>
-
-          {/* Floating Card 3: Grow Your Career (delay 1.5s, 3.6s duration) */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={
-              prefersReducedMotion
-                ? { opacity: 1, y: 0 }
-                : { opacity: 1, y: [0, -6, 0] }
-            }
-            transition={
-              prefersReducedMotion
-                ? { duration: 0.3 }
-                : {
-                    y: { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 1.5 },
-                    opacity: { duration: 0.8, delay: 0.8 },
-                  }
-            }
-            className="absolute right-20 bottom-14 flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/80 px-4 py-2.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-md"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
-              <TrendingUp size={16} />
-            </div>
-            <div>
-              <p className="text-xs font-bold leading-tight">Grow Your Career</p>
-              <p className="text-[11px] font-medium text-slate-300">Connect With Top Teams</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
 
       {/* ── CONTENT ── Aligned to the left matching the hero layout ── */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-center lg:text-left">
