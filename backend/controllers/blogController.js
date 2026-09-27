@@ -977,90 +977,36 @@ const deleteBlog = async (req, res) => {
 // LIKE / UNLIKE BLOG
 // ============================================================
 
-const toggleLikeBlog = async (
-  req,
-  res
-) => {
+const toggleLikeBlog = async (req, res) => {
   try {
-    const { id } =
-      req.params;
+    const { id } = req.params;
+    const userId = req.user.id;
 
-    const userId =
-      req.user.id;
-
-    // --------------------------------------------------------
-    // Find blog
-    // --------------------------------------------------------
-
-    const blog =
-      await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
-
+    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id }).select("_id likes");
     if (!blog) {
-      return res.status(404).json({
-        message: "Blog not found",
-      });
+      return res.status(404).json({ success: false, message: "Blog not found" });
     }
 
-    // --------------------------------------------------------
-    // Find existing like
-    // --------------------------------------------------------
+    const isLiked = (blog.likes || []).some((u) => String(u) === String(userId));
 
-    const likeIndex =
-      blog.likes.indexOf(
-        userId
-      );
-
-    // --------------------------------------------------------
-    // Unlike
-    // --------------------------------------------------------
-
-    if (likeIndex > -1) {
-      blog.likes.splice(
-        likeIndex,
-        1
-      );
+    if (isLiked) {
+      await Blog.updateOne({ _id: blog._id }, { $pull: { likes: userId } });
+    } else {
+      await Blog.updateOne({ _id: blog._id }, { $addToSet: { likes: userId } });
     }
 
-    // --------------------------------------------------------
-    // Like
-    // --------------------------------------------------------
-
-    else {
-      blog.likes.push(
-        userId
-      );
-    }
-
-    // --------------------------------------------------------
-    // Save
-    // --------------------------------------------------------
-
-    await blog.save();
-
-    // --------------------------------------------------------
-    // Response
-    // --------------------------------------------------------
+    const refreshed = await Blog.findById(blog._id).select("likes");
+    const count = refreshed?.likes?.length || 0;
+    const nowLiked = (refreshed?.likes || []).some((u) => String(u) === String(userId));
 
     return res.status(200).json({
       success: true,
-
-      message:
-        likeIndex > -1
-          ? "Blog unliked"
-          : "Blog liked",
-
-      likesCount:
-        blog.likes.length,
-
-      isLiked:
-        likeIndex === -1,
+      message: nowLiked ? "Blog liked" : "Blog unliked",
+      likesCount: count,
+      isLiked: nowLiked,
     });
   } catch (error) {
-    console.error(
-      "Error toggling like:",
-      error
-    );
-
+    console.error("Error toggling like:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to toggle like",
@@ -1310,9 +1256,14 @@ const deleteComment = async (req, res) => {
       return res.status(403).json({ success: false, message: "You can only delete your own comment" });
     }
 
-    comment.isDeleted = true;
-    comment.content = "";
-    await blog.save();
+    // Soft delete only — `content` stays required: true on the schema, so
+    // clearing it or relying on whole-document save can throw ValidationError.
+    // Atomic updateOne guarantees isDeleted: true without violating required: true content.
+    // Read-side shapeComment() redacts content when isDeleted: true.
+    await Blog.updateOne(
+      { _id: blog._id, "comments._id": commentId },
+      { $set: { "comments.$.isDeleted": true } }
+    );
 
     res.json({ success: true, message: "Comment deleted" });
   } catch (error) {
@@ -1326,7 +1277,7 @@ const toggleCommentLike = async (req, res) => {
     const { id, commentId } = req.params;
     const userId = req.user.id;
 
-    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id });
+    const blog = await Blog.findOne(isObjectId(id) ? { _id: id } : { slug: id }).select("_id comments");
     if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
 
     const comment = blog.comments.id(commentId);
@@ -1334,15 +1285,28 @@ const toggleCommentLike = async (req, res) => {
       return res.status(404).json({ success: false, message: "Comment not found" });
     }
 
-    const likeIndex = comment.likes.findIndex((u) => String(u) === String(userId));
-    if (likeIndex > -1) {
-      comment.likes.splice(likeIndex, 1);
+    const isLikedCurrently = (comment.likes || []).some((u) => String(u) === String(userId));
+    if (isLikedCurrently) {
+      await Blog.updateOne(
+        { _id: blog._id, "comments._id": commentId },
+        { $pull: { "comments.$.likes": userId } }
+      );
     } else {
-      comment.likes.push(userId);
+      await Blog.updateOne(
+        { _id: blog._id, "comments._id": commentId },
+        { $addToSet: { "comments.$.likes": userId } }
+      );
     }
-    await blog.save();
 
-    res.json({ success: true, likeCount: comment.likes.length, isLiked: likeIndex === -1 });
+    const updatedBlog = await Blog.findOne(
+      { _id: blog._id, "comments._id": commentId },
+      { "comments.$": 1 }
+    );
+    const updatedComment = updatedBlog?.comments?.[0];
+    const newCount = updatedComment?.likes?.length || 0;
+    const isNowLiked = (updatedComment?.likes || []).some((u) => String(u) === String(userId));
+
+    res.json({ success: true, likeCount: newCount, isLiked: isNowLiked });
   } catch (error) {
     console.error("Error toggling comment like:", error);
     res.status(500).json({ success: false, message: "Failed to toggle comment like" });

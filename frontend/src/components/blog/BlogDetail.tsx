@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Heart, MessageCircle, Eye, Calendar, User, Edit, Trash2, Send, Pencil, Reply, Loader2, RefreshCw, ThumbsUp } from 'lucide-react';
@@ -73,6 +73,17 @@ const BlogDetail: React.FC = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [liking, setLiking] = useState(false);
+  // Bumped on every successful like toggle so the heart icon remounts and
+  // replays its scale-pop keyframe (see the <style> block below) — a
+  // fresh element instance is the simplest reliable way to re-trigger a
+  // CSS animation without a timer to clear an "animating" class.
+  const [likePulse, setLikePulse] = useState(0);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const focusCommentInput = () => {
+    commentInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    commentInputRef.current?.focus();
+  };
   const [comment, setComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -200,6 +211,7 @@ const BlogDetail: React.FC = () => {
       const data = await response.json();
       setIsLiked(data.isLiked);
       setLikesCount(data.likesCount);
+      if (data.isLiked) setLikePulse((n) => n + 1);
     } catch (error) {
       console.error('Error toggling like:', error);
       setIsLiked(previousLiked);
@@ -286,35 +298,66 @@ const BlogDetail: React.FC = () => {
   };
 
   // Comment-level like: optimistic, scoped to whichever top-level comment
-  // or reply was clicked (rolled back on failure).
+  // or reply was clicked, then reconciled with the backend's actual
+  // { isLiked, likeCount } response (never trusted blindly) and rolled
+  // back on failure. Guarded by `likingCommentIds` so a rapid double-click
+  // can't fire two overlapping toggle requests for the same comment.
+  const [likingCommentIds, setLikingCommentIds] = useState<Set<string>>(new Set());
+
+  const applyCommentLikeState = (
+    list: BlogComment[],
+    targetId: string,
+    isReply: boolean,
+    parentId: string | undefined,
+    next: { isLiked: boolean; likeCount: number }
+  ): BlogComment[] =>
+    list.map((c) => {
+      if (isReply) {
+        if (c._id !== parentId) return c;
+        return {
+          ...c,
+          replies: c.replies.map((r) => (r._id === targetId ? { ...r, ...next } : r)),
+        };
+      }
+      return c._id === targetId ? { ...c, ...next } : c;
+    });
+
   const handleToggleCommentLike = async (targetId: string, isReply: boolean, parentId?: string) => {
     if (!localStorage.getItem('token')) {
       navigate('/login');
       return;
     }
-    if (!id) return;
+    if (!id || likingCommentIds.has(targetId)) return;
 
-    const applyDelta = (list: BlogComment[]): BlogComment[] =>
-      list.map((c) => {
-        if (isReply) {
-          if (c._id !== parentId) return c;
-          return {
-            ...c,
-            replies: c.replies.map((r) =>
-              r._id === targetId ? { ...r, isLiked: !r.isLiked, likeCount: r.likeCount + (r.isLiked ? -1 : 1) } : r
-            ),
-          };
-        }
-        return c._id === targetId ? { ...c, isLiked: !c.isLiked, likeCount: c.likeCount + (c.isLiked ? -1 : 1) } : c;
-      });
+    const current = comments
+      .flatMap((c) => (isReply ? c.replies : [c]))
+      .find((c) => c._id === targetId);
+    if (!current) return;
+    const optimistic = { isLiked: !current.isLiked, likeCount: current.likeCount + (current.isLiked ? -1 : 1) };
 
-    setComments((prev) => applyDelta(prev));
+    setLikingCommentIds((prev) => new Set(prev).add(targetId));
+    setComments((prev) => applyCommentLikeState(prev, targetId, isReply, parentId, optimistic));
+
     try {
-      await toggleBlogCommentLike(id, targetId);
+      const result = await toggleBlogCommentLike(id, targetId);
+      // Reconcile with the database's actual state rather than trusting
+      // the optimistic guess — the two normally agree, but the API
+      // response is always the source of truth.
+      setComments((prev) =>
+        applyCommentLikeState(prev, targetId, isReply, parentId, { isLiked: result.isLiked, likeCount: result.likeCount })
+      );
     } catch (error) {
       console.error('Error toggling comment like:', error);
-      setComments((prev) => applyDelta(prev)); // toggle back
+      setComments((prev) =>
+        applyCommentLikeState(prev, targetId, isReply, parentId, { isLiked: current.isLiked, likeCount: current.likeCount })
+      );
       toast.error('Could not update your reaction. Please try again.');
+    } finally {
+      setLikingCommentIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
     }
   };
 
@@ -428,7 +471,8 @@ const BlogDetail: React.FC = () => {
             <div className="mt-1.5 flex items-center gap-4 pl-1 text-xs text-gray-500">
               <button
                 onClick={() => handleToggleCommentLike(c._id, isReply, parentId)}
-                className={`flex items-center gap-1 hover:text-primary ${c.isLiked ? 'font-medium text-primary' : ''}`}
+                disabled={likingCommentIds.has(c._id)}
+                className={`flex items-center gap-1 hover:text-primary disabled:opacity-60 ${c.isLiked ? 'font-medium text-primary' : ''}`}
               >
                 <ThumbsUp size={13} className={c.isLiked ? 'fill-current' : ''} /> {c.likeCount > 0 ? c.likeCount : 'Like'}
               </button>
@@ -482,6 +526,10 @@ const BlogDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/40 py-10">
+      <style>{`
+        @keyframes likePop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+        .like-btn svg { animation: likePop 250ms ease; }
+      `}</style>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Navigation & Actions Row */}
         <div className="flex items-center justify-between gap-3 mb-6">
@@ -494,7 +542,6 @@ const BlogDetail: React.FC = () => {
           </Link>
 
           <div className="flex items-center gap-2">
-            <BlogShareMenu title={blog.title} description={blog.excerpt} />
             {isAuthor && (
               <>
                 <Link
@@ -545,7 +592,7 @@ const BlogDetail: React.FC = () => {
           </h1>
 
           {/* Author Row */}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+          <div className="flex items-center border-t border-slate-100 pt-6">
             <div className="flex items-center gap-3.5">
               {blog.authorImage ? (
                 <img
@@ -567,31 +614,45 @@ const BlogDetail: React.FC = () => {
                 </p>
               </div>
             </div>
+          </div>
 
-            {/* Engagement Stats Pill */}
-            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-2xl text-xs text-slate-600 shadow-inner">
-              <button
-                onClick={handleLike}
-                disabled={liking}
-                className={`flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 ${
-                  isLiked ? 'text-red-500 font-bold' : 'hover:text-red-500'
-                }`}
-                title="Like article"
-              >
-                <Heart size={16} className={isLiked ? 'fill-red-500' : ''} />
-                <span>{likesCount}</span>
-              </button>
-              <span className="w-1 h-1 rounded-full bg-slate-300" />
-              <span className="flex items-center gap-1.5">
-                <MessageCircle size={16} className="text-slate-400" />
-                <span className="font-semibold">{blog.commentCount}</span>
-              </span>
-              <span className="w-1 h-1 rounded-full bg-slate-300" />
-              <span className="flex items-center gap-1.5">
-                <Eye size={16} className="text-slate-400" />
-                <span className="font-semibold">{blog.views.length}</span>
-              </span>
+          {/* Interaction Bar — Like / Comment / Share / Views */}
+          <div className="mt-6 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:flex sm:items-center sm:gap-2">
+            <button
+              key={likePulse}
+              onClick={handleLike}
+              disabled={liking}
+              title="Like this article"
+              className={`like-btn flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                isLiked ? 'bg-orange-50 text-orange-600' : 'text-slate-600 hover:bg-slate-50 hover:text-orange-600'
+              }`}
+            >
+              <Heart size={17} className={isLiked ? 'fill-orange-500 text-orange-500' : ''} />
+              <span>{isLiked ? 'Liked' : 'Like'}</span>
+              <span className="font-bold">{likesCount}</span>
+            </button>
+
+            <button
+              onClick={focusCommentInput}
+              title="Jump to comments"
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-orange-600"
+            >
+              <MessageCircle size={17} />
+              <span>Comment</span>
+              <span className="font-bold">{blog.commentCount}</span>
+            </button>
+
+            <div className="flex items-center justify-center">
+              <BlogShareMenu title={blog.title} description={blog.excerpt} />
             </div>
+
+            <span
+              title="Views"
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500"
+            >
+              <Eye size={17} />
+              <span className="font-bold">{blog.views.length}</span>
+            </span>
           </div>
         </div>
 
@@ -682,25 +743,29 @@ const BlogDetail: React.FC = () => {
 
           {/* Add Comment Form */}
           {user ? (
-            <form onSubmit={handleComment} className="mb-10">
-              <div className="relative">
+            <form onSubmit={handleComment} className="mb-10 flex items-start gap-3">
+              <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <User size={16} />
+              </span>
+              <div className="min-w-0 flex-1">
                 <textarea
+                  ref={commentInputRef}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share your thoughts, ask questions, or contribute to the discussion..."
+                  placeholder="Share a thoughtful comment…"
                   className="w-full p-4 bg-slate-50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 focus:bg-white text-sm text-slate-800 placeholder-slate-400 resize-none transition-all"
                   rows={3}
                 />
-              </div>
-              <div className="flex justify-end mt-3">
-                <button
-                  type="submit"
-                  disabled={!comment.trim() || submittingComment}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/25 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  <Send size={15} />
-                  <span>{submittingComment ? 'Posting...' : 'Post Comment'}</span>
-                </button>
+                <div className="flex justify-end mt-3">
+                  <button
+                    type="submit"
+                    disabled={!comment.trim() || submittingComment}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/25 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <Send size={15} />
+                    <span>{submittingComment ? 'Posting…' : 'Comment'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           ) : (
@@ -738,9 +803,11 @@ const BlogDetail: React.FC = () => {
             </button>
           </div>
         ) : comments.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            No comments yet. Be the first to comment!
-          </p>
+          <div className="py-10 text-center">
+            <MessageCircle size={28} className="mx-auto mb-3 text-slate-300" />
+            <p className="font-semibold text-slate-600">No comments yet</p>
+            <p className="mt-1 text-sm text-slate-400">Be the first to share your thoughts.</p>
+          </div>
         ) : (
           <div className="space-y-6">
             {comments.map((c) => (
