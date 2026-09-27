@@ -105,6 +105,8 @@ export interface CmsGenericPage {
   title: string;
   content: string;
   featuredImage?: string;
+  shortDescription?: string;
+  version?: number;
   createdAt: string;
   updatedAt: string;
 }

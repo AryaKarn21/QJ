@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import ResumeEditorErrorBoundary from './components/resumeBuilder/ResumeEditorErrorBoundary';
 import AdminShell from './components/layout/AdminShell';
 import { SkeletonText, SkeletonBlock, SkeletonParagraph } from './components/ui/Skeleton';
@@ -190,6 +190,7 @@ function AppWrapper() {
         <Routes>
           {/* auth routes */}
           <Route path="/signup" element={<Signup />} />
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
           <Route path="/signup/verify-otp" element={<VerifyOtp />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotResetPassword />} />
@@ -203,6 +204,7 @@ function AppWrapper() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/terms-and-conditions" element={<TermsOfService />} />
           <Route path="/community-guidelines" element={<CommunityGuidelines />} />
           <Route path="/job-seeker-rules" element={<JobSeekerRules />} />
           <Route path="/job-provider-rules" element={<JobProviderRules />} />

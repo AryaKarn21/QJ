@@ -1,7 +1,9 @@
 import { FileText } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { getLegalPage } from '../../api/legalApi';
 import { SkeletonParagraph } from '../ui/Skeleton';
+import { PolicyPageShell } from './PolicyPageShell';
 
 interface LegalPageProps {
   slug: string;
@@ -27,6 +29,7 @@ interface LegalPageProps {
  * already treats these as one interchangeable "page" concept.
  */
 export function LegalPage({ slug, defaultTitle, fallback }: LegalPageProps) {
+  const location = useLocation();
   const { data: page, isLoading: loading, isError: error } = useQuery({
     queryKey: ['legal-page', slug],
     queryFn: () => getLegalPage(slug),
@@ -34,6 +37,21 @@ export function LegalPage({ slug, defaultTitle, fallback }: LegalPageProps) {
   });
 
   const hasRealContent = !!page?.content?.trim() && !page.isDraftPlaceholder;
+
+  if (!loading && !error && hasRealContent) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white text-gray-800">
+        <PolicyPageShell
+          title={page!.title || defaultTitle}
+          description={page!.shortDescription}
+          content={page!.content}
+          updatedAt={page!.updatedAt}
+          version={page!.version}
+          currentPath={location.pathname}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-800">
@@ -48,11 +66,6 @@ export function LegalPage({ slug, defaultTitle, fallback }: LegalPageProps) {
           <div className="rounded-lg border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-600">
             Couldn't load this page right now. Please try again later.
           </div>
-        ) : hasRealContent ? (
-          <div
-            className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-primary"
-            dangerouslySetInnerHTML={{ __html: page!.content }}
-          />
         ) : fallback ? (
           fallback
         ) : (

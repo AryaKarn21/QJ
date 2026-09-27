@@ -25,6 +25,16 @@ export const registerJobseeker = async (formData: FormData) => {
   }
 };
 
+export const registerUser = async (formData: FormData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/users/register`, formData);
+    return response.data;
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: unknown }; message?: string };
+    throw err.response?.data || err.message;
+  }
+};
+
 
 interface OtpVerificationPayload {
   email: string;

@@ -83,7 +83,7 @@ const CallToAction: React.FC = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
           style={{
-            position: 'relative', overflow: 'hidden',
+            position: 'relative', overflow: 'visible',
             borderRadius: 24,
             background: '#FFFFFF',
             border: '1.5px solid #FED7AA',
@@ -94,27 +94,37 @@ const CallToAction: React.FC = () => {
           }}
           className="cta-card"
         >
-          {/* Internal accent glow - top left */}
+          {/* Decorative-only layer — clipped to the card's rounded corners
+              via its own overflow:hidden, kept separate from the outer
+              card so it never clips real content (e.g. the accent photo
+              in the right column, which intentionally bleeds past its
+              own frame and must never be cut off). */}
           <div style={{
-            position: 'absolute', top: -80, left: -80,
-            width: 280, height: 280,
-            background: 'radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%)',
-            filter: 'blur(40px)', pointerEvents: 'none',
-          }} />
-          {/* Internal accent glow - bottom right */}
-          <div style={{
-            position: 'absolute', bottom: -80, right: 200,
-            width: 250, height: 250,
-            background: 'radial-gradient(circle, rgba(251,146,60,0.08) 0%, transparent 70%)',
-            filter: 'blur(40px)', pointerEvents: 'none',
-          }} />
+            position: 'absolute', inset: 0, overflow: 'hidden',
+            borderRadius: 24, pointerEvents: 'none', zIndex: 0,
+          }}>
+            {/* Internal accent glow - top left */}
+            <div style={{
+              position: 'absolute', top: -80, left: -80,
+              width: 280, height: 280,
+              background: 'radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%)',
+              filter: 'blur(40px)',
+            }} />
+            {/* Internal accent glow - bottom right */}
+            <div style={{
+              position: 'absolute', bottom: -80, right: 200,
+              width: 250, height: 250,
+              background: 'radial-gradient(circle, rgba(251,146,60,0.08) 0%, transparent 70%)',
+              filter: 'blur(40px)',
+            }} />
 
-          {/* Decorative dot pattern */}
-          <div style={{
-            position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-            backgroundImage: 'radial-gradient(circle, #F97316 1px, transparent 1px)',
-            backgroundSize: '32px 32px', opacity: 0.04, pointerEvents: 'none',
-          }} />
+            {/* Decorative dot pattern */}
+            <div style={{
+              position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+              backgroundImage: 'radial-gradient(circle, #F97316 1px, transparent 1px)',
+              backgroundSize: '32px 32px', opacity: 0.04,
+            }} />
+          </div>
 
           {/* Left: Text + buttons */}
           <div style={{ flex: '0 0 55%', position: 'relative', zIndex: 1 }} className="cta-left">
@@ -219,14 +229,18 @@ const CallToAction: React.FC = () => {
           <div style={{ flex: '0 0 40%', position: 'relative', zIndex: 1 }} className="cta-right">
             <motion.div
               animate={prefersReducedMotion ? undefined : { y: [0, -10, 0] }}
-              transition={{ y: { duration: 5, repeat: Infinity, ease: 'easeInOut' } }}
-              whileHover={prefersReducedMotion ? undefined : { scale: 1.035, rotate: -1 }}
+              transition={{ y: { duration: 6, repeat: Infinity, ease: 'easeInOut' } }}
+              whileHover={
+                prefersReducedMotion
+                  ? undefined
+                  : { scale: 1.035, rotate: -1, transition: { duration: 0.8, ease: 'easeOut' } }
+              }
               style={{ position: 'relative', cursor: 'pointer' }}
             >
               {/* Glow behind image */}
               <motion.div
                 animate={prefersReducedMotion ? undefined : { opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
                   position: 'absolute', inset: -8,
                   background: 'linear-gradient(135deg, rgba(249,115,22,0.15), rgba(251,146,60,0.1))',
@@ -248,7 +262,7 @@ const CallToAction: React.FC = () => {
                   alt="Workplace"
                   style={{
                     width: '100%', height: 'auto', display: 'block', objectFit: 'cover',
-                    transition: 'transform .5s ease',
+                    transition: 'transform .8s ease',
                   }}
                   className="cta-image"
                 />
@@ -265,8 +279,12 @@ const CallToAction: React.FC = () => {
                   room for an overlap once the columns stack. */}
               <motion.div
                 animate={prefersReducedMotion ? undefined : { y: [0, -8, 0] }}
-                transition={{ y: { duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 } }}
-                whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
+                transition={{ y: { duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 } }}
+                whileHover={
+                  prefersReducedMotion
+                    ? undefined
+                    : { scale: 1.06, transition: { duration: 0.8, ease: 'easeOut' } }
+                }
                 className="cta-accent-frame"
                 style={{
                   position: 'absolute',

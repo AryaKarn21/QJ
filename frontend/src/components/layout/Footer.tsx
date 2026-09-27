@@ -103,6 +103,8 @@ const Footer: React.FC = () => {
   const handleProtectedNavigation = (path: string, allowedRole: string) => {
     if (isAuthenticated && role === allowedRole) {
       navigate(path);
+    } else if (!isAuthenticated) {
+      navigate('/login');
     } else {
       alert('Access denied. Please log in with the correct account.');
     }

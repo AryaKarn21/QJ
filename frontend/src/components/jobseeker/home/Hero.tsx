@@ -12,7 +12,7 @@ import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { getHomepageContent } from '../../../api/cmsPublicApi';
 import { useSiteContent } from '../../../hooks/useSiteContent';
-import jobPhoto from '../../../assets/authImages/loginimg.webp';
+import jobPhoto from '../../../assets/jobseekerassests/quickjobs-hero-hd.webp';
 
 // Hardcoded copy stays as the fallback — CMS content only overrides it
 // once an admin actually publishes something (see CmsHub.tsx's Homepage
@@ -121,14 +121,27 @@ const Hero: React.FC = () => {
           Everything here is skipped entirely when the user prefers reduced
           motion — the photo/dots/glows just render in their resting state. */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        {/* The new hero photo already composes its own "Welcome to Quick
+            Jobs" mockup text on its left half (baked into the pixels) —
+            that's intentional overlap with the real React content that
+            sits on top of it, not a bug. The gradient below is tuned to
+            fully darken that left half (where the real heading/search/
+            CTAs render) while staying close to transparent over the
+            people/career-visual on the right, so nothing is duplicated
+            and the professionals/CV/career-growth imagery stays clearly
+            visible, per the "stronger behind text, lighter toward the
+            image" requirement. object-position is biased right of center
+            so a cropped mobile view still favors the people/cards over
+            the empty office scenery on the far left. */}
         <motion.img
           src={jobPhoto}
           alt=""
-          className="h-full w-full object-cover opacity-[0.35]"
+          className="h-full w-full object-cover"
+          style={{ objectPosition: '72% center' }}
           animate={prefersReducedMotion ? undefined : { scale: [1, 1.07, 1] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-950/45" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/55 to-slate-950/10" />
 
         {/* Warm orange glow — left, echoing a lit office */}
         <motion.div

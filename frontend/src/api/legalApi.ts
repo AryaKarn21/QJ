@@ -7,6 +7,9 @@ export interface CmsLegalPage {
   title: string;
   content: string;
   isDraftPlaceholder?: boolean;
+  shortDescription?: string;
+  version?: number;
+  updatedAt?: string;
 }
 
 // Public, unauthenticated read of an admin-authored legal/static page
