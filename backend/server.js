@@ -154,6 +154,7 @@ app.use("/api/notification", require("./routes/notificationRoutes"));
 app.use("/api/assessments", require("./routes/assessmentRoutes"));
 app.use("/api/support", require("./routes/supportRoutes"));
 app.use("/api/newsletter", require("./routes/newsletterRoutes"));
+app.use("/api/email", require("./routes/emailRoutes"));
 app.use("/api/blogs", require("./routes/blogRoutes"));
 app.use("/api/blog-categories", require("./routes/blogCategoryRoutes"));
 app.use("/api/cms", require("./routes/cmsRoutes"));

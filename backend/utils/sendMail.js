@@ -1,7 +1,9 @@
 const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const EmailLog = require("../models/EmailLog");
 
 let cachedTransporter = null;
+let cachedResendClient = null;
 
 function getProviderName() {
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) return "Resend";
@@ -9,26 +11,42 @@ function getProviderName() {
   return process.env.EMAIL_SERVICE ? process.env.EMAIL_SERVICE.toUpperCase() : "Gmail";
 }
 
-function getTransporter() {
-  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
-    if (!cachedTransporter || cachedTransporter._provider !== "resend") {
-      cachedTransporter = nodemailer.createTransport({
-        host: "smtp.resend.com",
-        port: 465,
-        secure: true,
-        auth: {
-          user: "resend",
-          pass: process.env.RESEND_API_KEY.trim(),
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-      });
-      cachedTransporter._provider = "resend";
-    }
-    return cachedTransporter;
+// Real Resend SDK client (api.resend.com over HTTPS) — preferred whenever
+// RESEND_API_KEY is set. This replaces the previous approach of pointing
+// nodemailer at Resend's SMTP relay (smtp.resend.com): same provider, but
+// the official SDK gives a real message id and proper structured errors
+// instead of a generic SMTP response.
+function getResendClient() {
+  if (!cachedResendClient) {
+    cachedResendClient = new Resend(process.env.RESEND_API_KEY.trim());
+  }
+  return cachedResendClient;
+}
+
+// Sends via the Resend SDK and normalizes the response to the same
+// `{ messageId }` shape nodemailer's `sendMail()` already returns, so
+// every existing caller (sendMail, retryFailedEmail) needs no changes.
+async function sendViaResend({ from, to, subject, text, html }) {
+  const resend = getResendClient();
+  const { data, error } = await resend.emails.send({
+    from,
+    to: [to],
+    subject,
+    ...(html ? { html } : {}),
+    ...(text ? { text } : {}),
+  });
+
+  if (error) {
+    const err = new Error(error.message || "Resend rejected the email");
+    err.code = error.name || "RESEND_ERROR";
+    err.provider = "Resend";
+    throw err;
   }
 
+  return { messageId: data?.id };
+}
+
+function getTransporter() {
   if (process.env.SMTP_HOST && process.env.SMTP_HOST.trim()) {
     if (!cachedTransporter || cachedTransporter._provider !== "smtp") {
       cachedTransporter = nodemailer.createTransport({
@@ -76,6 +94,18 @@ function getTransporter() {
   }
 
   return cachedTransporter;
+}
+
+// Single delivery choke point used by both sendMail() and retryFailedEmail()
+// — picks the real Resend SDK whenever RESEND_API_KEY is configured,
+// otherwise falls back to whichever nodemailer transporter getTransporter()
+// resolves (SMTP_HOST, or Gmail via EMAIL_USER/EMAIL_PASS). Both paths
+// return the same normalized `{ messageId }` shape.
+async function deliver(mailOptions) {
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+    return sendViaResend(mailOptions);
+  }
+  return getTransporter().sendMail(mailOptions);
 }
 
 function getSenderConfig() {
@@ -186,7 +216,7 @@ const sendMail = async (to, subject, text, html = null, meta = {}) => {
   }
 
   try {
-    const info = await getTransporter().sendMail(mailOptions);
+    const info = await deliver(mailOptions);
     if (log) {
       log.status = "sent";
       log.sentAt = new Date();
@@ -238,7 +268,7 @@ const retryFailedEmail = async (emailLogId) => {
   if (log.htmlBody) mailOptions.html = log.htmlBody;
 
   try {
-    const info = await getTransporter().sendMail(mailOptions);
+    const info = await deliver(mailOptions);
     log.status = "sent";
     log.sentAt = new Date();
     log.attempts += 1;
