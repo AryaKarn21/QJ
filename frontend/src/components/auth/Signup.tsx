@@ -162,16 +162,16 @@ const Signup: React.FC = () => {
       <div className="relative z-10 w-full max-w-5xl bg-[#0d131f]/90 backdrop-blur-2xl border border-slate-800/80 rounded-[28px] shadow-2xl shadow-black/80 overflow-hidden flex flex-col lg:flex-row my-auto">
         
         {/* Left Visual Column */}
-        <div className="w-full lg:w-1/2 relative bg-[#080c14] flex flex-col justify-center items-center p-4 sm:p-6 lg:p-7 border-b lg:border-b-0 lg:border-r border-slate-800/80">
-          <div className="relative w-full flex items-center justify-center rounded-2xl overflow-hidden bg-slate-950/80 border border-slate-800/90 shadow-2xl p-1 sm:p-2 group">
+        <div className="w-full lg:w-1/2 relative bg-[#070b12] flex flex-col justify-center items-center p-4 sm:p-6 lg:p-7 border-b lg:border-b-0 lg:border-r border-slate-800/80">
+          <div className="relative w-full max-w-[480px] flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl group">
             <img
               src={registerVisual}
               alt="Join QuickJobs - Unlock Career Opportunities"
-              className="w-full h-auto max-h-[640px] object-contain rounded-xl shadow-lg transition-transform duration-500 group-hover:scale-[1.01]"
+              className="w-full h-auto object-contain rounded-2xl transition-transform duration-500 group-hover:scale-[1.01]"
               loading="eager"
             />
-            {/* Subtle inner border glow */}
-            <div className="absolute inset-0 pointer-events-none rounded-2xl ring-1 ring-inset ring-white/10" />
+            {/* Ambient backlight glow */}
+            <div className="absolute -inset-2 rounded-2xl bg-gradient-to-tr from-orange-500/10 via-amber-500/5 to-transparent blur-xl pointer-events-none -z-10" />
           </div>
         </div>
 
@@ -179,8 +179,9 @@ const Signup: React.FC = () => {
         <div className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-10 flex flex-col justify-center bg-[#0d131f]/95">
           {/* Logo & Heading */}
           <div className="mb-5 text-left">
-            <div className="inline-block p-1.5 rounded-xl bg-slate-900 border border-slate-800 mb-3 shadow-sm">
-              <img className="h-7 w-auto object-contain" src={Logo} alt="QuickJobs Logo" />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 shadow-sm">
+              <img className="h-6 w-auto object-contain" src={Logo} alt="QuickJobs Logo" />
+              <span className="text-xs font-bold text-white tracking-wide">QuickJobs</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Create your account
