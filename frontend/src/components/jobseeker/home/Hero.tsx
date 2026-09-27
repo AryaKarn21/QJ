@@ -135,13 +135,14 @@ const Hero: React.FC = () => {
             the empty office scenery on the far left. */}
         <motion.img
           src={jobPhoto}
-          alt=""
+          alt="QuickJobs career opportunities"
           className="h-full w-full object-cover"
-          style={{ objectPosition: '72% center' }}
-          animate={prefersReducedMotion ? undefined : { scale: [1, 1.07, 1] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ objectPosition: 'right center' }}
+          animate={prefersReducedMotion ? undefined : { scale: [1, 1.04, 1] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/55 to-slate-950/10" />
+        {/* Single subtle dark gradient overlay: protects text contrast on left, fully clear on right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
 
         {/* Warm orange glow — left, echoing a lit office */}
         <motion.div

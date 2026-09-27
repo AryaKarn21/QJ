@@ -3,7 +3,6 @@ import Hero from "./Hero";
 import { TrustStatsBar } from "./TrustStatsBar";
 import TrendingJobs from "./TrendingJobs";
 import RecommendedJobs from "./RecommendedJobs";
-import CallToAction from "./CallToAction";
 import RecentJobs from "./RecentJobs";
 import JobCategories from "./JobCategories";
 import ExploreByField from "./ExploreByField";
@@ -14,7 +13,7 @@ import { AdBanner } from "../../common/AdBanner";
 
 // Order matches the reference visual direction: Hero -> real trust stats
 // -> platform value -> trending -> recommended -> categories -> recent ->
-// testimonials -> community -> CTA. Every section below is the same
+// testimonials -> community. Every section below is the same
 // existing, API-backed component — only the ordering changed, nothing was
 // rebuilt or replaced.
 export const HomePageJobSeeker = () => (
@@ -41,7 +40,6 @@ export const HomePageJobSeeker = () => (
       {/* Renders nothing if no admin has published a testimonial. */}
       <Testimonials />
       <CommunityPostsPreview variant="jobseeker" limit={3} />
-      <CallToAction />
     </main>
   </>
 );
