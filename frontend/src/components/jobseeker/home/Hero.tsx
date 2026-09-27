@@ -177,8 +177,8 @@ const Hero: React.FC = () => {
               key={activeSlide}
               src={HERO_SLIDES[activeSlide]}
               alt="QuickJobs Career Opportunities"
-              className="h-full w-full object-cover"
-              style={{ objectPosition: 'center center' }}
+              className="h-full w-full object-cover object-right-top"
+              style={{ objectPosition: 'right top', transformOrigin: 'right top' }}
               initial={{ opacity: 0, scale: 1 }}
               animate={{ opacity: 1, scale: 1.02 }}
               exit={{ opacity: 0 }}
@@ -189,9 +189,9 @@ const Hero: React.FC = () => {
           <motion.img
             src={HERO_SLIDES[0]}
             alt="QuickJobs Career Opportunities"
-            className="h-full w-full object-cover"
-            style={{ objectPosition: 'center center' }}
-            animate={prefersReducedMotion ? undefined : { scale: [1, 1.038, 1] }}
+            className="h-full w-full object-cover object-right-top"
+            style={{ objectPosition: 'right top', transformOrigin: 'right top' }}
+            animate={prefersReducedMotion ? undefined : { scale: [1, 1.02, 1] }}
             transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
