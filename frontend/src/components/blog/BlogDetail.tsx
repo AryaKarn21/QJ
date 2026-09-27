@@ -481,12 +481,16 @@ const BlogDetail: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <Link to="/blog" className="text-blue-600 hover:underline">
-            ← Back to Blogs
+    <div className="min-h-screen bg-slate-50/40 py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Navigation & Actions Row */}
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <Link
+            to="/blog"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-600 hover:text-orange-600 transition-colors group"
+          >
+            <span className="transition-transform group-hover:-translate-x-1">←</span>
+            <span>Back to All Articles</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -495,162 +499,220 @@ const BlogDetail: React.FC = () => {
               <>
                 <Link
                   to={`/blog/edit/${blog._id}`}
-                  className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-xl shadow-sm transition-colors"
                 >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
+                  <Edit size={13} />
+                  <span>Edit</span>
                 </Link>
                 <button
                   onClick={handleDelete}
-                  className="flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-xl border border-red-200 transition-colors"
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
+                  <Trash2 size={13} />
+                  <span>Delete</span>
                 </button>
               </>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-3">
-          {blog.category && (
-            <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-xs font-medium">
-              {blog.category}
+        {/* Article Header Card */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-10 mb-8">
+          <div className="flex flex-wrap items-center gap-2.5 mb-4">
+            {blog.category && (
+              <span className="px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-200/80">
+                {blog.category}
+              </span>
+            )}
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 flex items-center gap-1.5">
+              <Calendar size={13} className="text-slate-400" />
+              <span>{formatDate(blog.publishedAt)}</span>
             </span>
-          )}
-          {!blog.isPublished && (
-            <span className="bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
-              Draft — only visible to you
-            </span>
-          )}
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 break-words [overflow-wrap:anywhere]">{blog.title}</h1>
-
-        {blog.featuredImage && (
-          <img
-            src={resolveMediaUrl(blog.featuredImage)}
-            alt={blog.title}
-            className="w-full h-48 sm:h-64 md:h-96 object-cover bg-gray-100 rounded-lg shadow-md mb-6"
-            onError={handleImageFallback}
-          />
-        )}
-
-        <div className="flex items-center mb-6">
-          {blog.authorImage && (
-            <img
-              src={resolveMediaUrl(blog.authorImage)}
-              alt={blog.author?.name || 'Deleted user'}
-              className="w-12 h-12 rounded-full mr-4 object-cover"
-            />
-          )}
-          <div className="flex-1">
-            <p className="text-lg font-medium text-gray-900">{blog.author?.name || 'Deleted user'}</p>
-            <div className="flex items-center text-sm text-gray-500">
-              <Calendar className="h-4 w-4 mr-1" />
-              {formatDate(blog.publishedAt)}
-              {blog.isAIGenerated && (
-                <span className="ml-3 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                  AI Generated
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center space-x-6 text-sm text-gray-500 border-b border-gray-200 pb-4">
-          <button
-            onClick={handleLike}
-            disabled={liking}
-            className={`flex items-center space-x-1 hover:text-red-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-              isLiked ? 'text-red-500' : ''
-            }`}
-          >
-            <Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
-            <span>{isLiked ? `You${likesCount > 1 ? ` + ${likesCount - 1}` : ''}` : likesCount}</span>
-          </button>
-          <span className="flex items-center space-x-1">
-            <MessageCircle className="h-5 w-5" />
-            <span>{blog.commentCount}</span>
-          </span>
-          <span className="flex items-center space-x-1">
-            <Eye className="h-5 w-5" />
-            <span>{blog.views.length}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="prose prose-lg max-w-none mb-8">
-        {blog.images.map((image, index) => (
-          <div key={index} className="mb-6">
-            <img
-              src={resolveMediaUrl(image.url)}
-              alt={image.caption || `Blog image ${index + 1}`}
-              className="w-full rounded-lg shadow-md object-cover max-h-[500px]"
-              onError={handleImageFallback}
-            />
-            {image.caption && (
-              <p className="text-sm text-gray-600 text-center mt-2 italic">
-                {image.caption}
-              </p>
+            {blog.isAIGenerated && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                AI Assisted
+              </span>
+            )}
+            {!blog.isPublished && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                Draft — only visible to you
+              </span>
             )}
           </div>
-        ))}
 
-        <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-          {blog.content}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.2] mb-6 break-words [overflow-wrap:anywhere]">
+            {blog.title}
+          </h1>
+
+          {/* Author Row */}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+            <div className="flex items-center gap-3.5">
+              {blog.authorImage ? (
+                <img
+                  src={resolveMediaUrl(blog.authorImage)}
+                  alt={blog.author?.name || 'Author'}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-orange-500/20 shadow-sm"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-base flex items-center justify-center shadow-sm">
+                  {blog.author?.name ? blog.author.name[0].toUpperCase() : 'A'}
+                </div>
+              )}
+              <div>
+                <p className="text-base font-bold text-slate-900 leading-tight">
+                  {blog.author?.name || 'QuickJobs Contributor'}
+                </p>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  {blog.author?.role ? `${blog.author.role} at QuickJobs` : 'Author & Community Member'}
+                </p>
+              </div>
+            </div>
+
+            {/* Engagement Stats Pill */}
+            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-2xl text-xs text-slate-600 shadow-inner">
+              <button
+                onClick={handleLike}
+                disabled={liking}
+                className={`flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 ${
+                  isLiked ? 'text-red-500 font-bold' : 'hover:text-red-500'
+                }`}
+                title="Like article"
+              >
+                <Heart size={16} className={isLiked ? 'fill-red-500' : ''} />
+                <span>{likesCount}</span>
+              </button>
+              <span className="w-1 h-1 rounded-full bg-slate-300" />
+              <span className="flex items-center gap-1.5">
+                <MessageCircle size={16} className="text-slate-400" />
+                <span className="font-semibold">{blog.commentCount}</span>
+              </span>
+              <span className="w-1 h-1 rounded-full bg-slate-300" />
+              <span className="flex items-center gap-1.5">
+                <Eye size={16} className="text-slate-400" />
+                <span className="font-semibold">{blog.views.length}</span>
+              </span>
+            </div>
+          </div>
         </div>
 
-        {blog.tags && blog.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-6">
-            {blog.tags.map((tag) => (
-              <span key={tag} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium">
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Comments Section */}
-      <div className="border-t border-gray-200 pt-8">
-        <h3 className="text-2xl font-bold text-gray-900 mb-6">
-          Comments ({blog.commentCount})
-        </h3>
-
-        {/* Add Comment Form */}
-        {user ? (
-          <form onSubmit={handleComment} className="mb-8">
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              rows={3}
+        {/* Featured Image */}
+        {blog.featuredImage && (
+          <div className="mb-10 rounded-3xl overflow-hidden border border-slate-200/80 shadow-lg bg-slate-100 max-h-[500px]">
+            <img
+              src={resolveMediaUrl(blog.featuredImage)}
+              alt={blog.title}
+              className="w-full h-full object-cover max-h-[500px]"
+              onError={handleImageFallback}
             />
-            <div className="flex justify-end mt-2">
-              <button
-                type="submit"
-                disabled={!comment.trim() || submittingComment}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {submittingComment ? 'Posting...' : 'Post Comment'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="mb-8 p-4 bg-gray-50 rounded-lg text-center">
-            <p className="text-gray-600">
-              <Link to="/login" className="text-blue-600 hover:underline">
-                Login
-              </Link>{' '}
-              to post a comment
-            </p>
           </div>
         )}
+
+        {/* Article Body Content */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-12 mb-10">
+          <div className="prose prose-lg prose-slate max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-a:text-orange-600 prose-a:font-semibold hover:prose-a:underline leading-relaxed mb-8">
+            {blog.images && blog.images.length > 0 && (
+              <div className="space-y-6 mb-8 not-prose">
+                {blog.images.map((image, index) => (
+                  <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                    <img
+                      src={resolveMediaUrl(image.url)}
+                      alt={image.caption || `Blog image ${index + 1}`}
+                      className="w-full object-cover max-h-[460px]"
+                      onError={handleImageFallback}
+                    />
+                    {image.caption && (
+                      <p className="text-xs text-slate-500 text-center py-2.5 px-4 bg-slate-50 italic border-t border-slate-100">
+                        {image.caption}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="whitespace-pre-wrap text-slate-800 leading-relaxed font-normal text-base sm:text-lg">
+              {blog.content}
+            </div>
+
+            {blog.tags && blog.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-8 mt-8 border-t border-slate-100 not-prose">
+                {blog.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Author Bio Card */}
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-orange-50/50 via-slate-50 to-orange-50/30 border border-orange-200/60 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+            {blog.authorImage ? (
+              <img
+                src={resolveMediaUrl(blog.authorImage)}
+                alt={blog.author?.name || 'Author'}
+                className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-xl flex items-center justify-center shadow-md shrink-0">
+                {blog.author?.name ? blog.author.name[0].toUpperCase() : 'A'}
+              </div>
+            )}
+            <div className="text-center sm:text-left">
+              <span className="text-xs font-bold uppercase tracking-wider text-orange-600">Written By</span>
+              <h4 className="text-lg font-extrabold text-slate-900 mt-0.5">{blog.author?.name || 'QuickJobs Contributor'}</h4>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                Contributing insights, practical hiring experience, and career tips to the QuickJobs community.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Comments Section */}
+        <div id="comments" className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-10">
+          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+            <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <MessageCircle size={22} className="text-orange-500" />
+              <span>Discussion ({blog.commentCount})</span>
+            </h3>
+          </div>
+
+          {/* Add Comment Form */}
+          {user ? (
+            <form onSubmit={handleComment} className="mb-10">
+              <div className="relative">
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Share your thoughts, ask questions, or contribute to the discussion..."
+                  className="w-full p-4 bg-slate-50 border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 focus:bg-white text-sm text-slate-800 placeholder-slate-400 resize-none transition-all"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end mt-3">
+                <button
+                  type="submit"
+                  disabled={!comment.trim() || submittingComment}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/25 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  <Send size={15} />
+                  <span>{submittingComment ? 'Posting...' : 'Post Comment'}</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="mb-10 p-6 bg-slate-50 border border-slate-200/70 rounded-2xl text-center">
+              <p className="text-slate-600 text-sm">
+                <Link to="/login" className="text-orange-600 font-bold hover:underline">
+                  Sign in
+                </Link>{' '}
+                to participate in this discussion and leave a comment.
+              </p>
+            </div>
+          )}
 
         {/* Comments List */}
         {loadingComments ? (
@@ -710,6 +772,7 @@ const BlogDetail: React.FC = () => {
         )}
       </div>
     </div>
+  </div>
   );
 };
 

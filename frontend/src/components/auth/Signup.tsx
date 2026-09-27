@@ -161,13 +161,13 @@ const Signup: React.FC = () => {
       {/* Main Glassmorphism Card Container */}
       <div className="relative z-10 w-full max-w-5xl bg-[#0d131f]/90 backdrop-blur-2xl border border-slate-800/80 rounded-[28px] shadow-2xl shadow-black/80 overflow-hidden flex flex-col lg:flex-row my-auto">
         
-        {/* Left Visual Column (Desktop: 50% split-screen / Mobile: top banner) */}
-        <div className="w-full lg:w-1/2 relative bg-[#090d16] flex flex-col justify-center items-center p-3 sm:p-4 lg:p-5 border-b lg:border-b-0 lg:border-r border-slate-800/80 overflow-hidden">
-          <div className="relative w-full h-full min-h-[260px] sm:min-h-[320px] lg:min-h-[580px] rounded-2xl overflow-hidden border border-slate-800/70 shadow-2xl group flex items-center justify-center bg-slate-950">
+        {/* Left Visual Column */}
+        <div className="w-full lg:w-1/2 relative bg-[#080c14] flex flex-col justify-center items-center p-4 sm:p-6 lg:p-7 border-b lg:border-b-0 lg:border-r border-slate-800/80">
+          <div className="relative w-full flex items-center justify-center rounded-2xl overflow-hidden bg-slate-950/80 border border-slate-800/90 shadow-2xl p-1 sm:p-2 group">
             <img
               src={registerVisual}
               alt="Join QuickJobs - Unlock Career Opportunities"
-              className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+              className="w-full h-auto max-h-[640px] object-contain rounded-xl shadow-lg transition-transform duration-500 group-hover:scale-[1.01]"
               loading="eager"
             />
             {/* Subtle inner border glow */}

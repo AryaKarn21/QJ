@@ -112,6 +112,9 @@ export function PolicyPageShell({
     ? new Date(updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
+  // Clean any legacy demo/placeholder blockquote warnings so live users get a clean professional document
+  const cleanedContent = content.replace(/<blockquote[\s\S]*?DEMO[\s\S]*?<\/blockquote>/gi, '').trim();
+
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-12">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">Legal Page</p>
@@ -171,8 +174,8 @@ export function PolicyPageShell({
 
         <div
           ref={contentRef}
-          className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-primary leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: content }}
+          className="prose prose-slate max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-a:text-orange-600 prose-a:font-semibold hover:prose-a:underline prose-li:my-1 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: cleanedContent || content }}
         />
       </div>
 
