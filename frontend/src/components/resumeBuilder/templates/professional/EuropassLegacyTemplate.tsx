@@ -292,29 +292,63 @@ export const EuropassLegacyTemplate: React.FC<Props> = ({ resume }) => {
       </section>
     ),
     skills: () => {
-      if (skillGroups.length === 0 && digitalSkillNames.length === 0 && otherSkillNames.length === 0) return null;
+      const meaningfulGroups = skillGroups.filter((g) => g.category && g.category !== 'Other');
+      const allFlatSkills: string[] = [];
+      const seen = new Set<string>();
+      const add = (name?: string) => {
+        if (!name) return;
+        const c = name.trim();
+        if (c && !seen.has(c.toLowerCase())) {
+          seen.add(c.toLowerCase());
+          allFlatSkills.push(c);
+        }
+      };
+      (resume.skills || []).forEach((s) => add(typeof s === 'string' ? s : s?.name));
+      digitalSkillNames.forEach(add);
+      otherSkillNames.forEach(add);
+
+      if (allFlatSkills.length === 0) return null;
+
+      if (meaningfulGroups.length > 0) {
+        return (
+          <section className="break-inside-avoid">
+            <SectionHeading title="Skills" />
+            <div className="space-y-1.5 text-[11px]">
+              {meaningfulGroups.map((group) => (
+                <p key={group.category}>
+                  <span className="font-semibold" style={{ color: NAVY_DEEP }}>{group.category}:</span>{' '}
+                  <span style={{ color: SLATE }}>{group.skills.map((s) => s.name).join(' | ')}</span>
+                </p>
+              ))}
+              {digitalSkillNames.length > 0 && (
+                <p>
+                  <span className="font-semibold" style={{ color: NAVY_DEEP }}>Digital Skills:</span>{' '}
+                  <span style={{ color: SLATE }}>{digitalSkillNames.join(' | ')}</span>
+                </p>
+              )}
+              {otherSkillNames.length > 0 && (
+                <p>
+                  <span className="font-semibold" style={{ color: NAVY_DEEP }}>Additional Skills:</span>{' '}
+                  <span style={{ color: SLATE }}>{otherSkillNames.join(' | ')}</span>
+                </p>
+              )}
+            </div>
+          </section>
+        );
+      }
+
       return (
         <section className="break-inside-avoid">
           <SectionHeading title="Skills" />
-          <div className="space-y-1.5 text-[11px]">
-            {skillGroups.map((group) => (
-              <p key={group.category}>
-                <span className="font-semibold" style={{ color: NAVY_DEEP }}>{group.category}:</span>{' '}
-                <span style={{ color: SLATE }}>{group.skills.map((s) => s.name).join(', ')}</span>
-              </p>
+          <div className="text-[11px] leading-relaxed" style={{ color: SLATE }}>
+            {allFlatSkills.map((skill, idx) => (
+              <span key={idx} className="inline-block">
+                <span>{skill}</span>
+                {idx < allFlatSkills.length - 1 && (
+                  <span className="mx-1.5 font-normal select-none text-slate-400">|</span>
+                )}
+              </span>
             ))}
-            {digitalSkillNames.length > 0 && (
-              <p>
-                <span className="font-semibold" style={{ color: NAVY_DEEP }}>Digital Skills:</span>{' '}
-                <span style={{ color: SLATE }}>{digitalSkillNames.join(', ')}</span>
-              </p>
-            )}
-            {otherSkillNames.length > 0 && (
-              <p>
-                <span className="font-semibold" style={{ color: NAVY_DEEP }}>Additional Skills:</span>{' '}
-                <span style={{ color: SLATE }}>{otherSkillNames.join(', ')}</span>
-              </p>
-            )}
           </div>
         </section>
       );

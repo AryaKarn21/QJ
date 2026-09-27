@@ -8,7 +8,7 @@ import {
   X,
   TrendingUp,
 } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { getHomepageContent } from '../../../api/cmsPublicApi';
 import { useSiteContent } from '../../../hooks/useSiteContent';
@@ -30,16 +30,63 @@ const DEFAULTS = {
   popularSearches: ['Frontend Developer', 'QA Engineer', 'UI/UX Designer', 'Data Analyst'],
 };
 
-// Staggered entrance — badge, heading, description, search, chips and CTAs
-// fade + slide up one after another instead of all appearing at once.
-const containerVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+// Single hero slides array architecture — ready for multiple images if configured,
+// but maintains exactly one hero image without duplication.
+const HERO_SLIDES = [jobPhoto];
+
+// Specific entrance variants matching the requested timing & order:
+// 1. Badge (300ms)
+// 2. Heading (450ms)
+// 3. Description (550ms)
+// 4. Search bar (650ms)
+// 5. Popular Searches (750ms + staggered tags)
+// 6. CTA / Buttons (850ms)
+const createItemVariant = (delay: number, duration: number = 0.6): Variants => ({
+  hidden: { opacity: 0, y: 20 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration,
+      delay,
+      ease: [0.25, 0.1, 0.25, 1], // Smooth cubic ease-out
+    },
+  },
+});
+
+const badgeVariant = createItemVariant(0.3, 0.55);
+const headingVariant = createItemVariant(0.45, 0.6);
+const descVariant = createItemVariant(0.55, 0.6);
+const searchVariant = createItemVariant(0.65, 0.65);
+const ctaVariant = createItemVariant(0.85, 0.55);
+
+const popularContainerVariant: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: 0.75,
+      duration: 0.55,
+      ease: [0.25, 0.1, 0.25, 1],
+      staggerChildren: 0.09, // 90ms stagger between pills
+      delayChildren: 0.85,
+    },
+  },
 };
 
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' } },
+const popularTagVariant: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: 'easeOut' },
+  },
+};
+
+const reducedMotionVariant: Variants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.2 } },
 };
 
 const Hero: React.FC = () => {
@@ -49,7 +96,17 @@ const Hero: React.FC = () => {
   const popularSearchesLabel = useSiteContent('homepage.hero.popularSearchesLabel', 'Popular Searches:');
   const [searchInput, setSearchInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
   const searchWrapRef = useRef<HTMLDivElement>(null);
+
+  // Carousel autoplay if multiple slides are present (6-second interval, 900ms transition)
+  useEffect(() => {
+    if (HERO_SLIDES.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Shared ['homepage-content'] query key with CallToAction.tsx and every
   // homepage section component (see hooks/useHomepageSection.ts) — all of
@@ -112,19 +169,35 @@ const Hero: React.FC = () => {
 
   return (
     <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-12 sm:px-6 sm:py-14 lg:py-16 lg:px-8 min-h-[480px] lg:min-h-[540px]">
-      {/* ── BACKGROUND ── Exact HD Hero visual matching the design ── */}
+      {/* ── BACKGROUND ── Exact HD Hero visual with Ken Burns slow zoom ── */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <motion.img
-          src={jobPhoto}
-          alt="QuickJobs Career Opportunities"
-          className="h-full w-full object-cover"
-          style={{ objectPosition: 'center center' }}
-          animate={prefersReducedMotion ? undefined : { scale: [1, 1.02, 1] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        {HERO_SLIDES.length > 1 ? (
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={activeSlide}
+              src={HERO_SLIDES[activeSlide]}
+              alt="QuickJobs Career Opportunities"
+              className="h-full w-full object-cover"
+              style={{ objectPosition: 'center center' }}
+              initial={{ opacity: 0, scale: 1 }}
+              animate={{ opacity: 1, scale: 1.02 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.9, ease: 'easeInOut' }}
+            />
+          </AnimatePresence>
+        ) : (
+          <motion.img
+            src={HERO_SLIDES[0]}
+            alt="QuickJobs Career Opportunities"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: 'center center' }}
+            animate={prefersReducedMotion ? undefined : { scale: [1, 1.038, 1] }}
+            transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
 
         {/* Soft dark gradient on left to guarantee text readability while keeping the people vibrant */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/30 to-transparent" />
 
         {/* Subtle ambient glows for visual depth */}
         <motion.div
@@ -139,44 +212,164 @@ const Hero: React.FC = () => {
         />
       </div>
 
-      {/* ── CONTENT ── Aligned to the left matching the hero layout ── */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-center lg:text-left"
-      >
-        <div className="mx-auto max-w-2xl lg:mx-0">
-          {/* Badge */}
+      {/* ── DESKTOP FLOATING CAREER CARDS & CONNECTION LINES ── */}
+      <div className="pointer-events-none absolute inset-0 hidden lg:block overflow-hidden z-10">
+        <div className="relative mx-auto h-full max-w-7xl">
+          {/* Subtle Dotted Career Connection Lines */}
+          <svg
+            className="absolute right-8 top-1/2 -translate-y-1/2 h-[340px] w-[460px] opacity-60"
+            viewBox="0 0 460 340"
+            fill="none"
+            aria-hidden="true"
+          >
+            <motion.path
+              d="M 60 70 C 140 120, 220 100, 320 160 C 370 190, 390 230, 360 280"
+              stroke="rgba(249, 115, 22, 0.35)"
+              strokeWidth="1.5"
+              strokeDasharray="5 7"
+              animate={prefersReducedMotion ? undefined : { strokeDashoffset: [0, -48] }}
+              transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
+            />
+            <motion.path
+              d="M 120 270 C 180 230, 260 210, 320 160"
+              stroke="rgba(56, 189, 248, 0.3)"
+              strokeWidth="1.5"
+              strokeDasharray="4 6"
+              animate={prefersReducedMotion ? undefined : { strokeDashoffset: [0, 40] }}
+              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+            />
+          </svg>
+
+          {/* Floating Card 1: Job Opportunities (delay 0s, 3.4s duration) */}
           <motion.div
-            variants={itemVariants}
+            initial={{ opacity: 0, y: 15 }}
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1, y: 0 }
+                : { opacity: 1, y: [0, -6, 0] }
+            }
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.3 }
+                : {
+                    y: { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 0 },
+                    opacity: { duration: 0.8, delay: 0.4 },
+                  }
+            }
+            className="absolute right-12 top-14 flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/80 px-4 py-2.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-md"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
+              <Zap size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold leading-tight">Job Opportunities</p>
+              <p className="text-[11px] font-medium text-slate-300">Verified & High-Growth</p>
+            </div>
+          </motion.div>
+
+          {/* Floating Card 2: Build Your CV (delay 0.8s, 3.8s duration) */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1, y: 0 }
+                : { opacity: 1, y: [0, -6, 0] }
+            }
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.3 }
+                : {
+                    y: { duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+                    opacity: { duration: 0.8, delay: 0.6 },
+                  }
+            }
+            className="absolute right-80 top-1/2 -translate-y-12 flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/80 px-4 py-2.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-md"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
+              <FileText size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold leading-tight">Build Your CV</p>
+              <p className="text-[11px] font-medium text-slate-300">ATS-Ready Templates</p>
+            </div>
+          </motion.div>
+
+          {/* Floating Card 3: Grow Your Career (delay 1.5s, 3.6s duration) */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1, y: 0 }
+                : { opacity: 1, y: [0, -6, 0] }
+            }
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.3 }
+                : {
+                    y: { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 1.5 },
+                    opacity: { duration: 0.8, delay: 0.8 },
+                  }
+            }
+            className="absolute right-20 bottom-14 flex items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/80 px-4 py-2.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-md"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+              <TrendingUp size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold leading-tight">Grow Your Career</p>
+              <p className="text-[11px] font-medium text-slate-300">Connect With Top Teams</p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── CONTENT ── Aligned to the left matching the hero layout ── */}
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-center lg:text-left">
+        <div className="mx-auto max-w-2xl lg:mx-0">
+          {/* 1. Badge (delay 300ms) */}
+          <motion.div
+            variants={prefersReducedMotion ? reducedMotionVariant : badgeVariant}
+            initial="hidden"
+            animate="show"
             className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold tracking-tight text-white backdrop-blur-sm sm:text-[13px]"
           >
             <Zap size={13} className="fill-orange-400 text-orange-400" />
             {badgeText}
           </motion.div>
 
-          {/* Headline */}
+          {/* 2. Main Heading (delay 450ms) */}
           <motion.h1
-            variants={itemVariants}
+            variants={prefersReducedMotion ? reducedMotionVariant : headingVariant}
+            initial="hidden"
+            animate="show"
             className="mb-3 text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
           >
             {headline} <span className="text-orange-500">{headlineAccent}</span>
           </motion.h1>
 
-          {/* Sub-headline */}
+          {/* 3. Description (delay 550ms) */}
           <motion.p
-            variants={itemVariants}
+            variants={prefersReducedMotion ? reducedMotionVariant : descVariant}
+            initial="hidden"
+            animate="show"
             className="mx-auto mb-5 max-w-xl text-base font-normal leading-relaxed text-slate-300 sm:text-lg lg:mx-0"
           >
             {subheadline}
           </motion.p>
 
-          {/* Search bar */}
-          <motion.div variants={itemVariants} className="relative mx-auto mb-4 max-w-xl lg:mx-0" ref={searchWrapRef}>
+          {/* 4. Search bar (delay 650ms) */}
+          <motion.div
+            variants={prefersReducedMotion ? reducedMotionVariant : searchVariant}
+            initial="hidden"
+            animate="show"
+            className="relative mx-auto mb-4 max-w-xl lg:mx-0"
+            ref={searchWrapRef}
+          >
             <div
-              className={`flex flex-col gap-2 rounded-2xl bg-white p-1.5 border transition-all duration-200 sm:flex-row sm:items-center sm:gap-0 ${
-                isFocused ? 'border-orange-300 ring-2 ring-orange-500/25 shadow-md shadow-orange-500/10' : 'border-slate-100 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.3)]'
+              className={`group/search flex flex-col gap-2 rounded-2xl bg-white p-1.5 border transition-all duration-300 ease-out hover:shadow-[0_12px_32px_-4px_rgba(0,0,0,0.35)] sm:flex-row sm:items-center sm:gap-0 ${
+                isFocused
+                  ? 'border-orange-500/80 ring-4 ring-orange-500/20 shadow-[0_8px_30px_rgba(249,115,22,0.2)]'
+                  : 'border-slate-100 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.3)]'
               }`}
             >
               <div className="flex min-w-0 flex-1 items-center gap-2 pl-4">
@@ -204,7 +397,7 @@ const Hero: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSearch}
-                className="group flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:bg-orange-600 active:scale-[0.98] sm:w-auto cursor-pointer"
+                className="group flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/30 hover:bg-orange-600 active:scale-[0.98] sm:w-auto cursor-pointer"
               >
                 Search <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
               </button>
@@ -240,29 +433,40 @@ const Hero: React.FC = () => {
             )}
           </motion.div>
 
-          {/* Popular searches */}
-          <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+          {/* 5. Popular Searches with staggered tag animation (delay 750ms + 90ms stagger) */}
+          <motion.div
+            variants={prefersReducedMotion ? reducedMotionVariant : popularContainerVariant}
+            initial="hidden"
+            animate="show"
+            className="flex flex-wrap items-center justify-center gap-2 lg:justify-start"
+          >
             <span className="text-[13px] font-medium text-slate-400">{popularSearchesLabel}</span>
             {staticPopularJobs.map((job, i) => (
-              <button
+              <motion.button
                 key={i}
+                variants={prefersReducedMotion ? undefined : popularTagVariant}
                 type="button"
                 onClick={() => handlePopularJobClick(job)}
-                className="rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-200 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-orange-500 hover:bg-orange-500 hover:text-white active:scale-95 cursor-pointer"
+                className="rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-200 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:border-orange-500 hover:bg-orange-500 hover:text-white active:scale-95 cursor-pointer"
               >
                 {job}
-              </button>
+              </motion.button>
             ))}
           </motion.div>
 
-          {/* Optional CTA buttons (only shown if configured in CMS with non-empty text) */}
+          {/* 6. Optional CTA Buttons (delay 850ms) */}
           {(primaryCtaText || secondaryCtaText) && (
-            <motion.div variants={itemVariants} className="mt-5 flex flex-wrap items-center justify-center gap-3.5 lg:justify-start">
+            <motion.div
+              variants={prefersReducedMotion ? reducedMotionVariant : ctaVariant}
+              initial="hidden"
+              animate="show"
+              className="mt-5 flex flex-wrap items-center justify-center gap-3.5 lg:justify-start"
+            >
               {primaryCtaText && (
                 <button
                   type="button"
                   onClick={() => navigate(content.primaryCtaLink || '/jobs')}
-                  className="group inline-flex items-center gap-2 rounded-full bg-orange-500 px-7 py-3 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(249,115,22,0.35)] transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:bg-orange-600 active:scale-[0.98] cursor-pointer"
+                  className="group inline-flex items-center gap-2 rounded-full bg-orange-500 px-7 py-3 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(249,115,22,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/40 hover:bg-orange-600 active:scale-[0.98] cursor-pointer"
                 >
                   <span>{primaryCtaText}</span>
                   <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-1" />
@@ -272,7 +476,7 @@ const Hero: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(content.secondaryCtaLink || '/resume')}
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-[15px] font-bold text-slate-900 shadow-md transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 hover:bg-slate-100 active:scale-[0.98] cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-[15px] font-bold text-slate-900 shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:bg-slate-100 active:scale-[0.98] cursor-pointer"
                 >
                   <span>{secondaryCtaText}</span>
                 </button>
@@ -280,9 +484,26 @@ const Hero: React.FC = () => {
             </motion.div>
           )}
         </div>
-      </motion.div>
+      </div>
+
+      {/* Slide indicators only rendered if there are multiple slides (Section 16 requirement) */}
+      {HERO_SLIDES.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
+          {HERO_SLIDES.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setActiveSlide(i)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                i === activeSlide ? 'w-6 bg-orange-500' : 'w-2 bg-white/40 hover:bg-white/70'
+              }`}
+              aria-label={`Go to slide ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };
 
-export default Hero;
+export default Hero;

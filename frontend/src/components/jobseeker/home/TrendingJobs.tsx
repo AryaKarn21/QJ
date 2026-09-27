@@ -7,20 +7,20 @@ import { fetchTrendingJobs, Job } from '../jobseekerApi/api';
 import { JobCard } from './JobCard';
 import { useHomepageSection } from '../../../hooks/useHomepageSection';
 
-// Staggered card entrance — same pattern Hero.tsx uses, gated off entirely
+// Staggered card entrance — 100ms stagger, 600ms duration, gated off entirely
 // when the user prefers reduced motion (see `prefersReducedMotion` below).
 const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 };
 
 const containerVariants: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
+  show: { transition: { staggerChildren: 0.1 } }, // 100ms stagger between cards
 };
 const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] } },
 };
 
 const TrendingJobs: React.FC = () => {

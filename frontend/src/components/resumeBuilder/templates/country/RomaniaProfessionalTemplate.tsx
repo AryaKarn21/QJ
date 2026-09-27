@@ -281,9 +281,7 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           </section>
         )}
 
-        {/* 4. SKILLS — clean, ATS-friendly two-column grid (no percentage
-            bars/decorative meters), replacing a single dense pipe-joined
-            line with clearly separated, scannable entries. */}
+        {/* 4. SKILLS — pipe-separated inline list matching official Europass / European CV format */}
         {(() => {
           const allSkillNames: string[] = [];
           const seen = new Set<string>();
@@ -324,12 +322,17 @@ export const RomaniaProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           return (
             <section className="break-inside-avoid">
               <SectionHeading title="Skills" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[11px]">
+              <div
+                className="text-[11px] sm:text-[11.5px] leading-relaxed"
+                style={{ color: SLATE, fontFamily: bodyFont }}
+              >
                 {allSkillNames.map((skill, idx) => (
-                  <div key={idx} className="flex items-center gap-2 min-w-0">
-                    <span className="h-[4px] w-[4px] rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
-                    <span style={{ color: SLATE }}>{skill}</span>
-                  </div>
+                  <span key={idx} className="inline-block">
+                    <span>{skill}</span>
+                    {idx < allSkillNames.length - 1 && (
+                      <span className="mx-1.5 font-normal select-none text-slate-400">|</span>
+                    )}
+                  </span>
                 ))}
               </div>
             </section>
