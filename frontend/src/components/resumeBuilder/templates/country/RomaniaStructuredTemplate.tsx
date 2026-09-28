@@ -23,7 +23,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       <div className="flex flex-col sm:flex-row items-start justify-between gap-6 border-b-2 border-slate-900 pb-6">
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-orange-600">Curriculum Vitae</span>
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: theme.accent }}>Curriculum Vitae</span>
             {resume.showLogo !== 'none' && resume.showLogo !== 'no' && (
               <EuropassLogo width={135} height={32} />
             )}
@@ -87,7 +87,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       {resume.summary && (
         <div className="mt-6 border-b border-slate-200 pb-5">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-2 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+            <span className="h-2 w-2 rounded-full inline-block" style={{ backgroundColor: theme.accent }} />
             Work Profile
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed pl-4">
@@ -100,7 +100,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       {resume.experience && resume.experience.length > 0 && (
         <div className="mt-6 border-b border-slate-200 pb-5">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+            <span className="h-2 w-2 rounded-full inline-block" style={{ backgroundColor: theme.accent }} />
             Work Experience
           </h2>
           <div className="space-y-4 pl-4">
@@ -111,7 +111,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
                 </div>
                 <div className="md:col-span-9">
                   <h3 className="font-bold text-sm text-slate-900">{exp.role || exp.title || ''}</h3>
-                  <p className="font-semibold text-orange-600">
+                  <p className="font-semibold" style={{ color: theme.accent }}>
                     {exp.company}{exp.location ? ` • ${exp.location}` : ''}
                   </p>
                   {exp.description && (
@@ -135,7 +135,7 @@ export const RomaniaStructuredTemplate: React.FC<Props> = ({ resume }) => {
       {resume.education && resume.education.length > 0 && (
         <div className="mt-6 border-b border-slate-200 pb-5">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+            <span className="h-2 w-2 rounded-full inline-block" style={{ backgroundColor: theme.accent }} />
             Education and Training
           </h2>
           <div className="space-y-3 pl-4">

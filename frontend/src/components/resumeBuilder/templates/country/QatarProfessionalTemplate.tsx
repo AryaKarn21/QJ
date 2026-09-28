@@ -31,7 +31,7 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 uppercase">
             {personalInfo.fullName || 'Candidate Name'}
           </h1>
-          <p className="mt-1 text-sm sm:text-base font-semibold text-orange-600">
+          <p className="mt-1 text-sm sm:text-base font-semibold" style={{ color: theme.accent }}>
             {resume.targetRole || 'Professional Title / Target Role'}
           </p>
 
@@ -63,8 +63,14 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
 
       {/* Recruiter Snapshot Card (Gulf standard) */}
       {hasRecruiterSnapshot && (
-        <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/50 p-3.5 text-xs shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-orange-800 mb-2">
+        <div
+          className="mt-4 rounded-xl border p-3.5 text-xs shadow-2xs"
+          style={{ backgroundColor: theme.accentSoft, borderColor: theme.accent + '33' }}
+        >
+          <p
+            className="text-[11px] font-bold uppercase tracking-wider mb-2"
+            style={{ color: theme.accent }}
+          >
             Recruiter Snapshot & Candidate Status
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-slate-700">
@@ -105,7 +111,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       {/* Professional Summary */}
       {resume.summary && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2">
+          <h2
+            className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-2"
+            style={{ borderBottomColor: theme.accent }}
+          >
             Executive Summary
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">{resume.summary}</p>
@@ -115,7 +124,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       {/* Core Competencies (Skill chips) */}
       {resume.skills && resume.skills.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2">
+          <h2
+            className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-2"
+            style={{ borderBottomColor: theme.accent }}
+          >
             Core Competencies & Key Skills
           </h2>
           <div className="flex flex-wrap gap-1.5">
@@ -134,7 +146,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       {/* Professional Experience */}
       {resume.experience && resume.experience.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-3">
+          <h2
+            className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-3"
+            style={{ borderBottomColor: theme.accent }}
+          >
             Professional Experience
           </h2>
           <div className="space-y-4">
@@ -146,7 +161,7 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                     {formatDateRange(exp.startDate, exp.endDate, exp.current)}
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-orange-600">
+                <p className="text-xs font-semibold" style={{ color: theme.accent }}>
                   {exp.company}
                   {exp.location ? ` • ${exp.location}` : ''}
                 </p>
@@ -154,7 +169,7 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
                   <div className="mt-1.5 text-xs text-slate-600 space-y-1">
                     {toBulletLines(exp.description).map((line, lIdx) => (
                       <p key={lIdx} className="flex items-start gap-1.5">
-                        <span className="text-orange-500 font-bold">•</span>
+                        <span className="font-bold" style={{ color: theme.accent }}>•</span>
                         <span>{line}</span>
                       </p>
                     ))}
@@ -174,7 +189,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       {/* Education */}
       {resume.education && resume.education.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2.5">
+          <h2
+            className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-2.5"
+            style={{ borderBottomColor: theme.accent }}
+          >
             Education & Academic Credentials
           </h2>
           <div className="space-y-2.5">
@@ -198,7 +216,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {resume.certifications && resume.certifications.length > 0 && (
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2">
+              <h2
+                className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-2"
+                style={{ borderBottomColor: theme.accent }}
+              >
                 Certifications
               </h2>
               <div className="space-y-1.5 text-xs">
@@ -214,7 +235,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
 
           {countryCVInfo.memberships && countryCVInfo.memberships.length > 0 && (
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2">
+              <h2
+                className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-2"
+                style={{ borderBottomColor: theme.accent }}
+              >
                 Professional Memberships
               </h2>
               <div className="space-y-1.5 text-xs">
@@ -233,7 +257,10 @@ export const QatarProfessionalTemplate: React.FC<Props> = ({ resume }) => {
       {/* Languages */}
       {resume.languages && resume.languages.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 border-orange-500 pb-1 mb-2">
+          <h2
+            className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b-2 pb-1 mb-2"
+            style={{ borderBottomColor: theme.accent }}
+          >
             Languages
           </h2>
           <div className="flex flex-wrap gap-2 text-xs">

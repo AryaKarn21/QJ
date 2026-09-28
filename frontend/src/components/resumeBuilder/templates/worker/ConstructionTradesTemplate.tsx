@@ -1,34 +1,33 @@
 import React from 'react';
 import type { Resume } from '../../resumeApi';
+import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
-
 import { ResumeLink } from '../shared/ResumeLink';
+
 interface TemplateProps {
   resume: Resume;
 }
 
-const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex items-center gap-2 mb-3">
-    <div className="w-3 h-3 border-2 border-[#e67e22] rotate-45 flex-shrink-0" />
-    <h2 className="text-[11.5px] font-extrabold uppercase tracking-[0.15em] text-[#2c3e50]">
-      {children}
-    </h2>
-    <div className="flex-1 h-px bg-[#e67e22]/40" />
-  </div>
-);
-
 /**
- * Construction & Skilled Trades — earthy orange and dark slate, highlights
+ * Construction & Skilled Trades — dark slate with customizable theme accents, highlights
  * trade skills, tools/equipment, site projects, and safety certifications.
  */
 export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) => {
+  const theme = getTheme(resume.theme, resume.fontFamily);
   const { personalInfo } = resume;
 
+  const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-3 h-3 border-2 rotate-45 flex-shrink-0" style={{ borderColor: theme.accent }} />
+      <h2 className="text-[11.5px] font-extrabold uppercase tracking-[0.15em] text-[#2c3e50]">
+        {children}
+      </h2>
+      <div className="flex-1 h-px" style={{ backgroundColor: theme.accent + '40' }} />
+    </div>
+  );
+
   // Section-wise layout system: each entry renders one manageable section.
-  // The body below loops getVisibleOrderedSections(resume) — which already
-  // filters out hidden and empty sections — so order/visibility follow
-  // exactly what the user configured in the editor's Sections panel.
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     summary: () => (
       <section className="mb-5">
@@ -41,7 +40,11 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
         <SectionHeading>Trade Skills &amp; Tools</SectionHeading>
         <div className="flex flex-wrap gap-2">
           {resume.skills.map((s, i) => (
-            <span key={s._id || i} className="rounded-sm border-l-2 border-[#e67e22] bg-[#fef9f5] px-2.5 py-1 text-[12px] font-medium">
+            <span
+              key={s._id || i}
+              className="rounded-sm border-l-2 px-2.5 py-1 text-[12px] font-medium"
+              style={{ borderLeftColor: theme.accent, backgroundColor: theme.accentSoft, color: theme.text }}
+            >
               {s.name}
             </span>
           ))}
@@ -53,12 +56,14 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
         <SectionHeading>Work History</SectionHeading>
         <div className="space-y-4">
           {resume.experience.map((exp, i) => (
-            <div key={exp._id || i} className="border-l-2 border-[#e67e22]/30 pl-4">
+            <div key={exp._id || i} className="border-l-2 pl-4" style={{ borderLeftColor: theme.accent + '4D' }}>
               <div className="flex items-baseline justify-between">
                 <p className="text-[13px] font-bold text-[#2c3e50]">{exp.role || 'Role'}</p>
                 <p className="text-[11px] text-[#888] italic">{formatDateRange(exp.startDate, exp.endDate, exp.current)}</p>
               </div>
-              <p className="text-[12px] font-semibold text-[#e67e22]">{exp.company}{exp.location ? ` · ${exp.location}` : ''}</p>
+              <p className="text-[12px] font-semibold" style={{ color: theme.accent }}>
+                {exp.company}{exp.location ? ` · ${exp.location}` : ''}
+              </p>
               {exp.description && (
                 <ul className="mt-1.5 list-disc pl-4 space-y-0.5">
                   {toBulletLines(exp.description).map((line, li) => (
@@ -106,7 +111,7 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
         <div className="grid grid-cols-2 gap-2">
           {resume.certifications.map((c, i) => (
             <div key={c._id || i} className="flex items-start gap-2 rounded bg-[#f0f0f0] px-3 py-2">
-              <span className="text-[#e67e22] font-bold mt-0.5">✓</span>
+              <span className="font-bold mt-0.5" style={{ color: theme.accent }}>✓</span>
               <div>
                 <p className="text-[12px] font-semibold">{c.name}</p>
                 {c.issuer && <p className="text-[11px] text-[#666]">{c.issuer}</p>}
@@ -205,18 +210,18 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
   return (
     <div
       className="mx-auto w-full max-w-[720px] bg-white text-[#2c2c2c]"
-      style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+      style={{ fontFamily: theme.fontBody }}
     >
       {/* Header */}
       <div
         className="px-10 py-7"
         style={{ background: 'linear-gradient(135deg, #2c3e50 0%, #3d5a73 100%)' }}
       >
-        <h1 className="text-[27px] font-extrabold text-white uppercase tracking-wide">
+        <h1 className="text-[27px] font-extrabold text-white uppercase tracking-wide" style={{ fontFamily: theme.fontHeading }}>
           {personalInfo.fullName || 'Your Name'}
         </h1>
         {resume.targetRole && (
-          <p className="text-[14px] mt-1 font-bold text-[#e67e22]">{resume.targetRole}</p>
+          <p className="text-[14px] mt-1 font-bold" style={{ color: theme.accent }}>{resume.targetRole}</p>
         )}
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-300">
           {personalInfo.phone && <span>{personalInfo.phone}</span>}
@@ -225,8 +230,8 @@ export const ConstructionTradesTemplate: React.FC<TemplateProps> = ({ resume }) 
         </div>
       </div>
 
-      {/* Orange rule */}
-      <div className="h-1.5 bg-[#e67e22]" />
+      {/* Theme Accent rule */}
+      <div className="h-1.5" style={{ backgroundColor: theme.accent }} />
 
       <div className="px-10 py-7">
         {getVisibleOrderedSections(resume).map((id) => {

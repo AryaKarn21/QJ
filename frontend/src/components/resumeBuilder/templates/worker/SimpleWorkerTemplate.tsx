@@ -1,32 +1,31 @@
 import React from 'react';
 import type { Resume } from '../../resumeApi';
+import { getTheme } from '../../themePresets';
 import { formatDateRange, toBulletLines } from '../shared/templateUtils';
 import { getVisibleOrderedSections, getCustomSectionContent } from '../shared/sections';
-
 import { ResumeLink } from '../shared/ResumeLink';
+
 interface TemplateProps {
   resume: Resume;
 }
 
-const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex items-center gap-2 mb-2.5">
-    <div className="w-1 h-4 bg-[#e2621b] rounded-sm flex-shrink-0" />
-    <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#e2621b]">{children}</h2>
-    <div className="flex-1 h-px bg-[#fbe0cd]" />
-  </div>
-);
-
 /**
- * Simple Worker — clean single-column layout with orange accents.
+ * Simple Worker — clean single-column layout with customizable theme accents.
  * Straightforward and general-purpose, suited to any frontline role.
  */
 export const SimpleWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
+  const theme = getTheme(resume.theme, resume.fontFamily);
   const { personalInfo } = resume;
 
+  const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="flex items-center gap-2 mb-2.5">
+      <div className="w-1 h-4 rounded-sm flex-shrink-0" style={{ backgroundColor: theme.accent }} />
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: theme.accent }}>{children}</h2>
+      <div className="flex-1 h-px" style={{ backgroundColor: theme.accent + '33' }} />
+    </div>
+  );
+
   // Section-wise layout system: each entry renders one manageable section.
-  // The body below loops getVisibleOrderedSections(resume) — which already
-  // filters out hidden and empty sections — so order/visibility follow
-  // exactly what the user configured in the editor's Sections panel.
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     summary: () => (
       <section className="mb-5">
@@ -39,7 +38,11 @@ export const SimpleWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
         <SectionHeading>Skills</SectionHeading>
         <div className="flex flex-wrap gap-2">
           {resume.skills.map((s, i) => (
-            <span key={s._id || i} className="rounded-full bg-[#fbe0cd] px-3 py-1 text-[11.5px] font-semibold text-[#e2621b]">
+            <span
+              key={s._id || i}
+              className="rounded-full px-3 py-1 text-[11.5px] font-semibold"
+              style={{ backgroundColor: theme.accentSoft, color: theme.accent }}
+            >
               {s.name}
             </span>
           ))}
@@ -53,7 +56,7 @@ export const SimpleWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
           {resume.experience.map((exp, i) => (
             <div key={exp._id || i}>
               <div className="flex items-baseline justify-between">
-                <p className="text-[13px] font-bold text-[#e2621b]">{exp.role || 'Role'}</p>
+                <p className="text-[13px] font-bold" style={{ color: theme.accent }}>{exp.role || 'Role'}</p>
                 <p className="text-[11px] text-[#666] italic">{formatDateRange(exp.startDate, exp.endDate, exp.current)}</p>
               </div>
               <p className="text-[12px] font-semibold text-[#444]">{exp.company}{exp.location ? ` | ${exp.location}` : ''}</p>
@@ -204,17 +207,17 @@ export const SimpleWorkerTemplate: React.FC<TemplateProps> = ({ resume }) => {
   return (
     <div
       className="mx-auto w-full max-w-[720px] bg-white text-[#1e1e1e]"
-      style={{ fontFamily: 'Calibri, Arial, sans-serif' }}
+      style={{ fontFamily: theme.fontBody }}
     >
-      {/* Orange Header */}
-      <div className="bg-[#e2621b] px-10 py-7 text-white">
-        <h1 className="text-[26px] font-bold tracking-wide">
+      {/* Theme Header Banner */}
+      <div className="px-10 py-7 text-white" style={{ backgroundColor: theme.accent }}>
+        <h1 className="text-[26px] font-bold tracking-wide" style={{ fontFamily: theme.fontHeading }}>
           {personalInfo.fullName || 'Your Name'}
         </h1>
         {resume.targetRole && (
-          <p className="text-[13px] mt-0.5 text-orange-100 font-medium">{resume.targetRole}</p>
+          <p className="text-[13px] mt-0.5 text-white/90 font-medium">{resume.targetRole}</p>
         )}
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-orange-100">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/80">
           {personalInfo.phone && <span>{personalInfo.phone}</span>}
           {personalInfo.email && <span>{personalInfo.email}</span>}
           {personalInfo.location && <span>{personalInfo.location}</span>}

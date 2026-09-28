@@ -21,7 +21,7 @@ export const QatarExecutiveTemplate: React.FC<Props> = ({ resume }) => {
       <div className="border-b-4 border-slate-900 pb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
           <div className="flex-1">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-orange-600">
+            <span className="text-xs font-extrabold uppercase tracking-widest" style={{ color: theme.accent }}>
               Executive Profile • Gulf Region
             </span>
             <h1 className="mt-1 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
@@ -76,7 +76,7 @@ export const QatarExecutiveTemplate: React.FC<Props> = ({ resume }) => {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
             {resume.skills.map((s, idx) => (
               <div key={idx} className="flex items-center gap-2 rounded bg-slate-50 border border-slate-200 px-3 py-1.5 font-medium text-slate-800">
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: theme.accent }} />
                 <span className="truncate">{s.name}</span>
               </div>
             ))}
@@ -99,7 +99,7 @@ export const QatarExecutiveTemplate: React.FC<Props> = ({ resume }) => {
                     {formatDateRange(exp.startDate, exp.endDate, exp.current)}
                   </span>
                 </div>
-                <p className="text-xs font-bold text-orange-600">
+                <p className="text-xs font-bold" style={{ color: theme.accent }}>
                   {exp.company}{exp.location ? ` • ${exp.location}` : ''}
                 </p>
                 {exp.description && (

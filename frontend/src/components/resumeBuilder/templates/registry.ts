@@ -388,9 +388,8 @@ const HAND_WRITTEN_TEMPLATES: TemplateDefinition[] = [
     name: 'Simple Worker',
     category: 'Worker',
     atsFriendly: true,
-    description: 'Clean one-page layout with orange accents — perfect for any frontline or general role.',
+    description: 'Clean one-page layout with customizable theme accents — perfect for any frontline or general role.',
     component: SimpleWorkerTemplate,
-    fontCustomizable: false,
   },
   {
     id: 'worker-warehouse',
@@ -424,9 +423,8 @@ const HAND_WRITTEN_TEMPLATES: TemplateDefinition[] = [
     name: 'Construction & Trades',
     category: 'Worker',
     atsFriendly: true,
-    description: 'Earthy orange and slate, highlights trade skills, tools, projects, and certifications.',
+    description: 'Dark slate with customizable theme accents, highlights trade skills, tools, projects, and certifications.',
     component: ConstructionTradesTemplate,
-    fontCustomizable: false,
   },
   {
     id: 'worker-hospitality',
