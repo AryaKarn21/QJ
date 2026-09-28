@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { toast } from 'react-toastify';
 import { logResumeBuild } from './aiUsageApi';
 import type { Resume } from '../resumeApi';
 import '../resumeBuilder.css';   // page‑break avoidance styles
@@ -7,6 +9,7 @@ import { getVisibleOrderedSections, sectionLabel, getCustomSectionContent, isCus
 import { getFontFamilyPreset } from '../themePresets';
 import { sanitizeResumeLink } from '../templates/shared/ResumeLink';
 import { shouldShowPageNumber, formatPageNumberText } from './pageNumberFormat';
+import { resolveMediaUrl } from '../../../utils/mediaUrl';
 
 // Same combined fontScale × spacing multiplier ResumeEditor.tsx's live
 // preview applies via CSS `zoom` — kept here too so the exported PDF's
@@ -14,11 +17,210 @@ import { shouldShowPageNumber, formatPageNumberText } from './pageNumberFormat';
 const SPACING_SCALE: Record<string, number> = { compact: 0.97, standard: 1, relaxed: 1.05 };
 const combinedScale = (resume: Resume) => (resume.fontScale ?? 1) * (SPACING_SCALE[resume.spacing || 'standard'] ?? 1);
 
+export async function appendDocumentAppendix(
+  mainPdfBytes: ArrayBuffer,
+  resume: Resume
+): Promise<Uint8Array> {
+  const documents = resume.documents || [];
+  const appendixDocs = documents
+    .filter((d) => d.includeInDownload && (d.fileUrl || d._id))
+    .slice()
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  if (appendixDocs.length === 0) {
+    return new Uint8Array(mainPdfBytes);
+  }
+
+  const mergedPdf = await PDFDocument.load(mainPdfBytes);
+  const fontBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+  const fontNormal = await mergedPdf.embedFont(StandardFonts.Helvetica);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const authHeaders: Record<string, string> = {};
+  if (token) {
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com').replace(/\/+$/, '');
+  let failedCount = 0;
+
+  for (const doc of appendixDocs) {
+    try {
+      const candidateUrls: string[] = [];
+
+      // 1. Authenticated backend endpoint if resume._id and doc._id exist
+      if (resume._id && doc._id) {
+        const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+        candidateUrls.push(`${apiBase}/api/resumes/${resume._id}/documents/${doc._id}/file${qs}`);
+      }
+
+      // 2. Resolved direct media URL
+      if (doc.fileUrl) {
+        const resolved = resolveMediaUrl(doc.fileUrl);
+        if (resolved && !candidateUrls.includes(resolved)) {
+          candidateUrls.push(resolved);
+        }
+      }
+
+      let res: Response | null = null;
+      let usedUrl = '';
+
+      for (const url of candidateUrls) {
+        try {
+          const isExternal =
+            url.startsWith('https://res.cloudinary.com/') ||
+            (url.startsWith('https://') &&
+              typeof window !== 'undefined' &&
+              !url.includes(window.location.hostname));
+
+          const headers = isExternal ? {} : authHeaders;
+          const fetchRes = await fetch(url, { headers });
+          if (fetchRes.ok) {
+            res = fetchRes;
+            usedUrl = url;
+            break;
+          }
+        } catch (fetchErr) {
+          console.warn(`Attempt to fetch document from ${url} failed:`, fetchErr);
+        }
+      }
+
+      if (!res) {
+        throw new Error(`Could not load document: ${doc.name}`);
+      }
+
+      const isPdf =
+        doc.mimeType === 'application/pdf' ||
+        usedUrl.toLowerCase().endsWith('.pdf') ||
+        usedUrl.toLowerCase().includes('.pdf?') ||
+        doc.fileUrl?.toLowerCase().endsWith('.pdf');
+
+      if (isPdf) {
+        const donorBytes = await res.arrayBuffer();
+        const donorPdf = await PDFDocument.load(donorBytes);
+        const copiedPages = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
+        for (const page of copiedPages) {
+          mergedPdf.addPage(page);
+        }
+      } else {
+        const imgBytes = await res.arrayBuffer();
+        let embeddedImg;
+
+        try {
+          if (
+            doc.mimeType === 'image/png' ||
+            usedUrl.toLowerCase().endsWith('.png') ||
+            doc.fileUrl?.toLowerCase().endsWith('.png')
+          ) {
+            embeddedImg = await mergedPdf.embedPng(imgBytes);
+          } else if (
+            doc.mimeType === 'image/jpeg' ||
+            doc.mimeType === 'image/jpg' ||
+            usedUrl.toLowerCase().endsWith('.jpg') ||
+            usedUrl.toLowerCase().endsWith('.jpeg') ||
+            doc.fileUrl?.toLowerCase().endsWith('.jpg') ||
+            doc.fileUrl?.toLowerCase().endsWith('.jpeg')
+          ) {
+            embeddedImg = await mergedPdf.embedJpg(imgBytes);
+          } else {
+            throw new Error('Fallback to canvas conversion for format');
+          }
+        } catch {
+          try {
+            const blob = new Blob([imgBytes], { type: doc.mimeType || 'image/png' });
+            const objectUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = objectUrl;
+            });
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 800;
+            canvas.height = img.naturalHeight || 600;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0);
+            const pngDataUrl = canvas.toDataURL('image/png');
+            URL.revokeObjectURL(objectUrl);
+            embeddedImg = await mergedPdf.embedPng(pngDataUrl);
+          } catch (conversionErr) {
+            console.error('Failed to convert image for appendix:', doc.name, conversionErr);
+          }
+        }
+
+        if (embeddedImg) {
+          const pageWidth = 595.28;
+          const pageHeight = 841.89;
+          const page = mergedPdf.addPage([pageWidth, pageHeight]);
+
+          page.drawText('SUPPORTING DOCUMENT APPENDIX', {
+            x: 40,
+            y: pageHeight - 42,
+            size: 13,
+            font: fontBold,
+            color: rgb(0.12, 0.16, 0.23),
+          });
+
+          const typeLabel = (doc.documentType || 'Document').toUpperCase();
+          page.drawText(`${typeLabel} — ${doc.name}`, {
+            x: 40,
+            y: pageHeight - 58,
+            size: 10,
+            font: fontNormal,
+            color: rgb(0.39, 0.45, 0.55),
+          });
+
+          page.drawLine({
+            start: { x: 40, y: pageHeight - 66 },
+            end: { x: pageWidth - 40, y: pageHeight - 66 },
+            thickness: 1,
+            color: rgb(0.88, 0.91, 0.94),
+          });
+
+          const maxW = pageWidth - 80;
+          const maxH = pageHeight - 110;
+          const dims = embeddedImg.scale(1);
+          const scale = Math.min(maxW / dims.width, maxH / dims.height, 1);
+          const renderW = dims.width * scale;
+          const renderH = dims.height * scale;
+          const renderX = (pageWidth - renderW) / 2;
+          const renderY = (pageHeight - 85 - renderH) / 2 + 30;
+
+          page.drawImage(embeddedImg, {
+            x: renderX,
+            y: renderY,
+            width: renderW,
+            height: renderH,
+          });
+        }
+      }
+    } catch (err) {
+      failedCount++;
+      console.error(`Failed to append document to PDF: ${doc.name}`, err);
+    }
+  }
+
+  if (failedCount > 0) {
+    try {
+      toast.warn(
+        failedCount === 1
+          ? 'Supporting document could not be loaded.'
+          : `${failedCount} supporting documents could not be loaded.`
+      );
+    } catch {
+      // Ignore if toast is unmounted
+    }
+  }
+
+  return await mergedPdf.save();
+}
+
 export const generatePDF = async (
   elementRef: React.RefObject<HTMLDivElement>,
   fileName: string,
   templateId?: string,
-  templateName?: string
+  templateName?: string,
+  resume?: Resume
 ) => {
   if (!elementRef.current) return;
 
@@ -78,7 +280,25 @@ export const generatePDF = async (
     }
   }
 
-  pdf.save(fileName);
+  const appendixDocs = (resume?.documents || []).filter((d) => d.includeInDownload && (d.fileUrl || d._id));
+
+  if (appendixDocs.length > 0 && resume) {
+    try {
+      const mainBytes = pdf.output('arraybuffer');
+      const finalPdfBytes = await appendDocumentAppendix(mainBytes, resume);
+      const blob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (appendErr) {
+      console.error('Appendix merge error, falling back to direct save:', appendErr);
+      pdf.save(fileName);
+    }
+  } else {
+    pdf.save(fileName);
+  }
 
   if (templateId) {
     logResumeBuild(templateId, templateName, 'downloaded');
@@ -279,9 +499,14 @@ const SECTION_RENDERERS: Record<string, (w: TextPdfWriter, r: Resume) => void> =
     w.paragraph(r.summary);
   },
   experience: (w, r) => {
+    const validExp = (r.experience || []).filter(
+      (e) => (e.role?.trim() || (e as any).title?.trim() || e.company?.trim() || e.description?.trim())
+    );
+    if (!validExp.length) return;
     w.heading('Work Experience');
-    (r.experience || []).forEach((e) => {
-      w.entryHeader(`${e.role || 'Role'}${e.company ? ' — ' + e.company : ''}`, dateRange(e.startDate, e.endDate, e.current));
+    validExp.forEach((e) => {
+      const role = e.role || (e as any).title || 'Role';
+      w.entryHeader(`${role}${e.company ? ' — ' + e.company : ''}`, dateRange(e.startDate, e.endDate, e.current));
       if (e.location) w.subLine(e.location);
       w.bullets(e.description);
       w.link('Company Link', e.link);
@@ -533,9 +758,95 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
     w.pdf.text(text, x, textY);
   }
 
-  w.pdf.save(fileName);
+  const appendixDocs = (resume.documents || []).filter((d) => d.includeInDownload && (d.fileUrl || d._id));
+  if (appendixDocs.length > 0) {
+    try {
+      const mainBytes = w.pdf.output('arraybuffer');
+      const finalPdfBytes = await appendDocumentAppendix(mainBytes, resume);
+      const blob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (appendErr) {
+      console.error('Appendix merge error in ATS safe PDF:', appendErr);
+      w.pdf.save(fileName);
+    }
+  } else {
+    w.pdf.save(fileName);
+  }
 
   if (resume.layout) {
     logResumeBuild(resume.layout, 'ats-safe-text-pdf', 'downloaded');
   }
+};
+
+export const generateResumePdfBlob = async (resume: Resume): Promise<Blob> => {
+  const font = getFontFamilyPreset(resume.fontFamily).pdfFont;
+  const w = new TextPdfWriter(combinedScale(resume), font);
+  const p = resume.personalInfo || ({} as Resume['personalInfo']);
+
+  w.name(p.fullName || resume.title || 'Resume');
+  w.contactLine([p.email, p.phone, p.location, p.linkedin, p.github, p.website]);
+
+  const renderedSections = new Set<string>();
+
+  for (const sectionId of getVisibleOrderedSections(resume)) {
+    if (isCustomSectionId(sectionId)) {
+      const content = getCustomSectionContent(resume, sectionId);
+      if (!content) continue;
+      w.heading(content.title || sectionLabel(resume, sectionId));
+      w.paragraph(content.content);
+      w.link('Learn More', content.link);
+      continue;
+    }
+    SECTION_RENDERERS[sectionId]?.(w, resume);
+    renderedSections.add(sectionId);
+  }
+
+  if (resume.documents && resume.documents.some((d) => d.includeInDownload) && !renderedSections.has('documents')) {
+    SECTION_RENDERERS['documents']?.(w, resume);
+  }
+
+  if (resume.countryCVInfo && !renderedSections.has('declaration')) {
+    SECTION_RENDERERS['declaration']?.(w, resume);
+  }
+
+  const pageOption = resume.pageNumbering || 'all';
+  const totalPages = w.pdf.internal.getNumberOfPages();
+  const align = resume.pageNumberAlign || 'right';
+  const isHeaderPosition = resume.pageNumberPosition === 'header';
+  const lineY = isHeaderPosition ? 12 : 287;
+  const textY = isHeaderPosition ? 8 : 292;
+
+  for (let i = 1; i <= totalPages; i++) {
+    if (!shouldShowPageNumber(pageOption, i === 1, i === totalPages)) continue;
+
+    w.pdf.setPage(i);
+    w.pdf.setFont('helvetica', 'normal');
+    w.pdf.setFontSize(8.5);
+    w.pdf.setTextColor(100, 116, 139);
+    w.pdf.setDrawColor(226, 232, 240);
+    w.pdf.setLineWidth(0.3);
+    w.pdf.line(MARGIN, lineY, PAGE_WIDTH - MARGIN, lineY);
+
+    const text = formatPageNumberText(i - 1, totalPages, resume.pageNumberStyle, resume.pageNumberStart);
+    const textWidth = w.pdf.getTextWidth(text);
+    const x =
+      align === 'left' ? MARGIN : align === 'center' ? PAGE_WIDTH / 2 - textWidth / 2 : PAGE_WIDTH - MARGIN - textWidth;
+    w.pdf.text(text, x, textY);
+  }
+
+  const mainBytes = w.pdf.output('arraybuffer');
+  const appendixDocs = (resume.documents || []).filter((d) => d.includeInDownload && (d.fileUrl || d._id));
+  if (appendixDocs.length > 0) {
+    try {
+      const finalPdfBytes = await appendDocumentAppendix(mainBytes, resume);
+      return new Blob([finalPdfBytes as any], { type: 'application/pdf' });
+    } catch (err) {
+      console.error('Failed to append appendix for blob:', err);
+    }
+  }
+  return new Blob([mainBytes], { type: 'application/pdf' });
 };

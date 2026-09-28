@@ -54,7 +54,7 @@ export const ModernTemplate: React.FC<TemplateProps> = ({ resume }) => {
         </section>
       )}
 
-      {resume.experience.length > 0 && (
+      {Boolean(resume.experience?.length && resume.experience.some((e) => e.role?.trim() || e.company?.trim() || e.description?.trim())) && (
         <section className="mt-6">
           <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: theme.accent }}>
             Experience

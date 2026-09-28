@@ -257,8 +257,20 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <div className="relative">
               <select
                 className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-                value={countryCVInfo.gender || ''}
-                onChange={(e) => onChange({ gender: e.target.value })}
+                value={
+                  GENDER_OPTIONS.some((g) => g.value === countryCVInfo.gender)
+                    ? countryCVInfo.gender
+                    : countryCVInfo.gender
+                    ? 'Other'
+                    : ''
+                }
+                onChange={(e) => {
+                  if (e.target.value === 'Other') {
+                    onChange({ gender: 'Other' });
+                  } else {
+                    onChange({ gender: e.target.value });
+                  }
+                }}
                 required
               >
                 <option value="">Select Gender…</option>
@@ -273,6 +285,15 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
             </div>
+            {Boolean(countryCVInfo.gender && (countryCVInfo.gender === 'Other' || !GENDER_OPTIONS.some((g) => g.value === countryCVInfo.gender))) && (
+              <input
+                type="text"
+                className={`${fieldClass} mt-1.5`}
+                placeholder="Specify gender…"
+                value={countryCVInfo.gender === 'Other' ? '' : countryCVInfo.gender}
+                onChange={(e) => onChange({ gender: e.target.value || 'Other' })}
+              />
+            )}
           </div>
 
           {/* Street / Work Address */}
@@ -315,8 +336,20 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <div className="relative">
               <select
                 className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-                value={drivingDetails.licenseType || ''}
-                onChange={(e) => updateDrivingDetails({ licenseType: e.target.value })}
+                value={
+                  DRIVING_LICENSE_TYPES.includes(drivingDetails.licenseType || '')
+                    ? drivingDetails.licenseType
+                    : drivingDetails.licenseType
+                    ? 'Other'
+                    : ''
+                }
+                onChange={(e) => {
+                  if (e.target.value === 'Other') {
+                    updateDrivingDetails({ licenseType: 'Other' });
+                  } else {
+                    updateDrivingDetails({ licenseType: e.target.value });
+                  }
+                }}
               >
                 <option value="">Select License Type…</option>
                 {DRIVING_LICENSE_TYPES.map((lt) => (
@@ -324,12 +357,22 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                     {lt}
                   </option>
                 ))}
+                <option value="Other">Other (Specify)</option>
               </select>
               <ChevronDown
                 size={14}
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
             </div>
+            {Boolean(drivingDetails.licenseType && (drivingDetails.licenseType === 'Other' || !DRIVING_LICENSE_TYPES.includes(drivingDetails.licenseType))) && (
+              <input
+                type="text"
+                className={`${fieldClass} mt-1.5`}
+                placeholder="Specify license category…"
+                value={drivingDetails.licenseType === 'Other' ? '' : drivingDetails.licenseType}
+                onChange={(e) => updateDrivingDetails({ licenseType: e.target.value || 'Other' })}
+              />
+            )}
           </div>
 
           {/* Country */}
@@ -338,8 +381,20 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
             <div className="relative">
               <select
                 className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-                value={drivingDetails.country || ''}
-                onChange={(e) => updateDrivingDetails({ country: e.target.value })}
+                value={
+                  SUPPORTED_COUNTRIES_LIST.includes(drivingDetails.country || '')
+                    ? drivingDetails.country
+                    : drivingDetails.country
+                    ? 'Other'
+                    : ''
+                }
+                onChange={(e) => {
+                  if (e.target.value === 'Other') {
+                    updateDrivingDetails({ country: 'Other' });
+                  } else {
+                    updateDrivingDetails({ country: e.target.value });
+                  }
+                }}
               >
                 <option value="">Select Country…</option>
                 {SUPPORTED_COUNTRIES_LIST.map((c) => (
@@ -347,12 +402,22 @@ export const CountrySpecificFieldsEditor: React.FC<CountrySpecificFieldsEditorPr
                     {c}
                   </option>
                 ))}
+                <option value="Other">Other (Specify)</option>
               </select>
               <ChevronDown
                 size={14}
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
             </div>
+            {Boolean(drivingDetails.country && (drivingDetails.country === 'Other' || !SUPPORTED_COUNTRIES_LIST.includes(drivingDetails.country))) && (
+              <input
+                type="text"
+                className={`${fieldClass} mt-1.5`}
+                placeholder="Specify issuing country…"
+                value={drivingDetails.country === 'Other' ? '' : drivingDetails.country}
+                onChange={(e) => updateDrivingDetails({ country: e.target.value || 'Other' })}
+              />
+            )}
           </div>
 
           {/* License Number */}

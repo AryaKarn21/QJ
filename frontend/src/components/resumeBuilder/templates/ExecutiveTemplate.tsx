@@ -44,7 +44,7 @@ export const ExecutiveTemplate: React.FC<TemplateProps> = ({ resume }) => {
         </section>
       )}
 
-      {resume.experience.length > 0 && (
+      {Boolean(resume.experience?.length && resume.experience.some((e) => e.role?.trim() || e.company?.trim() || e.description?.trim())) && (
         <section className="mt-5">
           <h2 className="text-sm font-bold uppercase" style={{ color: theme.accent }}>
             Professional Experience

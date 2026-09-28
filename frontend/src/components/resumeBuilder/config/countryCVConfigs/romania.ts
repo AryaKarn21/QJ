@@ -38,7 +38,7 @@ export const romaniaConfig: CountryCVConfig = {
       id: 'experience',
       name: 'Work Experience',
       description: 'Reverse chronological employment history highlighting key responsibilities and achievements.',
-      required: true,
+      required: false,
     },
     {
       id: 'education',

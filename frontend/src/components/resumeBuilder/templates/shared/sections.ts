@@ -23,10 +23,14 @@ export interface SectionDefinition {
 }
 
 const isListEmpty = (arr?: unknown[]) => !arr || arr.length === 0;
+const isExperienceEmpty = (arr?: Resume['experience']) =>
+  !arr ||
+  arr.length === 0 ||
+  !arr.some((e) => (e.role?.trim() || (e as any).title?.trim() || e.company?.trim() || e.description?.trim()));
 
 export const SECTION_DEFS: SectionDefinition[] = [
   { id: 'summary', label: 'Professional Summary', isEmpty: (r) => !r.summary?.trim() },
-  { id: 'experience', label: 'Work Experience', isEmpty: (r) => isListEmpty(r.experience) },
+  { id: 'experience', label: 'Work Experience', isEmpty: (r) => isExperienceEmpty(r.experience) },
   { id: 'internships', label: 'Internships', isEmpty: (r) => isListEmpty(r.internships) },
   { id: 'volunteering', label: 'Volunteer Experience', isEmpty: (r) => isListEmpty(r.volunteering) },
   { id: 'education', label: 'Education', isEmpty: (r) => isListEmpty(r.education) },

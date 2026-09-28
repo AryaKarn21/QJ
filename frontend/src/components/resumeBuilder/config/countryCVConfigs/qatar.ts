@@ -60,7 +60,7 @@ export const qatarConfig: CountryCVConfig = {
       id: 'experience',
       name: 'Professional Experience',
       description: 'Chronological roles detailing scope, key achievements, and delivered value.',
-      required: true,
+      required: false,
     },
     {
       id: 'education',

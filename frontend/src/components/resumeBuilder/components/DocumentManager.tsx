@@ -100,6 +100,16 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }
   };
 
+  const getDocFileUrl = (doc: ResumeDocument) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (resumeId && doc._id) {
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com').replace(/\/+$/, '');
+      const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+      return `${apiBase}/api/resumes/${resumeId}/documents/${doc._id}/file${qs}`;
+    }
+    return resolveMediaUrl(doc.fileUrl);
+  };
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -115,7 +125,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       </div>
 
       <p className="text-[11px] text-slate-500">
-        Upload supporting documents (Passport, Certificates, etc.). Documents marked with a checkmark will be appended as high-resolution appendix pages at the end of the downloaded CV.
+        Documents selected for inclusion will be appended as supporting-document pages to your downloaded CV.
       </p>
 
       {/* Upload Box */}
@@ -205,7 +215,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     type="button"
                     onClick={() => handleToggleInclude(doc)}
                     className="text-orange-600 hover:text-orange-700 shrink-0"
-                    title={doc.includeInDownload ? 'Included in PDF' : 'Excluded from PDF'}
+                    title={doc.includeInDownload ? 'Include in downloaded CV' : 'Do not include in downloaded CV'}
                   >
                     {doc.includeInDownload ? (
                       <CheckSquare size={16} />
@@ -223,26 +233,29 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       {doc.fileSize ? `${Math.round(doc.fileSize / 1024)} KB` : 'Attached'}
                       {doc.includeInDownload ? (
                         <span className="text-emerald-600 font-semibold ml-1.5">
-                          ✓ In Download
+                          ☑ Include in downloaded CV
                         </span>
                       ) : (
-                        <span className="text-slate-400 ml-1.5">Excluded</span>
+                        <span className="text-slate-400 ml-1.5">
+                          ☐ Do not include in downloaded CV
+                        </span>
                       )}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDoc(doc)}
+                    className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-700 hover:text-orange-600 hover:bg-orange-50 transition"
+                    title="Preview document"
+                  >
+                    <Eye size={12} />
+                    <span>Preview</span>
+                  </button>
                   <a
-                    href={(() => {
-                      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-                      if (resumeId && doc._id) {
-                        const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://qj.onrender.com').replace(/\/+$/, '');
-                        const qs = token ? `?token=${encodeURIComponent(token)}` : '';
-                        return `${apiBase}/api/resumes/${resumeId}/documents/${doc._id}/file${qs}`;
-                      }
-                      return resolveMediaUrl(doc.fileUrl);
-                    })()}
+                    href={getDocFileUrl(doc)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition"
@@ -275,25 +288,36 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 <h3 className="text-sm font-bold text-slate-900">{previewDoc.name}</h3>
                 <span className="text-[11px] text-slate-500 uppercase">{previewDoc.documentType}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewDoc(null)}
-                className="rounded-full bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={getDocFileUrl(previewDoc)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                >
+                  <ExternalLink size={12} />
+                  <span>Open in tab</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="rounded-full bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-50 rounded-xl my-3">
-              {previewDoc.mimeType === 'application/pdf' ? (
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-50 rounded-xl my-3 min-h-[300px]">
+              {previewDoc.mimeType === 'application/pdf' || previewDoc.fileUrl?.toLowerCase().endsWith('.pdf') ? (
                 <iframe
-                  src={previewDoc.fileUrl}
+                  src={getDocFileUrl(previewDoc)}
                   title={previewDoc.name}
-                  className="h-[60vh] w-full rounded-lg border border-slate-200"
+                  className="h-[60vh] w-full rounded-lg border border-slate-200 bg-white"
                 />
               ) : (
                 <img
-                  src={previewDoc.fileUrl}
+                  src={getDocFileUrl(previewDoc)}
                   alt={previewDoc.name}
                   className="max-h-[60vh] object-contain rounded-lg shadow-sm"
                 />

@@ -38,7 +38,7 @@ export const bosniaConfig: CountryCVConfig = {
       id: 'experience',
       name: 'Work Experience',
       description: 'Companies, positions, dates, responsibilities, and achievements.',
-      required: true,
+      required: false,
     },
     {
       id: 'education',

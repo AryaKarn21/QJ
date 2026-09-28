@@ -42,7 +42,7 @@ export const CvCompletionBar: React.FC<CvCompletionBarProps> = ({ validation, cl
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              {completedCount} / {totalRequiredCount} required fields completed (Driving License is optional)
+              {completedCount} / {totalRequiredCount} required fields completed (Experience & Driving License are optional)
             </p>
           </div>
         </div>

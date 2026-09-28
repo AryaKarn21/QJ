@@ -131,7 +131,7 @@ export const validateCountryCV = (resume: Resume, templateHasPhoto: boolean = tr
     { id: 'address', label: 'Street / Work Address', isRequired: false, isComplete: addressValid },
     { id: 'drivingLicense', label: 'Driving License', isRequired: false, isComplete: drivingLicenseValid },
     { id: 'summary', label: 'About Me / Professional Summary', isRequired: true, isComplete: summaryValid },
-    { id: 'workExperience', label: 'Work Experience', isRequired: true, isComplete: experienceValid },
+    { id: 'workExperience', label: 'Work Experience', isRequired: false, isComplete: experienceValid },
     { id: 'education', label: 'Education & Training', isRequired: true, isComplete: educationValid },
     { id: 'languages', label: 'Language Skills (Language & CEFR Level)', isRequired: true, isComplete: languagesValid },
     { id: 'skills', label: 'Skills', isRequired: true, isComplete: skillsValid },

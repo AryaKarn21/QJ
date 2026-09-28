@@ -550,7 +550,7 @@ const ResumeEditor: React.FC = () => {
     try {
       const fileName = `${resume.personalInfo?.fullName || resume.title || 'resume'}.pdf`.replace(/\s+/g, '_');
       const templateName = getTemplateById(resume.layout)?.name || resume.layout;
-      await generatePDF(previewRef, fileName, resume.layout, templateName);
+      await generatePDF(previewRef, fileName, resume.layout, templateName, resume);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
       setAiError('Could not generate the PDF. Please try again.');
@@ -1053,32 +1053,45 @@ const ResumeEditor: React.FC = () => {
         </Section>
 
         {/* Experience */}
-        <Section title={sectionLabels.experience} addLabel="Add Experience" onAdd={() => update({ experience: [...resume.experience, { ...emptyExperience }] })}>
-          {resume.experience.map((exp, i) => (
-            <EntryCard key={exp._id || i} removeLabel="Remove experience" onRemove={() => update({ experience: resume.experience.filter((_, idx) => idx !== i) })}>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <input className={fieldClass} placeholder="Role / Job Title" value={exp.role || exp.title || ''}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { role: e.target.value, title: e.target.value })} />
-                <input className={fieldClass} placeholder="Company" value={exp.company}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { company: e.target.value, companyId: null })} />
-                <input className={fieldClass} placeholder="Location" value={exp.location}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { location: e.target.value })} />
-                <input className={fieldClass} placeholder="Start (e.g. Jan 2023)" value={exp.startDate}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { startDate: e.target.value })} />
-                <input className={fieldClass} placeholder="End" value={exp.endDate} disabled={exp.current}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { endDate: e.target.value })} />
-                <input type="url" className={fieldClass} placeholder="Company / Experience Link (optional)" value={exp.link || ''}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { link: e.target.value })} />
-              </div>
-              <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-                <input type="checkbox" checked={exp.current}
-                  onChange={(e) => updateArrayItem(resume, update, 'experience', i, { current: e.target.checked })} />
-                I currently work here
-              </label>
-              <textarea className={`${fieldClass} mt-2`} rows={3} placeholder="What did you do?"
-                value={exp.description} onChange={(e) => updateArrayItem(resume, update, 'experience', i, { description: e.target.value })} />
-            </EntryCard>
-          ))}
+        <Section title={`${sectionLabels.experience} (Optional)`} addLabel="Add Experience" onAdd={() => update({ experience: [...resume.experience, { ...emptyExperience }] })}>
+          {resume.experience.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center">
+              <p className="text-xs text-slate-500">No work experience added yet. Work experience is optional.</p>
+              <button
+                type="button"
+                onClick={() => update({ experience: [{ ...emptyExperience }] })}
+                className="mt-2 inline-flex items-center gap-1 rounded-md bg-slate-50 border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <Plus size={12} /> Add Experience
+              </button>
+            </div>
+          ) : (
+            resume.experience.map((exp, i) => (
+              <EntryCard key={exp._id || i} removeLabel="Remove experience" onRemove={() => update({ experience: resume.experience.filter((_, idx) => idx !== i) })}>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input className={fieldClass} placeholder="Role / Job Title" value={exp.role || exp.title || ''}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { role: e.target.value, title: e.target.value })} />
+                  <input className={fieldClass} placeholder="Company" value={exp.company}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { company: e.target.value, companyId: null })} />
+                  <input className={fieldClass} placeholder="Location" value={exp.location}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { location: e.target.value })} />
+                  <input className={fieldClass} placeholder="Start (e.g. Jan 2023)" value={exp.startDate}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { startDate: e.target.value })} />
+                  <input className={fieldClass} placeholder="End" value={exp.endDate} disabled={exp.current}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { endDate: e.target.value })} />
+                  <input type="url" className={fieldClass} placeholder="Company / Experience Link (optional)" value={exp.link || ''}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { link: e.target.value })} />
+                </div>
+                <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                  <input type="checkbox" checked={exp.current}
+                    onChange={(e) => updateArrayItem(resume, update, 'experience', i, { current: e.target.checked })} />
+                  I currently work here
+                </label>
+                <textarea className={`${fieldClass} mt-2`} rows={3} placeholder="What did you do?"
+                  value={exp.description} onChange={(e) => updateArrayItem(resume, update, 'experience', i, { description: e.target.value })} />
+              </EntryCard>
+            ))
+          )}
         </Section>
 
         {/* Internships */}

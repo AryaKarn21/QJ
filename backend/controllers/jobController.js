@@ -2,6 +2,7 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const User = require("../models/User");
 const Jobseeker = require("../models/Jobseeker");
+const Resume = require("../models/Resume");
 const TrendingSettings = require("../models/TrendingSettings");
 const sendNotification = require("../utils/sendNotifications");
 const { COUNTRIES } = require("../data/countries");
@@ -416,17 +417,25 @@ const getJobViews = async (req, res) => {
 
 // Apply in Job
 const applyInJob = async (req, res) => {
-  const { jobId, howDidYouHear, coverLetter } = req.body;
+  const { jobId, howDidYouHear, coverLetter, resumeId } = req.body;
   const jobseekerId = req.user.id;
 
-  if (!req.file) {
-    return res.status(400).json({ message: "Resume file is required." });
+  if (!req.file && !resumeId) {
+    return res.status(400).json({ message: "Resume file or saved resume selection is required." });
   }
 
   try {
     const user = await User.findById(jobseekerId);
     if (!user || user.role !== "jobseeker") {
       return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    let resumeDoc = null;
+    if (resumeId) {
+      resumeDoc = await Resume.findOne({ _id: resumeId, user: jobseekerId });
+      if (!resumeDoc) {
+        return res.status(403).json({ message: "You are not authorized to use this resume." });
+      }
     }
 
     const job = await Job.findById(jobId).populate("employer");
@@ -451,20 +460,29 @@ const applyInJob = async (req, res) => {
         .json({ message: "You have already applied for this job" });
     }
 
-    // Same storage path as every other upload in this app (profile pics,
-    // resumes, company logos) — Cloudinary when configured, local disk
-    // fallback in dev — so the saved value is always a fetchable URL, never
-    // the server's own filesystem path (see applicationUploadMiddleware.js).
-    const resumePath = await persistUpload(req.file, "resumes", jobseekerId);
+    let resumePath = "";
+    if (req.file) {
+      resumePath = await persistUpload(req.file, "resumes", jobseekerId);
+    } else if (resumeDoc) {
+      const primaryDoc = (resumeDoc.documents || []).find((d) => d.includeInDownload && d.fileUrl);
+      resumePath = primaryDoc?.fileUrl || `/api/resumes/${resumeDoc._id}`;
+    }
 
-    const application = new Application({
+    const applicationData = {
       job: jobId,
       applicant: jobseekerId,
       howDidYouHear,
       coverLetter,
       resume: resumePath,
-    });
+    };
 
+    if (resumeDoc) {
+      applicationData.submittedResume = resumeDoc._id;
+      applicationData.submittedResumeId = resumeDoc._id;
+      applicationData.resumeSnapshot = resumeDoc.toObject();
+    }
+
+    const application = new Application(applicationData);
     await application.save();
 
     await Job.findByIdAndUpdate(jobId, {

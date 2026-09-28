@@ -7,12 +7,14 @@
 jest.mock("../models/Job");
 jest.mock("../models/Application");
 jest.mock("../models/User");
+jest.mock("../models/Resume");
 jest.mock("../services/media.service");
 jest.mock("../utils/sendNotifications", () => jest.fn().mockResolvedValue(undefined));
 
 const Job = require("../models/Job");
 const Application = require("../models/Application");
 const User = require("../models/User");
+const Resume = require("../models/Resume");
 const { persistUpload } = require("../services/media.service");
 
 const { applyInJob } = require("../controllers/jobController");
@@ -89,5 +91,46 @@ describe("applyInJob — resume storage failure", () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(persistUpload).not.toHaveBeenCalled();
+  });
+
+  it("rejects with 403 when user attempts to submit a resume they do not own", async () => {
+    Resume.findOne = jest.fn().mockResolvedValue(null);
+
+    const { req, res } = baseReqRes();
+    req.file = undefined;
+    req.body.resumeId = "resume_belonging_to_someone_else";
+
+    await applyInJob(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "You are not authorized to use this resume.",
+    });
+    expect(Resume.findOne).toHaveBeenCalledWith({
+      _id: "resume_belonging_to_someone_else",
+      user: "jobseeker1",
+    });
+  });
+
+  it("succeeds (201) and attaches snapshot when valid owned resumeId is submitted", async () => {
+    const mockResumeDoc = {
+      _id: "my_resume_123",
+      user: "jobseeker1",
+      title: "Senior Engineer Resume",
+      documents: [{ includeInDownload: true, fileUrl: "https://res.cloudinary.com/test/doc.pdf" }],
+      toObject: () => ({ title: "Senior Engineer Resume", experience: [] }),
+    };
+    Resume.findOne = jest.fn().mockResolvedValue(mockResumeDoc);
+    Application.prototype.save = jest.fn().mockResolvedValue(undefined);
+    Job.findByIdAndUpdate.mockResolvedValue(undefined);
+
+    const { req, res } = baseReqRes();
+    req.file = undefined;
+    req.body.resumeId = "my_resume_123";
+
+    await applyInJob(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(Application.prototype.save).toHaveBeenCalled();
   });
 });

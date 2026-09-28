@@ -257,11 +257,13 @@ export const applyToJob = async ({
   howDidYouHear,
   coverLetter,
   resumeFile,
+  resumeId,
 }: {
   jobId: string;
   howDidYouHear: string;
   coverLetter: string;
-  resumeFile: File;
+  resumeFile?: File | null;
+  resumeId?: string;
 }) => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -272,7 +274,12 @@ export const applyToJob = async ({
   formData.append("jobId", jobId);
   formData.append("howDidYouHear", howDidYouHear);
   formData.append("coverLetter", coverLetter);
-  formData.append("resume", resumeFile);
+  if (resumeFile) {
+    formData.append("resume", resumeFile);
+  }
+  if (resumeId) {
+    formData.append("resumeId", resumeId);
+  }
 
   // No explicit Content-Type — see authApi.ts's registerEmployer for why a
   // hand-set 'multipart/form-data' (no boundary) breaks the upload; `api`'s

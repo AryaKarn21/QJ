@@ -41,6 +41,10 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
   const countryContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Custom entry toggles
+  const [isCustomCity, setIsCustomCity] = useState(false);
+  const [isCustomPostalCode, setIsCustomPostalCode] = useState(false);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -90,18 +94,30 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
   };
 
   const handleSelectCountry = (newCountry: string) => {
+    setIsCustomCity(false);
+    setIsCustomPostalCode(false);
     commitLocation({ country: newCountry, city: '', postalCode: '' });
     setIsCountryOpen(false);
     setCountryQuery('');
   };
 
   const handleCityChange = (newCity: string) => {
+    setIsCustomPostalCode(false);
     commitLocation({ city: newCity, postalCode: '' });
   };
 
   const handlePostalCodeChange = (newPostalCode: string) => {
     commitLocation({ postalCode: newPostalCode });
   };
+
+  const isCityInList = cities.some((c) => c.name.toLowerCase() === (city || '').toLowerCase());
+  const showCityCustomInput = isCustomCity || Boolean(city && (!isCityInList || city === 'Other'));
+
+  const isPostalCodeInList = postalCodes.some((pc) => pc.toLowerCase() === (postalCode || '').toLowerCase());
+  const showPostalCodeCustomInput =
+    isCustomPostalCode || Boolean(postalCode && (!isPostalCodeInList || postalCode === 'Other'));
+
+  const isCustomCountry = Boolean(country && (!ALL_WORLD_COUNTRIES.includes(country) || country === 'Other'));
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -201,8 +217,31 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
                   )}
                 </li>
               )}
+              <li className="p-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCountryOpen(false);
+                    setCountryQuery('');
+                    handleSelectCountry('Other');
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-50 rounded font-semibold transition"
+                >
+                  + Other (Enter custom country)
+                </button>
+              </li>
             </ul>
           </div>
+        )}
+
+        {isCustomCountry && (
+          <input
+            type="text"
+            className={`${fieldClass} mt-2`}
+            placeholder="Enter custom country name…"
+            value={country === 'Other' ? '' : country}
+            onChange={(e) => commitLocation({ country: e.target.value || 'Other', city: '', postalCode: '' })}
+          />
         )}
       </div>
 
@@ -212,30 +251,53 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
           City <span className="text-red-500">*</span>
         </label>
         {cities.length > 0 ? (
-          <div className="relative">
-            <select
-              className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-              value={city}
-              onChange={(e) => handleCityChange(e.target.value)}
-              disabled={!country}
-            >
-              <option value="">
-                {!country ? 'Select Country first…' : 'Select City…'}
-              </option>
-              {cities.map((cty) => (
-                <option key={cty.name} value={cty.name}>
-                  {cty.name}
+          <div className="space-y-1.5">
+            <div className="relative">
+              <select
+                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+                value={
+                  isCityInList
+                    ? cities.find((c) => c.name.toLowerCase() === (city || '').toLowerCase())?.name
+                    : showCityCustomInput
+                    ? 'Other'
+                    : ''
+                }
+                onChange={(e) => {
+                  if (e.target.value === 'Other') {
+                    setIsCustomCity(true);
+                    handleCityChange('Other');
+                  } else {
+                    setIsCustomCity(false);
+                    handleCityChange(e.target.value);
+                  }
+                }}
+                disabled={!country}
+              >
+                <option value="">
+                  {!country ? 'Select Country first…' : 'Select City…'}
                 </option>
-              ))}
-              {/* Custom option if user's city is unlisted */}
-              {city && !cities.some((c) => c.name === city) && (
-                <option value={city}>{city}</option>
-              )}
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+                {cities.map((cty) => (
+                  <option key={cty.name} value={cty.name}>
+                    {cty.name}
+                  </option>
+                ))}
+                <option value="Other">Other</option>
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
+            {showCityCustomInput && (
+              <input
+                type="text"
+                className={fieldClass}
+                placeholder="Enter custom city name…"
+                value={city === 'Other' ? '' : city}
+                onChange={(e) => handleCityChange(e.target.value || 'Other')}
+                autoFocus
+              />
+            )}
           </div>
         ) : (
           <input
@@ -255,30 +317,53 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
           Postal Code <span className="text-red-500">*</span>
         </label>
         {postalCodes.length > 0 ? (
-          <div className="relative">
-            <select
-              className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-              value={postalCode}
-              onChange={(e) => handlePostalCodeChange(e.target.value)}
-              disabled={!city}
-            >
-              <option value="">
-                {!city ? 'Select City first…' : 'Select Postal Code…'}
-              </option>
-              {postalCodes.map((pc) => (
-                <option key={pc} value={pc}>
-                  {pc}
+          <div className="space-y-1.5">
+            <div className="relative">
+              <select
+                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
+                value={
+                  isPostalCodeInList
+                    ? postalCodes.find((pc) => pc.toLowerCase() === (postalCode || '').toLowerCase())
+                    : showPostalCodeCustomInput
+                    ? 'Other'
+                    : ''
+                }
+                onChange={(e) => {
+                  if (e.target.value === 'Other') {
+                    setIsCustomPostalCode(true);
+                    handlePostalCodeChange('Other');
+                  } else {
+                    setIsCustomPostalCode(false);
+                    handlePostalCodeChange(e.target.value);
+                  }
+                }}
+                disabled={!city}
+              >
+                <option value="">
+                  {!city ? 'Select City first…' : 'Select Postal Code…'}
                 </option>
-              ))}
-              {/* Custom option if postal code is unlisted */}
-              {postalCode && !postalCodes.includes(postalCode) && (
-                <option value={postalCode}>{postalCode}</option>
-              )}
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+                {postalCodes.map((pc) => (
+                  <option key={pc} value={pc}>
+                    {pc}
+                  </option>
+                ))}
+                <option value="Other">Other</option>
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
+            {showPostalCodeCustomInput && (
+              <input
+                type="text"
+                className={fieldClass}
+                placeholder="Enter custom postal code…"
+                value={postalCode === 'Other' ? '' : postalCode}
+                onChange={(e) => handlePostalCodeChange(e.target.value || 'Other')}
+                autoFocus
+              />
+            )}
           </div>
         ) : (
           <input

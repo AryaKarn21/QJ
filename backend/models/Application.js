@@ -24,6 +24,17 @@ const applicationSchema = new mongoose.Schema(
       type: String, 
       required: true,
     },
+    submittedResume: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Resume",
+    },
+    submittedResumeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Resume",
+    },
+    resumeSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+    },
     status: {
       type: String,
       // "Shortlisted" and "Assessment Assigned" are additive — every
