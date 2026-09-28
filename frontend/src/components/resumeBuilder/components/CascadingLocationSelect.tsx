@@ -35,36 +35,62 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
   fieldClass = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 bg-white',
   labelClass = 'mb-1 block text-xs font-semibold text-slate-700',
 }) => {
-  // Searchable Country Dropdown State
+  // 1. Country State
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const countryContainerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const countrySearchRef = useRef<HTMLInputElement>(null);
 
-  // Custom entry toggles
+  // 2. City State
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  const [cityQuery, setCityQuery] = useState('');
   const [isCustomCity, setIsCustomCity] = useState(false);
-  const [isCustomPostalCode, setIsCustomPostalCode] = useState(false);
+  const cityContainerRef = useRef<HTMLDivElement>(null);
+  const citySearchRef = useRef<HTMLInputElement>(null);
 
-  // Close dropdown on outside click
+  // 3. Postal Code State
+  const [isPostalCodeOpen, setIsPostalCodeOpen] = useState(false);
+  const [postalCodeQuery, setPostalCodeQuery] = useState('');
+  const [isCustomPostalCode, setIsCustomPostalCode] = useState(false);
+  const postalCodeContainerRef = useRef<HTMLDivElement>(null);
+  const postalCodeSearchRef = useRef<HTMLInputElement>(null);
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (
-        countryContainerRef.current &&
-        !countryContainerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      if (countryContainerRef.current && !countryContainerRef.current.contains(target)) {
         setIsCountryOpen(false);
+      }
+      if (cityContainerRef.current && !cityContainerRef.current.contains(target)) {
+        setIsCityOpen(false);
+      }
+      if (postalCodeContainerRef.current && !postalCodeContainerRef.current.contains(target)) {
+        setIsPostalCodeOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Focus search input when dropdown opens
+  // Focus search inputs when respective dropdown opens
   useEffect(() => {
     if (isCountryOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
+      setTimeout(() => countrySearchRef.current?.focus(), 50);
     }
   }, [isCountryOpen]);
+
+  useEffect(() => {
+    if (isCityOpen) {
+      setTimeout(() => citySearchRef.current?.focus(), 50);
+    }
+  }, [isCityOpen]);
+
+  useEffect(() => {
+    if (isPostalCodeOpen) {
+      setTimeout(() => postalCodeSearchRef.current?.focus(), 50);
+    }
+  }, [isPostalCodeOpen]);
 
   const cities = getCitiesForCountry(country);
   const postalCodes = getPostalCodesForCity(country, city);
@@ -74,6 +100,20 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
     const q = countryQuery.toLowerCase().trim();
     if (!q) return true;
     return c.toLowerCase().includes(q);
+  });
+
+  // Filter cities by search query
+  const filteredCities = cities.filter((c) => {
+    const q = cityQuery.toLowerCase().trim();
+    if (!q) return true;
+    return c.name.toLowerCase().includes(q);
+  });
+
+  // Filter postal codes by search query
+  const filteredPostalCodes = postalCodes.filter((pc) => {
+    const q = postalCodeQuery.toLowerCase().trim();
+    if (!q) return true;
+    return pc.toLowerCase().includes(q);
   });
 
   // Atomic state dispatcher prevents race conditions
@@ -101,13 +141,28 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
     setCountryQuery('');
   };
 
-  const handleCityChange = (newCity: string) => {
-    setIsCustomPostalCode(false);
-    commitLocation({ city: newCity, postalCode: '' });
+  const handleSelectCity = (newCity: string) => {
+    if (newCity === 'Other') {
+      setIsCustomCity(true);
+      commitLocation({ city: 'Other', postalCode: '' });
+    } else {
+      setIsCustomCity(false);
+      commitLocation({ city: newCity, postalCode: '' });
+    }
+    setIsCityOpen(false);
+    setCityQuery('');
   };
 
-  const handlePostalCodeChange = (newPostalCode: string) => {
-    commitLocation({ postalCode: newPostalCode });
+  const handleSelectPostalCode = (newPostalCode: string) => {
+    if (newPostalCode === 'Other') {
+      setIsCustomPostalCode(true);
+      commitLocation({ postalCode: 'Other' });
+    } else {
+      setIsCustomPostalCode(false);
+      commitLocation({ postalCode: newPostalCode });
+    }
+    setIsPostalCodeOpen(false);
+    setPostalCodeQuery('');
   };
 
   const isCityInList = cities.some((c) => c.name.toLowerCase() === (city || '').toLowerCase());
@@ -122,13 +177,17 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {/* 1. SEARCHABLE COUNTRY DROPDOWN */}
-      <div className="relative" ref={countryContainerRef}>
+      <div className={`relative ${isCountryOpen ? 'z-40' : 'z-10'}`} ref={countryContainerRef}>
         <label className={labelClass}>
           Country <span className="text-red-500">*</span>
         </label>
         <button
           type="button"
-          onClick={() => setIsCountryOpen((prev) => !prev)}
+          onClick={() => {
+            setIsCountryOpen((prev) => !prev);
+            setIsCityOpen(false);
+            setIsPostalCodeOpen(false);
+          }}
           className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-xs text-left transition ${
             isCountryOpen
               ? 'border-orange-500 ring-1 ring-orange-200'
@@ -148,12 +207,12 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
 
         {/* Dropdown Menu */}
         {isCountryOpen && (
-          <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
             {/* Search Input Box */}
             <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 bg-slate-50/70">
               <Search size={13} className="text-slate-400 shrink-0" />
               <input
-                ref={searchInputRef}
+                ref={countrySearchRef}
                 type="text"
                 className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
                 placeholder="Type to search country…"
@@ -245,56 +304,146 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
         )}
       </div>
 
-      {/* 2. CITY DROPDOWN OR INPUT (Cascading from Country) */}
-      <div>
+      {/* 2. SEARCHABLE CITY DROPDOWN (Cascading from Country) */}
+      <div className={`relative ${isCityOpen ? 'z-40' : 'z-10'}`} ref={cityContainerRef}>
         <label className={labelClass}>
           City <span className="text-red-500">*</span>
         </label>
         {cities.length > 0 ? (
           <div className="space-y-1.5">
-            <div className="relative">
-              <select
-                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-                value={
-                  isCityInList
-                    ? cities.find((c) => c.name.toLowerCase() === (city || '').toLowerCase())?.name
-                    : showCityCustomInput
-                    ? 'Other'
-                    : ''
+            <button
+              type="button"
+              disabled={!country}
+              onClick={() => {
+                if (country) {
+                  setIsCityOpen((prev) => !prev);
+                  setIsCountryOpen(false);
+                  setIsPostalCodeOpen(false);
                 }
-                onChange={(e) => {
-                  if (e.target.value === 'Other') {
-                    setIsCustomCity(true);
-                    handleCityChange('Other');
-                  } else {
-                    setIsCustomCity(false);
-                    handleCityChange(e.target.value);
-                  }
-                }}
-                disabled={!country}
-              >
-                <option value="">
-                  {!country ? 'Select Country first…' : 'Select City…'}
-                </option>
-                {cities.map((cty) => (
-                  <option key={cty.name} value={cty.name}>
-                    {cty.name}
-                  </option>
-                ))}
-                <option value="Other">Other</option>
-              </select>
+              }}
+              className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-xs text-left transition ${
+                !country
+                  ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
+                  : isCityOpen
+                  ? 'border-orange-500 ring-1 ring-orange-200 bg-white'
+                  : city
+                  ? 'border-slate-200 text-slate-800 bg-white'
+                  : 'border-slate-200 text-slate-400 bg-white'
+              }`}
+              aria-haspopup="listbox"
+              aria-expanded={isCityOpen}
+            >
+              <span className="truncate">
+                {!country
+                  ? 'Select Country first…'
+                  : isCityInList
+                  ? cities.find((c) => c.name.toLowerCase() === (city || '').toLowerCase())?.name
+                  : showCityCustomInput
+                  ? city === 'Other'
+                    ? 'Other (Enter custom city)'
+                    : city
+                  : 'Select City…'}
+              </span>
               <ChevronDown
                 size={14}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className={`text-slate-400 transition-transform ${isCityOpen ? 'rotate-180' : ''}`}
               />
-            </div>
+            </button>
+
+            {/* City Dropdown Menu */}
+            {isCityOpen && (
+              <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                {/* Search Bar */}
+                <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 bg-slate-50/70">
+                  <Search size={13} className="text-slate-400 shrink-0" />
+                  <input
+                    ref={citySearchRef}
+                    type="text"
+                    className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+                    placeholder="Search city…"
+                    value={cityQuery}
+                    onChange={(e) => setCityQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (filteredCities.length > 0) {
+                          handleSelectCity(filteredCities[0].name);
+                        } else if (cityQuery.trim()) {
+                          handleSelectCity(cityQuery.trim());
+                        }
+                      }
+                    }}
+                  />
+                  {cityQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCityQuery('')}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Cities Scrollable List */}
+                <ul className="max-h-56 overflow-y-auto py-1 divide-y divide-slate-50 text-xs">
+                  {filteredCities.length > 0 ? (
+                    filteredCities.map((cty) => {
+                      const isSelected = (city || '').toLowerCase() === cty.name.toLowerCase();
+                      return (
+                        <li key={cty.name}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectCity(cty.name)}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-orange-50/60 transition ${
+                              isSelected ? 'bg-orange-50 font-bold text-orange-900' : 'text-slate-700'
+                            }`}
+                          >
+                            <span>{cty.name}</span>
+                            {isSelected && <Check size={14} className="text-orange-600" />}
+                          </button>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <li className="p-2">
+                      <div className="text-center py-2 text-slate-400 text-xs">
+                        No matching city found
+                      </div>
+                      {cityQuery.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectCity(cityQuery.trim())}
+                          className="w-full text-center text-xs font-semibold text-orange-600 hover:underline py-1"
+                        >
+                          Use &quot;{cityQuery.trim()}&quot; as City
+                        </button>
+                      )}
+                    </li>
+                  )}
+
+                  {/* Explicit Other Option */}
+                  <li className="p-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCity('Other')}
+                      className="w-full text-left px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-50 rounded font-semibold transition"
+                    >
+                      + Other (Enter custom city)
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            {/* Custom City Text Input */}
             {showCityCustomInput && (
               <input
                 type="text"
                 className={fieldClass}
                 placeholder="Enter custom city name…"
                 value={city === 'Other' ? '' : city}
-                onChange={(e) => handleCityChange(e.target.value || 'Other')}
+                onChange={(e) => commitLocation({ city: e.target.value || 'Other', postalCode: '' })}
                 autoFocus
               />
             )}
@@ -305,62 +454,135 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
             className={fieldClass}
             placeholder={!country ? 'Select Country first…' : 'Enter city name…'}
             value={city}
-            onChange={(e) => handleCityChange(e.target.value)}
+            onChange={(e) => commitLocation({ city: e.target.value, postalCode: '' })}
             disabled={!country}
           />
         )}
       </div>
 
-      {/* 3. POSTAL CODE DROPDOWN OR INPUT (Cascading from City) */}
-      <div>
+      {/* 3. SEARCHABLE POSTAL CODE DROPDOWN (Cascading from City) */}
+      <div className={`relative ${isPostalCodeOpen ? 'z-40' : 'z-10'}`} ref={postalCodeContainerRef}>
         <label className={labelClass}>
           Postal Code <span className="text-red-500">*</span>
         </label>
         {postalCodes.length > 0 ? (
           <div className="space-y-1.5">
-            <div className="relative">
-              <select
-                className={`${fieldClass} appearance-none pr-8 cursor-pointer`}
-                value={
-                  isPostalCodeInList
-                    ? postalCodes.find((pc) => pc.toLowerCase() === (postalCode || '').toLowerCase())
-                    : showPostalCodeCustomInput
-                    ? 'Other'
-                    : ''
+            <button
+              type="button"
+              disabled={!city}
+              onClick={() => {
+                if (city) {
+                  setIsPostalCodeOpen((prev) => !prev);
+                  setIsCountryOpen(false);
+                  setIsCityOpen(false);
                 }
-                onChange={(e) => {
-                  if (e.target.value === 'Other') {
-                    setIsCustomPostalCode(true);
-                    handlePostalCodeChange('Other');
-                  } else {
-                    setIsCustomPostalCode(false);
-                    handlePostalCodeChange(e.target.value);
-                  }
-                }}
-                disabled={!city}
-              >
-                <option value="">
-                  {!city ? 'Select City first…' : 'Select Postal Code…'}
-                </option>
-                {postalCodes.map((pc) => (
-                  <option key={pc} value={pc}>
-                    {pc}
-                  </option>
-                ))}
-                <option value="Other">Other</option>
-              </select>
+              }}
+              className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-xs text-left transition ${
+                !city
+                  ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
+                  : isPostalCodeOpen
+                  ? 'border-orange-500 ring-1 ring-orange-200 bg-white'
+                  : postalCode
+                  ? 'border-slate-200 text-slate-800 bg-white'
+                  : 'border-slate-200 text-slate-400 bg-white'
+              }`}
+              aria-haspopup="listbox"
+              aria-expanded={isPostalCodeOpen}
+            >
+              <span className="truncate">
+                {!city
+                  ? 'Select City first…'
+                  : isPostalCodeInList
+                  ? postalCodes.find((pc) => pc.toLowerCase() === (postalCode || '').toLowerCase())
+                  : showPostalCodeCustomInput
+                  ? postalCode === 'Other'
+                    ? 'Other (Enter custom postal code)'
+                    : postalCode
+                  : 'Select Postal Code…'}
+              </span>
               <ChevronDown
                 size={14}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className={`text-slate-400 transition-transform ${isPostalCodeOpen ? 'rotate-180' : ''}`}
               />
-            </div>
+            </button>
+
+            {/* Postal Code Dropdown Menu */}
+            {isPostalCodeOpen && (
+              <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                {/* Search Bar (if more than 5 codes) */}
+                {postalCodes.length > 5 && (
+                  <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 bg-slate-50/70">
+                    <Search size={13} className="text-slate-400 shrink-0" />
+                    <input
+                      ref={postalCodeSearchRef}
+                      type="text"
+                      className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+                      placeholder="Search postal code…"
+                      value={postalCodeQuery}
+                      onChange={(e) => setPostalCodeQuery(e.target.value)}
+                    />
+                    {postalCodeQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setPostalCodeQuery('')}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Postal Codes Scrollable List */}
+                <ul className="max-h-48 overflow-y-auto py-1 divide-y divide-slate-50 text-xs">
+                  {filteredPostalCodes.length > 0 ? (
+                    filteredPostalCodes.map((pc) => {
+                      const isSelected = (postalCode || '').toLowerCase() === pc.toLowerCase();
+                      return (
+                        <li key={pc}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectPostalCode(pc)}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-orange-50/60 transition ${
+                              isSelected ? 'bg-orange-50 font-bold text-orange-900' : 'text-slate-700'
+                            }`}
+                          >
+                            <span>{pc}</span>
+                            {isSelected && <Check size={14} className="text-orange-600" />}
+                          </button>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <li className="p-2">
+                      <div className="text-center py-2 text-slate-400 text-xs">
+                        No matching postal code found
+                      </div>
+                    </li>
+                  )}
+
+                  {/* Explicit Other Option */}
+                  <li className="p-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPostalCode('Other')}
+                      className="w-full text-left px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-50 rounded font-semibold transition"
+                    >
+                      + Other (Enter custom postal code)
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            {/* Custom Postal Code Text Input */}
             {showPostalCodeCustomInput && (
               <input
                 type="text"
                 className={fieldClass}
                 placeholder="Enter custom postal code…"
                 value={postalCode === 'Other' ? '' : postalCode}
-                onChange={(e) => handlePostalCodeChange(e.target.value || 'Other')}
+                onChange={(e) => commitLocation({ postalCode: e.target.value || 'Other' })}
                 autoFocus
               />
             )}
@@ -371,7 +593,7 @@ export const CascadingLocationSelect: React.FC<CascadingLocationSelectProps> = (
             className={fieldClass}
             placeholder={!city ? 'Select City first…' : 'Enter postal code…'}
             value={postalCode}
-            onChange={(e) => handlePostalCodeChange(e.target.value)}
+            onChange={(e) => commitLocation({ postalCode: e.target.value })}
             disabled={!city}
           />
         )}
