@@ -14,7 +14,7 @@ const shareEventSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     channel: {
       type: String,
-      enum: ["feed", "user_dm", "whatsapp", "facebook", "copy_link"],
+      enum: ["feed", "user_dm", "whatsapp", "facebook", "twitter", "linkedin", "gmail", "copy_link"],
       required: true,
     },
   },

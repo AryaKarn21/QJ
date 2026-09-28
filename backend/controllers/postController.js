@@ -868,7 +868,7 @@ const trackExternalShare = async (req, res) => {
     }
 
     const channel = req.body.channel;
-    if (!["whatsapp", "facebook", "copy_link"].includes(channel)) {
+    if (!["whatsapp", "facebook", "twitter", "linkedin", "gmail", "copy_link"].includes(channel)) {
       return res.status(400).json({ message: "Invalid share channel." });
     }
 

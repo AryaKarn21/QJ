@@ -37,7 +37,7 @@ export const shareToUsers = async (postId: string, userIds: string[], message?: 
   return res.data as { message: string; sentCount: number; shareCount: number };
 };
 
-export type ExternalShareChannel = 'whatsapp' | 'facebook' | 'copy_link';
+export type ExternalShareChannel = 'whatsapp' | 'facebook' | 'twitter' | 'linkedin' | 'gmail' | 'copy_link';
 
 /**
  * Best-effort tracking for an external share action (WhatsApp/Facebook/
