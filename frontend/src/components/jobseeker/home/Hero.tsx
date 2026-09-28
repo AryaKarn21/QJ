@@ -6,12 +6,35 @@ import {
   Zap,
   X,
   TrendingUp,
+  BookOpen,
+  Pencil,
+  Briefcase,
+  GraduationCap,
+  FileText,
+  Award,
+  Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { getHomepageContent } from '../../../api/cmsPublicApi';
 import { useSiteContent } from '../../../hooks/useSiteContent';
 import jobPhoto from '../../../assets/jobseekerassests/quickjobs-hero-hd.webp';
+
+// Falling book, pen, and career elements configuration
+const FALLING_CAREER_ITEMS = [
+  { id: 1, Icon: BookOpen, left: '6%', size: 18, color: 'text-amber-400', bg: 'bg-amber-400/10 border-amber-400/20', duration: 16, delay: 0, sway: 20, rotateEnd: 180 },
+  { id: 2, Icon: Pencil, left: '17%', size: 16, color: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/20', duration: 18, delay: 4, sway: -22, rotateEnd: 360 },
+  { id: 3, Icon: Briefcase, left: '29%', size: 19, color: 'text-sky-400', bg: 'bg-sky-400/10 border-sky-400/20', duration: 15, delay: 7, sway: 24, rotateEnd: -240 },
+  { id: 4, Icon: GraduationCap, left: '44%', size: 20, color: 'text-violet-400', bg: 'bg-violet-400/10 border-violet-400/20', duration: 19, delay: 2, sway: -20, rotateEnd: 270 },
+  { id: 5, Icon: FileText, left: '57%', size: 17, color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20', duration: 17, delay: 9, sway: 22, rotateEnd: -180 },
+  { id: 6, Icon: BookOpen, left: '69%', size: 18, color: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/20', duration: 14, delay: 5, sway: -26, rotateEnd: 360 },
+  { id: 7, Icon: Pencil, left: '81%', size: 16, color: 'text-amber-300', bg: 'bg-amber-300/10 border-amber-300/20', duration: 20, delay: 1, sway: 24, rotateEnd: -360 },
+  { id: 8, Icon: Briefcase, left: '91%', size: 19, color: 'text-sky-400', bg: 'bg-sky-400/10 border-sky-400/20', duration: 16, delay: 11, sway: -18, rotateEnd: 220 },
+  { id: 9, Icon: Award, left: '12%', size: 18, color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20', duration: 21, delay: 8, sway: 25, rotateEnd: 360 },
+  { id: 10, Icon: Sparkles, left: '38%', size: 16, color: 'text-amber-200', bg: 'bg-amber-200/10 border-amber-200/20', duration: 15, delay: 13, sway: -20, rotateEnd: 180 },
+  { id: 11, Icon: GraduationCap, left: '76%', size: 18, color: 'text-indigo-400', bg: 'bg-indigo-400/10 border-indigo-400/20', duration: 17, delay: 6, sway: 26, rotateEnd: -300 },
+  { id: 12, Icon: FileText, left: '96%', size: 16, color: 'text-orange-300', bg: 'bg-orange-300/10 border-orange-300/20', duration: 19, delay: 3, sway: -22, rotateEnd: 360 },
+];
 
 // Hardcoded copy stays as the fallback — CMS content only overrides it
 // once an admin actually publishes something (see CmsHub.tsx's Homepage
@@ -167,7 +190,7 @@ const Hero: React.FC = () => {
   }, []);
 
   return (
-    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-10 sm:px-6 sm:py-12 lg:py-14 pb-14 sm:pb-16 lg:pb-20 min-h-[460px] lg:min-h-[500px] xl:min-h-[530px]">
+    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-12 sm:px-6 sm:py-14 lg:py-14 pb-16 sm:pb-18 lg:pb-20 min-h-[480px] lg:min-h-[500px] xl:min-h-[530px]">
       {/* ── BACKGROUND ── Exact HD Hero visual with Ken Burns slow zoom ── */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         {HERO_SLIDES.length > 1 ? (
@@ -176,8 +199,8 @@ const Hero: React.FC = () => {
               key={activeSlide}
               src={HERO_SLIDES[activeSlide]}
               alt="QuickJobs Career Opportunities"
-              className="h-full w-full object-cover object-right-top"
-              style={{ objectPosition: 'right top', transformOrigin: 'right top' }}
+              className="h-full w-full object-cover object-[75%_20%] lg:object-right-top"
+              style={{ transformOrigin: 'right top' }}
               initial={{ opacity: 0, scale: 1 }}
               animate={{ opacity: 1, scale: 1.02 }}
               exit={{ opacity: 0 }}
@@ -188,15 +211,15 @@ const Hero: React.FC = () => {
           <motion.img
             src={HERO_SLIDES[0]}
             alt="QuickJobs Career Opportunities"
-            className="h-full w-full object-cover object-right-top"
-            style={{ objectPosition: 'right top', transformOrigin: 'right top' }}
+            className="h-full w-full object-cover object-[75%_20%] lg:object-right-top"
+            style={{ transformOrigin: 'right top' }}
             animate={prefersReducedMotion ? undefined : { scale: [1, 1.02, 1] }}
             transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
 
-        {/* Soft dark gradient on left to guarantee text readability while keeping the people vibrant */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/30 to-transparent" />
+        {/* Responsive dark gradient: vertical contrast on mobile so text is crisp and faces aren't clashed; horizontal on desktop */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-slate-950/75 to-slate-950/95 lg:bg-gradient-to-r lg:from-slate-950/85 lg:via-slate-950/30 lg:to-transparent" />
 
         {/* Subtle ambient glows for visual depth */}
         <motion.div
@@ -211,7 +234,34 @@ const Hero: React.FC = () => {
         />
       </div>
 
-
+      {/* ── Falling Book, Pen & Career Floating Elements Animation ── */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+        {FALLING_CAREER_ITEMS.map((item) => (
+          <motion.div
+            key={item.id}
+            className={`absolute -top-12 rounded-xl border p-2 backdrop-blur-[2px] shadow-sm ${item.bg} ${item.color}`}
+            style={{ left: item.left }}
+            animate={
+              prefersReducedMotion
+                ? undefined
+                : {
+                    y: ['0vh', '115vh'],
+                    x: [0, item.sway, -item.sway / 2, item.sway, 0],
+                    rotate: [0, item.rotateEnd / 2, item.rotateEnd],
+                    opacity: [0, 0.5, 0.55, 0.4, 0],
+                  }
+            }
+            transition={{
+              duration: item.duration,
+              repeat: Infinity,
+              delay: item.delay,
+              ease: 'linear',
+            }}
+          >
+            <item.Icon size={item.size} />
+          </motion.div>
+        ))}
+      </div>
 
       {/* ── CONTENT ── Aligned to the left matching the hero layout ── */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-center lg:text-left">
@@ -221,7 +271,7 @@ const Hero: React.FC = () => {
             variants={prefersReducedMotion ? reducedMotionVariant : badgeVariant}
             initial="hidden"
             animate="show"
-            className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold tracking-tight text-white backdrop-blur-sm sm:text-[13px]"
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1 text-xs font-semibold tracking-tight text-white backdrop-blur-sm sm:px-4 sm:py-1.5 sm:text-[13px]"
           >
             <Zap size={13} className="fill-orange-400 text-orange-400" />
             {badgeText}
@@ -232,7 +282,7 @@ const Hero: React.FC = () => {
             variants={prefersReducedMotion ? reducedMotionVariant : headingVariant}
             initial="hidden"
             animate="show"
-            className="mb-3 text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
+            className="mb-3 text-3xl font-extrabold leading-[1.18] tracking-tight text-white sm:text-5xl lg:text-6xl"
           >
             {headline} <span className="text-orange-500">{headlineAccent}</span>
           </motion.h1>
@@ -242,7 +292,7 @@ const Hero: React.FC = () => {
             variants={prefersReducedMotion ? reducedMotionVariant : descVariant}
             initial="hidden"
             animate="show"
-            className="mx-auto mb-5 max-w-xl text-base font-normal leading-relaxed text-slate-300 sm:text-lg lg:mx-0"
+            className="mx-auto mb-5 max-w-xl text-sm font-normal leading-relaxed text-slate-300 sm:text-lg lg:mx-0"
           >
             {subheadline}
           </motion.p>
@@ -287,7 +337,7 @@ const Hero: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSearch}
-                className="group flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/30 hover:bg-orange-600 active:scale-[0.98] sm:w-auto cursor-pointer"
+                className="group flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-orange-500 px-5 py-2.5 sm:px-6 sm:py-3 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/30 hover:bg-orange-600 active:scale-[0.98] sm:w-auto cursor-pointer"
               >
                 Search <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
               </button>

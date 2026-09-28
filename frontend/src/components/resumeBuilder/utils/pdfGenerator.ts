@@ -215,6 +215,28 @@ export async function appendDocumentAppendix(
   return await mergedPdf.save();
 }
 
+export function triggerBlobDownload(blob: Blob, fileName: string) {
+  const safeFilename = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = safeFilename;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    try {
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Ignore cleanup error
+    }
+  }, 12000);
+}
+
 export const generatePDF = async (
   elementRef: React.RefObject<HTMLDivElement>,
   fileName: string,
@@ -247,13 +269,6 @@ export const generatePDF = async (
         pdf.addPage('a4', 'p');
       }
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-      // No separate page-number draw here on purpose: `pageEl` is a
-      // `.resume-page` node rendered by A4PageContainer, which already
-      // includes its own header/footer page-number band (position/align/
-      // style/start all come from the same resume fields) — html2canvas
-      // just captured it as part of the screenshot above. Drawing a second
-      // number here used to duplicate it (a different position and
-      // ignoring the style setting) on every exported page.
     }
   } else {
     // Continuous fallback if .resume-page is not present
@@ -287,17 +302,15 @@ export const generatePDF = async (
       const mainBytes = pdf.output('arraybuffer');
       const finalPdfBytes = await appendDocumentAppendix(mainBytes, resume);
       const blob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      triggerBlobDownload(blob, fileName);
     } catch (appendErr) {
       console.error('Appendix merge error, falling back to direct save:', appendErr);
-      pdf.save(fileName);
+      const blob = pdf.output('blob');
+      triggerBlobDownload(blob, fileName);
     }
   } else {
-    pdf.save(fileName);
+    const blob = pdf.output('blob');
+    triggerBlobDownload(blob, fileName);
   }
 
   if (templateId) {
@@ -764,17 +777,15 @@ export const generateAtsSafePDF = async (resume: Resume, fileName: string) => {
       const mainBytes = w.pdf.output('arraybuffer');
       const finalPdfBytes = await appendDocumentAppendix(mainBytes, resume);
       const blob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      triggerBlobDownload(blob, fileName);
     } catch (appendErr) {
       console.error('Appendix merge error in ATS safe PDF:', appendErr);
-      w.pdf.save(fileName);
+      const blob = w.pdf.output('blob');
+      triggerBlobDownload(blob, fileName);
     }
   } else {
-    w.pdf.save(fileName);
+    const blob = w.pdf.output('blob');
+    triggerBlobDownload(blob, fileName);
   }
 
   if (resume.layout) {

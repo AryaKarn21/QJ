@@ -547,12 +547,15 @@ const ResumeEditor: React.FC = () => {
     }
 
     setDownloadingPdf(true);
+    toast.info('Generating PDF...', { autoClose: 2000 });
     try {
       const fileName = `${resume.personalInfo?.fullName || resume.title || 'resume'}.pdf`.replace(/\s+/g, '_');
       const templateName = getTemplateById(resume.layout)?.name || resume.layout;
       await generatePDF(previewRef, fileName, resume.layout, templateName, resume);
+      toast.success('Resume downloaded successfully!');
     } catch (err) {
       console.error('Failed to generate PDF:', err);
+      toast.error('Could not generate the PDF. Please try again.');
       setAiError('Could not generate the PDF. Please try again.');
     } finally {
       setDownloadingPdf(false);
@@ -1352,7 +1355,9 @@ const ResumeEditor: React.FC = () => {
           width and causing whole-page horizontal scroll. */}
       <div
         className={`flex-1 overflow-x-auto overflow-y-auto bg-slate-100 p-4 sm:p-6 lg:h-dvh print:bg-white print:p-0 print:overflow-visible ${
-          mobileTab === 'edit' ? 'hidden lg:block' : 'block'
+          mobileTab === 'edit'
+            ? 'fixed -left-[9999px] top-0 opacity-0 pointer-events-none w-[794px] lg:static lg:opacity-100 lg:pointer-events-auto lg:w-auto lg:flex-1'
+            : 'block'
         }`}
       >
         {/* PDF Customization Toolbar: Template, Colour style, Text size, Show logo, Page number */}
