@@ -18,6 +18,7 @@ import { fetchConversations } from "../../../api/messageApi";
 import type { ConversationSummary } from "../../../types/community";
 import { useAutoRefresh } from "../../../hooks/useAutoRefresh";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
+import { CongratulationsBanner } from "../../common/CongratulationsAnimation";
 
 function avatarUrl(pic?: string | null) {
   return resolveMediaUrl(pic);
@@ -152,6 +153,18 @@ const UserDashboard = () => {
             <TrendingUp size={15} /> Browse Jobs
           </button>
         </div>
+
+        {(() => {
+          const acceptedJob = appliedJobs.find((j) => j && j.applicationStatus === 'Accepted');
+          if (!acceptedJob) return null;
+          return (
+            <CongratulationsBanner
+              jobTitle={acceptedJob.title}
+              companyName={acceptedJob.employer?.name}
+              className="shadow-md"
+            />
+          );
+        })()}
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">

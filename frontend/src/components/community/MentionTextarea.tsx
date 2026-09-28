@@ -7,6 +7,7 @@ import type { AuthorSnapshot } from '../../types/community';
 export interface MentionTextareaHandle {
   triggerMention: () => void;
   focus: () => void;
+  insertText: (text: string) => void;
 }
 
 interface MentionTextareaProps {
@@ -51,9 +52,29 @@ export const MentionTextarea = forwardRef<MentionTextareaHandle, MentionTextarea
       });
     };
 
+    const insertText = (textToInsert: string) => {
+      const el = textareaRef.current;
+      if (!el) {
+        onChange(value + textToInsert);
+        return;
+      }
+      const start = el.selectionStart ?? value.length;
+      const end = el.selectionEnd ?? value.length;
+      const before = value.slice(0, start);
+      const after = value.slice(end);
+      const nextVal = `${before}${textToInsert}${after}`;
+      onChange(nextVal);
+      const newPos = start + textToInsert.length;
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(newPos, newPos);
+      });
+    };
+
     useImperativeHandle(ref, () => ({
       triggerMention,
       focus: () => textareaRef.current?.focus(),
+      insertText,
     }));
 
   useEffect(() => {

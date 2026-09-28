@@ -13,6 +13,7 @@ import { formatSalaryRange } from '../../../utils/currency';
 import { jwtDecode } from 'jwt-decode';
 import { SkeletonCircle, SkeletonText, SkeletonParagraph, SkeletonCard } from '../../ui/Skeleton';
 import { FollowButton } from '../../community/FollowButton';
+import { CongratulationsBanner } from '../../common/CongratulationsAnimation';
 
 
 interface DecodedToken {
@@ -68,6 +69,7 @@ interface Job {
   updatedAt?: string;
   isSaved?: boolean;
   isApplied?: boolean;
+  applicationStatus?: string;
   // Structured fields from Phase 1 (backend/models/Job.js) — every job
   // created/edited before that change simply won't have these, so every
   // section built from them below only renders when actually present.
@@ -345,6 +347,14 @@ const JobDetailPage = () => {
           {/* Job Detail Section */}
           <div className="lg:col-span-2 space-y-6">
 
+            {job.applicationStatus === 'Accepted' && (
+              <CongratulationsBanner
+                jobTitle={job.title}
+                companyName={displayName}
+                className="shadow-lg"
+              />
+            )}
+
             {/* Header card */}
             <div className="bg-white rounded-lg p-6 shadow">
               <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4 border-b pb-4">
@@ -378,6 +388,7 @@ const JobDetailPage = () => {
                           userId={job.employer._id}
                           initialFollowing={false}
                           isCompany
+                          hideWhenFollowing
                           size="xs"
                         />
                       )}
@@ -402,7 +413,15 @@ const JobDetailPage = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0 self-stretch sm:self-auto">
-                  {isExpired ? (
+                  {job.applicationStatus === 'Accepted' ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 bg-emerald-600 text-white shadow-sm px-3.5 py-1.5 rounded text-sm font-bold animate-pulse"
+                      title="Congratulations! You have been accepted for this job!"
+                    >
+                      <CheckCircle2 size={14} />
+                      Accepted 🎉
+                    </span>
+                  ) : isExpired ? (
                     <span
                       className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1.5 rounded text-sm font-medium cursor-not-allowed"
                       title="The application deadline for this job has passed"
@@ -625,6 +644,7 @@ const JobDetailPage = () => {
                       userId={job.employer._id}
                       initialFollowing={false}
                       isCompany
+                      hideWhenFollowing
                       size="sm"
                     />
                   </div>

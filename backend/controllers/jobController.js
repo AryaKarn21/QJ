@@ -332,9 +332,11 @@ const getJobById = async (req, res) => {
     // of only finding out after submitting — applyInJob already rejects a
     // second application server-side (see below), this just surfaces that
     // same fact up front.
-    jobData.isApplied = req.user
-      ? !!(await Application.exists({ job: job._id, applicant: req.user._id }))
-      : false;
+    const userApp = req.user
+      ? await Application.findOne({ job: job._id, applicant: req.user._id }).select("status")
+      : null;
+    jobData.isApplied = !!userApp;
+    jobData.applicationStatus = userApp ? userApp.status : null;
 
     res.json(jobData);
   } catch (error) {

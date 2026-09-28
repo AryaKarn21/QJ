@@ -5,13 +5,14 @@ import axios from 'axios';
 import {
   Send, Search, Loader2, AlertCircle, MessageCircle,
   Phone, Video, MoreHorizontal, ChevronLeft, X, Check, CheckCheck, Edit3, User, Trash2,
-  Paperclip, PhoneMissed, FileText, Download,
+  Paperclip, PhoneMissed, FileText, Download, Smile,
 } from 'lucide-react';
 import { fetchConversations, fetchMessages, sendMessage, deleteMessage, logCall } from '../../api/messageApi';
 import { useSocket } from '../../context/SocketContext';
 import { useCurrentUser } from '../../utils/currentUser';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { Avatar } from '../community/Avatar';
+import { EmojiPicker } from '../common/EmojiPicker';
 import type { ConversationSummary, DirectMessage, MessageAttachment } from '../../types/community';
 import { useCall } from '../../context/CallContext';
 
@@ -362,6 +363,7 @@ function ChatPanel({
   const [readAt, setReadAt] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -369,6 +371,23 @@ function ChatPanel({
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+
+  const handleSelectEmoji = (emoji: string) => {
+    const el = inputRef.current;
+    if (!el) {
+      setText((p) => p + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + emoji + text.slice(end);
+    setText(next);
+    const newPos = start + emoji.length;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(newPos, newPos);
+    });
+  };
 
   const scrollToBottom = useCallback((smooth = true) => {
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
@@ -383,6 +402,7 @@ function ChatPanel({
     setOtherTyping(false);
     setReadAt(null);
     setPendingFiles([]);
+    setShowEmojiPicker(false);
     isTypingRef.current = false;
     if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null; }
     fetchMessages(conv._id, 1)
@@ -784,7 +804,7 @@ function ChatPanel({
           </button>
 
           {/* Text input */}
-          <div className="flex-1 flex items-end gap-2 bg-slate-50 rounded-3xl border border-slate-200 px-4 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/70 focus-within:bg-white transition-all shadow-sm">
+          <div className="relative flex-1 flex items-end gap-2 bg-slate-50 rounded-3xl border border-slate-200 px-4 py-2.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/70 focus-within:bg-white transition-all shadow-sm">
             <textarea
               ref={inputRef}
               value={text}
@@ -797,6 +817,30 @@ function ChatPanel({
               className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none leading-relaxed py-0.5"
               style={{ maxHeight: 120 }}
             />
+
+            {/* Emoji picker button */}
+            <div className="relative flex-shrink-0 self-end mb-0.5">
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker((prev) => !prev)}
+                aria-label="Insert emoji"
+                className={`p-1 rounded-full transition-colors ${
+                  showEmojiPicker
+                    ? 'text-amber-500 bg-amber-50'
+                    : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100'
+                }`}
+                title="Add emoji"
+              >
+                <Smile size={18} />
+              </button>
+
+              <EmojiPicker
+                isOpen={showEmojiPicker}
+                onClose={() => setShowEmojiPicker(false)}
+                onSelect={handleSelectEmoji}
+                position="top"
+              />
+            </div>
           </div>
 
           {/* Send button */}

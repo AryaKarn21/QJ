@@ -5,6 +5,7 @@ import { fetchAppliedJobs } from '../jobseekerApi/api';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
+import { CongratulationsBanner } from '../../common/CongratulationsAnimation';
 
 interface Employer {
   name: string;
@@ -109,9 +110,19 @@ const UserMyApplications = () => {
       return timeB - timeA;
     });
 
+  const acceptedApplications = applications.filter((app) => app?.applicationStatus === 'Accepted');
+
   return (
     <div className="min-h-screen overflow-auto bg-gray-50 p-4 sm:p-6" style={{ maxHeight: 'calc(100dvh - 50px)' }}>
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-5xl space-y-4">
+        {acceptedApplications.length > 0 && (
+          <CongratulationsBanner
+            jobTitle={acceptedApplications[0].title}
+            companyName={displayNameFor(acceptedApplications[0])}
+            className="shadow-md"
+          />
+        )}
+
         <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div>

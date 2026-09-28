@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Image, Video, FileText, Briefcase, BarChart3, Megaphone, Type, Sparkles, SpellCheck, X, Plus, Globe2, Hash, AtSign } from 'lucide-react';
+import { Image, Video, FileText, Briefcase, BarChart3, Megaphone, Type, Sparkles, SpellCheck, X, Plus, Globe2, Hash, AtSign, Smile } from 'lucide-react';
 import { createPost, type CreatePostInput } from '../../api/communityApi';
 import { generateCaption, correctGrammar, detectHiringIntent } from '../../api/communityAiApi';
 import { useCurrentUser } from '../../utils/currentUser';
 import { MentionTextarea, type MentionTextareaHandle } from './MentionTextarea';
 import { Avatar } from './Avatar';
 import { TagInput } from '../common/TagInput';
+import { EmojiPicker } from '../common/EmojiPicker';
 import type { CommunityPost, PostTopic, PostType } from '../../types/community';
 
 const TYPE_OPTIONS: { key: PostType; label: string; icon: typeof Type }[] = [
@@ -52,11 +53,20 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
   const [generatingCaption, setGeneratingCaption] = useState(false);
   const [captionTopic, setCaptionTopic] = useState('');
   const [showCaptionPrompt, setShowCaptionPrompt] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [hiringHint, setHiringHint] = useState(false);
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mentionRef = useRef<MentionTextareaHandle>(null);
+
+  const handleSelectEmoji = (emoji: string) => {
+    if (mentionRef.current) {
+      mentionRef.current.insertText(emoji);
+    } else {
+      setContent((prev) => prev + emoji);
+    }
+  };
 
   const SUGGESTED_HASHTAGS = ['hiring', 'developer', 'react', 'nepaljobs', 'tech', 'jobopportunity'];
 
@@ -299,6 +309,26 @@ export function PostComposer({ onPosted, defaultCompanyId, currentUserSnapshot }
           >
             <SpellCheck size={13} /> {checkingGrammar ? 'Checking…' : 'Fix grammar'}
           </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all active:scale-95 shadow-xs cursor-pointer ${
+                showEmojiPicker
+                  ? 'border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-300'
+                  : 'border-amber-200 bg-amber-50/70 text-amber-700 hover:bg-amber-100 hover:border-amber-300 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+              }`}
+              title="Add emoji"
+            >
+              <Smile size={13} className="text-amber-600 dark:text-amber-400" /> Emoji
+            </button>
+            <EmojiPicker
+              isOpen={showEmojiPicker}
+              onClose={() => setShowEmojiPicker(false)}
+              onSelect={handleSelectEmoji}
+              position="bottom"
+            />
+          </div>
         </div>
         <span className="text-[11px] text-gray-400 dark:text-slate-500">
           Tip: Type <span className="font-semibold text-blue-600 dark:text-blue-400">@</span> to tag &bull; <span className="font-semibold text-primary">#</span> for hashtags

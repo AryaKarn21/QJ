@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, Check, UserMinus, Loader2 } from 'lucide-react';
-import { toggleFollow } from '../../api/followApi';
+import { toggleFollow, fetchFollowCounts } from '../../api/followApi';
 import { useCurrentUser } from '../../utils/currentUser';
 import { useFollowState } from '../../context/FollowContext';
 
@@ -9,6 +9,7 @@ export interface FollowButtonProps {
   userId: string;
   initialFollowing: boolean;
   isCompany?: boolean;
+  hideWhenFollowing?: boolean;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   variant?: 'primary' | 'outline';
   onChange?: (following: boolean) => void;
@@ -19,6 +20,7 @@ export function FollowButton({
   userId,
   initialFollowing,
   isCompany,
+  hideWhenFollowing = false,
   size = 'md',
   variant,
   onChange,
@@ -30,7 +32,20 @@ export function FollowButton({
   const [isHovered, setIsHovered] = useState(false);
   const [justFollowed, setJustFollowed] = useState(false);
 
+  useEffect(() => {
+    if (!initialFollowing && userId && isAuthenticated && viewerId !== userId) {
+      fetchFollowCounts(userId)
+        .then((res) => {
+          if (res.isFollowing) {
+            setFollowing(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [userId, initialFollowing, isAuthenticated, viewerId, setFollowing]);
+
   if (!isAuthenticated || viewerId === userId) return null;
+  if (hideWhenFollowing && following) return null;
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
